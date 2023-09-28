@@ -2015,6 +2015,9 @@ PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
   // Emit annotation remarks.
   addAnnotationRemarksPass(MPM);
 
+  // 
+  MPM.addPass(OpenMPOptPass(ThinOrFullLTOPhase::FullLTOPostLink));
+
   return MPM;
 }
 

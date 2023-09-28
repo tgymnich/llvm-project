@@ -56,6 +56,7 @@
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 
 #include <algorithm>
 #include <optional>
@@ -935,7 +936,7 @@ struct OpenMPOpt {
   }
 
   /// Run all OpenMP optimizations on the underlying SCC.
-  bool run(bool IsModulePass) {
+  bool run(bool IsModulePass, bool PostLink) {
     if (SCC.empty())
       return false;
 
@@ -978,6 +979,9 @@ struct OpenMPOpt {
         }
       }
     }
+    
+    if (PostLink)
+      Changed |= splitKernels();
 
     if (OMPInfoCache.OpenMPPostLink)
       Changed |= removeRuntimeSymbols();
@@ -1976,6 +1980,8 @@ private:
   /// Rewrite the device (=GPU) code state machine create in non-SPMD mode in
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
+  
+  bool splitKernels();
 
   ///
   ///}}
@@ -2237,6 +2243,69 @@ bool OpenMPOpt::rewriteDeviceCodeStateMachine() {
           ID, U->get()->getType()));
 
     ++NumOpenMPParallelRegionsReplacedInGPUStateMachine;
+
+    Changed = true;
+  }
+
+  return Changed;
+}
+
+CallInst* FindSplitInstruction(Function *F) {
+  for (auto &BB: *F) {
+    for (auto &I: BB) {
+      auto CI = dyn_cast<CallInst>(&I);
+      if (!CI)
+        continue;
+
+      auto Callee = CI->getCalledFunction();
+      if (!Callee)
+        continue;
+
+      if (Callee->getName() != "__ompx_split")
+        continue;
+
+      return CI;
+    }
+  }
+  return nullptr;
+}
+
+bool OpenMPOpt::splitKernels() {
+  bool Changed = false;
+  
+  for (Function *F : SCC) {
+    if (!omp::isKernel(*F))
+      continue;
+
+    auto Name = F->getName();
+
+    CallInst *SplitInstruction = FindSplitInstruction(F);
+
+    if (!SplitInstruction)
+      continue;
+
+    Instruction *SplitPoint = SplitInstruction->getPrevNonDebugInstruction();
+    Function *SplitFunction = SplitInstruction->getCalledFunction();
+    SplitInstruction->eraseFromParent();
+    if (SplitFunction->uses().empty())
+      SplitFunction->eraseFromParent();
+
+    if (!SplitPoint)
+      continue;
+
+
+    // TODO: create new kernel / offload entry
+
+    if (M.getFunction((Name + "_contd").str()))
+      continue;
+
+    FunctionType *ContinuationFTy = F->getFunctionType();
+    Function *ContKernel = Function::Create(ContinuationFTy, F->getLinkage(), Name + "_contd", M);
+    ValueToValueMapTy VMap;
+    for (auto&& [key, value] : llvm::zip(F->args(), ContKernel->args()))
+      VMap[&key] = &value;
+    SmallVector<ReturnInst *, 8> Returns;
+    CloneAndPruneFunctionInto(ContKernel, F, VMap, false, Returns);
 
     Changed = true;
   }
@@ -5808,7 +5877,7 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
   Attributor A(Functions, InfoCache, AC);
 
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
-  Changed |= OMPOpt.run(true);
+  Changed |= OMPOpt.run(true, PostLink);
 
   // Optionally inline device functions for potentially better performance.
   if (AlwaysInlineDeviceFunctions && isOpenMPDevice(M))
@@ -5886,7 +5955,7 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
   Attributor A(Functions, InfoCache, AC);
 
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
-  bool Changed = OMPOpt.run(false);
+  bool Changed = OMPOpt.run(false, PostLink);
 
   if (PrintModuleAfterOptimizations)
     LLVM_DEBUG(dbgs() << TAG << "Module after OpenMPOpt CGSCC Pass:\n" << M);
