@@ -58,12 +58,12 @@ using llvm::sys::DynamicLibrary;
 /// Class implementing kernel functionalities for GenELF64.
 struct GenELF64KernelTy : public GenericKernelTy {
   /// Construct the kernel with a name and an execution mode.
-  GenELF64KernelTy(const char *Name) : GenericKernelTy(Name), Func(nullptr) {}
+  GenELF64KernelTy(StringRef Name) : GenericKernelTy(Name), Func(nullptr) {}
 
   /// Initialize the kernel.
   Error initImpl(GenericDeviceTy &Device, DeviceImageTy &Image) override {
     // Functions have zero size.
-    GlobalTy Global(getName(), 0);
+    GlobalTy Global(getName().data(), 0);
 
     // Get the metadata (address) of the kernel function.
     GenericGlobalHandlerTy &GHandler = Device.Plugin.getGlobalHandler();
@@ -72,7 +72,7 @@ struct GenELF64KernelTy : public GenericKernelTy {
 
     // Check that the function pointer is valid.
     if (!Global.getPtr())
-      return Plugin::error("Invalid function for kernel %s", getName());
+      return Plugin::error("Invalid function for kernel %s", getName().data());
 
     // Save the function pointer.
     Func = (void (*)())Global.getPtr();
@@ -148,7 +148,8 @@ struct GenELF64DeviceTy : public GenericDeviceTy {
   std::string getComputeUnitKind() const override { return "generic-64bit"; }
 
   /// Construct the kernel for a specific image on the device.
-  Expected<GenericKernelTy &> constructKernel(const char *Name) override {
+  Expected<GenericKernelTy &>
+  constructKernel(StringRef Name) override {
     // Allocate and construct the kernel.
     GenELF64KernelTy *GenELF64Kernel = Plugin.allocate<GenELF64KernelTy>();
     if (!GenELF64Kernel)

@@ -19,6 +19,10 @@
 #include "JIT.h"
 #include "Utils/ELF.h"
 #include "omptarget.h"
+#include "llvm/ADT/SmallVector.h"
+#include <iterator>
+#include <type_traits>
+#include <vector>
 
 #ifdef OMPT_SUPPORT
 #include "OpenMP/OMPT/Callback.h"
@@ -201,7 +205,7 @@ public:
     GlobalEntries.emplace_back(GlobalEntry{Name, Size, Addr});
   }
 
-  void saveImage(const char *Name, const DeviceImageTy &Image) {
+  void saveImage(StringRef Name, const DeviceImageTy &Image) {
     SmallString<128> ImageName = {Name, ".image"};
     std::error_code EC;
     raw_fd_ostream OS(ImageName, EC);
@@ -269,7 +273,7 @@ public:
     OS.close();
   }
 
-  void saveKernelDescr(const char *Name, void **ArgPtrs, int32_t NumArgs,
+  void saveKernelDescr(StringRef Name, void **ArgPtrs, int32_t NumArgs,
                        uint64_t NumTeamsClause, uint32_t ThreadLimitClause,
                        uint64_t LoopTripCount) {
     json::Object JsonKernelInfo;
@@ -302,7 +306,7 @@ public:
     JsonOS.close();
   }
 
-  void saveKernelInput(const char *Name, DeviceImageTy &Image) {
+  void saveKernelInput(StringRef Name, DeviceImageTy &Image) {
     SmallString<128> GlobalsFilename = {Name, ".globals"};
     dumpGlobals(GlobalsFilename, Image);
 
@@ -310,7 +314,7 @@ public:
     dumpDeviceMemory(MemoryFilename);
   }
 
-  void saveKernelOutputInfo(const char *Name) {
+  void saveKernelOutputInfo(StringRef Name) {
     SmallString<128> OutputFilename = {
         Name, (isRecording() ? ".original.output" : ".replay.output")};
     dumpDeviceMemory(OutputFilename);
@@ -444,7 +448,7 @@ Error GenericKernelTy::init(GenericDeviceTy &GenericDevice,
     [[maybe_unused]] std::string ErrStr = toString(std::move(Err));
     DP("Failed to read kernel environment for '%s': %s\n"
        "Using default SPMD (2) execution mode\n",
-       Name, ErrStr.data());
+       Name.data(), ErrStr.data());
     assert(KernelEnvironment.Configuration.ReductionDataSize == 0 &&
            "Default initialization failed.");
     IsBareKernel = true;
@@ -463,13 +467,29 @@ Error GenericKernelTy::init(GenericDeviceTy &GenericDevice,
                      int32_t(GenericDevice.getDefaultNumThreads()))
           : GenericDevice.getDefaultNumThreads();
 
+  unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
+
+  for (unsigned i = 0; i < NumContinuations; ++i) {
+    ContinuationNames.push_back((Name + "_contd_" + Twine(i)).str());
+    auto KernelOrErr = GenericDevice.constructKernel(ContinuationNames.back());
+
+    if (!KernelOrErr)
+      return KernelOrErr.takeError();
+
+    GenericKernelTy *Continuation = &(*KernelOrErr);
+    Continuations.push_back(Continuation);
+
+    if (auto Err = Continuation->init(GenericDevice, Image))
+      return Err;
+  }
+
   return initImpl(GenericDevice, Image);
 }
 
 Expected<KernelLaunchEnvironmentTy *>
 GenericKernelTy::getKernelLaunchEnvironment(
-    GenericDeviceTy &GenericDevice, uint32_t Version,
-    AsyncInfoWrapperTy &AsyncInfoWrapper) const {
+    GenericDeviceTy &GenericDevice, uint32_t Version, AsyncInfoWrapperTy &AsyncInfoWrapper,
+    uint32_t NumThreads, uint64_t NumBlocks) const {
   // Ctor/Dtor have no arguments, replaying uses the original kernel launch
   // environment. Older versions of the compiler do not generate a kernel
   // launch environment.
@@ -477,8 +497,14 @@ GenericKernelTy::getKernelLaunchEnvironment(
       Version < OMP_KERNEL_ARG_MIN_VERSION_WITH_DYN_PTR)
     return nullptr;
 
-  if (!KernelEnvironment.Configuration.ReductionDataSize ||
-      !KernelEnvironment.Configuration.ReductionBufferLength)
+  unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
+  unsigned TotalThreads = NumThreads * NumBlocks;
+
+  bool isReduction = KernelEnvironment.Configuration.ReductionDataSize > 0 &&
+                     KernelEnvironment.Configuration.ReductionBufferLength > 0;
+  bool hasContinuations = KernelEnvironment.Configuration.NumContinuations > 0;
+
+  if (!isReduction && !hasContinuations)
     return reinterpret_cast<KernelLaunchEnvironmentTy *>(~0);
 
   // TODO: Check if the kernel needs a launch environment.
@@ -495,7 +521,71 @@ GenericKernelTy::getKernelLaunchEnvironment(
   /// async data transfer.
   auto &LocalKLE = (*AsyncInfoWrapper).KernelLaunchEnvironment;
   LocalKLE = KernelLaunchEnvironment;
-  {
+
+  std::vector<void *> Caches(NumContinuations + 1);
+  for (unsigned i = 0; i < NumContinuations + 1; ++i) {
+    unsigned ContinuationCacheLength =
+        KernelEnvironment.Configuration.ContinuationCacheLength;
+
+    // FIXME: This could be one large allocation.
+    auto CacheAllocOrErr = GenericDevice.dataAlloc(
+        TotalThreads * ContinuationCacheLength,
+        /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
+    if (!CacheAllocOrErr)
+      return CacheAllocOrErr.takeError();
+
+    Caches[i] = *CacheAllocOrErr;
+    // Remember to free the memory later.
+    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
+  }
+
+  if (hasContinuations) {
+    auto CacheAllocOrErr = GenericDevice.dataAlloc(
+        sizeof(void *) * (NumContinuations + 1),
+        /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
+    if (!CacheAllocOrErr)
+      return CacheAllocOrErr.takeError();
+
+    LocalKLE.ContinuationCacheBuffer = (void **)*CacheAllocOrErr;
+    // Remember to free the memory later.
+    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
+
+    INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
+         "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCaches\n",
+         DPxPTR(Caches.data()), DPxPTR(*CacheAllocOrErr),
+         sizeof(void*) * (NumContinuations + 1));
+
+    if (auto Err = GenericDevice.dataSubmit(
+            *CacheAllocOrErr, Caches.data(),
+            sizeof(void *) * (NumContinuations + 1), AsyncInfoWrapper))
+      return Err;
+
+    auto CounterAllocOrErr = GenericDevice.dataAlloc(
+        sizeof(uint32_t) * (NumContinuations + 1),
+        /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
+    if (!CounterAllocOrErr)
+      return CounterAllocOrErr.takeError();
+
+    std::vector<uint32_t> Zeros(NumContinuations + 1, 0);
+
+    INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
+         "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCounts\n",
+         DPxPTR(Zeros.data()), DPxPTR(*CounterAllocOrErr),
+         sizeof(uint32_t) * (NumContinuations + 1));
+
+    if (auto Err = GenericDevice.dataSubmit(
+            *CounterAllocOrErr, Zeros.data(),
+            sizeof(uint32_t) * (NumContinuations + 1), AsyncInfoWrapper))
+      return Err;
+
+    LocalKLE.ContinuationCntBuffer = (uint32_t *)*CounterAllocOrErr;
+    // Remember to free the memory later.
+    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CounterAllocOrErr);
+  }
+
+  if (isReduction) {
     auto AllocOrErr = GenericDevice.dataAlloc(
         KernelEnvironment.Configuration.ReductionDataSize *
             KernelEnvironment.Configuration.ReductionBufferLength,
@@ -513,11 +603,11 @@ GenericKernelTy::getKernelLaunchEnvironment(
        DPxPTR(&LocalKLE), DPxPTR(*AllocOrErr),
        sizeof(KernelLaunchEnvironmentTy));
 
-  auto Err = GenericDevice.dataSubmit(*AllocOrErr, &LocalKLE,
-                                      sizeof(KernelLaunchEnvironmentTy),
-                                      AsyncInfoWrapper);
-  if (Err)
+  if (auto Err = GenericDevice.dataSubmit(*AllocOrErr, &LocalKLE,
+                                          sizeof(KernelLaunchEnvironmentTy),
+                                          AsyncInfoWrapper))
     return Err;
+
   return static_cast<KernelLaunchEnvironmentTy *>(*AllocOrErr);
 }
 
@@ -528,7 +618,7 @@ Error GenericKernelTy::printLaunchInfo(GenericDeviceTy &GenericDevice,
   INFO(OMP_INFOTYPE_PLUGIN_KERNEL, GenericDevice.getDeviceId(),
        "Launching kernel %s with %" PRIu64
        " blocks and %d threads in %s mode\n",
-       getName(), NumBlocks, NumThreads, getExecutionModeName());
+       getName().data(), NumBlocks, NumThreads, getExecutionModeName());
   return printLaunchInfoDetails(GenericDevice, KernelArgs, NumThreads,
                                 NumBlocks);
 }
@@ -546,19 +636,19 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
   llvm::SmallVector<void *, 16> Args;
   llvm::SmallVector<void *, 16> Ptrs;
 
+  uint32_t NumThreads = getNumThreads(GenericDevice, KernelArgs.ThreadLimit);
+  uint64_t NumBlocks =
+      getNumBlocks(GenericDevice, KernelArgs.NumTeams, KernelArgs.Tripcount,
+                   NumThreads, KernelArgs.ThreadLimit[0] > 0);
+
   auto KernelLaunchEnvOrErr = getKernelLaunchEnvironment(
-      GenericDevice, KernelArgs.Version, AsyncInfoWrapper);
+      GenericDevice, KernelArgs.Version, AsyncInfoWrapper, NumThreads, NumBlocks);
   if (!KernelLaunchEnvOrErr)
     return KernelLaunchEnvOrErr.takeError();
 
   void *KernelArgsPtr =
       prepareArgs(GenericDevice, ArgPtrs, ArgOffsets, KernelArgs.NumArgs, Args,
                   Ptrs, *KernelLaunchEnvOrErr);
-
-  uint32_t NumThreads = getNumThreads(GenericDevice, KernelArgs.ThreadLimit);
-  uint64_t NumBlocks =
-      getNumBlocks(GenericDevice, KernelArgs.NumTeams, KernelArgs.Tripcount,
-                   NumThreads, KernelArgs.ThreadLimit[0] > 0);
 
   // Record the kernel description after we modified the argument count and num
   // blocks/threads.
@@ -573,8 +663,110 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
           printLaunchInfo(GenericDevice, KernelArgs, NumThreads, NumBlocks))
     return Err;
 
-  return launchImpl(GenericDevice, NumThreads, NumBlocks, KernelArgs,
-                    KernelArgsPtr, AsyncInfoWrapper);
+  if (auto Err = launchImpl(GenericDevice, NumThreads, NumBlocks, KernelArgs,
+                            KernelArgsPtr, AsyncInfoWrapper))
+    return Err;
+
+  unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
+
+  if (!NumContinuations)
+    return Plugin::success();
+
+  std::vector<uint32_t> ContinuationCntBuffer(NumContinuations + 1);
+  std::vector<void *> ContinuationCachePtrBuffer(NumContinuations + 1);
+  KernelLaunchEnvironmentTy KernelLaunchEnv;
+
+  while (true) {
+    // determine which continuation kernel to launch
+    if (auto Err = GenericDevice.dataRetrieve(
+            &KernelLaunchEnv, *KernelLaunchEnvOrErr,
+            sizeof(KernelLaunchEnvironmentTy), AsyncInfoWrapper))
+      report_fatal_error("Error retrieving data for target pointer");
+
+    if (auto Err = GenericDevice.dataRetrieve(
+            ContinuationCntBuffer.data(), KernelLaunchEnv.ContinuationCntBuffer,
+            sizeof(uint32_t) * (NumContinuations + 1), AsyncInfoWrapper))
+      return Err;
+
+    auto MaxElem = std::max_element(ContinuationCntBuffer.begin(),
+                                    ContinuationCntBuffer.end() - 1);
+
+    if (MaxElem == ContinuationCntBuffer.end())
+      break;
+
+    auto Idx = std::distance(ContinuationCntBuffer.begin(), MaxElem);
+
+    unsigned ContCount = ContinuationCntBuffer[Idx];
+
+    if (ContCount == 0)
+      break;
+
+    // Launch continuation kernel
+    auto Continuation = Continuations[Idx];
+
+    uint32_t NumThreadsCont = std::min(NumThreads, ContCount);
+    uint64_t NumBlocksCont = (ContCount + NumThreads - 1) / NumThreads;
+
+    if (auto Err = GenericDevice.dataRetrieve(
+            ContinuationCachePtrBuffer.data(),
+            KernelLaunchEnv.ContinuationCacheBuffer,
+            sizeof(void *) * (NumContinuations + 1), AsyncInfoWrapper))
+      return Err;
+
+    ContinuationCntBuffer[NumContinuations] = ContinuationCntBuffer[Idx];
+    ContinuationCntBuffer[Idx] = 0;
+
+    std::swap(ContinuationCachePtrBuffer[NumContinuations],
+              ContinuationCachePtrBuffer[Idx]);
+
+    INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
+         "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCaches\n",
+         DPxPTR(ContinuationCachePtrBuffer.data()),
+         DPxPTR(KernelLaunchEnv.ContinuationCacheBuffer),
+         sizeof(void *) * (NumContinuations + 1));
+
+    if (auto Err = GenericDevice.dataSubmit(
+            KernelLaunchEnv.ContinuationCacheBuffer,
+            ContinuationCachePtrBuffer.data(),
+            sizeof(void *) * (NumContinuations + 1), AsyncInfoWrapper))
+      return Err;
+
+    INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
+         "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCounts\n",
+         DPxPTR(ContinuationCntBuffer.data()),
+         DPxPTR(KernelLaunchEnv.ContinuationCntBuffer),
+         sizeof(uint32_t) * (NumContinuations + 1));
+
+    if (auto Err = GenericDevice.dataSubmit(
+            KernelLaunchEnv.ContinuationCntBuffer, ContinuationCntBuffer.data(),
+            sizeof(uint32_t) * (NumContinuations + 1), AsyncInfoWrapper))
+      return Err;
+
+    // Record the kernel description after we modified the argument count and
+    // num
+    // blocks/threads.
+    if (RecordReplay.isRecording()) {
+      RecordReplay.saveImage(Continuation->getName(), Continuation->getImage());
+      RecordReplay.saveKernelInput(Continuation->getName(),
+                                   Continuation->getImage());
+      RecordReplay.saveKernelDescr(Continuation->getName(), Ptrs.data(),
+                                   KernelArgs.NumArgs, NumBlocksCont,
+                                   NumThreadsCont, KernelArgs.Tripcount);
+    }
+
+    if (auto Err = Continuation->printLaunchInfo(GenericDevice, KernelArgs,
+                                                 NumThreadsCont, NumBlocksCont))
+      return Err;
+
+    if (auto Err = Continuation->launchImpl(GenericDevice, NumThreadsCont,
+                                            NumBlocksCont, KernelArgs,
+                                            KernelArgsPtr, AsyncInfoWrapper))
+      return Err;
+  }
+
+  return Plugin::success();
 }
 
 void *GenericKernelTy::prepareArgs(

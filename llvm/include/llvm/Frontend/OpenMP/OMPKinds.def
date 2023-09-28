@@ -95,12 +95,12 @@ __OMP_STRUCT_TYPE(AsyncInfo, __tgt_async_info, false, Int8Ptr)
 __OMP_STRUCT_TYPE(DependInfo, kmp_dep_info, false, SizeTy, SizeTy, Int8)
 __OMP_STRUCT_TYPE(Task, kmp_task_ompbuilder_t, false, VoidPtr, VoidPtr, Int32, VoidPtr, VoidPtr)
 __OMP_STRUCT_TYPE(ConfigurationEnvironment, ConfigurationEnvironmentTy, false,
-                  Int8, Int8, Int8, Int32, Int32, Int32, Int32, Int32, Int32)
+                  Int8, Int8, Int8, Int32, Int32, Int32, Int32, Int32, Int32, Int32, Int32)
 __OMP_STRUCT_TYPE(DynamicEnvironment, DynamicEnvironmentTy, false, Int16)
 __OMP_STRUCT_TYPE(KernelEnvironment, KernelEnvironmentTy, false,
                   ConfigurationEnvironment, IdentPtr, DynamicEnvironmentPtr)
 __OMP_STRUCT_TYPE(KernelLaunchEnvironment, KernelLaunchEnvironmentTy, false,
-                  Int32, Int32)
+                  Int32, Int32, VoidPtr, VoidPtr, VoidPtr)
 
 #undef __OMP_STRUCT_TYPE
 #undef OMP_STRUCT_TYPE
@@ -502,7 +502,7 @@ __OMP_RTL(__kmpc_barrier_simple_generic, false, Void, IdentPtr, Int32)
 
 __OMP_RTL(__kmpc_warp_active_thread_mask, false, Int64,)
 __OMP_RTL(__kmpc_syncwarp, false, Void, Int64)
-
+__OMP_RTL(__ompx_split, false, Void,)
 __OMP_RTL(__last, false, Void, )
 
 #undef __OMP_RTL
@@ -1079,6 +1079,8 @@ __OMP_RTL_ATTRS(__kmpc_shuffle_int64, AttributeSet(), AttributeSet(),
                 ParamAttrs(AttributeSet(), SExt, SExt))
 
 __OMP_RTL_ATTRS(__kmpc_is_spmd_exec_mode, AttributeSet(), SExt, ParamAttrs())
+
+__OMP_RTL_ATTRS(__ompx_split, AttributeSet(), AttributeSet(), ParamAttrs())
 
 #undef __OMP_RTL_ATTRS
 #undef OMP_RTL_ATTRS
