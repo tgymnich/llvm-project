@@ -502,7 +502,7 @@ __OMP_RTL(__kmpc_barrier_simple_generic, false, Void, IdentPtr, Int32)
 
 __OMP_RTL(__kmpc_warp_active_thread_mask, false, Int64,)
 __OMP_RTL(__kmpc_syncwarp, false, Void, Int64)
-
+__OMP_RTL(__ompx_split, false, Void,)
 __OMP_RTL(__last, false, Void, )
 
 #undef __OMP_RTL
@@ -1079,6 +1079,8 @@ __OMP_RTL_ATTRS(__kmpc_shuffle_int64, AttributeSet(), AttributeSet(),
                 ParamAttrs(AttributeSet(), SExt, SExt))
 
 __OMP_RTL_ATTRS(__kmpc_is_spmd_exec_mode, AttributeSet(), SExt, ParamAttrs())
+
+__OMP_RTL_ATTRS(__ompx_split, AttributeSet(), AttributeSet(), ParamAttrs())
 
 #undef __OMP_RTL_ATTRS
 #undef OMP_RTL_ATTRS
