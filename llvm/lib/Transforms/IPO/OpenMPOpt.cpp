@@ -19,28 +19,35 @@
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
 
+#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/iterator.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include "llvm/Frontend/OpenMP/OMPDeviceConstants.h"
 #include "llvm/Frontend/OpenMP/OMPIRBuilder.h"
 #include "llvm/IR/Assumptions.h"
 #include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/CFG.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GlobalObject.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/InstrTypes.h"
@@ -50,13 +57,18 @@
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Utils/CodeExtractor.h"
 
 #include <algorithm>
 #include <optional>
@@ -1980,7 +1992,10 @@ private:
   /// Rewrite the device (=GPU) code state machine create in non-SPMD mode in
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
-  
+
+  Function *splitKernel(Function &Kernel, Instruction *Split,
+                        Instruction *Join = nullptr);
+
   bool splitKernels();
 
   ///
@@ -2250,67 +2265,122 @@ bool OpenMPOpt::rewriteDeviceCodeStateMachine() {
   return Changed;
 }
 
-CallInst* FindSplitInstruction(Function *F) {
-  for (auto &BB: *F) {
-    for (auto &I: BB) {
-      auto CI = dyn_cast<CallInst>(&I);
-      if (!CI)
-        continue;
-
-      auto Callee = CI->getCalledFunction();
-      if (!Callee)
-        continue;
-
-      if (Callee->getName() != "__ompx_split")
-        continue;
-
-      return CI;
-    }
-  }
-  return nullptr;
-}
-
 bool OpenMPOpt::splitKernels() {
   bool Changed = false;
-  
-  for (Function *F : SCC) {
+
+  OMPInformationCache::RuntimeFunctionInfo &RFI =
+      OMPInfoCache.RFIs[OMPRTL___ompx_split];
+
+  for (auto &&[F, UseVec] : RFI) {
+
     if (!omp::isKernel(*F))
       continue;
 
-    auto Name = F->getName();
+    Instruction *SplitInstruction = nullptr;
+    for (auto Use : *UseVec) {
+      auto Call = dyn_cast<CallInst>(Use->getUser());
+      if (!Call)
+        continue;
 
-    CallInst *SplitInstruction = FindSplitInstruction(F);
+      // TODO: handle more than one SplitInst
+      SplitInstruction = Call->getNextNode();
+      Call->eraseFromParent();
+    }
 
     if (!SplitInstruction)
       continue;
 
-    Instruction *SplitPoint = SplitInstruction->getPrevNonDebugInstruction();
-    Function *SplitFunction = SplitInstruction->getCalledFunction();
-    SplitInstruction->eraseFromParent();
-    if (SplitFunction->uses().empty())
-      SplitFunction->eraseFromParent();
-
-    if (!SplitPoint)
-      continue;
-
-
-    // TODO: create new kernel / offload entry
+    auto Name = F->getName();
 
     if (M.getFunction((Name + "_contd").str()))
       continue;
 
-    FunctionType *ContinuationFTy = F->getFunctionType();
-    Function *ContKernel = Function::Create(ContinuationFTy, F->getLinkage(), Name + "_contd", M);
-    ValueToValueMapTy VMap;
-    for (auto&& [key, value] : llvm::zip(F->args(), ContKernel->args()))
-      VMap[&key] = &value;
-    SmallVector<ReturnInst *, 8> Returns;
-    CloneAndPruneFunctionInto(ContKernel, F, VMap, false, Returns);
+    Function *SplitKernel = splitKernel(*F, SplitInstruction);
 
-    Changed = true;
+    if (SplitKernel)
+      Changed = true;
   }
 
   return Changed;
+}
+
+Function *OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
+                                 Instruction *Join) {
+  BasicBlock *BB = Split->getParent();
+  // DominatorTree *DT =
+  //     OMPInfoCache.getAnalysisResultForFunction<DominatorTreeAnalysis>(Kernel);
+  // PostDominatorTree *PDT =
+  //     OMPInfoCache.getAnalysisResultForFunction<PostDominatorTreeAnalysis>(
+  //         Kernel);
+
+  // SmallVector<BasicBlock *> Descendants;
+  // DT->getDescendants(BB, Descendants);
+
+  for (auto &BB : Kernel) {
+    if (BB.getTerminator()) {
+      Join = BB.getTerminator();
+      break;
+    }
+  }
+
+  SmallPtrSet<BasicBlock *, 32> ToCopy(idf_begin(BB), idf_end(BB));
+  ToCopy.insert(df_begin(BB), df_end(BB));
+
+  auto Range = make_pointer_range(Kernel);
+  SmallPtrSet<BasicBlock *, 32> ToRemove(Range.begin(), Range.end());
+  set_subtract(ToRemove, ToCopy);
+
+  SmallPtrSet<Instruction *, 32> RequiredValues;
+  for (auto BB : ToCopy) {
+    for (auto &Inst : *BB) {
+      for (auto &U : Inst.operands()) {
+        Instruction *Val = dyn_cast<Instruction>(U.get());
+        if (!Val)
+          continue;
+
+        if (ToCopy.contains(Val->getParent()))
+          continue;
+
+        RequiredValues.insert(Val);
+      }
+    }
+  }
+
+  SmallVector<Type*> RequiredTypes(map_range(RequiredValues, [](Instruction *Inst) { return Inst->getType(); }));
+  StructType *GlobalType = StructType::create(RequiredTypes);
+  GlobalValue *ContCache = dyn_cast<GlobalValue>(M.getOrInsertGlobal("kernel_continuation_cache", GlobalType));
+
+  ValueToValueMapTy VMap1;
+  Function *ModifiedKernel = CloneFunction(Kernel, &VMap1);
+
+  // Iterate over ModifiedKernel and insert cache instructions if needed.
+
+
+  Function *SplitKernel =
+      Function::Create(Kernel.getFunctionType(), Kernel.getLinkage(),
+                       Kernel.getName() + "_contd", M);
+
+  ValueToValueMapTy VMap;
+  for (auto &&[key, value] : zip(Kernel.args(), SplitKernel->args())) {
+    value.setName(key.getName());
+    VMap[&key] = &value;
+  }
+
+  SmallVector<ReturnInst *> Returns;
+  CloneFunctionInto(SplitKernel, &Kernel, VMap,
+                    CloneFunctionChangeType::LocalChangesOnly, Returns);
+  // CloneAndPruneFunctionInto(SplitKernel, &Kernel, VMap, false, Returns);
+
+  for (auto BB : ToRemove) {
+    BasicBlock *NewBB = cast<BasicBlock>(VMap[BB]);
+    BasicBlock *DummyBB = BasicBlock::Create(M.getContext());
+    new UnreachableInst(M.getContext(), DummyBB);
+    NewBB->replaceAllUsesWith(DummyBB);
+  }
+
+  assert(!verifyFunction(*SplitKernel, &errs()));
+
+  return SplitKernel;
 }
 
 /// Abstract Attribute for tracking ICV values.
