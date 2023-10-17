@@ -22,9 +22,11 @@
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
@@ -51,6 +53,7 @@
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -948,7 +951,7 @@ struct OpenMPOpt {
   }
 
   /// Run all OpenMP optimizations on the underlying SCC.
-  bool run(bool IsModulePass, bool PostLink) {
+  bool run(bool IsModulePass) {
     if (SCC.empty())
       return false;
 
@@ -991,8 +994,8 @@ struct OpenMPOpt {
         }
       }
     }
-    
-    if (PostLink)
+
+    if (OMPInfoCache.OpenMPPostLink)
       Changed |= splitKernels();
 
     if (OMPInfoCache.OpenMPPostLink)
@@ -1993,8 +1996,9 @@ private:
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
 
-  Function *splitKernel(Function &Kernel, Instruction *Split,
-                        Instruction *Join = nullptr);
+  std::pair<Function *, Function *>
+  splitKernel(Function &Kernel, Instruction *Split,
+              SmallPtrSetImpl<Instruction *> &Join);
 
   bool splitKernels();
 
@@ -2295,50 +2299,64 @@ bool OpenMPOpt::splitKernels() {
     if (M.getFunction((Name + "_contd").str()))
       continue;
 
-    Function *SplitKernel = splitKernel(*F, SplitInstruction);
+    SmallSet<Instruction*, 2> Joins;
+    auto [ModifiedKernel, SplitKernel] = splitKernel(*F, SplitInstruction, Joins);
 
-    if (SplitKernel)
+    if (SplitKernel && ModifiedKernel)
+      // TODO replace and call Kernel with ModifiedKernel and SplitKernel
       Changed = true;
   }
 
   return Changed;
 }
 
-Function *OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
-                                 Instruction *Join) {
+std::pair<Function *, Function *>
+OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
+                       SmallPtrSetImpl<Instruction *> &Join) {
   BasicBlock *BB = Split->getParent();
-  // DominatorTree *DT =
-  //     OMPInfoCache.getAnalysisResultForFunction<DominatorTreeAnalysis>(Kernel);
-  // PostDominatorTree *PDT =
-  //     OMPInfoCache.getAnalysisResultForFunction<PostDominatorTreeAnalysis>(
-  //         Kernel);
 
-  // SmallVector<BasicBlock *> Descendants;
-  // DT->getDescendants(BB, Descendants);
+  // TODO: write simple tests / examples
 
   for (auto &BB : Kernel) {
     if (BB.getTerminator()) {
-      Join = BB.getTerminator();
+      Join.insert(BB.getTerminator());
       break;
     }
   }
 
-  SmallPtrSet<BasicBlock *, 32> ToCopy(idf_begin(BB), idf_end(BB));
-  ToCopy.insert(df_begin(BB), df_end(BB));
+  // Find Instructions to split off
+  auto BeforeSplitRange = inverse_depth_first(BB);
+  auto AfterSplitRange = depth_first(BB);
+  SmallPtrSet<BasicBlock *, 32> BeforeSplit(BeforeSplitRange.begin(),
+                                            BeforeSplitRange.end());
+  SmallPtrSet<BasicBlock *, 32> AfterSplit(AfterSplitRange.begin(),
+                                           AfterSplitRange.end());
+  SmallPtrSet<BasicBlock *, 32> ToCopy(BeforeSplit);
+  set_union(ToCopy, AfterSplit);
 
-  auto Range = make_pointer_range(Kernel);
-  SmallPtrSet<BasicBlock *, 32> ToRemove(Range.begin(), Range.end());
-  set_subtract(ToRemove, ToCopy);
+  auto RemoveRange =
+      make_filter_range(make_pointer_range(Kernel), [&ToCopy](BasicBlock *BB) {
+        return !ToCopy.contains(BB);
+      });
+  SmallPtrSet<BasicBlock *, 32> ToRemove(RemoveRange.begin(),
+                                         RemoveRange.end());
 
+  // Find Instructions that require caching
   SmallPtrSet<Instruction *, 32> RequiredValues;
-  for (auto BB : ToCopy) {
+  for (auto BB : AfterSplit) {
     for (auto &Inst : *BB) {
       for (auto &U : Inst.operands()) {
         Instruction *Val = dyn_cast<Instruction>(U.get());
+
+        // problem in addr space 3,(4?),5
+
         if (!Val)
           continue;
 
-        if (ToCopy.contains(Val->getParent()))
+        if (isa<PHINode>(Val))
+          continue;
+
+        if (!BeforeSplit.contains(Val->getParent()))
           continue;
 
         RequiredValues.insert(Val);
@@ -2346,41 +2364,57 @@ Function *OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
     }
   }
 
-  SmallVector<Type*> RequiredTypes(map_range(RequiredValues, [](Instruction *Inst) { return Inst->getType(); }));
-  StructType *GlobalType = StructType::create(RequiredTypes);
-  GlobalValue *ContCache = dyn_cast<GlobalValue>(M.getOrInsertGlobal("kernel_continuation_cache", GlobalType));
+  SmallVector<Type *> RequiredTypes(map_range(
+      RequiredValues, [](Instruction *Inst) { return Inst->getType(); }));
+  StructType *CacheTy = StructType::create(RequiredTypes);
+  GlobalValue *Cache = dyn_cast<GlobalValue>(
+      M.getOrInsertGlobal("kernel_continuation_cache", CacheTy));
 
-  ValueToValueMapTy VMap1;
-  Function *ModifiedKernel = CloneFunction(Kernel, &VMap1);
+  ValueToValueMapTy VMapModified;
+  Function *ModifiedKernel = CloneFunction(&Kernel, VMapModified);
+  ModifiedKernel->setName(Kernel.getName() + "_mod");
 
-  // Iterate over ModifiedKernel and insert cache instructions if needed.
+  ValueToValueMapTy VMapSplit;
+  Function *SplitKernel = CloneFunction(&Kernel, VMapSplit);
+  SplitKernel->setName(Kernel.getName() + "_contd");
 
+  // Iterate over ModifiedKernel and SplitKernel and insert cache instructions
+  // if needed.
+  IRBuilder<> Builder(BB);
+  for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    Value *Pointer = Builder.CreateStructGEP(CacheTy, Cache, Idx);
 
-  Function *SplitKernel =
-      Function::Create(Kernel.getFunctionType(), Kernel.getLinkage(),
-                       Kernel.getName() + "_contd", M);
+    Instruction *ModifiedInst = cast<Instruction>(VMapModified[Inst]);
 
-  ValueToValueMapTy VMap;
-  for (auto &&[key, value] : zip(Kernel.args(), SplitKernel->args())) {
-    value.setName(key.getName());
-    VMap[&key] = &value;
+    Builder.SetInsertPoint(ModifiedInst->getNextNode());
+    Builder.CreateStore(ModifiedInst, Pointer);
+
+    Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
+
+    Builder.SetInsertPoint(SplitInst);
+    Pointer = Builder.CreateStructGEP(CacheTy, Cache, Idx);
+
+    auto CachedInst = Builder.CreateLoad(SplitInst->getType(), Pointer);
+    SplitInst->replaceAllUsesWith(CachedInst);
+    SplitInst->eraseFromParent();
   }
 
-  SmallVector<ReturnInst *> Returns;
-  CloneFunctionInto(SplitKernel, &Kernel, VMap,
-                    CloneFunctionChangeType::LocalChangesOnly, Returns);
-  // CloneAndPruneFunctionInto(SplitKernel, &Kernel, VMap, false, Returns);
-
+  // Remove unused BasicBlocks from SplitFunction
   for (auto BB : ToRemove) {
-    BasicBlock *NewBB = cast<BasicBlock>(VMap[BB]);
-    BasicBlock *DummyBB = BasicBlock::Create(M.getContext());
-    new UnreachableInst(M.getContext(), DummyBB);
-    NewBB->replaceAllUsesWith(DummyBB);
+    BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
+    auto SplitTerm = new UnreachableInst(M.getContext());
+    ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
   }
 
+  BasicBlock *ModifiedBB = cast<BasicBlock>(VMapModified[BB]);
+  SplitBlock(ModifiedBB, &ModifiedBB->front());
+  auto ModifiedTerm = new UnreachableInst(M.getContext());
+  ReplaceInstWithInst(ModifiedBB->getTerminator(), ModifiedTerm);
+
+  assert(!verifyFunction(*ModifiedKernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));
 
-  return SplitKernel;
+  return {ModifiedKernel, SplitKernel};
 }
 
 /// Abstract Attribute for tracking ICV values.
@@ -5947,7 +5981,7 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
   Attributor A(Functions, InfoCache, AC);
 
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
-  Changed |= OMPOpt.run(true, PostLink);
+  Changed |= OMPOpt.run(true);
 
   // Optionally inline device functions for potentially better performance.
   if (AlwaysInlineDeviceFunctions && isOpenMPDevice(M))
@@ -6025,7 +6059,7 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
   Attributor A(Functions, InfoCache, AC);
 
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
-  bool Changed = OMPOpt.run(false, PostLink);
+  bool Changed = OMPOpt.run(false);
 
   if (PrintModuleAfterOptimizations)
     LLVM_DEBUG(dbgs() << TAG << "Module after OpenMPOpt CGSCC Pass:\n" << M);
