@@ -2299,8 +2299,9 @@ bool OpenMPOpt::splitKernels() {
     if (M.getFunction((Name + "_contd").str()))
       continue;
 
-    SmallSet<Instruction*, 2> Joins;
-    auto [ModifiedKernel, SplitKernel] = splitKernel(*F, SplitInstruction, Joins);
+    SmallSet<Instruction *, 2> Joins;
+    auto [ModifiedKernel, SplitKernel] =
+        splitKernel(*F, SplitInstruction, Joins);
 
     if (SplitKernel && ModifiedKernel)
       // TODO replace and call Kernel with ModifiedKernel and SplitKernel
@@ -2314,8 +2315,6 @@ std::pair<Function *, Function *>
 OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
                        SmallPtrSetImpl<Instruction *> &Join) {
   BasicBlock *BB = Split->getParent();
-
-  // TODO: write simple tests / examples
 
   for (auto &BB : Kernel) {
     if (BB.getTerminator()) {
@@ -2332,6 +2331,8 @@ OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
   SmallPtrSet<BasicBlock *, 32> AfterSplit(AfterSplitRange.begin(),
                                            AfterSplitRange.end());
   SmallPtrSet<BasicBlock *, 32> ToCopy(BeforeSplit);
+
+  BeforeSplit.erase(BB);
   set_union(ToCopy, AfterSplit);
 
   auto RemoveRange =
@@ -2410,6 +2411,8 @@ OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
   SplitBlock(ModifiedBB, &ModifiedBB->front());
   auto ModifiedTerm = new UnreachableInst(M.getContext());
   ReplaceInstWithInst(ModifiedBB->getTerminator(), ModifiedTerm);
+
+  // TODO: remap thread IDs
 
   assert(!verifyFunction(*ModifiedKernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));
