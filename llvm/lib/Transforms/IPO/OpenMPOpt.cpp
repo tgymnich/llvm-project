@@ -54,6 +54,7 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -1996,9 +1997,7 @@ private:
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
 
-  std::pair<Function *, Function *>
-  splitKernel(Function &Kernel, Instruction *Split,
-              SmallPtrSetImpl<Instruction *> &Join);
+  Function * splitKernel(BasicBlock *BB);
 
   bool splitKernels();
 
@@ -2280,76 +2279,72 @@ bool OpenMPOpt::splitKernels() {
     if (!omp::isKernel(*F))
       continue;
 
-    Instruction *SplitInstruction = nullptr;
-    for (auto Use : *UseVec) {
-      auto Call = dyn_cast<CallInst>(Use->getUser());
+    BasicBlock *SplitBlock = nullptr;
+    for (Use *Use : *UseVec) {
+      CallInst *Call = dyn_cast<CallInst>(Use->getUser());
       if (!Call)
         continue;
 
       // TODO: handle more than one SplitInst
-      SplitInstruction = Call->getNextNode();
+      SplitBlock = Call->getParent();
       Call->eraseFromParent();
     }
 
-    if (!SplitInstruction)
+    if (!SplitBlock)
       continue;
 
-    auto Name = F->getName();
-
-    if (M.getFunction((Name + "_contd").str()))
+    if (M.getFunction((F->getName() + "_contd").str()))
       continue;
 
-    SmallSet<Instruction *, 2> Joins;
-    auto [ModifiedKernel, SplitKernel] =
-        splitKernel(*F, SplitInstruction, Joins);
+    Function *SplitKernel = splitKernel(SplitBlock);
 
-    if (SplitKernel && ModifiedKernel)
-      // TODO replace and call Kernel with ModifiedKernel and SplitKernel
+    if (SplitKernel)
+      // TODO: alos call SplitKernel
       Changed = true;
   }
 
   return Changed;
 }
 
-std::pair<Function *, Function *>
-OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
-                       SmallPtrSetImpl<Instruction *> &Join) {
-  BasicBlock *BB = Split->getParent();
+Function * OpenMPOpt::splitKernel(BasicBlock *BB) {
+  Function *Kernel = BB->getParent();
+  LLVMContext &C = M.getContext();
 
-  for (auto &BB : Kernel) {
-    if (BB.getTerminator()) {
-      Join.insert(BB.getTerminator());
-      break;
-    }
-  }
+  // TODO: verify that this kernel is actually splitable at the give Split
+  // instruction
 
   // Find Instructions to split off
-  auto BeforeSplitRange = inverse_depth_first(BB);
-  auto AfterSplitRange = depth_first(BB);
-  SmallPtrSet<BasicBlock *, 32> BeforeSplit(BeforeSplitRange.begin(),
-                                            BeforeSplitRange.end());
-  SmallPtrSet<BasicBlock *, 32> AfterSplit(AfterSplitRange.begin(),
-                                           AfterSplitRange.end());
-  SmallPtrSet<BasicBlock *, 32> ToCopy(BeforeSplit);
+  df_iterator_default_set<BasicBlock *> BeforeSplit;
+  for_each(inverse_depth_first_ext(BB, BeforeSplit), [](auto B) { (void)B; });
+
+  df_iterator_default_set<BasicBlock *> AfterSplit;
+  for_each(depth_first_ext(BB, AfterSplit), [](auto B) { (void)B; });
 
   BeforeSplit.erase(BB);
-  set_union(ToCopy, AfterSplit);
 
-  auto RemoveRange =
-      make_filter_range(make_pointer_range(Kernel), [&ToCopy](BasicBlock *BB) {
-        return !ToCopy.contains(BB);
+  auto RemoveRange = make_filter_range(
+      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit](BasicBlock *BB) {
+        return !BeforeSplit.contains(BB) && !AfterSplit.contains(BB);
       });
-  SmallPtrSet<BasicBlock *, 32> ToRemove(RemoveRange.begin(),
-                                         RemoveRange.end());
+
+  ValueToValueMapTy VMapSplit;
+  Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
+  SplitKernel->setName(Kernel->getName() + "_contd");
 
   // Find Instructions that require caching
   SmallPtrSet<Instruction *, 32> RequiredValues;
-  for (auto BB : AfterSplit) {
-    for (auto &Inst : *BB) {
-      for (auto &U : Inst.operands()) {
+  for (BasicBlock *BB : AfterSplit) {
+    for (Instruction &Inst : *BB) {
+      for (Use &U : Inst.operands()) {
         Instruction *Val = dyn_cast<Instruction>(U.get());
 
-        // problem in addr space 3,(4?),5
+        // The NVPTX back-end uses the following address space mapping:
+        // - Generic: 0
+        // - Global: 1
+        // - Internal Use: 2
+        // - Shared: 3
+        // - Constant: 4 
+        // - Local: 5
 
         if (!Val)
           continue;
@@ -2368,56 +2363,52 @@ OpenMPOpt::splitKernel(Function &Kernel, Instruction *Split,
   SmallVector<Type *> RequiredTypes(map_range(
       RequiredValues, [](Instruction *Inst) { return Inst->getType(); }));
   StructType *CacheTy = StructType::create(RequiredTypes);
-  GlobalValue *Cache = dyn_cast<GlobalValue>(
-      M.getOrInsertGlobal("kernel_continuation_cache", CacheTy));
-
-  ValueToValueMapTy VMapModified;
-  Function *ModifiedKernel = CloneFunction(&Kernel, VMapModified);
-  ModifiedKernel->setName(Kernel.getName() + "_mod");
-
-  ValueToValueMapTy VMapSplit;
-  Function *SplitKernel = CloneFunction(&Kernel, VMapSplit);
-  SplitKernel->setName(Kernel.getName() + "_contd");
+  GlobalVariable *Cache =
+      new GlobalVariable(M, CacheTy, false, GlobalValue::ExternalLinkage,
+                         nullptr, Kernel->getName() + "_continuation_cache");
 
   // Iterate over ModifiedKernel and SplitKernel and insert cache instructions
   // if needed.
   IRBuilder<> Builder(BB);
   for (auto [Idx, Inst] : enumerate(RequiredValues)) {
-    Value *Pointer = Builder.CreateStructGEP(CacheTy, Cache, Idx);
-
-    Instruction *ModifiedInst = cast<Instruction>(VMapModified[Inst]);
-
-    Builder.SetInsertPoint(ModifiedInst->getNextNode());
-    Builder.CreateStore(ModifiedInst, Pointer);
+    Builder.SetInsertPoint(Inst->getNextNode());
+    Value *Ptr = Builder.CreateStructGEP(CacheTy, Cache, Idx);
+    Builder.CreateStore(Inst, Ptr);
 
     Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
 
     Builder.SetInsertPoint(SplitInst);
-    Pointer = Builder.CreateStructGEP(CacheTy, Cache, Idx);
+    Value *SplitPtr = Builder.CreateStructGEP(CacheTy, Cache, Idx);
 
-    auto CachedInst = Builder.CreateLoad(SplitInst->getType(), Pointer);
+    LoadInst *CachedInst = Builder.CreateLoad(SplitInst->getType(), SplitPtr);
     SplitInst->replaceAllUsesWith(CachedInst);
     SplitInst->eraseFromParent();
   }
 
   // Remove unused BasicBlocks from SplitFunction
-  for (auto BB : ToRemove) {
+  for (BasicBlock* BB : RemoveRange) {
     BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
-    auto SplitTerm = new UnreachableInst(M.getContext());
+    UnreachableInst *SplitTerm = new UnreachableInst(C);
     ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
   }
 
-  BasicBlock *ModifiedBB = cast<BasicBlock>(VMapModified[BB]);
-  SplitBlock(ModifiedBB, &ModifiedBB->front());
-  auto ModifiedTerm = new UnreachableInst(M.getContext());
-  ReplaceInstWithInst(ModifiedBB->getTerminator(), ModifiedTerm);
+  SplitBlock(BB, &BB->front());
+
+  UnreachableInst *Term = new UnreachableInst(C);
+  ReplaceInstWithInst(BB->getTerminator(), Term);
+
+  // FIXME: This only works for NVPTX!
+  assert(Triple(M.getTargetTriple()).isNVPTX());
+  FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
+  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+  CallInst::Create(ExitFTy, Exit, "", Term);
 
   // TODO: remap thread IDs
 
-  assert(!verifyFunction(*ModifiedKernel, &errs()));
+  assert(!verifyFunction(*Kernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));
 
-  return {ModifiedKernel, SplitKernel};
+  return SplitKernel;
 }
 
 /// Abstract Attribute for tracking ICV values.
