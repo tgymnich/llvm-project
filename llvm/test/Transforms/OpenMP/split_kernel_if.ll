@@ -1,5 +1,7 @@
 ; RUN: opt < %s -S -passes="openmp-opt-postlink,simplifycfg" | FileCheck %s
 
+target triple = "nvptx64"
+
 declare void @__ompx_split()
 
 define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" {
@@ -27,14 +29,19 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" {
 !4 = !{i32 7, !"openmp-device", i32 51}
 
 
-; CHECK: define void @test_mod(ptr noundef %tid_addr, ptr noundef %ptr)
+; CHECK: define void @test(ptr noundef %tid_addr, ptr noundef %ptr)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, ptr %ptr, i64 %tid
-; CHECK-NEXT:   store ptr %arrayidx, ptr @kernel_continuation_cache
+; CHECK-NEXT:   store ptr %arrayidx, ptr @test_continuation_cache
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
-; CHECK-NEXT:   %0 = xor i1 %cmp, true
-; CHECK-NEXT:   call void @llvm.assume(i1 %0)
+; CHECK-NEXT:   br i1 %cmp, label %if, label %end
+;
+; CHECK: if:                                               ; preds = %entry
+; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
+; CHECK-NEXT:   unreachable
+;
+; CHECK: end:                                              ; preds = %entry
 ; CHECK-NEXT:   %val2 = load double, ptr %arrayidx
 ; CHECK-NEXT:   %mul = fmul double %val2, %val2
 ; CHECK-NEXT:   store double %mul, ptr %arrayidx
@@ -44,7 +51,7 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" {
 ; CHECK: define void @test_contd(ptr noundef %tid_addr, ptr noundef %ptr)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
-; CHECK-NEXT:   %0 = load ptr, ptr @kernel_continuation_cache
+; CHECK-NEXT:   %0 = load ptr, ptr @test_continuation_cache
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
 ; CHECK-NEXT:   br i1 %cmp, label %if, label %end
 ;
