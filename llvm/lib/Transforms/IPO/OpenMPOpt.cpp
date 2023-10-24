@@ -1997,7 +1997,7 @@ private:
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
 
-  Function * splitKernel(BasicBlock *BB);
+  Function *splitKernel(BasicBlock *BB);
 
   bool splitKernels();
 
@@ -2274,9 +2274,9 @@ bool OpenMPOpt::splitKernels() {
   OMPInformationCache::RuntimeFunctionInfo &RFI =
       OMPInfoCache.RFIs[OMPRTL___ompx_split];
 
-  for (auto &&[F, UseVec] : RFI) {
+  for (auto &&[Kernel, UseVec] : RFI) {
 
-    if (!omp::isKernel(*F))
+    if (!omp::isKernel(*Kernel))
       continue;
 
     BasicBlock *SplitBlock = nullptr;
@@ -2293,20 +2293,21 @@ bool OpenMPOpt::splitKernels() {
     if (!SplitBlock)
       continue;
 
-    if (M.getFunction((F->getName() + "_contd").str()))
+    if (M.getFunction((Kernel->getName() + "_contd").str()))
       continue;
 
     Function *SplitKernel = splitKernel(SplitBlock);
 
-    if (SplitKernel)
-      // TODO: alos call SplitKernel
-      Changed = true;
+    if (!SplitKernel)
+      continue;
+
+    Changed = true;
   }
 
   return Changed;
 }
 
-Function * OpenMPOpt::splitKernel(BasicBlock *BB) {
+Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Function *Kernel = BB->getParent();
   LLVMContext &C = M.getContext();
 
@@ -2343,7 +2344,7 @@ Function * OpenMPOpt::splitKernel(BasicBlock *BB) {
         // - Global: 1
         // - Internal Use: 2
         // - Shared: 3
-        // - Constant: 4 
+        // - Constant: 4
         // - Local: 5
 
         if (!Val)
@@ -2360,12 +2361,15 @@ Function * OpenMPOpt::splitKernel(BasicBlock *BB) {
     }
   }
 
+  // recompute should consider a custom map e.g. for mapped thread id.
+
   SmallVector<Type *> RequiredTypes(map_range(
       RequiredValues, [](Instruction *Inst) { return Inst->getType(); }));
-  StructType *CacheTy = StructType::create(RequiredTypes);
-  GlobalVariable *Cache =
-      new GlobalVariable(M, CacheTy, false, GlobalValue::ExternalLinkage,
-                         nullptr, Kernel->getName() + "_continuation_cache");
+  unsigned int NumThreads = 32; // get from func attrs omp_target_thread_limit * omp_target_num_teams
+  StructType *CacheTy = ArrayType::get(StructType::create(RequiredTypes), NumThreads);
+  GlobalVariable *Cache = new GlobalVariable(
+      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
+      Kernel->getName() + "_continuation_cache");
 
   // Iterate over ModifiedKernel and SplitKernel and insert cache instructions
   // if needed.
@@ -2386,7 +2390,7 @@ Function * OpenMPOpt::splitKernel(BasicBlock *BB) {
   }
 
   // Remove unused BasicBlocks from SplitFunction
-  for (BasicBlock* BB : RemoveRange) {
+  for (BasicBlock *BB : RemoveRange) {
     BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
     UnreachableInst *SplitTerm = new UnreachableInst(C);
     ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
@@ -2403,7 +2407,36 @@ Function * OpenMPOpt::splitKernel(BasicBlock *BB) {
   InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
   CallInst::Create(ExitFTy, Exit, "", Term);
 
+  // AMD: TODO
+
+  // look for all thread id, team id, ... like functions nvidia / amd / ...
+
   // TODO: remap thread IDs
+  // call OMPRTL___kmpc_get_hardware_thread_id_in_block
+
+  // use malloc to allocate array. atomic inc counter for tid
+  // buffer: global tid -> set of live vars
+
+  GlobalVariable *ExecMode =
+      M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
+
+  if (ExecMode)
+    new GlobalVariable(M, ExecMode->getValueType(), ExecMode->isConstant(),
+                       ExecMode->getLinkage(), ExecMode->getInitializer(),
+                       SplitKernel->getName() + "_exec_mode", nullptr,
+                       ExecMode->getThreadLocalMode(),
+                       ExecMode->getAddressSpace());
+
+  GlobalVariable *NestedParallelism =
+      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());
+
+  if (NestedParallelism)
+    new GlobalVariable(
+        M, NestedParallelism->getValueType(), NestedParallelism->isConstant(),
+        NestedParallelism->getLinkage(), NestedParallelism->getInitializer(),
+        SplitKernel->getName() + "_nested_parallelism", nullptr,
+        NestedParallelism->getThreadLocalMode(),
+        NestedParallelism->getAddressSpace());
 
   assert(!verifyFunction(*Kernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));
