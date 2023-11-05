@@ -19,6 +19,7 @@
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
 
+#include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -2366,7 +2367,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   SmallVector<Type *> RequiredTypes(map_range(
       RequiredValues, [](Instruction *Inst) { return Inst->getType(); }));
   unsigned int NumThreads = 32; // get from func attrs omp_target_thread_limit * omp_target_num_teams
-  StructType *CacheTy = ArrayType::get(StructType::create(RequiredTypes), NumThreads);
+  Type *CacheTy = ArrayType::get(StructType::create(RequiredTypes), NumThreads);
   GlobalVariable *Cache = new GlobalVariable(
       M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
       Kernel->getName() + "_continuation_cache");
