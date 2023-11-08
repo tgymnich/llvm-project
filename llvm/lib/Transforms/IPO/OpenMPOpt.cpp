@@ -18,11 +18,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
-
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
+#include "llvm/ADT/FlowNetwork.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/PushRelabelMaxFlow.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/SetVector.h"
@@ -33,6 +34,7 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator.h"
+#include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/Analysis/MemoryLocation.h"
@@ -42,6 +44,7 @@
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include "llvm/Frontend/OpenMP/OMPDeviceConstants.h"
 #include "llvm/Frontend/OpenMP/OMPIRBuilder.h"
+#include "llvm/IR/Argument.h"
 #include "llvm/IR/Assumptions.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
@@ -53,9 +56,10 @@
 #include "llvm/IR/GlobalObject.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
-#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -63,8 +67,10 @@
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
@@ -77,6 +83,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <queue>
 #include <string>
 
 using namespace llvm;
@@ -2277,7 +2284,7 @@ bool OpenMPOpt::splitKernels() {
 
   for (auto &&[Kernel, UseVec] : RFI) {
 
-    if (!omp::isKernel(*Kernel))
+    if (!omp::isOpenMPKernel(*Kernel))
       continue;
 
     BasicBlock *SplitBlock = nullptr;
@@ -2308,11 +2315,90 @@ bool OpenMPOpt::splitKernels() {
   return Changed;
 }
 
+void determineValuesAcross(Instruction *Inst,
+                           SetVector<Instruction *> &RequiredValues,
+                           SetVector<AllocaInst *> &CapturedAllocations) {
+
+  // find all values that are defined before Inst, used by an instruction that
+  // comes after Inst.
+  SmallPtrSet<BasicBlock *, 32> Visited;
+  for (BasicBlock *BB : breadth_first(Inst->getParent())) {
+    Visited.insert(BB);
+    for (Instruction &I : *BB) {
+      if (BB == Inst->getParent() && I.comesBefore(Inst))
+        continue;
+
+      for (Use &U : Inst->operands()) {
+        Instruction *Val = dyn_cast<Instruction>(U.get());
+        if (!Val)
+          continue;
+
+        if (BB != Inst->getParent() && Visited.contains(Val->getParent()))
+          continue;
+
+        if (auto Alloca = dyn_cast<AllocaInst>(Val))
+          CapturedAllocations.insert(Alloca);
+
+        RequiredValues.insert(Val);
+      }
+    }
+  }
+
+  // find all allocas
+  SmallVector<AllocaInst *> Allocations;
+  for (BasicBlock &BB : *Inst->getFunction()) {
+    for (Instruction &I : BB) {
+      if (I.getParent() == Inst->getParent() && I.comesBefore(Inst))
+        break;
+
+      if (I.getParent() != Inst->getParent() && Visited.contains(I.getParent()))
+        break;
+
+      if (auto Alloca = dyn_cast<AllocaInst>(&I))
+        Allocations.push_back(Alloca);
+    }
+  }
+
+  // iterate down the def-use chain of the allocas and preserve them if
+  // they are used after Inst.
+  std::queue<std::pair<Instruction *, AllocaInst *>> Todo;
+  for (AllocaInst *Alloca : Allocations)
+    Todo.push({Alloca, Alloca});
+
+  while (!Todo.empty()) {
+    auto [Current, OrigAllocation] = Todo.front();
+    Todo.pop();
+
+    for (User *U : Current->users()) {
+      Instruction *I = dyn_cast<Instruction>(U);
+      if (!I)
+        continue;
+
+      if (I->getParent() == Inst->getParent() && I->comesBefore(Inst))
+        continue;
+
+      if (I->getParent() != Inst->getParent() &&
+          Visited.contains(I->getParent()))
+        continue;
+
+      if (I->mayWriteToMemory())
+        CapturedAllocations.insert(OrigAllocation);
+
+      if (I->mayReadFromMemory()) {
+        if (RequiredValues.contains(I))
+          CapturedAllocations.insert(OrigAllocation);
+
+        Todo.push({I, OrigAllocation});
+      }
+    }
+  }
+}
+
 Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Function *Kernel = BB->getParent();
   LLVMContext &C = M.getContext();
 
-  // TODO: verify that this kernel is actually splitable at the give Split
+  // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
 
   // Find Instructions to split off
@@ -2325,69 +2411,121 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   BeforeSplit.erase(BB);
 
   auto RemoveRange = make_filter_range(
-      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit](BasicBlock *BB) {
-        return !BeforeSplit.contains(BB) && !AfterSplit.contains(BB);
+      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit](BasicBlock *B) {
+        return !BeforeSplit.contains(B) && !AfterSplit.contains(B);
       });
 
   ValueToValueMapTy VMapSplit;
   Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
   SplitKernel->setName(Kernel->getName() + "_contd");
 
+  IRBuilder<> Builder(Kernel->getEntryBlock().getFirstNonPHIOrDbg());
+  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
+
   // Find Instructions that require caching
-  SmallPtrSet<Instruction *, 32> RequiredValues;
-  for (BasicBlock *BB : AfterSplit) {
-    for (Instruction &Inst : *BB) {
-      for (Use &U : Inst.operands()) {
-        Instruction *Val = dyn_cast<Instruction>(U.get());
+  SetVector<Instruction *> RequiredValues;
+  SetVector<AllocaInst *> Allocas;
+  determineValuesAcross(&BB->front(), RequiredValues, Allocas);
 
-        // The NVPTX back-end uses the following address space mapping:
-        // - Generic: 0
-        // - Global: 1
-        // - Internal Use: 2
-        // - Shared: 3
-        // - Constant: 4
-        // - Local: 5
+  // TODO: use min cut
 
-        if (!Val)
-          continue;
+  // TODO: what about loops?
 
-        if (isa<PHINode>(Val))
-          continue;
+  // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
-        if (!BeforeSplit.contains(Val->getParent()))
-          continue;
+  SmallVector<Type *> RequiredTypes(
+      map_range(RequiredValues, [](Instruction *I) { return I->getType(); }));
+  unsigned ThreadLimit =
+      Kernel->getFnAttributeAsParsedInteger("omp_target_thread_limit");
+  unsigned NumTeams =
+      Kernel->getFnAttributeAsParsedInteger("omp_target_num_teams");
+  unsigned NumThreads = ThreadLimit * NumTeams;
 
-        RequiredValues.insert(Val);
-      }
-    }
-  }
-
-  // recompute should consider a custom map e.g. for mapped thread id.
-
-  SmallVector<Type *> RequiredTypes(map_range(
-      RequiredValues, [](Instruction *Inst) { return Inst->getType(); }));
-  unsigned int NumThreads = 32; // get from func attrs omp_target_thread_limit * omp_target_num_teams
-  Type *CacheTy = ArrayType::get(StructType::create(RequiredTypes), NumThreads);
+  // cache values shared between the original kernel and the split kernel.
+  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
+  Type *CacheTy = ArrayType::get(CacheCell, NumThreads);
   GlobalVariable *Cache = new GlobalVariable(
       M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
       Kernel->getName() + "_continuation_cache");
 
-  // Iterate over ModifiedKernel and SplitKernel and insert cache instructions
-  // if needed.
-  IRBuilder<> Builder(BB);
-  for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+  // Keep track of the global tid (used for indexing caches).
+  Type *GlobalTidTy = IntegerType::getInt32Ty(C);
+  GlobalVariable *TidCounter = new GlobalVariable(
+      M, GlobalTidTy, false, GlobalValue::PrivateLinkage,
+      Constant::getNullValue(GlobalTidTy), Kernel->getName() + "_global_tid");
+  GlobalVariable *SplitTidCounter =
+      new GlobalVariable(M, GlobalTidTy, false, GlobalValue::PrivateLinkage,
+                         Constant::getNullValue(GlobalTidTy),
+                         Kernel->getName() + "_split_global_tid");
+
+  FunctionCallee HardwareTidFn =
+      OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
+          M, OMPRTL___kmpc_get_hardware_thread_id_in_block);
+  Type *TidTy = HardwareTidFn.getFunctionType()->getReturnType();
+
+  // Map global tids to local tids
+  Type *TidMapTy = ArrayType::get(TidTy, NumThreads);
+  GlobalVariable *TidMap = new GlobalVariable(
+      M, TidMapTy, false, GlobalValue::PrivateLinkage,
+      UndefValue::get(TidMapTy), Kernel->getName() + "_tid_map");
+
+  Instruction *GlobalTid = Builder.CreateAtomicRMW(
+      AtomicRMWInst::Add, TidCounter, ConstantInt::get(GlobalTidTy, 1),
+      TidCounter->getAlign(), AtomicOrdering::Acquire);
+  GlobalTid->setName("gtid");
+  CallInst *Tid = Builder.CreateCall(HardwareTidFn);
+  Value *TidMapIdx = Builder.CreateGEP(TidTy, TidMap, {GlobalTid}, "tidmapidx");
+  Builder.CreateStore(Tid, TidMapIdx);
+
+  Instruction *SplitGlobalTid = SplitBuilder.CreateAtomicRMW(
+      AtomicRMWInst::Add, SplitTidCounter, ConstantInt::get(GlobalTidTy, 1),
+      SplitTidCounter->getAlign(), AtomicOrdering::Acquire);
+  SplitGlobalTid->setName("gtid");
+
+      // Iterate over ModifiedKernel and SplitKernel and insert cache
+      // instructions if needed.
+      for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    ConstantInt *IdxVal = Builder.getInt64(Idx);
     Builder.SetInsertPoint(Inst->getNextNode());
-    Value *Ptr = Builder.CreateStructGEP(CacheTy, Cache, Idx);
+
+    Value *Ptr = Builder.CreateGEP(CacheTy, Cache, {GlobalTid, IdxVal},
+                                   Inst->getName() + ".cacheidx");
     Builder.CreateStore(Inst, Ptr);
 
+    // TODO: Consider to only perform caching in the case of actual control flow
+    // divergence.
+
     Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
+    SplitBuilder.SetInsertPoint(SplitInst);
 
-    Builder.SetInsertPoint(SplitInst);
-    Value *SplitPtr = Builder.CreateStructGEP(CacheTy, Cache, Idx);
-
-    LoadInst *CachedInst = Builder.CreateLoad(SplitInst->getType(), SplitPtr);
+    Value *SplitPtr =
+        SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
+                               SplitInst->getName() + ".cacheidx");
+    LoadInst *CachedInst =
+        SplitBuilder.CreateLoad(SplitInst->getType(), SplitPtr);
     SplitInst->replaceAllUsesWith(CachedInst);
     SplitInst->eraseFromParent();
+  }
+
+  // Rematerialize allocas
+  for (auto [Idx, Alloca] : enumerate(Allocas)) {
+    Instruction *SplitAlloca = cast<Instruction>(VMapSplit[Alloca]);
+    SplitBuilder.SetInsertPoint(SplitAlloca);
+
+    ConstantInt *IdxVal = SplitBuilder.getInt64(Idx);
+
+    Instruction *ReAlloc = SplitBuilder.CreateAlloca(
+        Alloca->getType(), Alloca->getArraySize(), Alloca->getName());
+
+    // TODO: Do the actual caching in the orig func.
+    Value *Ptr = SplitBuilder.CreateGEP(CacheTy, Cache, {GlobalTid, IdxVal},
+                                        Alloca->getName() + ".cacheidx");
+    Value *CachedVal = SplitBuilder.CreateLoad(Alloca->getType(), Ptr);
+    SplitBuilder.CreateStore(CachedVal, ReAlloc);
+
+    // TODO: replace orig pointers to alloca with ReAlloc. What about derived
+    // values from the pointer? What about read only values? What about read
+    // write values?
   }
 
   // Remove unused BasicBlocks from SplitFunction
@@ -2408,12 +2546,28 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
   CallInst::Create(ExitFTy, Exit, "", Term);
 
-  // AMD: TODO
+  // Map thread ID to cached thread id.
+  StringSet<> ThreadIDGetters = {"llvm.nvvm.read.ptx.sreg.tid.x"};
+  // FIXME: AMD
+  for (Instruction &I : instructions(Kernel)) {
+    CallInst *Call = dyn_cast<CallInst>(&I);
+    if (!Call)
+      continue;
 
-  // look for all thread id, team id, ... like functions nvidia / amd / ...
+    Function *Called = Call->getCalledFunction();
+    if (!Called)
+      continue;
 
-  // TODO: remap thread IDs
-  // call OMPRTL___kmpc_get_hardware_thread_id_in_block
+    if (!ThreadIDGetters.contains(Called->getName()))
+      continue;
+
+    SplitBuilder.SetInsertPoint(Call);
+    Value *Ptr =
+        SplitBuilder.CreateGEP(Call->getType(), TidMap, {Call}, "tidmapidx");
+    Value *CachedTid =
+        SplitBuilder.CreateLoad(Call->getType(), Ptr, I.getName() + ".mapped");
+    Call->replaceAllUsesWith(CachedTid);
+  }
 
   // use malloc to allocate array. atomic inc counter for tid
   // buffer: global tid -> set of live vars
