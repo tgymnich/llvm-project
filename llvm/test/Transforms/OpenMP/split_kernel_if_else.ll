@@ -4,7 +4,7 @@ target triple = "nvptx64"
 
 declare void @__ompx_split()
 
-define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" {
+define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_thread_limit"="32" "omp_target_num_teams"="1" {
   entry:
     %tid = load i64, ptr %tid_addr
     %arrayidx = getelementptr inbounds double, ptr %ptr, i64 %tid
@@ -33,9 +33,14 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" {
 
 ; CHECK: define void @test(ptr noundef %tid_addr, ptr noundef %ptr)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %gtid = atomicrmw add ptr @test_global_tid, i32 1 acquire
+; CHECK-NEXT:   %0 = call i32 @__kmpc_get_hardware_thread_id_in_block()
+; CHECK-NEXT:   %tidmapidx = getelementptr i32, ptr @test_tid_map, i32 %gtid
+; CHECK-NEXT:   store i32 %0, ptr %tidmapidx
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, ptr %ptr, i64 %tid
-; CHECK-NEXT:   store ptr %arrayidx, ptr @test_continuation_cache
+; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_continuation_cache, i32 %gtid, i64 0
+; CHECK-NEXT:   store ptr %arrayidx, ptr %arrayidx.cacheidx
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
 ; CHECK-NEXT:   br i1 %cmp, label %if, label %else
 ;
@@ -49,11 +54,13 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" {
 ; CHECK-NEXT:   store double %mul, ptr %arrayidx
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
-; 
+;
 ; CHECK: define void @test_contd(ptr noundef %tid_addr, ptr noundef %ptr)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %gtid = atomicrmw add ptr @test_split_global_tid, i32 1 acquire
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
-; CHECK-NEXT:   %0 = load ptr, ptr @test_continuation_cache
+; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_continuation_cache, i32 %gtid, i64 0
+; CHECK-NEXT:   %0 = load ptr, ptr %arrayidx.cacheidx
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
 ; CHECK-NEXT:   call void @llvm.assume(i1 %cmp)
 ; CHECK-NEXT:   %val1 = load double, ptr %0
