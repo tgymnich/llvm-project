@@ -2319,6 +2319,10 @@ void determineValuesAcross(Instruction *Inst,
                            SetVector<Instruction *> &RequiredValues,
                            SetVector<AllocaInst *> &CapturedAllocations) {
 
+  // add new ptr to kernel env. runtime should look for and launch continuations
+  // by name.
+  //
+
   // find all values that are defined before Inst, used by an instruction that
   // comes after Inst.
   SmallPtrSet<BasicBlock *, 32> Visited;
@@ -2429,82 +2433,97 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // TODO: use min cut
 
+  // TODO: recompute values if possible
+
   // TODO: what about loops?
 
   // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
-  SmallVector<Type *> RequiredTypes(
-      map_range(RequiredValues, [](Instruction *I) { return I->getType(); }));
+  SplitBlock(BB, &BB->front());
+  UnreachableInst *Term = new UnreachableInst(C);
+  ReplaceInstWithInst(BB->getTerminator(), Term);
+  Builder.SetInsertPoint(BB->getTerminator());
+
+  FunctionCallee ThreadIdFn =
+      OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
+          M, OMPRTL___kmpc_get_hardware_thread_id_in_block);
+  FunctionCallee NumThreadsFn =
+      OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
+          M, OMPRTL___kmpc_get_hardware_num_threads_in_block);
+  Function *BlockIdFn = M.getFunction("ompx_block_id_x");
+  if (!BlockIdFn) {
+    FunctionType *BlockIdTy =
+        FunctionType::get(IntegerType::getInt32Ty(C), false);
+    BlockIdFn = Function::Create(BlockIdTy, GlobalValue::ExternalLinkage,
+                                 "ompx_block_id_x", M);
+  }
+
   unsigned ThreadLimit =
       Kernel->getFnAttributeAsParsedInteger("omp_target_thread_limit");
   unsigned NumTeams =
       Kernel->getFnAttributeAsParsedInteger("omp_target_num_teams");
-  unsigned NumThreads = ThreadLimit * NumTeams;
+  unsigned MaxNumThreads = ThreadLimit * NumTeams;
 
-  // cache values shared between the original kernel and the split kernel.
-  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
-  Type *CacheTy = ArrayType::get(CacheCell, NumThreads);
-  GlobalVariable *Cache = new GlobalVariable(
-      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
-      Kernel->getName() + "_continuation_cache");
-
-  // Keep track of the global tid (used for indexing caches).
-  Type *GlobalTidTy = IntegerType::getInt32Ty(C);
-  GlobalVariable *TidCounter = new GlobalVariable(
-      M, GlobalTidTy, false, GlobalValue::PrivateLinkage,
-      Constant::getNullValue(GlobalTidTy), Kernel->getName() + "_global_tid");
-  GlobalVariable *SplitTidCounter =
-      new GlobalVariable(M, GlobalTidTy, false, GlobalValue::PrivateLinkage,
-                         Constant::getNullValue(GlobalTidTy),
-                         Kernel->getName() + "_split_global_tid");
-
-  FunctionCallee HardwareTidFn =
-      OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
-          M, OMPRTL___kmpc_get_hardware_thread_id_in_block);
-  Type *TidTy = HardwareTidFn.getFunctionType()->getReturnType();
+  // Keep track of the number of continuation kernels to spawn.
+  Type *ContCountTy = IntegerType::getInt64Ty(C);
+  GlobalVariable *ContCount = new GlobalVariable(
+      M, ContCountTy, false, GlobalValue::PrivateLinkage,
+      Constant::getNullValue(ContCountTy),
+      Kernel->getName() + "_cont_count");
+  Value *CacheIdx = Builder.CreateAtomicRMW(
+      AtomicRMWInst::Add, ContCount, Builder.getInt64(1),
+      ContCount->getAlign(), AtomicOrdering::Acquire);
 
   // Map global tids to local tids
-  Type *TidMapTy = ArrayType::get(TidTy, NumThreads);
+  Type *TidTy = ThreadIdFn.getFunctionType()->getReturnType();
+  Type *TidMapTy = ArrayType::get(TidTy, MaxNumThreads);
   GlobalVariable *TidMap = new GlobalVariable(
       M, TidMapTy, false, GlobalValue::PrivateLinkage,
       UndefValue::get(TidMapTy), Kernel->getName() + "_tid_map");
 
-  Instruction *GlobalTid = Builder.CreateAtomicRMW(
-      AtomicRMWInst::Add, TidCounter, ConstantInt::get(GlobalTidTy, 1),
-      TidCounter->getAlign(), AtomicOrdering::Acquire);
-  GlobalTid->setName("gtid");
-  CallInst *Tid = Builder.CreateCall(HardwareTidFn);
-  Value *TidMapIdx = Builder.CreateGEP(TidTy, TidMap, {GlobalTid}, "tidmapidx");
-  Builder.CreateStore(Tid, TidMapIdx);
+  CallInst *Tid = Builder.CreateCall(ThreadIdFn);
+  Value *TidMapPtr = Builder.CreateGEP(TidTy, TidMap, {CacheIdx}, "tidmapidx");
+  Builder.CreateStore(Tid, TidMapPtr);
 
-  Instruction *SplitGlobalTid = SplitBuilder.CreateAtomicRMW(
-      AtomicRMWInst::Add, SplitTidCounter, ConstantInt::get(GlobalTidTy, 1),
-      SplitTidCounter->getAlign(), AtomicOrdering::Acquire);
-  SplitGlobalTid->setName("gtid");
+  CallInst *SplitTid = SplitBuilder.CreateCall(ThreadIdFn);
+  CallInst *SplitBlockId = SplitBuilder.CreateCall(BlockIdFn);
+  CallInst *SplitNumThreads = SplitBuilder.CreateCall(NumThreadsFn);
+  Value *SplitGlobalTid = SplitBuilder.CreateAdd(
+      SplitTid, SplitBuilder.CreateMul(SplitBlockId, SplitNumThreads), "gtid");
 
-      // Iterate over ModifiedKernel and SplitKernel and insert cache
-      // instructions if needed.
-      for (auto [Idx, Inst] : enumerate(RequiredValues)) {
-    ConstantInt *IdxVal = Builder.getInt64(Idx);
-    Builder.SetInsertPoint(Inst->getNextNode());
+  SmallVector<Type *> RequiredTypes(
+      map_range(RequiredValues, [](Instruction *I) { return I->getType(); }));
 
-    Value *Ptr = Builder.CreateGEP(CacheTy, Cache, {GlobalTid, IdxVal},
+  // cache values shared between the original kernel and the split kernel.
+  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
+  Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
+  // TODO: dynamically allocate this in the kernel env
+  GlobalVariable *Cache = new GlobalVariable(
+      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
+      Kernel->getName() + "_cont_cache");
+
+  // Iterate over ModifiedKernel and SplitKernel and insert cache
+  // instructions if needed.
+  for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    ConstantInt *ValIdx = Builder.getInt64(Idx);
+
+    Value *Ptr = Builder.CreateGEP(CacheTy, Cache, {CacheIdx, ValIdx},
                                    Inst->getName() + ".cacheidx");
     Builder.CreateStore(Inst, Ptr);
-
-    // TODO: Consider to only perform caching in the case of actual control flow
-    // divergence.
 
     Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
     SplitBuilder.SetInsertPoint(SplitInst);
 
     Value *SplitPtr =
-        SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
+        SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
                                SplitInst->getName() + ".cacheidx");
     LoadInst *CachedInst =
         SplitBuilder.CreateLoad(SplitInst->getType(), SplitPtr);
     SplitInst->replaceAllUsesWith(CachedInst);
     SplitInst->eraseFromParent();
+
+    // use malloc to allocate array. atomic inc counter for tid
+    // buffer: global tid -> set of live vars
   }
 
   // Rematerialize allocas
@@ -2518,8 +2537,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
         Alloca->getType(), Alloca->getArraySize(), Alloca->getName());
 
     // TODO: Do the actual caching in the orig func.
-    Value *Ptr = SplitBuilder.CreateGEP(CacheTy, Cache, {GlobalTid, IdxVal},
-                                        Alloca->getName() + ".cacheidx");
+    Value *Ptr =
+        SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
+                               Alloca->getName() + ".cacheidx");
     Value *CachedVal = SplitBuilder.CreateLoad(Alloca->getType(), Ptr);
     SplitBuilder.CreateStore(CachedVal, ReAlloc);
 
@@ -2534,11 +2554,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     UnreachableInst *SplitTerm = new UnreachableInst(C);
     ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
   }
-
-  SplitBlock(BB, &BB->front());
-
-  UnreachableInst *Term = new UnreachableInst(C);
-  ReplaceInstWithInst(BB->getTerminator(), Term);
 
   // FIXME: This only works for NVPTX!
   assert(Triple(M.getTargetTriple()).isNVPTX());
@@ -2569,9 +2584,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     Call->replaceAllUsesWith(CachedTid);
   }
 
-  // use malloc to allocate array. atomic inc counter for tid
-  // buffer: global tid -> set of live vars
-
+  // clone omp globals
   GlobalVariable *ExecMode =
       M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
 
