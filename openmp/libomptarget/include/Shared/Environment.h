@@ -88,6 +88,7 @@ struct ConfigurationEnvironmentTy {
   int32_t MaxTeams = -1;
   int32_t ReductionDataSize = 0;
   int32_t ReductionBufferLength = 0;
+  int32_t NumContinuations = 0;
   //}
 };
 

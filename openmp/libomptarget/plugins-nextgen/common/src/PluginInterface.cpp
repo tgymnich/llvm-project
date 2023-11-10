@@ -201,7 +201,7 @@ public:
     GlobalEntries.emplace_back(GlobalEntry{Name, Size, Addr});
   }
 
-  void saveImage(const char *Name, const DeviceImageTy &Image) {
+  void saveImage(StringRef Name, const DeviceImageTy &Image) {
     SmallString<128> ImageName = {Name, ".image"};
     std::error_code EC;
     raw_fd_ostream OS(ImageName, EC);
@@ -269,7 +269,7 @@ public:
     OS.close();
   }
 
-  void saveKernelDescr(const char *Name, void **ArgPtrs, int32_t NumArgs,
+  void saveKernelDescr(StringRef Name, void **ArgPtrs, int32_t NumArgs,
                        uint64_t NumTeamsClause, uint32_t ThreadLimitClause,
                        uint64_t LoopTripCount) {
     json::Object JsonKernelInfo;
@@ -302,7 +302,7 @@ public:
     JsonOS.close();
   }
 
-  void saveKernelInput(const char *Name, DeviceImageTy &Image) {
+  void saveKernelInput(StringRef Name, DeviceImageTy &Image) {
     SmallString<128> GlobalsFilename = {Name, ".globals"};
     dumpGlobals(GlobalsFilename, Image);
 
@@ -310,7 +310,7 @@ public:
     dumpDeviceMemory(MemoryFilename);
   }
 
-  void saveKernelOutputInfo(const char *Name) {
+  void saveKernelOutputInfo(StringRef Name) {
     SmallString<128> OutputFilename = {
         Name, (isRecording() ? ".original.output" : ".replay.output")};
     dumpDeviceMemory(OutputFilename);
@@ -444,7 +444,7 @@ Error GenericKernelTy::init(GenericDeviceTy &GenericDevice,
     [[maybe_unused]] std::string ErrStr = toString(std::move(Err));
     DP("Failed to read kernel environment for '%s': %s\n"
        "Using default SPMD (2) execution mode\n",
-       Name, ErrStr.data());
+       Name.data(), ErrStr.data());
     assert(KernelEnvironment.Configuration.ReductionDataSize == 0 &&
            "Default initialization failed.");
     IsBareKernel = true;
@@ -462,6 +462,22 @@ Error GenericKernelTy::init(GenericDeviceTy &GenericDevice,
           ? std::max(KernelEnvironment.Configuration.MinThreads,
                      int32_t(GenericDevice.getDefaultNumThreads()))
           : GenericDevice.getDefaultNumThreads();
+
+  unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
+
+  for (unsigned i = 0; i < NumContinuations; ++i) {
+    std::string ContName = (Name + "_contd_" + Twine(i)).str();
+    auto KernelOrErr = GenericDevice.constructKernel(ContName);
+
+    if (!KernelOrErr)
+      return KernelOrErr.takeError();
+
+    GenericKernelTy *Continuation = &(*KernelOrErr);
+    Continuations.push_back(Continuation);
+
+    if (auto Err = Continuation->init(GenericDevice, Image))
+      return Err;
+  }
 
   return initImpl(GenericDevice, Image);
 }
@@ -526,7 +542,7 @@ Error GenericKernelTy::printLaunchInfo(GenericDeviceTy &GenericDevice,
   INFO(OMP_INFOTYPE_PLUGIN_KERNEL, GenericDevice.getDeviceId(),
        "Launching kernel %s with %" PRIu64
        " blocks and %d threads in %s mode\n",
-       getName(), NumBlocks, NumThreads, getExecutionModeName());
+       getName().data(), NumBlocks, NumThreads, getExecutionModeName());
   return printLaunchInfoDetails(GenericDevice, KernelArgs, NumThreads,
                                 NumBlocks);
 }
@@ -571,8 +587,29 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
           printLaunchInfo(GenericDevice, KernelArgs, NumThreads, NumBlocks))
     return Err;
 
-  return launchImpl(GenericDevice, NumThreads, NumBlocks, KernelArgs,
-                    KernelArgsPtr, AsyncInfoWrapper);
+  if (auto Err = launchImpl(GenericDevice, NumThreads, NumBlocks, KernelArgs,
+                            KernelArgsPtr, AsyncInfoWrapper))
+    return Err;
+
+  for (GenericKernelTy* Continuation: Continuations) {
+    GenericGlobalHandlerTy &GHandler = Plugin::get().getGlobalHandler();
+    uint64_t ContCount = 0;
+    GlobalTy ContCountGlobal((getName() + "_cont_count").str(), sizeof(ContCount), &ContCount);
+
+    if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, getImage(),
+                                                 ContCountGlobal))
+      return Err;
+
+    uint32_t NumThreads = ContCount;
+    uint64_t NumBlocks = 1;
+
+    if (auto Err = Continuation->launchImpl(GenericDevice, NumBlocks,
+                                            NumThreads, KernelArgs,
+                                            KernelArgsPtr, AsyncInfoWrapper))
+      return Err;
+  }
+
+  return Plugin::success();
 }
 
 void *GenericKernelTy::prepareArgs(

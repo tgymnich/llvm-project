@@ -250,6 +250,7 @@ KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MinThreads, 3)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxThreads, 4)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MinTeams, 5)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxTeams, 6)
+KERNEL_ENVIRONMENT_CONFIGURATION_IDX(NumContinuations, 7)
 
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_IDX
 
@@ -968,6 +969,8 @@ struct OpenMPOpt {
 
     LLVM_DEBUG(dbgs() << TAG << "Run on SCC with " << SCC.size()
                       << " functions\n");
+
+    // maybe split here
 
     if (IsModulePass) {
       Changed |= runAttributor(IsModulePass);
@@ -2301,7 +2304,7 @@ bool OpenMPOpt::splitKernels() {
     if (!SplitBlock)
       continue;
 
-    if (M.getFunction((Kernel->getName() + "_contd").str()))
+    if (M.getFunction((Kernel->getName() + "_contd" + "_0").str()))
       continue;
 
     Function *SplitKernel = splitKernel(SplitBlock);
@@ -2402,6 +2405,17 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Function *Kernel = BB->getParent();
   LLVMContext &C = M.getContext();
 
+  auto *KernelEnvironmentGV =
+      M.getNamedGlobal((Kernel->getName() + "_kernel_environment").str());
+  assert(KernelEnvironmentGV && "Expected kernel environment global\n");
+  auto *KernelEnvironmentInitializer = KernelEnvironmentGV->getInitializer();
+  constexpr int NumContinuationsIdx = KernelInfo::NumContinuationsIdx;
+  auto *NewInitializer = ConstantFoldInsertValueInstruction(
+      KernelEnvironmentInitializer,
+      ConstantInt::get(IntegerType::getInt32Ty(C), 1),
+      {0, NumContinuationsIdx});
+  KernelEnvironmentGV->setInitializer(NewInitializer);
+
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
 
@@ -2414,17 +2428,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   BeforeSplit.erase(BB);
 
-  auto RemoveRange = make_filter_range(
-      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit](BasicBlock *B) {
-        return !BeforeSplit.contains(B) && !AfterSplit.contains(B);
-      });
-
   ValueToValueMapTy VMapSplit;
   Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
-  SplitKernel->setName(Kernel->getName() + "_contd");
-
-  IRBuilder<> Builder(Kernel->getEntryBlock().getFirstNonPHIOrDbg());
-  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
+  SplitKernel->setName(Kernel->getName() + "_contd" + "_0");
 
   // Find Instructions that require caching
   SetVector<Instruction *> RequiredValues;
@@ -2439,24 +2445,42 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
+  IRBuilder<> Builder(Kernel->getEntryBlock().getFirstNonPHIOrDbg());
+  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
+
+  auto RemoveRange = make_filter_range(
+      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit](BasicBlock *B) {
+        return !BeforeSplit.contains(B) && !AfterSplit.contains(B);
+      });
+
+  // Remove unused BasicBlocks from SplitFunction
+  for (BasicBlock *BB : RemoveRange) {
+    BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
+    UnreachableInst *SplitTerm = new UnreachableInst(C);
+    ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
+  }
+
   SplitBlock(BB, &BB->front());
   UnreachableInst *Term = new UnreachableInst(C);
   ReplaceInstWithInst(BB->getTerminator(), Term);
   Builder.SetInsertPoint(BB->getTerminator());
 
-  FunctionCallee ThreadIdFn =
-      OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
-          M, OMPRTL___kmpc_get_hardware_thread_id_in_block);
-  FunctionCallee NumThreadsFn =
-      OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
-          M, OMPRTL___kmpc_get_hardware_num_threads_in_block);
-  Function *BlockIdFn = M.getFunction("ompx_block_id_x");
-  if (!BlockIdFn) {
-    FunctionType *BlockIdTy =
-        FunctionType::get(IntegerType::getInt32Ty(C), false);
-    BlockIdFn = Function::Create(BlockIdTy, GlobalValue::ExternalLinkage,
-                                 "ompx_block_id_x", M);
-  }
+  // FunctionCallee ThreadIdFn =
+  //     OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
+  //         M, OMPRTL___kmpc_get_hardware_thread_id_in_block);
+  FunctionCallee ThreadIdFn = M.getOrInsertFunction(
+      "llvm.nvvm.read.ptx.sreg.tid.x", Type::getInt32Ty(C));
+  // FunctionCallee NumThreadsFn =
+  //     OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
+  //         M, OMPRTL___kmpc_get_hardware_num_threads_in_block);
+  FunctionCallee NumThreadsFn = M.getOrInsertFunction(
+      "llvm.nvvm.read.ptx.sreg.ntid.x", Type::getInt32Ty(C));
+  // FunctionType *BlockIdTy =
+  //     FunctionType::get(IntegerType::getInt32Ty(C), false);
+  // FunctionCallee BlockIdFn = M.getOrInsertFunction("ompx_block_id_x",
+  // BlockIdTy);
+  FunctionCallee BlockIdFn = M.getOrInsertFunction(
+      "llvm.nvvm.read.ptx.sreg.ctaid.x", Type::getInt32Ty(C));
 
   unsigned ThreadLimit =
       Kernel->getFnAttributeAsParsedInteger("omp_target_thread_limit");
@@ -2468,11 +2492,11 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Type *ContCountTy = IntegerType::getInt64Ty(C);
   GlobalVariable *ContCount = new GlobalVariable(
       M, ContCountTy, false, GlobalValue::PrivateLinkage,
-      Constant::getNullValue(ContCountTy),
-      Kernel->getName() + "_cont_count");
+      Constant::getNullValue(ContCountTy), Kernel->getName() + "_cont_count");
   Value *CacheIdx = Builder.CreateAtomicRMW(
-      AtomicRMWInst::Add, ContCount, Builder.getInt64(1),
-      ContCount->getAlign(), AtomicOrdering::Acquire);
+      AtomicRMWInst::Add, ContCount, Builder.getInt64(1), ContCount->getAlign(),
+      AtomicOrdering::Acquire);
+  CacheIdx->setName("cacheidx");
 
   // Map global tids to local tids
   Type *TidTy = ThreadIdFn.getFunctionType()->getReturnType();
@@ -2491,10 +2515,14 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Value *SplitGlobalTid = SplitBuilder.CreateAdd(
       SplitTid, SplitBuilder.CreateMul(SplitBlockId, SplitNumThreads), "gtid");
 
-  SmallVector<Type *> RequiredTypes(
-      map_range(RequiredValues, [](Instruction *I) { return I->getType(); }));
-
   // cache values shared between the original kernel and the split kernel.
+  auto ValueTys =
+      map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
+  auto AllocaTys =
+      map_range(Allocas, [](AllocaInst *I) { return I->getType(); });
+  SmallVector<Type *> RequiredTypes(ValueTys);
+  RequiredTypes.insert(RequiredTypes.end(), AllocaTys.begin(), AllocaTys.end());
+
   Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
   Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
   // TODO: dynamically allocate this in the kernel env
@@ -2512,7 +2540,10 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     Builder.CreateStore(Inst, Ptr);
 
     Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
-    SplitBuilder.SetInsertPoint(SplitInst);
+    if (isa<PHINode>(Inst))
+      SplitBuilder.SetInsertPoint(SplitInst->getParent()->getFirstNonPHI());
+    else
+      SplitBuilder.SetInsertPoint(SplitInst);
 
     Value *SplitPtr =
         SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
@@ -2528,31 +2559,30 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // Rematerialize allocas
   for (auto [Idx, Alloca] : enumerate(Allocas)) {
+    ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
+
+    Value *Ptr = Builder.CreateGEP(CacheTy, Cache, {CacheIdx, IdxVal},
+                                   Alloca->getName() + ".cacheidx");
+    Value *ToCache = Builder.CreateLoad(Alloca->getType(), Alloca);
+    Builder.CreateStore(ToCache, Ptr);
+
     Instruction *SplitAlloca = cast<Instruction>(VMapSplit[Alloca]);
     SplitBuilder.SetInsertPoint(SplitAlloca);
 
-    ConstantInt *IdxVal = SplitBuilder.getInt64(Idx);
-
-    Instruction *ReAlloc = SplitBuilder.CreateAlloca(
+    // NOTE: can we just read / write from the cache directly?
+    Instruction *ReAlloca = SplitBuilder.CreateAlloca(
         Alloca->getType(), Alloca->getArraySize(), Alloca->getName());
-
-    // TODO: Do the actual caching in the orig func.
-    Value *Ptr =
+    Value *SplitPtr =
         SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
                                Alloca->getName() + ".cacheidx");
-    Value *CachedVal = SplitBuilder.CreateLoad(Alloca->getType(), Ptr);
-    SplitBuilder.CreateStore(CachedVal, ReAlloc);
+    Value *CachedVal = SplitBuilder.CreateLoad(Alloca->getType(), SplitPtr);
+    SplitBuilder.CreateStore(CachedVal, ReAlloca);
+
+    SplitAlloca->replaceAllUsesWith(ReAlloca);
 
     // TODO: replace orig pointers to alloca with ReAlloc. What about derived
     // values from the pointer? What about read only values? What about read
     // write values?
-  }
-
-  // Remove unused BasicBlocks from SplitFunction
-  for (BasicBlock *BB : RemoveRange) {
-    BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
-    UnreachableInst *SplitTerm = new UnreachableInst(C);
-    ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
   }
 
   // FIXME: This only works for NVPTX!
@@ -2564,7 +2594,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   // Map thread ID to cached thread id.
   StringSet<> ThreadIDGetters = {"llvm.nvvm.read.ptx.sreg.tid.x"};
   // FIXME: AMD
-  for (Instruction &I : instructions(Kernel)) {
+  for (Instruction &I : instructions(SplitKernel)) {
     CallInst *Call = dyn_cast<CallInst>(&I);
     if (!Call)
       continue;
@@ -2576,12 +2606,13 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     if (!ThreadIDGetters.contains(Called->getName()))
       continue;
 
-    SplitBuilder.SetInsertPoint(Call);
+    SplitBuilder.SetInsertPoint(Call->getNextNode());
     Value *Ptr =
         SplitBuilder.CreateGEP(Call->getType(), TidMap, {Call}, "tidmapidx");
     Value *CachedTid =
         SplitBuilder.CreateLoad(Call->getType(), Ptr, I.getName() + ".mapped");
-    Call->replaceAllUsesWith(CachedTid);
+    Call->replaceUsesWithIf(
+        CachedTid, [Ptr](Use &U) -> bool { return U.getUser() != Ptr; });
   }
 
   // clone omp globals
