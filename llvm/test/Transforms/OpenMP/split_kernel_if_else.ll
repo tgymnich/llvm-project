@@ -39,11 +39,11 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_
 ; CHECK-NEXT:   br i1 %cmp, label %if, label %else
 ;
 ; CHECK: if:                                               ; preds = %entry
-; CHECK-NEXT:   %0 = atomicrmw add ptr @test_cont_count, i64 1 acquire
-; CHECK-NEXT:   %1 = call i32 @__kmpc_get_hardware_thread_id_in_block()
-; CHECK-NEXT:   %tidmapidx = getelementptr i32, ptr @test_tid_map, i64 %0
-; CHECK-NEXT:   store i32 %1, ptr %tidmapidx
-; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i64 %0, i64 0
+; CHECK-NEXT:   %cacheidx = atomicrmw add ptr @test_cont_count, i64 1 acquire
+; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
+; CHECK-NEXT:   %tidmapidx = getelementptr i32, ptr @test_tid_map, i64 %cacheidx
+; CHECK-NEXT:   store i32 %0, ptr %tidmapidx
+; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 0
 ; CHECK-NEXT:   store ptr %arrayidx, ptr %arrayidx.cacheidx
 ; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
 ; CHECK-NEXT:   unreachable
@@ -57,11 +57,13 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_
 ;
 ; CHECK: define void @test_contd(ptr noundef %tid_addr, ptr noundef %ptr)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call i32 @__kmpc_get_hardware_thread_id_in_block()
-; CHECK-NEXT:   %1 = call i32 @ompx_block_id_x()
-; CHECK-NEXT:   %2 = call i32 @__kmpc_get_hardware_num_threads_in_block()
+; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
+; CHECK-NEXT:   %tidmapidx = getelementptr i32, ptr @test_tid_map, i32 %0
+; CHECK-NEXT:   %.mapped = load i32, ptr %tidmapidx
+; CHECK-NEXT:   %1 = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
+; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
 ; CHECK-NEXT:   %3 = mul i32 %1, %2
-; CHECK-NEXT:   %gtid = add i32 %0, %3
+; CHECK-NEXT:   %gtid = add i32 %.mapped, %3
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
 ; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 0
 ; CHECK-NEXT:   %4 = load ptr, ptr %arrayidx.cacheidx
