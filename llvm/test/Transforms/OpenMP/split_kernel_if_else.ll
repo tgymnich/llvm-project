@@ -2,10 +2,20 @@
 
 target triple = "nvptx64"
 
+%struct.ident_t = type { i32, i32, i32, i32, ptr }
+%struct.KernelEnvironmentTy = type { %struct.ConfigurationEnvironmentTy, ptr, ptr }
+%struct.ConfigurationEnvironmentTy = type { i8, i8, i8, i32, i32, i32, i32, i32, i32, i32 }
+
+@test_kernel_environment = weak_odr protected local_unnamed_addr constant %struct.KernelEnvironmentTy { %struct.ConfigurationEnvironmentTy { i8 0, i8 0, i8 2, i32 1, i32 512, i32 1, i32 1, i32 1, i32 0, i32 0 }, ptr null, ptr null }
+
 declare void @__ompx_split()
 
-define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_thread_limit"="32" "omp_target_num_teams"="1" {
+declare i32 @__kmpc_target_init(ptr, ptr)
+declare void @__kmpc_target_deinit()
+
+define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread_limit"="32" "omp_target_num_teams"="1" {
   entry:
+    %i = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr %dyn)
     %tid = load i64, ptr %tid_addr
     %arrayidx = getelementptr inbounds double, ptr %ptr, i64 %tid
     %cmp = icmp ult i64 0, %tid
@@ -22,6 +32,7 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_
     store double %mul, ptr %arrayidx
     br label %end
   end:
+    call void @__kmpc_target_deinit()
     ret void
 }
 
@@ -31,8 +42,9 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_
 !4 = !{i32 7, !"openmp-device", i32 51}
 
 
-; CHECK: define void @test(ptr noundef %tid_addr, ptr noundef %ptr)
+; CHECK: define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %i = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr %dyn)
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, ptr %ptr, i64 %tid
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
@@ -52,10 +64,11 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_
 ; CHECK-NEXT:   %val2 = load double, ptr %arrayidx
 ; CHECK-NEXT:   %mul = fmul double %val2, %val2
 ; CHECK-NEXT:   store double %mul, ptr %arrayidx
+; CHECK-NEXT:   call void @__kmpc_target_deinit()
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 ;
-; CHECK: define void @test_contd(ptr noundef %tid_addr, ptr noundef %ptr)
+; CHECK: define void @test_contd_0(ptr %tid_addr, ptr %ptr, ptr %dyn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
 ; CHECK-NEXT:   %tidmapidx = getelementptr i32, ptr @test_tid_map, i32 %0
@@ -64,6 +77,7 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_
 ; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
 ; CHECK-NEXT:   %3 = mul i32 %1, %2
 ; CHECK-NEXT:   %gtid = add i32 %.mapped, %3
+; CHECK-NEXT:   %i = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr %dyn)
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
 ; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 0
 ; CHECK-NEXT:   %4 = load ptr, ptr %arrayidx.cacheidx
@@ -72,5 +86,6 @@ define void @test(ptr noundef %tid_addr, ptr noundef %ptr) "kernel" "omp_target_
 ; CHECK-NEXT:   %val1 = load double, ptr %4
 ; CHECK-NEXT:   %add = fadd double %val1, 2.000000e+00
 ; CHECK-NEXT:   store double %add, ptr %4
+; CHECK-NEXT:   call void @__kmpc_target_deinit()
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
