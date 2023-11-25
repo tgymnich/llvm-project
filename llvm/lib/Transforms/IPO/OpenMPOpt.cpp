@@ -37,6 +37,8 @@
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/LoopIterator.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/PostDominators.h"
@@ -947,12 +949,14 @@ struct OpenMPOpt {
 
   using OptimizationRemarkGetter =
       function_ref<OptimizationRemarkEmitter &(Function *)>;
+  using LoopInfoGetter =
+      function_ref<LoopInfo &(Function *)>;
 
   OpenMPOpt(SmallVectorImpl<Function *> &SCC, CallGraphUpdater &CGUpdater,
-            OptimizationRemarkGetter OREGetter,
+            OptimizationRemarkGetter OREGetter, LoopInfoGetter LIGetter,
             OMPInformationCache &OMPInfoCache, Attributor &A)
       : M(*(*SCC.begin())->getParent()), SCC(SCC), CGUpdater(CGUpdater),
-        OREGetter(OREGetter), OMPInfoCache(OMPInfoCache), A(A) {}
+        OREGetter(OREGetter), LIGetter(LIGetter), OMPInfoCache(OMPInfoCache), A(A) {}
 
   /// Check if any remarks are enabled for openmp-opt
   bool remarksEnabled() {
@@ -2071,6 +2075,8 @@ private:
   /// Callback to get an OptimizationRemarkEmitter from a Function *
   OptimizationRemarkGetter OREGetter;
 
+  LoopInfoGetter LIGetter;
+
   /// OpenMP-specific information cache. Also Used for Attributor runs.
   OMPInformationCache &OMPInfoCache;
 
@@ -2419,23 +2425,65 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
 
+  // Find Instructions that require caching
+  SetVector<Instruction *> RequiredValues;
+  SetVector<AllocaInst *> Allocas;
+  determineValuesAcross(&BB->front(), RequiredValues, Allocas);
+
   // Find Instructions to split off
-  df_iterator_default_set<BasicBlock *> BeforeSplit;
-  for_each(inverse_depth_first_ext(BB, BeforeSplit), [](auto B) { (void)B; });
+  SmallPtrSet<BasicBlock *, 32> BeforeSplit;
+  SmallPtrSet<BasicBlock *, 32> AfterSplit;
 
-  df_iterator_default_set<BasicBlock *> AfterSplit;
-  for_each(depth_first_ext(BB, AfterSplit), [](auto B) { (void)B; });
+  LoopInfo &LI = LIGetter(Kernel);
 
-  BeforeSplit.erase(BB);
+  // determine BasicBlocks upstream of BB traversing the loop upwards only
+  std::queue<BasicBlock*> TodoUp;
+  TodoUp.push(BB);
+
+  while (!TodoUp.empty()) {
+    BasicBlock *Current = TodoUp.back();
+    TodoUp.pop();
+
+    Loop *L = LI.getLoopFor(Current);
+
+    if (!L) {
+      auto Range = inverse_depth_first(Current);
+      BeforeSplit.insert(Range.begin(), Range.end());
+      continue;
+    }
+
+    auto Range = make_filter_range(predecessors(Current), [L](BasicBlock *B) { return !L->contains(B) || !L->isLoopLatch(B); });
+    for (auto V : Range)
+      if (BeforeSplit.insert(V).second)
+          TodoUp.push(V);
+  }
+
+  // determine BasicBlocks dowmstream of BB traversing the loop downwards only
+  std::queue<BasicBlock*> TodoDown;
+  TodoDown.push(BB);
+
+  while (!TodoDown.empty()) {
+    BasicBlock *Current = TodoDown.back();
+    TodoDown.pop();
+
+    Loop *L = LI.getLoopFor(Current);
+
+    if (!L) {
+      auto Range = depth_first(Current);
+      AfterSplit.insert(Range.begin(), Range.end());
+      continue;
+    }
+
+    auto Range = make_filter_range(successors(Current), [L](BasicBlock *B) { return L->getHeader() != B; });
+    for (auto V : Range)
+      if (AfterSplit.insert(V).second)
+        TodoDown.push(V);
+  }
 
   ValueToValueMapTy VMapSplit;
   Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
   SplitKernel->setName(Kernel->getName() + "_contd" + "_0");
 
-  // Find Instructions that require caching
-  SetVector<Instruction *> RequiredValues;
-  SetVector<AllocaInst *> Allocas;
-  determineValuesAcross(&BB->front(), RequiredValues, Allocas);
 
   // TODO: use min cut
 
@@ -2445,12 +2493,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
-  IRBuilder<> Builder(Kernel->getEntryBlock().getFirstNonPHIOrDbg());
-  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
-
   auto RemoveRange = make_filter_range(
-      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit](BasicBlock *B) {
-        return !BeforeSplit.contains(B) && !AfterSplit.contains(B);
+      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit, BB](BasicBlock *B) {
+        return !BeforeSplit.contains(B) && !AfterSplit.contains(B) && B != BB;
       });
 
   // Remove unused BasicBlocks from SplitFunction
@@ -2459,6 +2504,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     UnreachableInst *SplitTerm = new UnreachableInst(C);
     ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
   }
+
+  IRBuilder<> Builder(Kernel->getEntryBlock().getFirstNonPHIOrDbg());
+  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
 
   SplitBlock(BB, &BB->front());
   UnreachableInst *Term = new UnreachableInst(C);
@@ -6182,6 +6230,10 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
     return FAM.getResult<OptimizationRemarkEmitterAnalysis>(*F);
   };
 
+  auto LIGetter = [&FAM](Function *F) -> LoopInfo & {
+    return FAM.getResult<LoopAnalysis>(*F);
+  };
+
   BumpPtrAllocator Allocator;
   CallGraphUpdater CGUpdater;
 
@@ -6206,7 +6258,7 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
 
   Attributor A(Functions, InfoCache, AC);
 
-  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
+  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, InfoCache, A);
   Changed |= OMPOpt.run(true);
 
   // Optionally inline device functions for potentially better performance.
@@ -6260,6 +6312,10 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
     return FAM.getResult<OptimizationRemarkEmitterAnalysis>(*F);
   };
 
+  auto LIGetter = [&FAM](Function *F) -> LoopInfo & {
+    return FAM.getResult<LoopAnalysis>(*F);
+  };
+
   BumpPtrAllocator Allocator;
   CallGraphUpdater CGUpdater;
   CGUpdater.initialize(CG, C, AM, UR);
@@ -6284,7 +6340,9 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
 
   Attributor A(Functions, InfoCache, AC);
 
-  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
+  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, InfoCache, A);
+
+
   bool Changed = OMPOpt.run(false);
 
   if (PrintModuleAfterOptimizations)
