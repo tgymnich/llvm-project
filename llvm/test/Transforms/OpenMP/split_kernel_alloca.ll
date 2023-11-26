@@ -66,8 +66,8 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 0
 ; CHECK-NEXT:   store ptr %arrayidx, ptr %arrayidx.cacheidx
 ; CHECK-NEXT:   %ptry.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 1
-; CHECK-NEXT:   %1 = load ptr, ptr %ptry
-; CHECK-NEXT:   store ptr %1, ptr %ptry.cacheidx
+; CHECK-NEXT:   %1 = load double, ptr %ptry
+; CHECK-NEXT:   store double %1, ptr %ptry.cacheidx
 ; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
 ; CHECK-NEXT:   unreachable
 ;
@@ -90,14 +90,13 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ; CHECK-NEXT:   %gtid = add i32 %.mapped, %3
 ; CHECK-NEXT:   %i = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr %dyn)
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
-; CHECK-NEXT:   %ptry1 = alloca ptr
-; CHECK-NEXT:   %ptry.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 1
-; CHECK-NEXT:   %4 = load ptr, ptr %ptry.cacheidx
-; CHECK-NEXT:   store ptr %4, ptr %ptry1
 ; CHECK-NEXT:   %ptry = alloca double
+; CHECK-NEXT:   %ptry.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 1
+; CHECK-NEXT:   %4 = load double, ptr %ptry.cacheidx
+; CHECK-NEXT:   store double %4, ptr %ptry
 ; CHECK-NEXT:   %idxy = getelementptr inbounds double, ptr %ptr, i64 9
 ; CHECK-NEXT:   %valy = load double, ptr %idxy
-; CHECK-NEXT:   store double %valy, ptr %ptry1
+; CHECK-NEXT:   store double %valy, ptr %ptry
 ; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 0
 ; CHECK-NEXT:   %5 = load ptr, ptr %arrayidx.cacheidx
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
@@ -105,7 +104,7 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ;
 ; CHECK: if:                                               ; preds = %entry
 ; CHECK-NEXT:   %val1 = load double, ptr %5
-; CHECK-NEXT:   %y = load double, ptr %ptry1
+; CHECK-NEXT:   %y = load double, ptr %ptry
 ; CHECK-NEXT:   %add = fadd double %val1, %y
 ; CHECK-NEXT:   store double %add, ptr %5
 ; CHECK-NEXT:   br label %end
