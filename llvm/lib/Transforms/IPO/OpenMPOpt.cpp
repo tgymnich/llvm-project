@@ -2571,6 +2571,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   SmallVector<Type *> RequiredTypes(ValueTys);
   RequiredTypes.insert(RequiredTypes.end(), AllocaTys.begin(), AllocaTys.end());
 
+  // NOTE: it is more efficient to create one global for ever value to be cache.
+  // Doing so allows for dead stores and globals to be eliminated.
   Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
   Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
   // TODO: dynamically allocate this in the kernel env
@@ -2611,26 +2613,23 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
     Value *Ptr = Builder.CreateGEP(CacheTy, Cache, {CacheIdx, IdxVal},
                                    Alloca->getName() + ".cacheidx");
-    Value *ToCache = Builder.CreateLoad(Alloca->getType(), Alloca);
+    Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
     Builder.CreateStore(ToCache, Ptr);
 
     Instruction *SplitAlloca = cast<Instruction>(VMapSplit[Alloca]);
-    SplitBuilder.SetInsertPoint(SplitAlloca);
+    SplitBuilder.SetInsertPoint(SplitAlloca->getNextNode());
 
     // NOTE: can we just read / write from the cache directly?
-    Instruction *ReAlloca = SplitBuilder.CreateAlloca(
-        Alloca->getType(), Alloca->getArraySize(), Alloca->getName());
     Value *SplitPtr =
         SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
                                Alloca->getName() + ".cacheidx");
-    Value *CachedVal = SplitBuilder.CreateLoad(Alloca->getType(), SplitPtr);
-    SplitBuilder.CreateStore(CachedVal, ReAlloca);
+    Value *CachedVal =
+        SplitBuilder.CreateLoad(Alloca->getAllocatedType(), SplitPtr);
+    SplitBuilder.CreateStore(CachedVal, SplitAlloca);
 
-    SplitAlloca->replaceAllUsesWith(ReAlloca);
-
-    // TODO: replace orig pointers to alloca with ReAlloc. What about derived
-    // values from the pointer? What about read only values? What about read
-    // write values?
+    // TODO: What about
+    // derived values from the pointer? What about read only values? What about
+    // read write values?
   }
 
   // FIXME: This only works for NVPTX!
