@@ -86,9 +86,9 @@ struct ConfigurationEnvironmentTy {
   int32_t MaxThreads = -1;
   int32_t MinTeams = -1;
   int32_t MaxTeams = -1;
+  uint32_t NumContinuations = 0;
   int32_t ReductionDataSize = 0;
   int32_t ReductionBufferLength = 0;
-  int32_t NumContinuations = 0;
   //}
 };
 
