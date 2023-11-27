@@ -2483,6 +2483,14 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
   SplitKernel->setName(Kernel->getName() + "_contd" + "_0");
 
+  // Get "nvvm.annotations" metadata node.
+  NamedMDNode *MD = M.getOrInsertNamedMetadata("nvvm.annotations");
+  Metadata *MDVals[] = {
+      ConstantAsMetadata::get(SplitKernel), MDString::get(C, "kernel"),
+      ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(C), 1))};
+      
+  // Append metadata to nvvm.annotations.
+  MD->addOperand(MDNode::get(C, MDVals));
 
   // TODO: use min cut
 
@@ -2492,8 +2500,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
-  auto RemoveRange = make_filter_range(
-      make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit, BB](BasicBlock *B) {
+  auto RemoveRange =
+      make_filter_range(make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit,
+                                                      BB](BasicBlock *B) {
         return !BeforeSplit.contains(B) && !AfterSplit.contains(B) && B != BB;
       });
 
