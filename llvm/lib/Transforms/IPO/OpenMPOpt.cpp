@@ -2554,7 +2554,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
       UndefValue::get(TidMapTy), Kernel->getName() + "_tid_map");
 
   CallInst *Tid = Builder.CreateCall(ThreadIdFn);
-  Value *TidMapPtr = Builder.CreateGEP(TidTy, TidMap, {CacheIdx}, "tidmapidx");
+  Value *TidMapPtr =
+      Builder.CreateInBoundsGEP(TidTy, TidMap, {CacheIdx}, "tidmapidx");
   Builder.CreateStore(Tid, TidMapPtr);
 
   CallInst *SplitTid = SplitBuilder.CreateCall(ThreadIdFn);
@@ -2585,8 +2586,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   for (auto [Idx, Inst] : enumerate(RequiredValues)) {
     ConstantInt *ValIdx = Builder.getInt64(Idx);
 
-    Value *Ptr = Builder.CreateGEP(CacheTy, Cache, {CacheIdx, ValIdx},
-                                   Inst->getName() + ".cacheidx");
+    Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, ValIdx},
+                                           Inst->getName() + ".cacheidx");
     Builder.CreateStore(Inst, Ptr);
 
     Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
@@ -2596,8 +2597,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
       SplitBuilder.SetInsertPoint(SplitInst);
 
     Value *SplitPtr =
-        SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
-                               SplitInst->getName() + ".cacheidx");
+        SplitBuilder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
+                                       SplitInst->getName() + ".cacheidx");
     LoadInst *CachedInst =
         SplitBuilder.CreateLoad(SplitInst->getType(), SplitPtr);
     SplitInst->replaceAllUsesWith(CachedInst);
@@ -2611,8 +2612,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   for (auto [Idx, Alloca] : enumerate(Allocas)) {
     ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
 
-    Value *Ptr = Builder.CreateGEP(CacheTy, Cache, {CacheIdx, IdxVal},
-                                   Alloca->getName() + ".cacheidx");
+    Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, IdxVal},
+                                           Alloca->getName() + ".cacheidx");
     Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
     Builder.CreateStore(ToCache, Ptr);
 
@@ -2621,8 +2622,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
     // NOTE: can we just read / write from the cache directly?
     Value *SplitPtr =
-        SplitBuilder.CreateGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
-                               Alloca->getName() + ".cacheidx");
+        SplitBuilder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
+                                       Alloca->getName() + ".cacheidx");
     Value *CachedVal =
         SplitBuilder.CreateLoad(Alloca->getAllocatedType(), SplitPtr);
     SplitBuilder.CreateStore(CachedVal, SplitAlloca);
@@ -2655,7 +2656,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
     SplitBuilder.SetInsertPoint(Call->getNextNode());
     Value *Ptr =
-        SplitBuilder.CreateGEP(Call->getType(), TidMap, {Call}, "tidmapidx");
+        SplitBuilder.CreateInBoundsGEP(Call->getType(), TidMap, {Call}, "tidmapidx");
     Value *CachedTid =
         SplitBuilder.CreateLoad(Call->getType(), Ptr, I.getName() + ".mapped");
     Call->replaceUsesWithIf(

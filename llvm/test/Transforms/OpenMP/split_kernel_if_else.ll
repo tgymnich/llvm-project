@@ -53,9 +53,9 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ; CHECK: if:                                               ; preds = %entry
 ; CHECK-NEXT:   %cacheidx = atomicrmw add ptr @test_cont_count, i64 1 acquire
 ; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:   %tidmapidx = getelementptr i32, ptr @test_tid_map, i64 %cacheidx
+; CHECK-NEXT:   %tidmapidx = getelementptr inbounds i32, ptr @test_tid_map, i64 %cacheidx
 ; CHECK-NEXT:   store i32 %0, ptr %tidmapidx
-; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 0
+; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 0
 ; CHECK-NEXT:   store ptr %arrayidx, ptr %arrayidx.cacheidx
 ; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
 ; CHECK-NEXT:   unreachable
@@ -71,7 +71,7 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ; CHECK: define void @test_contd_0(ptr %tid_addr, ptr %ptr, ptr %dyn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:   %tidmapidx = getelementptr i32, ptr @test_tid_map, i32 %0
+; CHECK-NEXT:   %tidmapidx = getelementptr inbounds i32, ptr @test_tid_map, i32 %0
 ; CHECK-NEXT:   %.mapped = load i32, ptr %tidmapidx
 ; CHECK-NEXT:   %1 = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
@@ -79,7 +79,7 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ; CHECK-NEXT:   %gtid = add i32 %.mapped, %3
 ; CHECK-NEXT:   %i = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr %dyn)
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
-; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 0
+; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 0
 ; CHECK-NEXT:   %4 = load ptr, ptr %arrayidx.cacheidx
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
 ; CHECK-NEXT:   call void @llvm.assume(i1 %cmp)
