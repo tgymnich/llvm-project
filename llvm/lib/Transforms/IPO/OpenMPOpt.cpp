@@ -2576,7 +2576,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   auto ValueTys =
       map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
   auto AllocaTys =
-      map_range(Allocas, [](AllocaInst *I) { return I->getType(); });
+      map_range(Allocas, [](AllocaInst *I) { return I->getAllocatedType(); });
   SmallVector<Type *> RequiredTypes(ValueTys);
   RequiredTypes.insert(RequiredTypes.end(), AllocaTys.begin(), AllocaTys.end());
 
