@@ -949,14 +949,14 @@ struct OpenMPOpt {
 
   using OptimizationRemarkGetter =
       function_ref<OptimizationRemarkEmitter &(Function *)>;
-  using LoopInfoGetter =
-      function_ref<LoopInfo &(Function *)>;
+  using LoopInfoGetter = function_ref<LoopInfo &(Function *)>;
 
   OpenMPOpt(SmallVectorImpl<Function *> &SCC, CallGraphUpdater &CGUpdater,
             OptimizationRemarkGetter OREGetter, LoopInfoGetter LIGetter,
             OMPInformationCache &OMPInfoCache, Attributor &A)
       : M(*(*SCC.begin())->getParent()), SCC(SCC), CGUpdater(CGUpdater),
-        OREGetter(OREGetter), LIGetter(LIGetter), OMPInfoCache(OMPInfoCache), A(A) {}
+        OREGetter(OREGetter), LIGetter(LIGetter), OMPInfoCache(OMPInfoCache),
+        A(A) {}
 
   /// Check if any remarks are enabled for openmp-opt
   bool remarksEnabled() {
@@ -2345,6 +2345,21 @@ void determineValuesAcross(Instruction *Inst,
         if (!Val)
           continue;
 
+        if (isa<CastInst>(Val))
+          continue;
+
+        if (isa<GetElementPtrInst>(Val))
+          continue;
+
+        if (isa<Argument>(Val))
+          continue;
+
+        // if (isa<ExtractElementInst>(Val))
+        //   continue;
+
+        // if (isa<ExtractValueInst>(Val))
+        //   continue;
+
         if (BB != Inst->getParent() && Visited.contains(Val->getParent()))
           continue;
 
@@ -2436,7 +2451,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   LoopInfo &LI = LIGetter(Kernel);
 
   // determine BasicBlocks upstream of BB traversing the loop upwards only
-  std::queue<BasicBlock*> TodoUp;
+  std::queue<BasicBlock *> TodoUp;
   TodoUp.push(BB);
 
   while (!TodoUp.empty()) {
@@ -2451,14 +2466,16 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
       continue;
     }
 
-    auto Range = make_filter_range(predecessors(Current), [L](BasicBlock *B) { return !L->contains(B) || !L->isLoopLatch(B); });
+    auto Range = make_filter_range(predecessors(Current), [L](BasicBlock *B) {
+      return !L->contains(B) || !L->isLoopLatch(B);
+    });
     for (auto V : Range)
       if (BeforeSplit.insert(V).second)
-          TodoUp.push(V);
+        TodoUp.push(V);
   }
 
   // determine BasicBlocks dowmstream of BB traversing the loop downwards only
-  std::queue<BasicBlock*> TodoDown;
+  std::queue<BasicBlock *> TodoDown;
   TodoDown.push(BB);
 
   while (!TodoDown.empty()) {
@@ -2473,7 +2490,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
       continue;
     }
 
-    auto Range = make_filter_range(successors(Current), [L](BasicBlock *B) { return L->getHeader() != B; });
+    auto Range = make_filter_range(successors(Current), [L](BasicBlock *B) {
+      return L->getHeader() != B;
+    });
     for (auto V : Range)
       if (AfterSplit.insert(V).second)
         TodoDown.push(V);
@@ -2488,15 +2507,13 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Metadata *MDVals[] = {
       ConstantAsMetadata::get(SplitKernel), MDString::get(C, "kernel"),
       ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(C), 1))};
-      
+
   // Append metadata to nvvm.annotations.
   MD->addOperand(MDNode::get(C, MDVals));
 
   // TODO: use min cut
 
   // TODO: recompute values if possible
-
-  // TODO: what about loops?
 
   // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
@@ -2572,7 +2589,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Value *SplitGlobalTid = SplitBuilder.CreateAdd(
       SplitTid, SplitBuilder.CreateMul(SplitBlockId, SplitNumThreads), "gtid");
 
-  // cache values shared between the original kernel and the split kernel.
+  // Cache values shared between the original kernel and the split kernel.
   auto ValueTys =
       map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
   auto AllocaTys =
@@ -2580,14 +2597,18 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   SmallVector<Type *> RequiredTypes(ValueTys);
   RequiredTypes.insert(RequiredTypes.end(), AllocaTys.begin(), AllocaTys.end());
 
-  // NOTE: it is more efficient to create one global for ever value to be cache.
-  // Doing so allows for dead stores and globals to be eliminated.
-  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
-  Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
-  // TODO: dynamically allocate this in the kernel env
-  GlobalVariable *Cache = new GlobalVariable(
-      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
-      Kernel->getName() + "_cont_cache");
+  GlobalVariable *Cache;
+  Type *CacheTy;
+  if (!RequiredTypes.empty()) {
+    // NOTE: it is more efficient to create one global for ever value to be
+    // cache. Doing so allows for dead stores and globals to be eliminated.
+    Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
+    CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
+    // TODO: dynamically allocate this in the kernel env
+    Cache = new GlobalVariable(M, CacheTy, false, GlobalValue::PrivateLinkage,
+                               UndefValue::get(CacheTy),
+                               Kernel->getName() + "_cont_cache");
+  }
 
   // Iterate over ModifiedKernel and SplitKernel and insert cache
   // instructions if needed.
@@ -2611,9 +2632,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
         SplitBuilder.CreateLoad(SplitInst->getType(), SplitPtr);
     SplitInst->replaceAllUsesWith(CachedInst);
     SplitInst->eraseFromParent();
-
-    // use malloc to allocate array. atomic inc counter for tid
-    // buffer: global tid -> set of live vars
   }
 
   // Rematerialize allocas
@@ -2663,15 +2681,15 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
       continue;
 
     SplitBuilder.SetInsertPoint(Call->getNextNode());
-    Value *Ptr =
-        SplitBuilder.CreateInBoundsGEP(Call->getType(), TidMap, {Call}, "tidmapidx");
+    Value *Ptr = SplitBuilder.CreateInBoundsGEP(Call->getType(), TidMap, {Call},
+                                                "tidmapidx");
     Value *CachedTid =
         SplitBuilder.CreateLoad(Call->getType(), Ptr, I.getName() + ".mapped");
     Call->replaceUsesWithIf(
         CachedTid, [Ptr](Use &U) -> bool { return U.getUser() != Ptr; });
   }
 
-  // clone omp globals
+  // Clone omp globals
   GlobalVariable *ExecMode =
       M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
 
@@ -6347,7 +6365,6 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
   Attributor A(Functions, InfoCache, AC);
 
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, InfoCache, A);
-
 
   bool Changed = OMPOpt.run(false);
 
