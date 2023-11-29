@@ -63,9 +63,7 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
 ; CHECK-NEXT:   %tidmapidx = getelementptr inbounds i32, ptr @test_tid_map, i64 %cacheidx
 ; CHECK-NEXT:   store i32 %0, ptr %tidmapidx
-; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 0
-; CHECK-NEXT:   store ptr %arrayidx, ptr %arrayidx.cacheidx
-; CHECK-NEXT:   %ptry.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 1
+; CHECK-NEXT:   %ptry.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i64 %cacheidx, i64 0
 ; CHECK-NEXT:   %1 = load double, ptr %ptry
 ; CHECK-NEXT:   store double %1, ptr %ptry.cacheidx
 ; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
@@ -91,28 +89,27 @@ define void @test(ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread
 ; CHECK-NEXT:   %i = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr %dyn)
 ; CHECK-NEXT:   %tid = load i64, ptr %tid_addr
 ; CHECK-NEXT:   %ptry = alloca double
-; CHECK-NEXT:   %ptry.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 1
+; CHECK-NEXT:   %ptry.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 0
 ; CHECK-NEXT:   %4 = load double, ptr %ptry.cacheidx
 ; CHECK-NEXT:   store double %4, ptr %ptry
 ; CHECK-NEXT:   %idxy = getelementptr inbounds double, ptr %ptr, i64 9
 ; CHECK-NEXT:   %valy = load double, ptr %idxy
 ; CHECK-NEXT:   store double %valy, ptr %ptry
-; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr inbounds [32 x %cache_cell], ptr @test_cont_cache, i32 %gtid, i64 0
-; CHECK-NEXT:   %5 = load ptr, ptr %arrayidx.cacheidx
+; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, ptr %ptr, i64 %tid
 ; CHECK-NEXT:   %cmp = icmp ult i64 0, %tid
 ; CHECK-NEXT:   br i1 %cmp, label %if, label %end
 ;
 ; CHECK: if:                                               ; preds = %entry
-; CHECK-NEXT:   %val1 = load double, ptr %5
+; CHECK-NEXT:   %val1 = load double, ptr %arrayidx
 ; CHECK-NEXT:   %y = load double, ptr %ptry
 ; CHECK-NEXT:   %add = fadd double %val1, %y
-; CHECK-NEXT:   store double %add, ptr %5
+; CHECK-NEXT:   store double %add, ptr %arrayidx
 ; CHECK-NEXT:   br label %end
 ;
 ; CHECK: end:                                              ; preds = %if, %entry
-; CHECK-NEXT:   %val2 = load double, ptr %5
+; CHECK-NEXT:   %val2 = load double, ptr %arrayidx
 ; CHECK-NEXT:   %mul = fmul double %val2, %val2
-; CHECK-NEXT:   store double %mul, ptr %5
+; CHECK-NEXT:   store double %mul, ptr %arrayidx
 ; CHECK-NEXT:   call void @__kmpc_target_deinit()
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
