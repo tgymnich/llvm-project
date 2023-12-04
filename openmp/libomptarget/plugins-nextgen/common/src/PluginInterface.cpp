@@ -603,9 +603,9 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
     uint32_t NumThreads = ContCount;
     uint64_t NumBlocks = 1;
 
-    if (auto Err = Continuation->launchImpl(GenericDevice, NumBlocks,
-                                            NumThreads, KernelArgs,
-                                            KernelArgsPtr, AsyncInfoWrapper))
+    if (auto Err = Continuation->launchImpl(GenericDevice, NumThreads, NumBlocks,
+                                            KernelArgs, KernelArgsPtr,
+                                            AsyncInfoWrapper))
       return Err;
   }
 
