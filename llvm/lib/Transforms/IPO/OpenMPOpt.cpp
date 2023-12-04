@@ -2363,8 +2363,10 @@ void determineValuesAcross(Instruction *Inst,
         if (BB != Inst->getParent() && Visited.contains(Val->getParent()))
           continue;
 
-        if (auto Alloca = dyn_cast<AllocaInst>(Val))
+        if (auto Alloca = dyn_cast<AllocaInst>(Val)) {
           CapturedAllocations.insert(Alloca);
+          continue;
+        }
 
         RequiredValues.insert(Val);
       }
@@ -2438,6 +2440,17 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
+
+  for (Instruction &I: make_early_inc_range(instructions(Kernel))) {
+    CallInst *Call = dyn_cast<CallInst>(&I);
+    if (!Call)
+      continue;
+
+    StringRef Name = Call->getCalledFunction()->getName();
+    if (Name.starts_with("llvm.nvvm.read.ptx.sreg")) {
+      Call->moveBefore(Kernel->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
+    }
+  }
 
   // Find Instructions that require caching
   SetVector<Instruction *> RequiredValues;
@@ -2571,18 +2584,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
       AtomicOrdering::Acquire);
   CacheIdx->setName("cacheidx");
 
-  // Map global tids to local tids
-  Type *TidTy = ThreadIdFn.getFunctionType()->getReturnType();
-  Type *TidMapTy = ArrayType::get(TidTy, MaxNumThreads);
-  GlobalVariable *TidMap = new GlobalVariable(
-      M, TidMapTy, false, GlobalValue::PrivateLinkage,
-      UndefValue::get(TidMapTy), Kernel->getName() + "_tid_map");
-
-  CallInst *Tid = Builder.CreateCall(ThreadIdFn);
-  Value *TidMapPtr =
-      Builder.CreateInBoundsGEP(TidTy, TidMap, {CacheIdx}, "tidmapidx");
-  Builder.CreateStore(Tid, TidMapPtr);
-
   CallInst *SplitTid = SplitBuilder.CreateCall(ThreadIdFn);
   CallInst *SplitBlockId = SplitBuilder.CreateCall(BlockIdFn);
   CallInst *SplitNumThreads = SplitBuilder.CreateCall(NumThreadsFn);
@@ -2664,30 +2665,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
   InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
   CallInst::Create(ExitFTy, Exit, "", Term);
-
-  // Map thread ID to cached thread id.
-  StringSet<> ThreadIDGetters = {"llvm.nvvm.read.ptx.sreg.tid.x"};
-  // FIXME: AMD
-  for (Instruction &I : instructions(SplitKernel)) {
-    CallInst *Call = dyn_cast<CallInst>(&I);
-    if (!Call)
-      continue;
-
-    Function *Called = Call->getCalledFunction();
-    if (!Called)
-      continue;
-
-    if (!ThreadIDGetters.contains(Called->getName()))
-      continue;
-
-    SplitBuilder.SetInsertPoint(Call->getNextNode());
-    Value *Ptr = SplitBuilder.CreateInBoundsGEP(Call->getType(), TidMap, {Call},
-                                                "tidmapidx");
-    Value *CachedTid =
-        SplitBuilder.CreateLoad(Call->getType(), Ptr, I.getName() + ".mapped");
-    Call->replaceUsesWithIf(
-        CachedTid, [Ptr](Use &U) -> bool { return U.getUser() != Ptr; });
-  }
 
   // Clone omp globals
   GlobalVariable *ExecMode =
