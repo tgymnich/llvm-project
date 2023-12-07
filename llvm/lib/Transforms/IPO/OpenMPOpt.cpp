@@ -2327,11 +2327,6 @@ bool OpenMPOpt::splitKernels() {
 void determineValuesAcross(Instruction *Inst,
                            SetVector<Instruction *> &RequiredValues,
                            SetVector<AllocaInst *> &CapturedAllocations) {
-
-  // add new ptr to kernel env. runtime should look for and launch continuations
-  // by name.
-  //
-
   // find all values that are defined before Inst, used by an instruction that
   // comes after Inst.
   SmallPtrSet<BasicBlock *, 32> Visited;
@@ -2341,30 +2336,36 @@ void determineValuesAcross(Instruction *Inst,
       if (BB == Inst->getParent() && I.comesBefore(Inst))
         continue;
 
-      for (Use &U : Inst->operands()) {
-        Instruction *Val = dyn_cast<Instruction>(U.get());
+      SmallVector<Use *> Todo;
+      for (Use *U : concat<Use *>(make_pointer_range(Inst->operands()), Todo)) {
+        Instruction *Val = dyn_cast<Instruction>(U->get());
         if (!Val)
           continue;
 
-        if (isa<CastInst>(Val))
+        if (isa<PHINode>(Val)) {
+          append_range(Todo, make_pointer_range(Val->operands()));
           continue;
+        }
 
-        if (isa<GetElementPtrInst>(Val))
+        if (isa<CastInst>(Val)) {
+          append_range(Todo, make_pointer_range(Val->operands()));
           continue;
+        }
 
-        if (isa<Argument>(Val))
+        if (isa<GetElementPtrInst>(Val)) {
+          append_range(Todo, make_pointer_range(Val->operands()));
           continue;
+        }
 
-        // if (isa<ExtractElementInst>(Val))
-        //   continue;
-
-        // if (isa<ExtractValueInst>(Val))
-        //   continue;
+        if (isa<Argument>(Val)) {
+          append_range(Todo, make_pointer_range(Val->operands()));
+          continue;
+        }
 
         if (BB != Inst->getParent() && Visited.contains(Val->getParent()))
           continue;
 
-        if (auto Alloca = dyn_cast<AllocaInst>(Val)) {
+        if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Val)) {
           CapturedAllocations.insert(Alloca);
           continue;
         }
@@ -2376,17 +2377,15 @@ void determineValuesAcross(Instruction *Inst,
 
   // find all allocas
   SmallVector<AllocaInst *> Allocations;
-  for (BasicBlock &BB : *Inst->getFunction()) {
-    for (Instruction &I : BB) {
-      if (I.getParent() == Inst->getParent() && I.comesBefore(Inst))
-        break;
+  for (Instruction &I : instructions(*Inst->getFunction())) {
+    if (I.getParent() == Inst->getParent() && I.comesBefore(Inst))
+      break;
 
-      if (I.getParent() != Inst->getParent() && Visited.contains(I.getParent()))
-        break;
+    if (I.getParent() != Inst->getParent() && Visited.contains(I.getParent()))
+      break;
 
-      if (auto Alloca = dyn_cast<AllocaInst>(&I))
-        Allocations.push_back(Alloca);
-    }
+    if (AllocaInst *Alloca = dyn_cast<AllocaInst>(&I))
+      Allocations.push_back(Alloca);
   }
 
   // iterate down the def-use chain of the allocas and preserve them if
@@ -2442,15 +2441,15 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
 
-  for (Instruction &I: make_early_inc_range(instructions(Kernel))) {
+  // Move all ptx register reads to the beginning of the Kernel, so that they will be cached.
+  for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
     CallInst *Call = dyn_cast<CallInst>(&I);
     if (!Call)
       continue;
 
     StringRef Name = Call->getCalledFunction()->getName();
-    if (Name.starts_with("llvm.nvvm.read.ptx.sreg")) {
+    if (Name.starts_with("llvm.nvvm.read.ptx.sreg"))
       Call->moveBefore(Kernel->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
-    }
   }
 
   // Find Instructions that require caching
@@ -2458,13 +2457,13 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   SetVector<AllocaInst *> Allocas;
   determineValuesAcross(&BB->front(), RequiredValues, Allocas);
 
-  // Find Instructions to split off
+  // Find BasicBlocks to split off
   SmallPtrSet<BasicBlock *, 32> BeforeSplit;
   SmallPtrSet<BasicBlock *, 32> AfterSplit;
 
   LoopInfo &LI = LIGetter(Kernel);
 
-  // determine BasicBlocks upstream of BB traversing the loop upwards only
+  // Determine BasicBlocks upstream of BB traversing the loop upwards only
   std::queue<BasicBlock *> TodoUp;
   TodoUp.push(BB);
 
@@ -2475,17 +2474,19 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     Loop *L = LI.getLoopFor(Current);
 
     if (!L) {
-      auto Range = inverse_depth_first(Current);
-      BeforeSplit.insert(Range.begin(), Range.end());
+      auto ToInsert = inverse_depth_first(Current);
+      BeforeSplit.insert(ToInsert.begin(), ToInsert.end());
       continue;
     }
 
-    auto Range = make_filter_range(predecessors(Current), [L](BasicBlock *B) {
-      return !L->contains(B) || !L->isLoopLatch(B);
-    });
-    for (auto V : Range)
-      if (BeforeSplit.insert(V).second)
-        TodoUp.push(V);
+    // TODO: Remove loop latch check??
+    for (BasicBlock *BB : predecessors(Current)) {
+      if (L->contains(BB) || L->isLoopLatch(BB))
+        continue;
+
+      if (BeforeSplit.insert(BB).second)
+        TodoUp.push(BB);
+    }
   }
 
   // determine BasicBlocks dowmstream of BB traversing the loop downwards only
@@ -2499,17 +2500,18 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     Loop *L = LI.getLoopFor(Current);
 
     if (!L) {
-      auto Range = depth_first(Current);
-      AfterSplit.insert(Range.begin(), Range.end());
+      auto ToInsert = depth_first(Current);
+      AfterSplit.insert(ToInsert.begin(), ToInsert.end());
       continue;
     }
 
-    auto Range = make_filter_range(successors(Current), [L](BasicBlock *B) {
-      return L->getHeader() != B;
-    });
-    for (auto V : Range)
-      if (AfterSplit.insert(V).second)
-        TodoDown.push(V);
+    for (BasicBlock *BB : successors(Current)) {
+      if (BB == L->getHeader())
+        continue;
+
+      if (AfterSplit.insert(BB).second)
+        TodoDown.push(BB);
+    }
   }
 
   ValueToValueMapTy VMapSplit;
@@ -2525,47 +2527,61 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   // Append metadata to nvvm.annotations.
   MD->addOperand(MDNode::get(C, MDVals));
 
+  // Clone omp globals
+  GlobalVariable *ExecMode =
+      M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
+
+  if (ExecMode)
+    new GlobalVariable(M, ExecMode->getValueType(), ExecMode->isConstant(),
+                       ExecMode->getLinkage(), ExecMode->getInitializer(),
+                       SplitKernel->getName() + "_exec_mode", nullptr,
+                       ExecMode->getThreadLocalMode(),
+                       ExecMode->getAddressSpace());
+
+  GlobalVariable *NestedParallelism =
+      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());
+
+  if (NestedParallelism)
+    new GlobalVariable(
+        M, NestedParallelism->getValueType(), NestedParallelism->isConstant(),
+        NestedParallelism->getLinkage(), NestedParallelism->getInitializer(),
+        SplitKernel->getName() + "_nested_parallelism", nullptr,
+        NestedParallelism->getThreadLocalMode(),
+        NestedParallelism->getAddressSpace());
+
   // TODO: use min cut
 
   // TODO: recompute values if possible
 
   // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
-  auto RemoveRange =
-      make_filter_range(make_pointer_range(*Kernel), [&BeforeSplit, &AfterSplit,
-                                                      BB](BasicBlock *B) {
-        return !BeforeSplit.contains(B) && !AfterSplit.contains(B) && B != BB;
-      });
-
   // Remove unused BasicBlocks from SplitFunction
-  for (BasicBlock *BB : RemoveRange) {
-    BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
-    UnreachableInst *SplitTerm = new UnreachableInst(C);
-    ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
-  }
+  for (BasicBlock &ToRemove : *Kernel) {
+    if (BeforeSplit.contains(&ToRemove) || AfterSplit.contains(&ToRemove) ||
+        &ToRemove == BB)
+      continue;
 
-  IRBuilder<> Builder(Kernel->getEntryBlock().getFirstNonPHIOrDbg());
-  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
+    BasicBlock *SplitToRemove = cast<BasicBlock>(VMapSplit[&ToRemove]);
+    UnreachableInst *SplitTerm = new UnreachableInst(C);
+    ReplaceInstWithInst(SplitToRemove->getTerminator(), SplitTerm);
+  }
 
   SplitBlock(BB, &BB->front());
   UnreachableInst *Term = new UnreachableInst(C);
   ReplaceInstWithInst(BB->getTerminator(), Term);
-  Builder.SetInsertPoint(BB->getTerminator());
 
-  // FunctionCallee ThreadIdFn =
-  //     OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
-  //         M, OMPRTL___kmpc_get_hardware_thread_id_in_block);
+  // Terminate thread once a split off BB is reached.
+  // FIXME: This only works for NVPTX!
+  assert(Triple(M.getTargetTriple()).isNVPTX());
+  FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
+  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+  CallInst* ExitCall = CallInst::Create(ExitFTy, Exit, "", Term);
+
+  // TODO: Use OMP runtime instead of ptx intrinsics.
   FunctionCallee ThreadIdFn = M.getOrInsertFunction(
       "llvm.nvvm.read.ptx.sreg.tid.x", Type::getInt32Ty(C));
-  // FunctionCallee NumThreadsFn =
-  //     OMPInfoCache.OMPBuilder.getOrCreateRuntimeFunction(
-  //         M, OMPRTL___kmpc_get_hardware_num_threads_in_block);
   FunctionCallee NumThreadsFn = M.getOrInsertFunction(
       "llvm.nvvm.read.ptx.sreg.ntid.x", Type::getInt32Ty(C));
-  // FunctionType *BlockIdTy =
-  //     FunctionType::get(IntegerType::getInt32Ty(C), false);
-  // FunctionCallee BlockIdFn = M.getOrInsertFunction("ompx_block_id_x",
-  // BlockIdTy);
   FunctionCallee BlockIdFn = M.getOrInsertFunction(
       "llvm.nvvm.read.ptx.sreg.ctaid.x", Type::getInt32Ty(C));
 
@@ -2574,6 +2590,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   unsigned NumTeams =
       Kernel->getFnAttributeAsParsedInteger("omp_target_num_teams");
   unsigned MaxNumThreads = ThreadLimit * NumTeams;
+
+  IRBuilder<> Builder(ExitCall);
+  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
 
   // Keep track of the number of continuation kernels to spawn.
   Type *ContCountTy = IntegerType::getInt64Ty(C);
@@ -2597,20 +2616,23 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   auto AllocaTys =
       map_range(Allocas, [](AllocaInst *I) { return I->getAllocatedType(); });
   SmallVector<Type *> RequiredTypes(ValueTys);
-  RequiredTypes.insert(RequiredTypes.end(), AllocaTys.begin(), AllocaTys.end());
+  append_range(RequiredTypes, AllocaTys);
 
-  GlobalVariable *Cache;
-  Type *CacheTy;
-  if (!RequiredTypes.empty()) {
-    // NOTE: it is more efficient to create one global for ever value to be
-    // cache. Doing so allows for dead stores and globals to be eliminated.
-    Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
-    CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
-    // TODO: dynamically allocate this in the kernel env
-    Cache = new GlobalVariable(M, CacheTy, false, GlobalValue::PrivateLinkage,
-                               UndefValue::get(CacheTy),
-                               Kernel->getName() + "_cont_cache");
+  if (RequiredTypes.empty()) {
+    assert(!verifyFunction(*Kernel, &errs()));
+    assert(!verifyFunction(*SplitKernel, &errs()));
+
+    return SplitKernel;
   }
+
+  // NOTE: it is more efficient to create one global for ever value to be
+  // cache. Doing so allows for dead stores and globals to be eliminated.
+  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
+  Type* CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
+  // TODO: dynamically allocate this in the kernel env
+  GlobalVariable *Cache = new GlobalVariable(
+      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
+      Kernel->getName() + "_cont_cache");
 
   // Iterate over ModifiedKernel and SplitKernel and insert cache
   // instructions if needed.
@@ -2622,6 +2644,7 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     Builder.CreateStore(Inst, Ptr);
 
     Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
+    // TODO: this case distinction should be uncessary since we don't cache phis
     if (isa<PHINode>(Inst))
       SplitBuilder.SetInsertPoint(SplitInst->getParent()->getFirstNonPHI());
     else
@@ -2660,34 +2683,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     // derived values from the pointer? What about read only values? What about
     // read write values?
   }
-
-  // FIXME: This only works for NVPTX!
-  assert(Triple(M.getTargetTriple()).isNVPTX());
-  FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
-  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
-  CallInst::Create(ExitFTy, Exit, "", Term);
-
-  // Clone omp globals
-  GlobalVariable *ExecMode =
-      M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
-
-  if (ExecMode)
-    new GlobalVariable(M, ExecMode->getValueType(), ExecMode->isConstant(),
-                       ExecMode->getLinkage(), ExecMode->getInitializer(),
-                       SplitKernel->getName() + "_exec_mode", nullptr,
-                       ExecMode->getThreadLocalMode(),
-                       ExecMode->getAddressSpace());
-
-  GlobalVariable *NestedParallelism =
-      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());
-
-  if (NestedParallelism)
-    new GlobalVariable(
-        M, NestedParallelism->getValueType(), NestedParallelism->isConstant(),
-        NestedParallelism->getLinkage(), NestedParallelism->getInitializer(),
-        SplitKernel->getName() + "_nested_parallelism", nullptr,
-        NestedParallelism->getThreadLocalMode(),
-        NestedParallelism->getAddressSpace());
 
   assert(!verifyFunction(*Kernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));
