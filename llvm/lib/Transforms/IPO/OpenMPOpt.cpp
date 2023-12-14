@@ -19,29 +19,26 @@
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
-#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/PushRelabelMaxFlow.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
-#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator.h"
-#include "llvm/ADT/iterator_range.h"
+#include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
-#include "llvm/Analysis/CallGraphSCCPass.h"
+#include "llvm/Analysis/DomTreeUpdater.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/LoopIterator.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include "llvm/Frontend/OpenMP/OMPDeviceConstants.h"
@@ -82,6 +79,9 @@
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/CodeExtractor.h"
+#include "llvm/Transforms/Utils/LoopPeel.h"
+#include "llvm/Transforms/Utils/LoopSimplify.h"
+#include "llvm/Transforms/Utils/LoopUtils.h"
 
 #include <algorithm>
 #include <optional>
@@ -950,12 +950,18 @@ struct OpenMPOpt {
   using OptimizationRemarkGetter =
       function_ref<OptimizationRemarkEmitter &(Function *)>;
   using LoopInfoGetter = function_ref<LoopInfo &(Function *)>;
+  using DominatorTreeGetter = function_ref<DominatorTree &(Function *)>;
+  using AssumptionCacheGetter = function_ref<AssumptionCache &(Function *)>;
+  using ScalarEvolutionGetter = function_ref<ScalarEvolution &(Function *)>;
 
   OpenMPOpt(SmallVectorImpl<Function *> &SCC, CallGraphUpdater &CGUpdater,
             OptimizationRemarkGetter OREGetter, LoopInfoGetter LIGetter,
-            OMPInformationCache &OMPInfoCache, Attributor &A)
+            DominatorTreeGetter DTGetter, AssumptionCacheGetter ACGetter,
+            ScalarEvolutionGetter SCEVGetter, OMPInformationCache &OMPInfoCache,
+            Attributor &A)
       : M(*(*SCC.begin())->getParent()), SCC(SCC), CGUpdater(CGUpdater),
-        OREGetter(OREGetter), LIGetter(LIGetter), OMPInfoCache(OMPInfoCache),
+        OREGetter(OREGetter), LIGetter(LIGetter), DTGetter(DTGetter),
+        ACGetter(ACGetter), SCEVGetter(SCEVGetter), OMPInfoCache(OMPInfoCache),
         A(A) {}
 
   /// Check if any remarks are enabled for openmp-opt
@@ -2077,6 +2083,12 @@ private:
 
   LoopInfoGetter LIGetter;
 
+  DominatorTreeGetter DTGetter;
+
+  AssumptionCacheGetter ACGetter;
+
+  ScalarEvolutionGetter SCEVGetter;
+
   /// OpenMP-specific information cache. Also Used for Attributor runs.
   OMPInformationCache &OMPInfoCache;
 
@@ -2441,7 +2453,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
 
-  // Move all ptx register reads to the beginning of the Kernel, so that they will be cached.
+  // Move all ptx register reads to the beginning of the Kernel, so that they
+  // will be cached.
   for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
     CallInst *Call = dyn_cast<CallInst>(&I);
     if (!Call)
@@ -2457,11 +2470,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   SetVector<AllocaInst *> Allocas;
   determineValuesAcross(&BB->front(), RequiredValues, Allocas);
 
-  // Find BasicBlocks to split off
-  SmallPtrSet<BasicBlock *, 32> BeforeSplit;
-  SmallPtrSet<BasicBlock *, 32> AfterSplit;
-
   LoopInfo &LI = LIGetter(Kernel);
+  DominatorTree &DT = DTGetter(Kernel);
+  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
 
   // Determine BasicBlocks upstream of BB traversing the loop upwards only
   std::queue<BasicBlock *> TodoUp;
@@ -2555,28 +2566,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // NOTE: recompute should consider a custom map e.g. for mapped thread id.
 
-  // Remove unused BasicBlocks from SplitFunction
-  for (BasicBlock &ToRemove : *Kernel) {
-    if (BeforeSplit.contains(&ToRemove) || AfterSplit.contains(&ToRemove) ||
-        &ToRemove == BB)
-      continue;
-
-    BasicBlock *SplitToRemove = cast<BasicBlock>(VMapSplit[&ToRemove]);
-    UnreachableInst *SplitTerm = new UnreachableInst(C);
-    ReplaceInstWithInst(SplitToRemove->getTerminator(), SplitTerm);
-  }
-
-  SplitBlock(BB, &BB->front());
-  UnreachableInst *Term = new UnreachableInst(C);
-  ReplaceInstWithInst(BB->getTerminator(), Term);
-
-  // Terminate thread once a split off BB is reached.
-  // FIXME: This only works for NVPTX!
-  assert(Triple(M.getTargetTriple()).isNVPTX());
-  FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
-  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
-  CallInst* ExitCall = CallInst::Create(ExitFTy, Exit, "", Term);
-
   // TODO: Use OMP runtime instead of ptx intrinsics.
   FunctionCallee ThreadIdFn = M.getOrInsertFunction(
       "llvm.nvvm.read.ptx.sreg.tid.x", Type::getInt32Ty(C));
@@ -2590,6 +2579,52 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   unsigned NumTeams =
       Kernel->getFnAttributeAsParsedInteger("omp_target_num_teams");
   unsigned MaxNumThreads = ThreadLimit * NumTeams;
+
+  // Cache values shared between the original kernel and the split kernel.
+  auto ValueTys =
+      map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
+  auto AllocaTys =
+      map_range(Allocas, [](AllocaInst *I) { return I->getAllocatedType(); });
+  SmallVector<Type *> RequiredTypes(ValueTys);
+  append_range(RequiredTypes, AllocaTys);
+
+  if (RequiredTypes.empty()) {
+    assert(!verifyFunction(*Kernel, &errs()));
+    assert(!verifyFunction(*SplitKernel, &errs()));
+
+    return SplitKernel;
+  }
+
+  // If inside a loop, peel of the first iteration and use it for loading cached
+  // values.
+  Loop *L = LI.getLoopFor(BB) ? LI.getLoopFor(BB)->getOutermostLoop() : nullptr;
+  ValueToValueMapTy PeelVMap;
+  if (L) {
+    assert(!verifyFunction(*SplitKernel, &errs()));
+
+    BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
+
+    LoopInfo &LI = LIGetter(SplitKernel);
+    DominatorTree &DT = DTGetter(SplitKernel);
+    AssumptionCache &AC = ACGetter(SplitKernel);
+    ScalarEvolution &SCEV = SCEVGetter(SplitKernel);
+
+    Loop *L = LI.getLoopFor(SplitBB);
+
+    simplifyLoop(L, &DT, &LI, &SCEV, &AC, /*MSSAU*/ nullptr, false);
+    peelLoop(L, 1, &LI, &SCEV, DT, &AC, false, PeelVMap);
+  }
+
+  SplitBlock(BB, &BB->front(), &DTU, &LI);
+  UnreachableInst *Term = new UnreachableInst(C);
+  ReplaceInstWithInst(BB->getTerminator(), Term);
+
+  // Terminate thread once a split off BB is reached.
+  // FIXME: This only works for NVPTX!
+  assert(Triple(M.getTargetTriple()).isNVPTX());
+  FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
+  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+  CallInst *ExitCall = CallInst::Create(ExitFTy, Exit, "", Term);
 
   IRBuilder<> Builder(ExitCall);
   IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
@@ -2610,25 +2645,10 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   Value *SplitGlobalTid = SplitBuilder.CreateAdd(
       SplitTid, SplitBuilder.CreateMul(SplitBlockId, SplitNumThreads), "gtid");
 
-  // Cache values shared between the original kernel and the split kernel.
-  auto ValueTys =
-      map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
-  auto AllocaTys =
-      map_range(Allocas, [](AllocaInst *I) { return I->getAllocatedType(); });
-  SmallVector<Type *> RequiredTypes(ValueTys);
-  append_range(RequiredTypes, AllocaTys);
-
-  if (RequiredTypes.empty()) {
-    assert(!verifyFunction(*Kernel, &errs()));
-    assert(!verifyFunction(*SplitKernel, &errs()));
-
-    return SplitKernel;
-  }
-
   // NOTE: it is more efficient to create one global for ever value to be
   // cache. Doing so allows for dead stores and globals to be eliminated.
   Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
-  Type* CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
+  Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
   // TODO: dynamically allocate this in the kernel env
   GlobalVariable *Cache = new GlobalVariable(
       M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
@@ -2643,7 +2663,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
                                            Inst->getName() + ".cacheidx");
     Builder.CreateStore(Inst, Ptr);
 
-    Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
+    Instruction *SplitInst = L ? cast<Instruction>(PeelVMap[Inst])
+                               : cast<Instruction>(VMapSplit[Inst]);
+
     // TODO: this case distinction should be uncessary since we don't cache phis
     if (isa<PHINode>(Inst))
       SplitBuilder.SetInsertPoint(SplitInst->getParent()->getFirstNonPHI());
@@ -6233,6 +6255,18 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
     return FAM.getResult<LoopAnalysis>(*F);
   };
 
+  auto DTGetter = [&FAM](Function *F) -> DominatorTree & {
+    return FAM.getResult<DominatorTreeAnalysis>(*F);
+  };
+
+  auto ACGetter = [&FAM](Function *F) -> AssumptionCache & {
+    return FAM.getResult<AssumptionAnalysis>(*F);
+  };
+
+  auto SCEVGetter = [&FAM](Function *F) -> ScalarEvolution & {
+    return FAM.getResult<ScalarEvolutionAnalysis>(*F);
+  };
+
   BumpPtrAllocator Allocator;
   CallGraphUpdater CGUpdater;
 
@@ -6257,7 +6291,8 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
 
   Attributor A(Functions, InfoCache, AC);
 
-  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, InfoCache, A);
+  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, DTGetter, ACGetter,
+                   SCEVGetter, InfoCache, A);
   Changed |= OMPOpt.run(true);
 
   // Optionally inline device functions for potentially better performance.
@@ -6315,6 +6350,18 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
     return FAM.getResult<LoopAnalysis>(*F);
   };
 
+  auto DTGetter = [&FAM](Function *F) -> DominatorTree & {
+    return FAM.getResult<DominatorTreeAnalysis>(*F);
+  };
+
+  auto ACGetter = [&FAM](Function *F) -> AssumptionCache & {
+    return FAM.getResult<AssumptionAnalysis>(*F);
+  };
+
+  auto SCEVGetter = [&FAM](Function *F) -> ScalarEvolution & {
+    return FAM.getResult<ScalarEvolutionAnalysis>(*F);
+  };
+
   BumpPtrAllocator Allocator;
   CallGraphUpdater CGUpdater;
   CGUpdater.initialize(CG, C, AM, UR);
@@ -6339,7 +6386,8 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
 
   Attributor A(Functions, InfoCache, AC);
 
-  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, InfoCache, A);
+  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, DTGetter, ACGetter,
+                   SCEVGetter, InfoCache, A);
 
   bool Changed = OMPOpt.run(false);
 
