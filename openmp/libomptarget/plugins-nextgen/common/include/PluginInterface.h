@@ -383,8 +383,11 @@ protected:
 
   llvm::SmallVector<GenericKernelTy*> Continuations;
 
+  llvm::SmallVector<std::string> ContinuationNames;
+
   /// If the kernel is a bare kernel.
   bool IsBareKernel = false;
+
 };
 
 /// Class representing a map of host pinned allocations. We track these pinned

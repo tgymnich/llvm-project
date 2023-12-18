@@ -466,8 +466,8 @@ Error GenericKernelTy::init(GenericDeviceTy &GenericDevice,
   unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
 
   for (unsigned i = 0; i < NumContinuations; ++i) {
-    std::string ContName = (Name + "_contd_" + Twine(i)).str();
-    auto KernelOrErr = GenericDevice.constructKernel(ContName);
+    ContinuationNames.push_back((Name + "_contd_" + Twine(i)).str());
+    auto KernelOrErr = GenericDevice.constructKernel(ContinuationNames.back());
 
     if (!KernelOrErr)
       return KernelOrErr.takeError();
@@ -591,10 +591,11 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
                             KernelArgsPtr, AsyncInfoWrapper))
     return Err;
 
-  for (GenericKernelTy* Continuation: Continuations) {
+  for (GenericKernelTy *Continuation : Continuations) {
     GenericGlobalHandlerTy &GHandler = Plugin::get().getGlobalHandler();
     uint64_t ContCount = 0;
-    GlobalTy ContCountGlobal((getName() + "_cont_count").str(), sizeof(ContCount), &ContCount);
+    std::string ContName = (getName() + "_cont_count").str();
+    GlobalTy ContCountGlobal(ContName, sizeof(ContCount), &ContCount);
 
     if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, getImage(),
                                                  ContCountGlobal))
@@ -603,9 +604,25 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
     uint32_t NumThreads = ContCount;
     uint64_t NumBlocks = 1;
 
-    if (auto Err = Continuation->launchImpl(GenericDevice, NumThreads, NumBlocks,
-                                            KernelArgs, KernelArgsPtr,
-                                            AsyncInfoWrapper))
+    // Record the kernel description after we modified the argument count and
+    // num
+    // blocks/threads.
+    if (RecordReplay.isRecording()) {
+      RecordReplay.saveImage(Continuation->getName(), Continuation->getImage());
+      RecordReplay.saveKernelInput(Continuation->getName(),
+                                   Continuation->getImage());
+      RecordReplay.saveKernelDescr(Continuation->getName(), Ptrs.data(),
+                                   KernelArgs.NumArgs, NumBlocks, NumThreads,
+                                   KernelArgs.Tripcount);
+    }
+
+    if (auto Err =
+            Continuation->printLaunchInfo(GenericDevice, KernelArgs, NumThreads, NumBlocks))
+      return Err;
+
+    if (auto Err = Continuation->launchImpl(GenericDevice, NumThreads,
+                                            NumBlocks, KernelArgs,
+                                            KernelArgsPtr, AsyncInfoWrapper))
       return Err;
   }
 
