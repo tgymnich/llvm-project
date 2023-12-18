@@ -2474,57 +2474,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   DominatorTree &DT = DTGetter(Kernel);
   DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
 
-  // Determine BasicBlocks upstream of BB traversing the loop upwards only
-  std::queue<BasicBlock *> TodoUp;
-  TodoUp.push(BB);
-
-  while (!TodoUp.empty()) {
-    BasicBlock *Current = TodoUp.back();
-    TodoUp.pop();
-
-    Loop *L = LI.getLoopFor(Current);
-
-    if (!L) {
-      auto ToInsert = inverse_depth_first(Current);
-      BeforeSplit.insert(ToInsert.begin(), ToInsert.end());
-      continue;
-    }
-
-    // TODO: Remove loop latch check??
-    for (BasicBlock *BB : predecessors(Current)) {
-      if (L->contains(BB) || L->isLoopLatch(BB))
-        continue;
-
-      if (BeforeSplit.insert(BB).second)
-        TodoUp.push(BB);
-    }
-  }
-
-  // determine BasicBlocks dowmstream of BB traversing the loop downwards only
-  std::queue<BasicBlock *> TodoDown;
-  TodoDown.push(BB);
-
-  while (!TodoDown.empty()) {
-    BasicBlock *Current = TodoDown.back();
-    TodoDown.pop();
-
-    Loop *L = LI.getLoopFor(Current);
-
-    if (!L) {
-      auto ToInsert = depth_first(Current);
-      AfterSplit.insert(ToInsert.begin(), ToInsert.end());
-      continue;
-    }
-
-    for (BasicBlock *BB : successors(Current)) {
-      if (BB == L->getHeader())
-        continue;
-
-      if (AfterSplit.insert(BB).second)
-        TodoDown.push(BB);
-    }
-  }
-
   ValueToValueMapTy VMapSplit;
   Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
   SplitKernel->setName(Kernel->getName() + "_contd" + "_0");
@@ -2704,6 +2653,48 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     // TODO: What about
     // derived values from the pointer? What about read only values? What about
     // read write values?
+  }
+
+  if (!L) {
+    assert(!verifyFunction(*Kernel, &errs()));
+    assert(!verifyFunction(*SplitKernel, &errs()));
+
+    return SplitKernel;
+  }
+
+  BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
+
+  SplitBlock(SplitBB, &SplitBB->front(), &DTU, &LI);
+  UnreachableInst *SplitTerm = new UnreachableInst(C);
+  ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
+
+  Builder.SetInsertPoint(SplitTerm);
+
+  for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    ConstantInt *ValIdx = Builder.getInt64(Idx);
+
+    if (!L->contains(Inst))
+      continue;
+
+    Value *Ptr =
+        Builder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
+                                  Inst->getName() + ".cacheidx");
+    Builder.CreateStore(Inst, Ptr);
+  }
+
+  // Rematerialize allocas
+  for (auto [Idx, Alloca] : enumerate(Allocas)) {
+    ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
+
+    Value *Ptr =
+        Builder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
+                                  Alloca->getName() + ".cacheidx");
+
+    Instruction *SplitAlloca = cast<Instruction>(VMapSplit[Alloca]);
+
+    Value *ToCache =
+        Builder.CreateLoad(Alloca->getAllocatedType(), SplitAlloca);
+    Builder.CreateStore(ToCache, Ptr);
   }
 
   assert(!verifyFunction(*Kernel, &errs()));
