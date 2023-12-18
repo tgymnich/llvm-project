@@ -234,6 +234,13 @@ namespace KernelInfo {
 //   DynamicEnvironmentTy *DynamicEnv;
 // };
 
+// struct KernelLaunchEnvironmentTy {
+//   uint32_t ReductionCnt;
+//   uint32_t ReductionIterCnt;
+//   void *ReductionBuffer;
+//   uint32_t ContinuationCnt;
+// };
+
 #define KERNEL_ENVIRONMENT_IDX(MEMBER, IDX)                                    \
   constexpr const unsigned MEMBER##Idx = IDX;
 
@@ -255,6 +262,16 @@ KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxTeams, 6)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(NumContinuations, 7)
 
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_IDX
+
+#define KERNEL_LAUNCH_ENVIRONMENT_IDX(MEMBER, IDX)                             \
+  constexpr const unsigned MEMBER##Idx = IDX;
+
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionCnt, 0)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionIterCnt, 1)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionBuffer, 2)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCnt, 3)
+
+#undef KERNEL_LAUNCH_ENVIRONMENT_IDX
 
 #define KERNEL_ENVIRONMENT_GETTER(MEMBER, RETURNTYPE)                          \
   RETURNTYPE *get##MEMBER##FromKernelEnvironment(ConstantStruct *KernelEnvC) { \
@@ -283,6 +300,11 @@ KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MinTeams)
 KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MaxTeams)
 
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_GETTER
+
+StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
+  return StructType::get(IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
+                         PointerType::getUnqual(C), IntegerType::getInt32Ty(C));
+}
 
 GlobalVariable *
 getKernelEnvironementGVFromKernelInitCB(CallBase *KernelInitCB) {
@@ -2450,6 +2472,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
       {0, NumContinuationsIdx});
   KernelEnvironmentGV->setInitializer(NewInitializer);
 
+  Argument *KernelLaunchEnvironment = Kernel->getArg(0);
+
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
 
@@ -2469,10 +2493,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   SetVector<Instruction *> RequiredValues;
   SetVector<AllocaInst *> Allocas;
   determineValuesAcross(&BB->front(), RequiredValues, Allocas);
-
-  LoopInfo &LI = LIGetter(Kernel);
-  DominatorTree &DT = DTGetter(Kernel);
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
 
   ValueToValueMapTy VMapSplit;
   Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
@@ -2537,18 +2557,12 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   SmallVector<Type *> RequiredTypes(ValueTys);
   append_range(RequiredTypes, AllocaTys);
 
-  if (RequiredTypes.empty()) {
-    assert(!verifyFunction(*Kernel, &errs()));
-    assert(!verifyFunction(*SplitKernel, &errs()));
-
-    return SplitKernel;
-  }
-
   // If inside a loop, peel of the first iteration and use it for loading cached
   // values.
+  LoopInfo &LI = LIGetter(Kernel);
   Loop *L = LI.getLoopFor(BB) ? LI.getLoopFor(BB)->getOutermostLoop() : nullptr;
   ValueToValueMapTy PeelVMap;
-  if (L) {
+  if (L && !RequiredTypes.empty()) {
     assert(!verifyFunction(*SplitKernel, &errs()));
 
     BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
@@ -2564,6 +2578,43 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     peelLoop(L, 1, &LI, &SCEV, DT, &AC, false, PeelVMap);
   }
 
+  DominatorTree &DT = DTGetter(Kernel);
+  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
+
+  // Assume that we allways reach the split point at least once in the
+  // continuation kernel.
+  LoopInfo &SplitLI1 = LIGetter(SplitKernel);
+  for (auto *Current = DT.getNode(BB), *Next = Current->getIDom();
+       Next != nullptr; Current = Next, Next = Next->getIDom()) {
+    BasicBlock *NextBB = Next->getBlock();
+    BasicBlock *CurrentBB = Current->getBlock();
+
+    BranchInst *Branch = dyn_cast<BranchInst>(NextBB->getTerminator());
+    if (!Branch)
+      continue;
+
+    if (!Branch->isConditional())
+      continue;
+
+    BranchInst *SplitBranch = cast<BranchInst>(VMapSplit[Branch]);
+    // Loop *L = SplitLI1.getLoopFor(SplitBranch->getParent());
+    // Instruction *I = cast<Instruction>(PeelVMap[SplitBranch]);
+    // SplitBranch = L ? cast<BranchInst>(PeelVMap[SplitBranch]) : SplitBranch;
+
+    Value *Cond = SplitBranch->getCondition();
+
+    BasicBlock *True = Branch->getSuccessor(0);
+    BasicBlock *False = Branch->getSuccessor(1);
+
+    IRBuilder<> AssumptionBuilder(SplitBranch);
+
+    if (CurrentBB == True) {
+      AssumptionBuilder.CreateAssumption(Cond);
+    } else if (CurrentBB == False) {
+      AssumptionBuilder.CreateAssumption(AssumptionBuilder.CreateNot(Cond));
+    }
+  }
+
   SplitBlock(BB, &BB->front(), &DTU, &LI);
   UnreachableInst *Term = new UnreachableInst(C);
   ReplaceInstWithInst(BB->getTerminator(), Term);
@@ -2575,17 +2626,25 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
   CallInst *ExitCall = CallInst::Create(ExitFTy, Exit, "", Term);
 
+  if (RequiredTypes.empty()) {
+    assert(!verifyFunction(*Kernel, &errs()));
+    assert(!verifyFunction(*SplitKernel, &errs()));
+
+    return SplitKernel;
+  }
+
   IRBuilder<> Builder(ExitCall);
   IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
 
   // Keep track of the number of continuation kernels to spawn.
-  Type *ContCountTy = IntegerType::getInt64Ty(C);
-  GlobalVariable *ContCount = new GlobalVariable(
-      M, ContCountTy, false, GlobalValue::PrivateLinkage,
-      Constant::getNullValue(ContCountTy), Kernel->getName() + "_cont_count");
-  Value *CacheIdx = Builder.CreateAtomicRMW(
-      AtomicRMWInst::Add, ContCount, Builder.getInt64(1), ContCount->getAlign(),
-      AtomicOrdering::Acquire);
+  ConstantInt *ContinuationCntIdx =
+      Builder.getInt32(KernelInfo::ContinuationCntIdx);
+  Value *ContCount = Builder.CreateInBoundsGEP(
+      KernelInfo::getKernelLaunchEnvironmentTy(C), KernelLaunchEnvironment,
+      {Builder.getInt32(0), ContinuationCntIdx}, "contcnt");
+  Value *CacheIdx = Builder.CreateAtomicRMW(AtomicRMWInst::Add, ContCount,
+                                            Builder.getInt32(1), std::nullopt,
+                                            AtomicOrdering::Acquire);
   CacheIdx->setName("cacheidx");
 
   CallInst *SplitTid = SplitBuilder.CreateCall(ThreadIdFn);
@@ -2612,14 +2671,11 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
                                            Inst->getName() + ".cacheidx");
     Builder.CreateStore(Inst, Ptr);
 
-    Instruction *SplitInst = L ? cast<Instruction>(PeelVMap[Inst])
-                               : cast<Instruction>(VMapSplit[Inst]);
+    Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
+    // SplitInst =
+    //     L->contains(Inst) ? cast<Instruction>(PeelVMap[SplitInst]) : SplitInst;
 
-    // TODO: this case distinction should be uncessary since we don't cache phis
-    if (isa<PHINode>(Inst))
-      SplitBuilder.SetInsertPoint(SplitInst->getParent()->getFirstNonPHI());
-    else
-      SplitBuilder.SetInsertPoint(SplitInst);
+    SplitBuilder.SetInsertPoint(SplitInst);
 
     Value *SplitPtr =
         SplitBuilder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
@@ -2664,7 +2720,11 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
 
-  SplitBlock(SplitBB, &SplitBB->front(), &DTU, &LI);
+  LoopInfo &SplitLI = LIGetter(SplitKernel);
+  DominatorTree &SplitDT = DTGetter(SplitKernel);
+  DomTreeUpdater SplitDTU(SplitDT, DomTreeUpdater::UpdateStrategy::Lazy);
+
+  SplitBlock(SplitBB, &SplitBB->front(), &SplitDTU, &SplitLI);
   UnreachableInst *SplitTerm = new UnreachableInst(C);
   ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
 

@@ -491,8 +491,11 @@ GenericKernelTy::getKernelLaunchEnvironment(
   if (isCtorOrDtor() || RecordReplay.isReplaying())
     return nullptr;
 
-  if (!KernelEnvironment.Configuration.ReductionDataSize ||
-      !KernelEnvironment.Configuration.ReductionBufferLength)
+  bool isReduction = KernelEnvironment.Configuration.ReductionDataSize > 0 &&
+                     KernelEnvironment.Configuration.ReductionBufferLength > 0;
+  bool hasContinuation = KernelEnvironment.Configuration.NumContinuations > 0;
+
+  if (!isReduction && !hasContinuation)
     return reinterpret_cast<KernelLaunchEnvironmentTy *>(~0);
 
   // TODO: Check if the kernel needs a launch environment.
@@ -509,7 +512,8 @@ GenericKernelTy::getKernelLaunchEnvironment(
   /// async data transfer.
   auto &LocalKLE = (*AsyncInfoWrapper).KernelLaunchEnvironment;
   LocalKLE = KernelLaunchEnvironment;
-  {
+
+  if (isReduction) {
     auto AllocOrErr = GenericDevice.dataAlloc(
         KernelEnvironment.Configuration.ReductionDataSize *
             KernelEnvironment.Configuration.ReductionBufferLength,
@@ -592,14 +596,24 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
     return Err;
 
   for (GenericKernelTy *Continuation : Continuations) {
-    GenericGlobalHandlerTy &GHandler = Plugin::get().getGlobalHandler();
-    uint64_t ContCount = 0;
-    std::string ContName = (getName() + "_cont_count").str();
-    GlobalTy ContCountGlobal(ContName, sizeof(ContCount), &ContCount);
 
-    if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, getImage(),
-                                                 ContCountGlobal))
-      return Err;
+    KernelLaunchEnvironmentTy KernelLaunchEnv;
+    
+    INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
+         "Copying data from device to host, TgtPtr=" DPxMOD ", HstPtr=" DPxMOD
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv\n",
+         DPxPTR(*KernelLaunchEnvOrErr), DPxPTR(&KernelLaunchEnv),
+         sizeof(KernelLaunchEnvironmentTy));
+
+    if (auto Err = GenericDevice.dataRetrieve(
+            &KernelLaunchEnv, *KernelLaunchEnvOrErr,
+            sizeof(KernelLaunchEnvironmentTy), AsyncInfoWrapper))
+      report_fatal_error("Error retrieving data for target pointer");
+
+    uint32_t ContCount = KernelLaunchEnv.ContinuationCnt;
+
+    if (ContCount == 0)
+      break;
 
     uint32_t NumThreads = ContCount;
     uint64_t NumBlocks = 1;
@@ -616,8 +630,8 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
                                    KernelArgs.Tripcount);
     }
 
-    if (auto Err =
-            Continuation->printLaunchInfo(GenericDevice, KernelArgs, NumThreads, NumBlocks))
+    if (auto Err = Continuation->printLaunchInfo(GenericDevice, KernelArgs,
+                                                 NumThreads, NumBlocks))
       return Err;
 
     if (auto Err = Continuation->launchImpl(GenericDevice, NumThreads,
