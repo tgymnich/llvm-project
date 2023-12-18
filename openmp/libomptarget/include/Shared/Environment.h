@@ -104,6 +104,7 @@ struct KernelLaunchEnvironmentTy {
   uint32_t ReductionCnt = 0;
   uint32_t ReductionIterCnt = 0;
   void *ReductionBuffer = nullptr;
+  uint32_t ContinuationCnt = 0;
 };
 
 #endif // OMPTARGET_SHARED_ENVIRONMENT_H
