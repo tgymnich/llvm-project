@@ -302,8 +302,10 @@ KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MaxTeams)
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_GETTER
 
 StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
-  return StructType::get(IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
-                         PointerType::getUnqual(C), IntegerType::getInt32Ty(C));
+  return StructType::create(
+      {IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
+       PointerType::getUnqual(C), IntegerType::getInt32Ty(C)},
+      "struct.KernelLaunchEnvironmentTy");
 }
 
 GlobalVariable *
@@ -2583,7 +2585,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // Assume that we allways reach the split point at least once in the
   // continuation kernel.
-  LoopInfo &SplitLI1 = LIGetter(SplitKernel);
   for (auto *Current = DT.getNode(BB), *Next = Current->getIDom();
        Next != nullptr; Current = Next, Next = Next->getIDom()) {
     BasicBlock *NextBB = Next->getBlock();
@@ -2673,7 +2674,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
     Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
     // SplitInst =
-    //     L->contains(Inst) ? cast<Instruction>(PeelVMap[SplitInst]) : SplitInst;
+    //     L->contains(Inst) ? cast<Instruction>(PeelVMap[SplitInst]) :
+    //     SplitInst;
 
     SplitBuilder.SetInsertPoint(SplitInst);
 

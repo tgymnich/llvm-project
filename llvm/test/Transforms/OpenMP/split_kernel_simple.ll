@@ -1,9 +1,8 @@
-; RUN: opt < %s -S -passes="openmp-opt-postlink,simplifycfg" | FileCheck %s
+; RUN: opt < %s -S -passes="openmp-opt-postlink,ipsccp,simplifycfg" | FileCheck %s
 
 target datalayout = "e-i64:64-i128:128-v16:16-v32:32-n16:32:64"
 target triple = "nvptx64-nvidia-cuda"
 
-%struct.ident_t = type { i32, i32, i32, i32, ptr }
 %struct.KernelEnvironmentTy = type { %struct.ConfigurationEnvironmentTy, ptr, ptr }
 %struct.ConfigurationEnvironmentTy = type { i8, i8, i8, i32, i32, i32, i32, i32, i32, i32 }
 
@@ -13,7 +12,7 @@ declare noundef i32 @llvm.nvvm.read.ptx.sreg.tid.x() #0
 
 declare noundef i32 @llvm.nvvm.read.ptx.sreg.ntid.x() #0
 
-declare void @llvm.assume(i1 noundef) #1
+declare void @llvm.assume(i1 noundef) #2
 
 declare noundef i32 @llvm.nvvm.read.ptx.sreg.ctaid.x() #0
 
@@ -21,7 +20,7 @@ declare noundef i32 @llvm.nvvm.read.ptx.sreg.nctaid.x() #0
 
 declare double @llvm.fmuladd.f64(double, double, double) #0
 
-declare void @__ompx_split() local_unnamed_addr #2
+declare void @__ompx_split() local_unnamed_addr #1
 
 define weak_odr protected void @__omp_offloading_test(ptr noalias noundef %arg, ptr noundef %arg1) local_unnamed_addr #3 {
 entry:
@@ -58,9 +57,9 @@ exit:                                             ; preds = %bb2, %bb1
   ret void
 }
 
-attributes #0 = { mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none) }
-attributes #1 = { mustprogress nocallback nofree nosync nounwind willreturn memory(inaccessiblemem: readwrite) }
-attributes #2 = { convergent "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="sm_86" "target-features"="+ptx81,+sm_86" }
+attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
+attributes #1 = { convergent "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="sm_86" "target-features"="+ptx81,+sm_86" }
+attributes #2 = { nocallback nofree nosync nounwind willreturn memory(inaccessiblemem: write) }
 attributes #3 = { alwaysinline norecurse nounwind "frame-pointer"="all" "kernel" "no-trapping-math"="true" "omp_target_num_teams"="1" "omp_target_thread_limit"="512" "stack-protector-buffer-size"="8" "target-cpu"="sm_86" "target-features"="+ptx81,+sm_86" }
 attributes #4 = { nofree nosync willreturn "llvm.assume"="ompx_no_call_asm" }
 attributes #5 = { nosync "llvm.assume"="ompx_no_call_asm" }
@@ -73,7 +72,7 @@ attributes #7 = { convergent nounwind }
 !omp_offload.info = !{!14}
 !nvvmir.version = !{!15}
 
-!0 = !{!"clang version 18.0.0 (git@github.com:tgymnich/llvm-project.git 4bf6f511d6ddc9e4a05c62083536ae3137cdca80)"}
+!0 = !{!"clang version 18.0.0git (git@github.com:tgymnich/llvm-project.git e9b78a0b34fe6b87e043d88419c1d2ab7ce8c05a)"}
 !1 = !{!"clang version 3.8.0 (tags/RELEASE_380/final)"}
 !2 = !{i32 1, !"wchar_size", i32 4}
 !3 = !{i32 7, !"openmp", i32 51}
@@ -87,7 +86,7 @@ attributes #7 = { convergent nounwind }
 !11 = !{ptr @__omp_offloading_test, !"minctasm", i32 1}
 !12 = !{ptr @__omp_offloading_test, !"maxntidx", i32 512}
 !13 = !{ptr @__omp_offloading_test, !"kernel", i32 1}
-!14 = !{i32 0, i32 64769, i32 2753303, !"test", i32 26, i32 0, i32 0}
+!14 = !{i32 0, i32 64769, i32 2753303, !"test", i32 25, i32 0, i32 0}
 !15 = !{i32 2, i32 0}
 
 
@@ -114,8 +113,9 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:   ret void
 ;
 ; CHECK: bb2:                                              ; preds = %entry
-; CHECK-NEXT:   %cacheidx = atomicrmw add ptr @__omp_offloading_test_cont_count, i64 1 acquire
-; CHECK-NEXT:   %i7.cacheidx = getelementptr inbounds [512 x %cache_cell], ptr @__omp_offloading_test_cont_cache, i64 %cacheidx, i64 0
+; CHECK-NEXT:   %contcnt = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %arg, i32 0, i32 3
+; CHECK-NEXT:   %cacheidx = atomicrmw add ptr %contcnt, i32 1 acquire
+; CHECK-NEXT:   %i7.cacheidx = getelementptr inbounds [512 x %cache_cell], ptr @__omp_offloading_test_cont_cache, i32 %cacheidx, i64 0
 ; CHECK-NEXT:   store i32 %i7, ptr %i7.cacheidx
 ; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
 ; CHECK-NEXT:   unreachable
