@@ -270,7 +270,6 @@ KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionCnt, 0)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionIterCnt, 1)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionBuffer, 2)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCnt, 3)
-KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCache, 4)
 
 #undef KERNEL_LAUNCH_ENVIRONMENT_IDX
 
@@ -305,8 +304,7 @@ KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MaxTeams)
 StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
   return StructType::create(
       {IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
-       PointerType::getUnqual(C), IntegerType::getInt32Ty(C),
-       PointerType::getUnqual(C)},
+       PointerType::getUnqual(C), IntegerType::getInt32Ty(C)},
       "struct.KernelLaunchEnvironmentTy");
 }
 
@@ -2367,15 +2365,13 @@ void determineValuesAcross(Instruction *Inst,
                            SetVector<AllocaInst *> &CapturedAllocations) {
   // find all values that are defined before Inst, used by an instruction that
   // comes after Inst.
-  SmallPtrSet<BasicBlock *, 32> Visited;
   for (BasicBlock *BB : breadth_first(Inst->getParent())) {
-    Visited.insert(BB);
     for (Instruction &I : *BB) {
       if (BB == Inst->getParent() && I.comesBefore(Inst))
         continue;
 
-      SmallVector<Use *> Todo;
-      for (Use *U : concat<Use *>(make_pointer_range(Inst->operands()), Todo)) {
+      SmallVector<Use *> Todo(make_pointer_range(Inst->operands()));
+      for (Use *U : make_early_inc_range(Todo)) {
         Instruction *Val = dyn_cast<Instruction>(U->get());
         if (!Val)
           continue;
@@ -2395,14 +2391,6 @@ void determineValuesAcross(Instruction *Inst,
           continue;
         }
 
-        if (isa<Argument>(Val)) {
-          append_range(Todo, make_pointer_range(Val->operands()));
-          continue;
-        }
-
-        if (BB != Inst->getParent() && Visited.contains(Val->getParent()))
-          continue;
-
         if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Val)) {
           CapturedAllocations.insert(Alloca);
           continue;
@@ -2417,9 +2405,6 @@ void determineValuesAcross(Instruction *Inst,
   SmallVector<AllocaInst *> Allocations;
   for (Instruction &I : instructions(*Inst->getFunction())) {
     if (I.getParent() == Inst->getParent() && I.comesBefore(Inst))
-      break;
-
-    if (I.getParent() != Inst->getParent() && Visited.contains(I.getParent()))
       break;
 
     if (AllocaInst *Alloca = dyn_cast<AllocaInst>(&I))
@@ -2442,10 +2427,6 @@ void determineValuesAcross(Instruction *Inst,
         continue;
 
       if (I->getParent() == Inst->getParent() && I->comesBefore(Inst))
-        continue;
-
-      if (I->getParent() != Inst->getParent() &&
-          Visited.contains(I->getParent()))
         continue;
 
       if (I->mayWriteToMemory())
@@ -2599,6 +2580,9 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     if (!Branch->isConditional())
       continue;
 
+    if (L && L->contains(Branch))
+      continue;
+
     BranchInst *SplitBranch = cast<BranchInst>(VMapSplit[Branch]);
     // Loop *L = SplitLI1.getLoopFor(SplitBranch->getParent());
     // Instruction *I = cast<Instruction>(PeelVMap[SplitBranch]);
@@ -2664,14 +2648,6 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   GlobalVariable *Cache = new GlobalVariable(
       M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
       Kernel->getName() + "_cont_cache");
-
-  Type *ITy = Builder.getInt32Ty();
-  Constant *AllocSize = ConstantExpr::getSizeOf(CacheCell);
-  AllocSize = ConstantExpr::getTruncOrBitCast(AllocSize, ITy);
-  auto Malloc = Builder.CreateMalloc(ITy, CacheCell, AllocSize, Builder.getInt32(1));
-  // TODO: Allocate NumGlobalThreads pointers from host in KernelLaunchEnv
-  // TODO: Allocate NumGlobalThreds cache cells from host.
-  // TODO: Consider using an OpenMP device runtime function instead of malloc.
 
   // Iterate over ModifiedKernel and SplitKernel and insert cache
   // instructions if needed.
@@ -2740,7 +2716,14 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   UnreachableInst *SplitTerm = new UnreachableInst(C);
   ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
 
-  Builder.SetInsertPoint(SplitTerm);
+  // Terminate thread once a split off BB is reached.
+  // FIXME: This only works for NVPTX!
+  assert(Triple(M.getTargetTriple()).isNVPTX());
+  FunctionType *SplitExitFTy = FunctionType::get(Type::getVoidTy(C), false);
+  InlineAsm *SplitExit = InlineAsm::get(SplitExitFTy, "exit;", "", true);
+  CallInst *SplitExitCall = CallInst::Create(SplitExitFTy, SplitExit, "", SplitTerm);
+
+  Builder.SetInsertPoint(SplitExitCall);
 
   for (auto [Idx, Inst] : enumerate(RequiredValues)) {
     ConstantInt *ValIdx = Builder.getInt64(Idx);
