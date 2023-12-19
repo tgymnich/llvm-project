@@ -270,6 +270,7 @@ KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionCnt, 0)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionIterCnt, 1)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionBuffer, 2)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCnt, 3)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCache, 4)
 
 #undef KERNEL_LAUNCH_ENVIRONMENT_IDX
 
@@ -304,7 +305,8 @@ KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MaxTeams)
 StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
   return StructType::create(
       {IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
-       PointerType::getUnqual(C), IntegerType::getInt32Ty(C)},
+       PointerType::getUnqual(C), IntegerType::getInt32Ty(C),
+       PointerType::getUnqual(C)},
       "struct.KernelLaunchEnvironmentTy");
 }
 
@@ -2662,6 +2664,14 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
   GlobalVariable *Cache = new GlobalVariable(
       M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
       Kernel->getName() + "_cont_cache");
+
+  Type *ITy = Builder.getInt32Ty();
+  Constant *AllocSize = ConstantExpr::getSizeOf(CacheCell);
+  AllocSize = ConstantExpr::getTruncOrBitCast(AllocSize, ITy);
+  auto Malloc = Builder.CreateMalloc(ITy, CacheCell, AllocSize, Builder.getInt32(1));
+  // TODO: Allocate NumGlobalThreads pointers from host in KernelLaunchEnv
+  // TODO: Allocate NumGlobalThreds cache cells from host.
+  // TODO: Consider using an OpenMP device runtime function instead of malloc.
 
   // Iterate over ModifiedKernel and SplitKernel and insert cache
   // instructions if needed.
