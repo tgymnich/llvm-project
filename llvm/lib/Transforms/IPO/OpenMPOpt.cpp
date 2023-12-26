@@ -19,6 +19,7 @@
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
+#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -38,6 +39,7 @@
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/PtrUseVisitor.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
@@ -1039,10 +1041,11 @@ struct OpenMPOpt {
           Changed = true;
         }
       }
+
+      if (OMPInfoCache.OpenMPPostLink)
+        Changed |= splitKernels();
     }
 
-    if (OMPInfoCache.OpenMPPostLink)
-      Changed |= splitKernels();
 
     if (OMPInfoCache.OpenMPPostLink)
       Changed |= removeRuntimeSymbols();
@@ -2042,7 +2045,7 @@ private:
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
 
-  Function *splitKernel(BasicBlock *BB);
+  Function *splitKernel(Instruction *SplitInst);
 
   bool splitKernels();
 
@@ -2323,7 +2326,6 @@ bool OpenMPOpt::rewriteDeviceCodeStateMachine() {
 
 bool OpenMPOpt::splitKernels() {
   bool Changed = false;
-
   OMPInformationCache::RuntimeFunctionInfo &RFI =
       OMPInfoCache.RFIs[OMPRTL___ompx_split];
 
@@ -2332,118 +2334,401 @@ bool OpenMPOpt::splitKernels() {
     if (!omp::isOpenMPKernel(*Kernel))
       continue;
 
-    BasicBlock *SplitBlock = nullptr;
+    Instruction *SplitInst = nullptr;
     for (Use *Use : *UseVec) {
       CallInst *Call = dyn_cast<CallInst>(Use->getUser());
       if (!Call)
         continue;
 
       // TODO: handle more than one SplitInst
-      SplitBlock = Call->getParent();
-      Call->eraseFromParent();
+      SplitInst = Call;
     }
 
-    if (!SplitBlock)
+    if (!SplitInst)
       continue;
 
     if (M.getFunction((Kernel->getName() + "_contd" + "_0").str()))
       continue;
 
-    Function *SplitKernel = splitKernel(SplitBlock);
+    Function *SplitKernel = splitKernel(SplitInst);
 
-    if (!SplitKernel)
-      continue;
-
-    Changed = true;
+    if (SplitKernel)
+      Changed = true;
   }
 
   return Changed;
 }
 
-void determineValuesAcross(Instruction *Inst,
-                           SetVector<Instruction *> &RequiredValues,
-                           SetVector<AllocaInst *> &CapturedAllocations) {
-  // find all values that are defined before Inst, used by an instruction that
-  // comes after Inst.
-  for (BasicBlock *BB : breadth_first(Inst->getParent())) {
-    for (Instruction &I : *BB) {
-      if (BB == Inst->getParent() && I.comesBefore(Inst))
-        continue;
+// Moves the values in the PHIs in SuccBB that correspong to PredBB into a new
+// PHI in InsertedBB.
+static void movePHIValuesToInsertedBlock(BasicBlock *SuccBB,
+                                         BasicBlock *InsertedBB,
+                                         BasicBlock *PredBB,
+                                         PHINode *UntilPHI = nullptr) {
+  auto *PN = cast<PHINode>(&SuccBB->front());
+  do {
+    int Index = PN->getBasicBlockIndex(InsertedBB);
+    Value *V = PN->getIncomingValue(Index);
+    PHINode *InputV = PHINode::Create(
+        V->getType(), 1, V->getName() + Twine(".") + SuccBB->getName());
+    InputV->insertBefore(InsertedBB->begin());
+    InputV->addIncoming(V, PredBB);
+    PN->setIncomingValue(Index, InputV);
+    PN = dyn_cast<PHINode>(PN->getNextNode());
+  } while (PN != UntilPHI);
+}
 
-      SmallVector<Use *> Todo(make_pointer_range(Inst->operands()));
-      for (Use *U : make_early_inc_range(Todo)) {
-        Instruction *Val = dyn_cast<Instruction>(U->get());
-        if (!Val)
-          continue;
+static void rewritePHIs(BasicBlock &BB) {
+  SmallVector<BasicBlock *> Preds(predecessors(&BB));
+  for (BasicBlock *Pred : Preds) {
+    auto *IncomingBB = SplitEdge(Pred, &BB);
+    IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
 
-        if (isa<PHINode>(Val)) {
-          append_range(Todo, make_pointer_range(Val->operands()));
-          continue;
-        }
-
-        if (isa<CastInst>(Val)) {
-          append_range(Todo, make_pointer_range(Val->operands()));
-          continue;
-        }
-
-        if (isa<GetElementPtrInst>(Val)) {
-          append_range(Todo, make_pointer_range(Val->operands()));
-          continue;
-        }
-
-        if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Val)) {
-          CapturedAllocations.insert(Alloca);
-          continue;
-        }
-
-        RequiredValues.insert(Val);
-      }
-    }
+    movePHIValuesToInsertedBlock(&BB, IncomingBB, Pred, nullptr);
   }
+}
 
-  // find all allocas
-  SmallVector<AllocaInst *> Allocations;
-  for (Instruction &I : instructions(*Inst->getFunction())) {
-    if (I.getParent() == Inst->getParent() && I.comesBefore(Inst))
-      break;
+static void rewritePHIs(Function &F) {
+  SmallVector<BasicBlock *> WorkList;
 
-    if (AllocaInst *Alloca = dyn_cast<AllocaInst>(&I))
-      Allocations.push_back(Alloca);
-  }
+  for (BasicBlock &BB : F)
+    if (auto *PN = dyn_cast<PHINode>(&BB.front()))
+      if (PN->getNumIncomingValues() > 1)
+        WorkList.push_back(&BB);
 
-  // iterate down the def-use chain of the allocas and preserve them if
-  // they are used after Inst.
-  std::queue<std::pair<Instruction *, AllocaInst *>> Todo;
-  for (AllocaInst *Alloca : Allocations)
-    Todo.push({Alloca, Alloca});
+  for (BasicBlock *BB : WorkList)
+    rewritePHIs(*BB);
+}
 
-  while (!Todo.empty()) {
-    auto [Current, OrigAllocation] = Todo.front();
-    Todo.pop();
+bool isMaterializable(Instruction &V) {
+  return (isa<CastInst>(&V) || isa<GetElementPtrInst>(&V) ||
+          isa<BinaryOperator>(&V) || isa<CmpInst>(&V) || isa<SelectInst>(&V));
+}
 
-    for (User *U : Current->users()) {
-      Instruction *I = dyn_cast<Instruction>(U);
-      if (!I)
+void determineValuesAcross(Instruction *Split, DominatorTree &DT,
+                           SetVector<Instruction *> &RequiredValues) {
+  BasicBlock *BB = Split->getParent();
+
+  for (BasicBlock *B : breadth_first(BB)) {
+    for (Instruction &I : *B) {
+      if (B == Split->getParent() && I.comesBefore(Split))
         continue;
 
-      if (I->getParent() == Inst->getParent() && I->comesBefore(Inst))
-        continue;
+      for (Use &U : I.operands()) {
+        Instruction *UI = dyn_cast<Instruction>(U.get());
+        if (!UI)
+          continue;
 
-      if (I->mayWriteToMemory())
-        CapturedAllocations.insert(OrigAllocation);
+        if (isa<AllocaInst>(UI))
+          continue;
 
-      if (I->mayReadFromMemory()) {
-        if (RequiredValues.contains(I))
-          CapturedAllocations.insert(OrigAllocation);
-
-        Todo.push({I, OrigAllocation});
+        Type *Ty = UI->getType();
+        if (Ty->isPointerTy() && (Ty->getPointerAddressSpace() == 0 || Ty->getPointerAddressSpace() == 3 || Ty->getPointerAddressSpace() == 4 || Ty->getPointerAddressSpace() == 5))
+          continue;
+          // if (isa<PHINode>((UI)))
+          //   continue;
+          // if (isMaterializable(*UI))
+          //   continue;
+        if (DT.dominates(UI, Split)) {
+          RequiredValues.insert(UI);
+        }
       }
     }
   }
 }
 
-Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
-  Function *Kernel = BB->getParent();
+namespace {
+struct AllocaUseVisitor : PtrUseVisitor<AllocaUseVisitor> {
+
+private:
+  const DominatorTree &DT;
+  const Instruction &SplitInstruction;
+  // All alias to the original AllocaInst, created before SplitInst and used
+  // after SplitInst. Each entry contains the instruction and the offset in the
+  // original Alloca. They need to be recreated after SplitInst off the frame.
+  DenseMap<Instruction *, std::optional<APInt>> AliasOffetMap;
+  SmallPtrSet<Instruction *, 4> Users;
+  SmallPtrSet<IntrinsicInst *, 2> LifetimeStarts;
+
+  bool MayWriteBeforeSplit = false;
+  bool ShouldUseLifetimeStartInfo = true;
+
+  mutable std::optional<bool> ShouldRestoreAlloca;
+
+  using Base = PtrUseVisitor<AllocaUseVisitor>;
+
+public:
+  AllocaUseVisitor(const DataLayout &DL, const DominatorTree &DT,
+                   const Instruction &Split, bool ShouldUseLifetimeStartInfo)
+      : PtrUseVisitor(DL), DT(DT), SplitInstruction(Split),
+        ShouldUseLifetimeStartInfo(ShouldUseLifetimeStartInfo) {}
+
+  void visit(Instruction &I) {
+    Users.insert(&I);
+    Base::visit(I);
+
+    // If the pointer is escaped prior to SplitInstruction, we have to assume it
+    // would be written into before SplitInstruction as well.
+    if (PI.isEscaped() &&
+        !DT.dominates(&SplitInstruction, PI.getEscapingInst())) {
+      MayWriteBeforeSplit = true;
+    }
+  }
+  // We need to provide this overload as PtrUseVisitor uses a pointer based
+  // visiting function.
+  void visit(Instruction *I) { return visit(*I); }
+
+  void visitPHINode(PHINode &I) {
+    enqueueUsers(I);
+    handleAlias(I);
+  }
+
+  void visitSelectInst(SelectInst &I) {
+    enqueueUsers(I);
+    handleAlias(I);
+  }
+
+  void visitStoreInst(StoreInst &SI) {
+    // Regardless whether the alias of the alloca is the value operand or the
+    // pointer operand, we need to assume the alloca is been written.
+    handleMayWrite(SI);
+
+    if (SI.getValueOperand() != U->get())
+      return;
+
+    // We are storing the pointer into a memory location, potentially escaping.
+    // As an optimization, we try to detect simple cases where it doesn't
+    // actually escape, for example:
+    //   %ptr = alloca ..
+    //   %addr = alloca ..
+    //   store %ptr, %addr
+    //   %x = load %addr
+    //   ..
+    // If %addr is only used by loading from it, we could simply treat %x as
+    // another alias of %ptr, and not considering %ptr being escaped.
+    auto IsSimpleStoreThenLoad = [&]() {
+      auto *AI = dyn_cast<AllocaInst>(SI.getPointerOperand());
+      // If the memory location we are storing to is not an alloca, it
+      // could be an alias of some other memory locations, which is difficult
+      // to analyze.
+      if (!AI)
+        return false;
+      // StoreAliases contains aliases of the memory location stored into.
+      SmallVector<Instruction *, 4> StoreAliases = {AI};
+      while (!StoreAliases.empty()) {
+        Instruction *I = StoreAliases.pop_back_val();
+        for (User *U : I->users()) {
+          // If we are loading from the memory location, we are creating an
+          // alias of the original pointer.
+          if (auto *LI = dyn_cast<LoadInst>(U)) {
+            enqueueUsers(*LI);
+            handleAlias(*LI);
+            continue;
+          }
+          // If we are overriding the memory location, the pointer certainly
+          // won't escape.
+          if (auto *S = dyn_cast<StoreInst>(U))
+            if (S->getPointerOperand() == I)
+              continue;
+          if (auto *II = dyn_cast<IntrinsicInst>(U))
+            if (II->isLifetimeStartOrEnd())
+              continue;
+          // BitCastInst creats aliases of the memory location being stored
+          // into.
+          if (auto *BI = dyn_cast<BitCastInst>(U)) {
+            StoreAliases.push_back(BI);
+            continue;
+          }
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    if (!IsSimpleStoreThenLoad())
+      PI.setEscaped(&SI);
+  }
+
+  // All mem intrinsics modify the data.
+  void visitMemIntrinsic(MemIntrinsic &MI) { handleMayWrite(MI); }
+
+  void visitBitCastInst(BitCastInst &BC) {
+    Base::visitBitCastInst(BC);
+    handleAlias(BC);
+  }
+
+  void visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) {
+    Base::visitAddrSpaceCastInst(ASC);
+    handleAlias(ASC);
+  }
+
+  void visitGetElementPtrInst(GetElementPtrInst &GEPI) {
+    // The base visitor will adjust Offset accordingly.
+    Base::visitGetElementPtrInst(GEPI);
+    handleAlias(GEPI);
+  }
+
+  void visitIntrinsicInst(IntrinsicInst &II) {
+    // When we found the lifetime markers refers to a
+    // subrange of the original alloca, ignore the lifetime
+    // markers to avoid misleading the analysis.
+    if (II.getIntrinsicID() != Intrinsic::lifetime_start || !IsOffsetKnown ||
+        !Offset.isZero())
+      return Base::visitIntrinsicInst(II);
+    LifetimeStarts.insert(&II);
+  }
+
+  void visitCallBase(CallBase &CB) {
+    for (unsigned Op = 0, OpCount = CB.arg_size(); Op < OpCount; ++Op)
+      if (U->get() == CB.getArgOperand(Op) && !CB.doesNotCapture(Op))
+        PI.setEscaped(&CB);
+    handleMayWrite(CB);
+  }
+
+  bool getShouldRestoreAlloca() const {
+    if (!ShouldRestoreAlloca)
+      ShouldRestoreAlloca = computeShouldRestoreAlloca();
+    return *ShouldRestoreAlloca;
+  }
+
+  bool getMayWriteBeforeSplit() const { return MayWriteBeforeSplit; }
+
+  DenseMap<Instruction *, std::optional<APInt>> getAliasesCopy() const {
+    assert(getShouldRestoreAlloca() &&
+           "This method should only be called if the "
+           "alloca needs to be restored after a split.");
+    for (const auto &P : AliasOffetMap)
+      if (!P.second)
+        report_fatal_error("Unable to handle an alias with unknown offset "
+                           "created before CoroBegin.");
+    return AliasOffetMap;
+  }
+
+private:
+  bool computeShouldRestoreAlloca() const {
+    // If lifetime information is available, we check it first since it's
+    // more precise. We look at every pair of lifetime.start intrinsic and
+    // every basic block that uses the pointer to see if they cross suspension
+    // points. The uses cover both direct uses as well as indirect uses.
+    if (ShouldUseLifetimeStartInfo && !LifetimeStarts.empty()) {
+      for (auto *I : Users)
+        for (auto *S : LifetimeStarts)
+          if (isDefinitionAcrossSplit(*S, I))
+            return true;
+      // Addresses are guaranteed to be identical after every lifetime.start so
+      // we cannot use the local stack if the address escaped and there is a
+      // suspend point between lifetime markers. This should also cover the
+      // case of a single lifetime.start intrinsic in a loop with suspend point.
+      // if (PI.isEscaped()) {
+      //   for (auto *A : LifetimeStarts) {
+      //     for (auto *B : LifetimeStarts) {
+      //       if (hasPathOrLoopCrossingSuspendPoint(A->getParent(),
+      //                                             B->getParent()))
+      //         return true;
+      //     }
+      //   }
+      // }
+      return false;
+    }
+    // FIXME: Ideally the isEscaped check should come at the beginning.
+    // However there are a few loose ends that need to be fixed first before
+    // we can do that. We need to make sure we are not over-conservative, so
+    // that the data accessed in-between await_suspend and symmetric transfer
+    // is always put on the stack, and also data accessed after coro.end is
+    // always put on the stack (esp the return object). To fix that, we need
+    // to:
+    //  1) Potentially treat sret as nocapture in calls
+    //  2) Special handle the return object and put it on the stack
+    //  3) Utilize lifetime.end intrinsic
+    if (PI.isEscaped())
+      return true;
+
+    for (auto *U1 : Users)
+      for (auto *U2 : Users)
+        if (isDefinitionAcrossSplit(*U1, U2))
+          return true;
+
+    return false;
+  }
+
+  void handleMayWrite(const Instruction &I) {
+    if (!DT.dominates(&SplitInstruction, &I))
+      MayWriteBeforeSplit = true;
+  }
+
+  bool usedAfterSplit(Instruction &I) {
+    for (auto &U : I.uses())
+      if (DT.dominates(&SplitInstruction, U))
+        return true;
+    return false;
+  }
+
+  void handleAlias(Instruction &I) {
+    // We track all aliases created prior to CoroBegin but used after.
+    // These aliases may need to be recreated after CoroBegin if the alloca
+    // need to live on the frame.
+    if (DT.dominates(&SplitInstruction, &I) || !usedAfterSplit(I))
+      return;
+
+    if (!IsOffsetKnown) {
+      AliasOffetMap[&I].reset();
+    } else {
+      auto Itr = AliasOffetMap.find(&I);
+      if (Itr == AliasOffetMap.end()) {
+        AliasOffetMap[&I] = Offset;
+      } else if (Itr->second && *Itr->second != Offset) {
+        // If we have seen two different possible values for this alias, we set
+        // it to empty.
+        AliasOffetMap[&I].reset();
+      }
+    }
+  }
+
+  bool hasPathCrossingSplitPoint(BasicBlock *From, BasicBlock *To) const {
+    // Check if there is a path from From over Split to To.
+    // FIXME: Cache results / use better algorithm
+    const BasicBlock *SplitBB = SplitInstruction.getParent();
+
+    bool FromReachesSplit = is_contained(depth_first(From), SplitBB);
+
+    if (!FromReachesSplit)
+      return false;
+
+    bool SplitReachesTo = is_contained(depth_first(SplitBB), To);
+
+    return SplitReachesTo;
+  }
+
+  bool isDefinitionAcrossSplit(BasicBlock *DefBB, User *U) const {
+    auto *I = cast<Instruction>(U);
+    BasicBlock *UseBB = I->getParent();
+    return hasPathCrossingSplitPoint(DefBB, UseBB);
+  }
+
+  bool isDefinitionAcrossSplit(Argument &A, User *U) const {
+    return isDefinitionAcrossSplit(&A.getParent()->getEntryBlock(), U);
+  }
+
+  bool isDefinitionAcrossSplit(Instruction &I, User *U) const {
+    auto *DefBB = I.getParent();
+    return isDefinitionAcrossSplit(DefBB, U);
+  }
+
+  bool isDefinitionAcrossSplit(Value &V, User *U) const {
+    if (auto *Arg = dyn_cast<Argument>(&V))
+      return isDefinitionAcrossSplit(*Arg, U);
+    if (auto *Inst = dyn_cast<Instruction>(&V))
+      return isDefinitionAcrossSplit(*Inst, U);
+
+    llvm_unreachable("Only definitions of Type Argument or Instruction are "
+                     "supported for now.");
+  }
+};
+} // namespace
+
+Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
+  Function *Kernel = SplitInst->getFunction();
   LLVMContext &C = M.getContext();
 
   auto *KernelEnvironmentGV =
@@ -2469,19 +2754,205 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
     if (!Call)
       continue;
 
-    StringRef Name = Call->getCalledFunction()->getName();
-    if (Name.starts_with("llvm.nvvm.read.ptx.sreg"))
-      Call->moveBefore(Kernel->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
+    Function *Callee = Call->getCalledFunction();
+
+    if (!Callee)
+      continue;
+
+    if (Callee->getName().starts_with("llvm.nvvm.read.ptx.sreg"))
+      Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
   }
 
-  // Find Instructions that require caching
-  SetVector<Instruction *> RequiredValues;
-  SetVector<AllocaInst *> Allocas;
-  determineValuesAcross(&BB->front(), RequiredValues, Allocas);
+  rewritePHIs(*Kernel);
 
-  ValueToValueMapTy VMapSplit;
-  Function *SplitKernel = CloneFunction(Kernel, VMapSplit);
+  LoopInfo &LI = LIGetter(Kernel);
+  // Loop *L = LI.getLoopFor(SplitInst->getParent());
+
+  DominatorTree &DT = DTGetter(Kernel);
+  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
+  // AssumptionCache &AC = ACGetter(Kernel);
+  // ScalarEvolution &SCEV = SCEVGetter(Kernel);
+
+  // if (L && L->contains(SplitInst)) {
+  //   simplifyLoop(L, &DT, &LI, &SCEV, &AC, /*MSSAU*/ nullptr, false);
+  // }
+
+  // Find Instructions that require caching
+  SetVector<AllocaInst *> RequiredAllocas;
+
+  for (Instruction &I : instructions(Kernel)) {
+    AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
+    if (!Alloca)
+      continue;
+
+    AllocaUseVisitor Visitor(M.getDataLayout(), DT, *SplitInst, true);
+    Visitor.visitPtr(*Alloca);
+
+    if (Visitor.getShouldRestoreAlloca() && Visitor.getMayWriteBeforeSplit())
+      RequiredAllocas.insert(Alloca);
+  }
+
+  SetVector<Instruction *> RequiredValues;
+  determineValuesAcross(SplitInst, DT, RequiredValues);
+
+  unsigned ThreadLimit =
+      Kernel->getFnAttributeAsParsedInteger("omp_target_thread_limit");
+  unsigned NumTeams =
+      Kernel->getFnAttributeAsParsedInteger("omp_target_num_teams");
+  unsigned MaxNumThreads = ThreadLimit * NumTeams;
+
+  // Cache values shared between the original kernel and the split kernel.
+  auto ValueTys =
+      map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
+  auto AllocaTys = map_range(
+      RequiredAllocas, [](AllocaInst *I) { return I->getAllocatedType(); });
+  SmallVector<Type *> RequiredTypes(ValueTys);
+  append_range(RequiredTypes, AllocaTys);
+
+  // NOTE: it is more efficient to create one global for ever value to be
+  // cache. Doing so allows for dead stores and globals to be eliminated.
+  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
+  Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
+  // TODO: dynamically allocate this in the kernel env
+  GlobalVariable *Cache = new GlobalVariable(
+      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
+      Kernel->getName() + "_cont_cache");
+
+  BasicBlock *BeforeSplitBB = SplitInst->getParent();
+  // BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst);
+  BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DTU, &LI);
+  SplitInst->eraseFromParent();
+
+  // Create Terminate Block
+  BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
+  {
+    IRBuilder<> Builder(ExitBB);
+
+    // Terminate thread once a split off BB is reached.
+    // FIXME: This only works for NVPTX!
+    assert(Triple(M.getTargetTriple()).isNVPTX());
+    FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
+    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+
+    Builder.CreateCall(ExitFTy, Exit);
+    Builder.CreateUnreachable();
+  }
+
+  // Store Block
+  BasicBlock *CacheStoreBB = BasicBlock::Create(C, "CacheStore", Kernel);
+  {
+    Instruction *OldTerm = BeforeSplitBB->getTerminator();
+    OldTerm->setSuccessor(0, CacheStoreBB);
+    DT.addNewBlock(CacheStoreBB, BeforeSplitBB);
+
+    IRBuilder<> Builder(CacheStoreBB);
+
+    // Keep track of the number of continuation kernels to spawn.
+    ConstantInt *ContinuationCntIdx =
+        Builder.getInt32(KernelInfo::ContinuationCntIdx);
+    Value *ContCount = Builder.CreateInBoundsGEP(
+        KernelInfo::getKernelLaunchEnvironmentTy(C), KernelLaunchEnvironment,
+        {Builder.getInt32(0), ContinuationCntIdx}, "contcnt");
+    Value *CacheIdx = Builder.CreateAtomicRMW(AtomicRMWInst::Add, ContCount,
+                                              Builder.getInt32(1), std::nullopt,
+                                              AtomicOrdering::Acquire);
+    CacheIdx->setName("cacheidx");
+
+    // Cache Values
+    for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+      ConstantInt *ValIdx = Builder.getInt64(Idx);
+
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, ValIdx},
+                                             Inst->getName() + ".cacheidx");
+      Builder.CreateStore(Inst, Ptr);
+    }
+
+    // Cache allocas
+    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+      ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
+
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, IdxVal},
+                                             Alloca->getName() + ".cacheidx");
+      Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
+      Builder.CreateStore(ToCache, Ptr);
+    }
+
+    Builder.CreateBr(ExitBB);
+    DT.addNewBlock(ExitBB, CacheStoreBB);
+  }
+
+  ValueToValueMapTy VMap;
+  Function *SplitKernel = CloneFunction(Kernel, VMap);
   SplitKernel->setName(Kernel->getName() + "_contd" + "_0");
+
+  // Create Load Block
+  BasicBlock *CacheRematBB = BasicBlock::Create(C, "CacheRemat", SplitKernel);
+  {
+    IRBuilder<> Builder(CacheRematBB);
+    BasicBlock &OldEntry = SplitKernel->getEntryBlock();
+    CacheRematBB->moveBefore(&OldEntry);
+    Instruction *Term = Builder.CreateBr(cast<BasicBlock>(VMap[AfterSplitBB]));
+    Builder.SetInsertPoint(Term);
+    DominatorTree &DT = DTGetter(SplitKernel);
+
+    // TODO: Use OMP runtime instead of ptx intrinsics.
+    FunctionCallee ThreadIdFn = M.getOrInsertFunction(
+        "llvm.nvvm.read.ptx.sreg.tid.x", Type::getInt32Ty(C));
+    FunctionCallee NumThreadsFn = M.getOrInsertFunction(
+        "llvm.nvvm.read.ptx.sreg.ntid.x", Type::getInt32Ty(C));
+    FunctionCallee BlockIdFn = M.getOrInsertFunction(
+        "llvm.nvvm.read.ptx.sreg.ctaid.x", Type::getInt32Ty(C));
+
+    CallInst *Tid = Builder.CreateCall(ThreadIdFn);
+    CallInst *BlockId = Builder.CreateCall(BlockIdFn);
+    CallInst *NumThreads = Builder.CreateCall(NumThreadsFn);
+    Value *GlobalTid =
+        Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
+
+    for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+      ConstantInt *ValIdx = Builder.getInt64(Idx);
+      Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
+
+      Value *Ptr = Builder.CreateInBoundsGEP(
+          CacheTy, Cache, {GlobalTid, ValIdx}, Inst->getName() + ".cacheidx");
+      Value *Load = Builder.CreateLoad(Inst->getType(), Ptr);
+
+      // SplitInst->replaceUsesWithIf(Load, [&DT, CacheRematBB](Use &U) {
+      //   return DT.dominates(CacheRematBB, U);
+      // });
+
+      SplitInst->replaceAllUsesWith(Load);
+    }
+
+    // Rematerialize allocas
+    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+      ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
+      AllocaInst *SplitAlloca = cast<AllocaInst>(VMap[Alloca]);
+
+      // NOTE: can we just read / write from the cache directly?
+      AllocaInst *NewAlloca = Builder.CreateAlloca(
+          Alloca->getAllocatedType(), Alloca->getAddressSpace(), Alloca->getArraySize(),
+          Alloca->getName() + ".remat");
+      Value *Ptr = Builder.CreateInBoundsGEP(
+          CacheTy, Cache, {GlobalTid, IdxVal}, Alloca->getName() + ".cacheidx");
+      Value *CachedVal =
+          Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+      Builder.CreateStore(CachedVal, NewAlloca);
+
+      // FIXME: Replace all uses from AfterSplitBB onwards
+      // SplitAlloca->replaceUsesWithIf(NewAlloca, [&DT, CacheRematBB](Use &U) {
+      //   return !DT.dominates(CacheRematBB, U);
+      // });
+
+      SplitAlloca->replaceAllUsesWith(NewAlloca);
+
+      // FIXME: What about aliases / geps ?
+
+      // TODO: What about
+      // derived values from the pointer? What about read only values? What
+      // about read write values?
+    }
+  }
 
   // Get "nvvm.annotations" metadata node.
   NamedMDNode *MD = M.getOrInsertNamedMetadata("nvvm.annotations");
@@ -2491,6 +2962,8 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
 
   // Append metadata to nvvm.annotations.
   MD->addOperand(MDNode::get(C, MDVals));
+
+  // BasicBlock *SplitBB = cast<BasicBlock>(VMap[BB]);
 
   // Clone omp globals
   GlobalVariable *ExecMode =
@@ -2514,242 +2987,16 @@ Function *OpenMPOpt::splitKernel(BasicBlock *BB) {
         NestedParallelism->getThreadLocalMode(),
         NestedParallelism->getAddressSpace());
 
-  // TODO: use min cut
+  llvm::errs() << "Vals:\n";
 
-  // TODO: recompute values if possible
-
-  // NOTE: recompute should consider a custom map e.g. for mapped thread id.
-
-  // TODO: Use OMP runtime instead of ptx intrinsics.
-  FunctionCallee ThreadIdFn = M.getOrInsertFunction(
-      "llvm.nvvm.read.ptx.sreg.tid.x", Type::getInt32Ty(C));
-  FunctionCallee NumThreadsFn = M.getOrInsertFunction(
-      "llvm.nvvm.read.ptx.sreg.ntid.x", Type::getInt32Ty(C));
-  FunctionCallee BlockIdFn = M.getOrInsertFunction(
-      "llvm.nvvm.read.ptx.sreg.ctaid.x", Type::getInt32Ty(C));
-
-  unsigned ThreadLimit =
-      Kernel->getFnAttributeAsParsedInteger("omp_target_thread_limit");
-  unsigned NumTeams =
-      Kernel->getFnAttributeAsParsedInteger("omp_target_num_teams");
-  unsigned MaxNumThreads = ThreadLimit * NumTeams;
-
-  // Cache values shared between the original kernel and the split kernel.
-  auto ValueTys =
-      map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
-  auto AllocaTys =
-      map_range(Allocas, [](AllocaInst *I) { return I->getAllocatedType(); });
-  SmallVector<Type *> RequiredTypes(ValueTys);
-  append_range(RequiredTypes, AllocaTys);
-
-  // If inside a loop, peel of the first iteration and use it for loading cached
-  // values.
-  LoopInfo &LI = LIGetter(Kernel);
-  Loop *L = LI.getLoopFor(BB) ? LI.getLoopFor(BB)->getOutermostLoop() : nullptr;
-  ValueToValueMapTy PeelVMap;
-  if (L && !RequiredTypes.empty()) {
-    assert(!verifyFunction(*SplitKernel, &errs()));
-
-    BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
-
-    LoopInfo &LI = LIGetter(SplitKernel);
-    DominatorTree &DT = DTGetter(SplitKernel);
-    AssumptionCache &AC = ACGetter(SplitKernel);
-    ScalarEvolution &SCEV = SCEVGetter(SplitKernel);
-
-    Loop *L = LI.getLoopFor(SplitBB);
-
-    simplifyLoop(L, &DT, &LI, &SCEV, &AC, /*MSSAU*/ nullptr, false);
-    peelLoop(L, 1, &LI, &SCEV, DT, &AC, false, PeelVMap);
+  for (Instruction *I : RequiredValues) {
+    I->dump();
   }
 
-  DominatorTree &DT = DTGetter(Kernel);
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
+  llvm::errs() << "Allocas:\n";
 
-  // Assume that we allways reach the split point at least once in the
-  // continuation kernel.
-  for (auto *Current = DT.getNode(BB), *Next = Current->getIDom();
-       Next != nullptr; Current = Next, Next = Next->getIDom()) {
-    BasicBlock *NextBB = Next->getBlock();
-    BasicBlock *CurrentBB = Current->getBlock();
-
-    BranchInst *Branch = dyn_cast<BranchInst>(NextBB->getTerminator());
-    if (!Branch)
-      continue;
-
-    if (!Branch->isConditional())
-      continue;
-
-    if (L && L->contains(Branch))
-      continue;
-
-    BranchInst *SplitBranch = cast<BranchInst>(VMapSplit[Branch]);
-    // Loop *L = SplitLI1.getLoopFor(SplitBranch->getParent());
-    // Instruction *I = cast<Instruction>(PeelVMap[SplitBranch]);
-    // SplitBranch = L ? cast<BranchInst>(PeelVMap[SplitBranch]) : SplitBranch;
-
-    Value *Cond = SplitBranch->getCondition();
-
-    BasicBlock *True = Branch->getSuccessor(0);
-    BasicBlock *False = Branch->getSuccessor(1);
-
-    IRBuilder<> AssumptionBuilder(SplitBranch);
-
-    if (CurrentBB == True) {
-      AssumptionBuilder.CreateAssumption(Cond);
-    } else if (CurrentBB == False) {
-      AssumptionBuilder.CreateAssumption(AssumptionBuilder.CreateNot(Cond));
-    }
-  }
-
-  SplitBlock(BB, &BB->front(), &DTU, &LI);
-  UnreachableInst *Term = new UnreachableInst(C);
-  ReplaceInstWithInst(BB->getTerminator(), Term);
-
-  // Terminate thread once a split off BB is reached.
-  // FIXME: This only works for NVPTX!
-  assert(Triple(M.getTargetTriple()).isNVPTX());
-  FunctionType *ExitFTy = FunctionType::get(Type::getVoidTy(C), false);
-  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
-  CallInst *ExitCall = CallInst::Create(ExitFTy, Exit, "", Term);
-
-  if (RequiredTypes.empty()) {
-    assert(!verifyFunction(*Kernel, &errs()));
-    assert(!verifyFunction(*SplitKernel, &errs()));
-
-    return SplitKernel;
-  }
-
-  IRBuilder<> Builder(ExitCall);
-  IRBuilder<> SplitBuilder(SplitKernel->getEntryBlock().getFirstNonPHIOrDbg());
-
-  // Keep track of the number of continuation kernels to spawn.
-  ConstantInt *ContinuationCntIdx =
-      Builder.getInt32(KernelInfo::ContinuationCntIdx);
-  Value *ContCount = Builder.CreateInBoundsGEP(
-      KernelInfo::getKernelLaunchEnvironmentTy(C), KernelLaunchEnvironment,
-      {Builder.getInt32(0), ContinuationCntIdx}, "contcnt");
-  Value *CacheIdx = Builder.CreateAtomicRMW(AtomicRMWInst::Add, ContCount,
-                                            Builder.getInt32(1), std::nullopt,
-                                            AtomicOrdering::Acquire);
-  CacheIdx->setName("cacheidx");
-
-  CallInst *SplitTid = SplitBuilder.CreateCall(ThreadIdFn);
-  CallInst *SplitBlockId = SplitBuilder.CreateCall(BlockIdFn);
-  CallInst *SplitNumThreads = SplitBuilder.CreateCall(NumThreadsFn);
-  Value *SplitGlobalTid = SplitBuilder.CreateAdd(
-      SplitTid, SplitBuilder.CreateMul(SplitBlockId, SplitNumThreads), "gtid");
-
-  // NOTE: it is more efficient to create one global for ever value to be
-  // cache. Doing so allows for dead stores and globals to be eliminated.
-  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
-  Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
-  // TODO: dynamically allocate this in the kernel env
-  GlobalVariable *Cache = new GlobalVariable(
-      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
-      Kernel->getName() + "_cont_cache");
-
-  // Iterate over ModifiedKernel and SplitKernel and insert cache
-  // instructions if needed.
-  for (auto [Idx, Inst] : enumerate(RequiredValues)) {
-    ConstantInt *ValIdx = Builder.getInt64(Idx);
-
-    Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, ValIdx},
-                                           Inst->getName() + ".cacheidx");
-    Builder.CreateStore(Inst, Ptr);
-
-    Instruction *SplitInst = cast<Instruction>(VMapSplit[Inst]);
-    // SplitInst =
-    //     L->contains(Inst) ? cast<Instruction>(PeelVMap[SplitInst]) :
-    //     SplitInst;
-
-    SplitBuilder.SetInsertPoint(SplitInst);
-
-    Value *SplitPtr =
-        SplitBuilder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
-                                       SplitInst->getName() + ".cacheidx");
-    LoadInst *CachedInst =
-        SplitBuilder.CreateLoad(SplitInst->getType(), SplitPtr);
-    SplitInst->replaceAllUsesWith(CachedInst);
-    SplitInst->eraseFromParent();
-  }
-
-  // Rematerialize allocas
-  for (auto [Idx, Alloca] : enumerate(Allocas)) {
-    ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
-
-    Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, IdxVal},
-                                           Alloca->getName() + ".cacheidx");
-    Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
-    Builder.CreateStore(ToCache, Ptr);
-
-    Instruction *SplitAlloca = cast<Instruction>(VMapSplit[Alloca]);
-    SplitBuilder.SetInsertPoint(SplitAlloca->getNextNode());
-
-    // NOTE: can we just read / write from the cache directly?
-    Value *SplitPtr =
-        SplitBuilder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
-                                       Alloca->getName() + ".cacheidx");
-    Value *CachedVal =
-        SplitBuilder.CreateLoad(Alloca->getAllocatedType(), SplitPtr);
-    SplitBuilder.CreateStore(CachedVal, SplitAlloca);
-
-    // TODO: What about
-    // derived values from the pointer? What about read only values? What about
-    // read write values?
-  }
-
-  if (!L) {
-    assert(!verifyFunction(*Kernel, &errs()));
-    assert(!verifyFunction(*SplitKernel, &errs()));
-
-    return SplitKernel;
-  }
-
-  BasicBlock *SplitBB = cast<BasicBlock>(VMapSplit[BB]);
-
-  LoopInfo &SplitLI = LIGetter(SplitKernel);
-  DominatorTree &SplitDT = DTGetter(SplitKernel);
-  DomTreeUpdater SplitDTU(SplitDT, DomTreeUpdater::UpdateStrategy::Lazy);
-
-  SplitBlock(SplitBB, &SplitBB->front(), &SplitDTU, &SplitLI);
-  UnreachableInst *SplitTerm = new UnreachableInst(C);
-  ReplaceInstWithInst(SplitBB->getTerminator(), SplitTerm);
-
-  // Terminate thread once a split off BB is reached.
-  // FIXME: This only works for NVPTX!
-  assert(Triple(M.getTargetTriple()).isNVPTX());
-  FunctionType *SplitExitFTy = FunctionType::get(Type::getVoidTy(C), false);
-  InlineAsm *SplitExit = InlineAsm::get(SplitExitFTy, "exit;", "", true);
-  CallInst *SplitExitCall = CallInst::Create(SplitExitFTy, SplitExit, "", SplitTerm);
-
-  Builder.SetInsertPoint(SplitExitCall);
-
-  for (auto [Idx, Inst] : enumerate(RequiredValues)) {
-    ConstantInt *ValIdx = Builder.getInt64(Idx);
-
-    if (!L->contains(Inst))
-      continue;
-
-    Value *Ptr =
-        Builder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, ValIdx},
-                                  Inst->getName() + ".cacheidx");
-    Builder.CreateStore(Inst, Ptr);
-  }
-
-  // Rematerialize allocas
-  for (auto [Idx, Alloca] : enumerate(Allocas)) {
-    ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
-
-    Value *Ptr =
-        Builder.CreateInBoundsGEP(CacheTy, Cache, {SplitGlobalTid, IdxVal},
-                                  Alloca->getName() + ".cacheidx");
-
-    Instruction *SplitAlloca = cast<Instruction>(VMapSplit[Alloca]);
-
-    Value *ToCache =
-        Builder.CreateLoad(Alloca->getAllocatedType(), SplitAlloca);
-    Builder.CreateStore(ToCache, Ptr);
+  for (Instruction *I : RequiredAllocas) {
+    I->dump();
   }
 
   assert(!verifyFunction(*Kernel, &errs()));
@@ -2795,7 +3042,8 @@ struct AAICVTracker : public StateWrapper<BooleanState, AbstractAttribute> {
   /// See AbstractAttribute::getIdAddr()
   const char *getIdAddr() const override { return &ID; }
 
-  /// This function should return true if the type of the \p AA is AAICVTracker
+  /// This function should return true if the type of the \p AA is
+  /// AAICVTracker
   static bool classof(const AbstractAttribute *AA) {
     return (AA->getIdAddr() == &ID);
   }
@@ -3159,8 +3407,8 @@ struct AAICVTrackerCallSiteReturned : AAICVTracker {
                   InternalControlVar::ICV___last>
       ICVReplacementValuesMap;
 
-  /// Return the value with which associated value can be replaced for specific
-  /// \p ICV.
+  /// Return the value with which associated value can be replaced for
+  /// specific \p ICV.
   std::optional<Value *>
   getUniqueReplacementValue(InternalControlVar ICV) const override {
     return ICVReplacementValuesMap[ICV];
@@ -3257,13 +3505,14 @@ struct AAExecutionDomainFunction : public AAExecutionDomain {
       if (!ED.EncounteredAssumes.empty() && !A.isModulePass())
         return;
 
-      // We can remove this barrier, if it is one, or aligned barriers reaching
-      // the kernel end (if CB is nullptr). Aligned barriers reaching the kernel
-      // end should only be removed if the kernel end is their unique successor;
-      // otherwise, they may have side-effects that aren't accounted for in the
-      // kernel end in their other successors. If those barriers have other
-      // barriers reaching them, those can be transitively removed as well as
-      // long as the kernel end is also their unique successor.
+      // We can remove this barrier, if it is one, or aligned barriers
+      // reaching the kernel end (if CB is nullptr). Aligned barriers reaching
+      // the kernel end should only be removed if the kernel end is their
+      // unique successor; otherwise, they may have side-effects that aren't
+      // accounted for in the kernel end in their other successors. If those
+      // barriers have other barriers reaching them, those can be transitively
+      // removed as well as long as the kernel end is also their unique
+      // successor.
       if (CB) {
         DeletedBarriers.insert(CB);
         A.deleteAfterManifest(*CB);
@@ -3296,8 +3545,8 @@ struct AAExecutionDomainFunction : public AAExecutionDomain {
         }
       }
 
-      // If we actually eliminated a barrier we need to eliminate the associated
-      // llvm.assumes as well to avoid creating UB.
+      // If we actually eliminated a barrier we need to eliminate the
+      // associated llvm.assumes as well to avoid creating UB.
       if (!ED.EncounteredAssumes.empty() && (CB || !ED.AlignedBarriers.empty()))
         for (auto *AssumeCB : ED.EncounteredAssumes)
           A.deleteAfterManifest(*AssumeCB);
@@ -3317,8 +3566,8 @@ struct AAExecutionDomainFunction : public AAExecutionDomain {
     return getState().isValidState() && !NonNoOpFences.count(&FI);
   }
 
-  /// Merge barrier and assumption information from \p PredED into the successor
-  /// \p ED.
+  /// Merge barrier and assumption information from \p PredED into the
+  /// successor \p ED.
   void
   mergeInPredecessorBarriersAndAssumptions(Attributor &A, ExecutionDomainTy &ED,
                                            const ExecutionDomainTy &PredED);
@@ -3591,8 +3840,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
   bool Changed = false;
 
   // Helper to deal with an aligned barrier encountered during the forward
-  // traversal. \p CB is the aligned barrier, \p ED is the execution domain when
-  // it was encountered.
+  // traversal. \p CB is the aligned barrier, \p ED is the execution domain
+  // when it was encountered.
   auto HandleAlignedBarrier = [&](CallBase &CB, ExecutionDomainTy &ED) {
     Changed |= AlignedBarriers.insert(&CB);
     // First, update the barrier ED kept in the separate CEDMap.
@@ -3622,7 +3871,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
 
     bool IsEntryBB = &BB == &EntryBB;
     // TODO: We use local reasoning since we don't have a divergence analysis
-    // 	     running as well. We could basically allow uniform branches here.
+    // 	     running as well. We could basically allow uniform branches
+    // here.
     bool AlignedBarrierLastInBlock = IsEntryBB && IsKernel;
     bool IsExplicitlyAligned = IsEntryBB && IsKernel;
     ExecutionDomainTy ED;
@@ -3702,8 +3952,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
       IsExplicitlyAligned &= IsNoSync;
 
       // Next we check for calls. Aligned barriers are handled
-      // explicitly, everything else is kept for the backward traversal and will
-      // also affect our state.
+      // explicitly, everything else is kept for the backward traversal and
+      // will also affect our state.
       if (CB) {
         if (IsAlignedBarrier) {
           HandleAlignedBarrier(*CB, ED);
@@ -3828,8 +4078,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
 
     // Check if we computed anything different as part of the forward
     // traversal. We do not take assumptions and aligned barriers into account
-    // as they do not influence the state we iterate. Backward traversal values
-    // are handled later on.
+    // as they do not influence the state we iterate. Backward traversal
+    // values are handled later on.
     if (ED.IsExecutedByInitialThreadOnly !=
             StoredED.IsExecutedByInitialThreadOnly ||
         ED.IsReachedFromAlignedBarrierOnly !=
@@ -4118,8 +4368,8 @@ struct AAKernelInfo : public StateWrapper<KernelInfoState, AbstractAttribute> {
   using Base = StateWrapper<KernelInfoState, AbstractAttribute>;
   AAKernelInfo(const IRPosition &IRP, Attributor &A) : Base(IRP) {}
 
-  /// The callee value is tracked beyond a simple stripPointerCasts, so we allow
-  /// unknown callees.
+  /// The callee value is tracked beyond a simple stripPointerCasts, so we
+  /// allow unknown callees.
   static bool requiresCalleeForCallBase() { return false; }
 
   /// Statistics are tracked as part of manifest for now.
@@ -4161,7 +4411,8 @@ struct AAKernelInfo : public StateWrapper<KernelInfoState, AbstractAttribute> {
   /// See AbstractAttribute::getIdAddr()
   const char *getIdAddr() const override { return &ID; }
 
-  /// This function should return true if the type of the \p AA is AAKernelInfo
+  /// This function should return true if the type of the \p AA is
+  /// AAKernelInfo
   static bool classof(const AbstractAttribute *AA) {
     return (AA->getIdAddr() == &ID);
   }
