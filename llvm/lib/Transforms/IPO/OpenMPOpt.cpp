@@ -78,12 +78,15 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/Transforms/Utils/BreakCriticalEdges.h"
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/CodeExtractor.h"
+#include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/LoopPeel.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
+#include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 
 #include <algorithm>
 #include <optional>
@@ -1045,7 +1048,6 @@ struct OpenMPOpt {
       if (OMPInfoCache.OpenMPPostLink)
         Changed |= splitKernels();
     }
-
 
     if (OMPInfoCache.OpenMPPostLink)
       Changed |= removeRuntimeSymbols();
@@ -2411,9 +2413,6 @@ void determineValuesAcross(Instruction *Split, DominatorTree &DT,
 
   for (BasicBlock *B : breadth_first(BB)) {
     for (Instruction &I : *B) {
-      if (B == Split->getParent() && I.comesBefore(Split))
-        continue;
-
       for (Use &U : I.operands()) {
         Instruction *UI = dyn_cast<Instruction>(U.get());
         if (!UI)
@@ -2423,12 +2422,15 @@ void determineValuesAcross(Instruction *Split, DominatorTree &DT,
           continue;
 
         Type *Ty = UI->getType();
-        if (Ty->isPointerTy() && (Ty->getPointerAddressSpace() == 0 || Ty->getPointerAddressSpace() == 3 || Ty->getPointerAddressSpace() == 4 || Ty->getPointerAddressSpace() == 5))
+        if (Ty->isPointerTy() && (Ty->getPointerAddressSpace() == 0 ||
+                                  Ty->getPointerAddressSpace() == 3 ||
+                                  Ty->getPointerAddressSpace() == 4 ||
+                                  Ty->getPointerAddressSpace() == 5))
           continue;
-          // if (isa<PHINode>((UI)))
-          //   continue;
-          // if (isMaterializable(*UI))
-          //   continue;
+
+        // if (isMaterializable(*UI))
+        //   continue;
+
         if (DT.dominates(UI, Split)) {
           RequiredValues.insert(UI);
         }
@@ -2763,19 +2765,9 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
   }
 
-  rewritePHIs(*Kernel);
-
   LoopInfo &LI = LIGetter(Kernel);
-  // Loop *L = LI.getLoopFor(SplitInst->getParent());
-
   DominatorTree &DT = DTGetter(Kernel);
   DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
-  // AssumptionCache &AC = ACGetter(Kernel);
-  // ScalarEvolution &SCEV = SCEVGetter(Kernel);
-
-  // if (L && L->contains(SplitInst)) {
-  //   simplifyLoop(L, &DT, &LI, &SCEV, &AC, /*MSSAU*/ nullptr, false);
-  // }
 
   // Find Instructions that require caching
   SetVector<AllocaInst *> RequiredAllocas;
@@ -2819,7 +2811,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       Kernel->getName() + "_cont_cache");
 
   BasicBlock *BeforeSplitBB = SplitInst->getParent();
-  // BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst);
   BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DTU, &LI);
   SplitInst->eraseFromParent();
 
@@ -2841,18 +2832,17 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
   // Store Block
   BasicBlock *CacheStoreBB = BasicBlock::Create(C, "CacheStore", Kernel);
   {
-    Instruction *OldTerm = BeforeSplitBB->getTerminator();
-    OldTerm->setSuccessor(0, CacheStoreBB);
-    DT.addNewBlock(CacheStoreBB, BeforeSplitBB);
-
     IRBuilder<> Builder(CacheStoreBB);
 
+    Instruction *OldTerm = BeforeSplitBB->getTerminator();
+    OldTerm->setSuccessor(0, CacheStoreBB);
+    DT.deleteEdge(BeforeSplitBB, AfterSplitBB);
+    DT.addNewBlock(CacheStoreBB, BeforeSplitBB);
+
     // Keep track of the number of continuation kernels to spawn.
-    ConstantInt *ContinuationCntIdx =
-        Builder.getInt32(KernelInfo::ContinuationCntIdx);
-    Value *ContCount = Builder.CreateInBoundsGEP(
+    Value *ContCount = Builder.CreateStructGEP(
         KernelInfo::getKernelLaunchEnvironmentTy(C), KernelLaunchEnvironment,
-        {Builder.getInt32(0), ContinuationCntIdx}, "contcnt");
+        KernelInfo::ContinuationCntIdx);
     Value *CacheIdx = Builder.CreateAtomicRMW(AtomicRMWInst::Add, ContCount,
                                               Builder.getInt32(1), std::nullopt,
                                               AtomicOrdering::Acquire);
@@ -2860,19 +2850,21 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
 
     // Cache Values
     for (auto [Idx, Inst] : enumerate(RequiredValues)) {
-      ConstantInt *ValIdx = Builder.getInt64(Idx);
-
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, ValIdx},
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
+                                             {Builder.getInt32(0), CacheIdx},
                                              Inst->getName() + ".cacheidx");
+      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+
       Builder.CreateStore(Inst, Ptr);
     }
 
     // Cache allocas
     for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
-
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache, {CacheIdx, IdxVal},
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
+                                             {Builder.getInt32(0), CacheIdx},
                                              Alloca->getName() + ".cacheidx");
+      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+
       Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
       Builder.CreateStore(ToCache, Ptr);
     }
@@ -2891,9 +2883,9 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     IRBuilder<> Builder(CacheRematBB);
     BasicBlock &OldEntry = SplitKernel->getEntryBlock();
     CacheRematBB->moveBefore(&OldEntry);
+    CacheRematBB->takeName(&OldEntry);
     Instruction *Term = Builder.CreateBr(cast<BasicBlock>(VMap[AfterSplitBB]));
     Builder.SetInsertPoint(Term);
-    DominatorTree &DT = DTGetter(SplitKernel);
 
     // TODO: Use OMP runtime instead of ptx intrinsics.
     FunctionCallee ThreadIdFn = M.getOrInsertFunction(
@@ -2909,34 +2901,46 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     Value *GlobalTid =
         Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
 
+    DominatorTree &DT = DTGetter(SplitKernel);
+    SSAUpdaterBulk SSAUpdate;
+
+    // Rematerialize values
     for (auto [Idx, Inst] : enumerate(RequiredValues)) {
-      ConstantInt *ValIdx = Builder.getInt64(Idx);
       Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
 
-      Value *Ptr = Builder.CreateInBoundsGEP(
-          CacheTy, Cache, {GlobalTid, ValIdx}, Inst->getName() + ".cacheidx");
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
+                                             {Builder.getInt32(0), GlobalTid},
+                                             Inst->getName() + ".cacheidx");
+      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+
       Value *Load = Builder.CreateLoad(Inst->getType(), Ptr);
 
-      // SplitInst->replaceUsesWithIf(Load, [&DT, CacheRematBB](Use &U) {
-      //   return DT.dominates(CacheRematBB, U);
-      // });
+      unsigned Var = SSAUpdate.AddVariable(
+          (Inst->getName() + "." + Twine(Idx)).str(), Inst->getType());
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Load);
+      SSAUpdate.AddAvailableValue(Var, SplitInst->getParent(), SplitInst);
 
-      SplitInst->replaceAllUsesWith(Load);
+      for (Use &U : SplitInst->uses()) {
+        SSAUpdate.AddUse(Var, &U);
+      }
     }
+
+    SSAUpdate.RewriteAllUses(&DT);
 
     // Rematerialize allocas
     for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      ConstantInt *IdxVal = Builder.getInt64(Idx + RequiredValues.size());
       AllocaInst *SplitAlloca = cast<AllocaInst>(VMap[Alloca]);
 
       // NOTE: can we just read / write from the cache directly?
       AllocaInst *NewAlloca = Builder.CreateAlloca(
-          Alloca->getAllocatedType(), Alloca->getAddressSpace(), Alloca->getArraySize(),
-          Alloca->getName() + ".remat");
-      Value *Ptr = Builder.CreateInBoundsGEP(
-          CacheTy, Cache, {GlobalTid, IdxVal}, Alloca->getName() + ".cacheidx");
-      Value *CachedVal =
-          Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+          Alloca->getAllocatedType(), Alloca->getAddressSpace(),
+          Alloca->getArraySize(), Alloca->getName() + ".remat");
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
+                                             {Builder.getInt32(0), GlobalTid},
+                                             Alloca->getName() + ".cacheidx");
+      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+
+      Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       Builder.CreateStore(CachedVal, NewAlloca);
 
       // FIXME: Replace all uses from AfterSplitBB onwards
@@ -2944,7 +2948,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       //   return !DT.dominates(CacheRematBB, U);
       // });
 
-      SplitAlloca->replaceAllUsesWith(NewAlloca);
+      // SplitAlloca->replaceAllUsesWith(NewAlloca);
 
       // FIXME: What about aliases / geps ?
 
@@ -2962,8 +2966,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
 
   // Append metadata to nvvm.annotations.
   MD->addOperand(MDNode::get(C, MDVals));
-
-  // BasicBlock *SplitBB = cast<BasicBlock>(VMap[BB]);
 
   // Clone omp globals
   GlobalVariable *ExecMode =
@@ -2986,18 +2988,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
         SplitKernel->getName() + "_nested_parallelism", nullptr,
         NestedParallelism->getThreadLocalMode(),
         NestedParallelism->getAddressSpace());
-
-  llvm::errs() << "Vals:\n";
-
-  for (Instruction *I : RequiredValues) {
-    I->dump();
-  }
-
-  llvm::errs() << "Allocas:\n";
-
-  for (Instruction *I : RequiredAllocas) {
-    I->dump();
-  }
 
   assert(!verifyFunction(*Kernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));
@@ -6590,6 +6580,7 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
 
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, DTGetter, ACGetter,
                    SCEVGetter, InfoCache, A);
+
   Changed |= OMPOpt.run(true);
 
   // Optionally inline device functions for potentially better performance.
