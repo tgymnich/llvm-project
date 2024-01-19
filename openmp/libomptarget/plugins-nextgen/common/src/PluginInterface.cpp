@@ -513,6 +513,8 @@ GenericKernelTy::getKernelLaunchEnvironment(
   auto &LocalKLE = (*AsyncInfoWrapper).KernelLaunchEnvironment;
   LocalKLE = KernelLaunchEnvironment;
 
+  LocalKLE.ContinuationCnt = 0;
+
   if (isReduction) {
     auto AllocOrErr = GenericDevice.dataAlloc(
         KernelEnvironment.Configuration.ReductionDataSize *
