@@ -1,24 +1,20 @@
 #ifndef LLVM_ADT_PUSHRELABELMAXFLOW_H
 #define LLVM_ADT_PUSHRELABELMAXFLOW_H
 
-#include "llvm/ADT/BreadthFirstIterator.h"
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DepthFirstIterator.h"
-#include "llvm/ADT/DirectedGraph.h"
-#include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/GraphTraits.h"
-#include "llvm/ADT/IndexedMap.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 
 #include "llvm/ADT/iterator_range.h"
-#include "llvm/IR/Instruction.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
 #include <algorithm>
-#include <cstddef>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <queue>
+#include <string>
 
 namespace llvm {
 
@@ -89,20 +85,20 @@ public:
 
   void getSinkSideMinCut(SmallVector<NodeRef> &Result) {
     auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    NodeIndex Sink =
-        std::distance(GT::nodes_begin(&Graph), find(Nodes, this->Sink));
+    NodeIndex SinkIdx =
+        std::distance(GT::nodes_begin(&Graph), find(nodes(Graph), Sink));
     SmallSet<NodeIndex, 32> Reachable;
-    Reachable.insert(Sink);
+    Reachable.insert(SinkIdx);
     std::queue<NodeIndex> Worklist;
-    Worklist.push(Sink);
+    Worklist.push(SinkIdx);
 
     while (!Worklist.empty()) {
       NodeIndex Todo = Worklist.front();
       Worklist.pop();
-      for (NodeIndex i = 0; i < Size; ++i) {
-        if (residualCapacity(i, Todo) > 0) {
-          if (std::get<1>(Reachable.insert(i))) {
-            Worklist.push(i);
+      for (NodeIndex Idx = 0; Idx < Size; ++Idx) {
+        if (residualCapacity(Idx, Todo) > 0) {
+          if (std::get<1>(Reachable.insert(Idx))) {
+            Worklist.push(Idx);
           }
         }
       }
@@ -118,23 +114,22 @@ public:
 
   int64_t computeMaxFlow() {
     auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    NodeIndex Source =
-        std::distance(GT::nodes_begin(&Graph), find(Nodes, this->Source));
-    NodeIndex Sink =
-        std::distance(GT::nodes_begin(&Graph), find(Nodes, this->Sink));
+    NodeIndex SourceIdx =
+        std::distance(GT::nodes_begin(&Graph), find(Nodes, Source));
+    NodeIndex SinkIdx = std::distance(GT::nodes_begin(&Graph), find(Nodes, Sink));
 
     // init height
-    Height[Source] = Size;
-    Excess[Source] = std::numeric_limits<int64_t>::max();
+    Height[SourceIdx] = Size;
+    Excess[SourceIdx] = std::numeric_limits<int64_t>::max();
 
     // init preflow
-    for (NodeIndex Node = 0; Node < Size; ++Node) {
-      if (Node != Source)
-        push(Source, Node);
+    for (NodeIndex Idx = 0; Idx < Size; ++Idx) {
+      if (Idx != SourceIdx)
+        push(SourceIdx, Idx);
     }
 
     SmallVector<NodeIndex> Current;
-    findMaxHeightVertices(Source, Sink, Current);
+    findMaxHeightVertices(SourceIdx, SinkIdx, Current);
 
     while (!Current.empty()) {
       for (NodeIndex i : Current) {
@@ -152,42 +147,42 @@ public:
       }
 
       Current.clear();
-      findMaxHeightVertices(Source, Sink, Current);
+      findMaxHeightVertices(SourceIdx, SinkIdx, Current);
     }
 
-    return Excess[Sink];
+    return Excess[SinkIdx];
   }
 
-  void dump() {
-    printf("Flow:\n");
+  LLVM_DUMP_METHOD void dump() {
+    dbgs() << "Flow:" << "\n";
     for (auto Row : Flow) {
-      for (auto Element : Row) {
-        printf("%ld\t", Element);
+      for (int64_t Element : Row) {
+        dbgs() << std::to_string(Element) << "\t";
       }
-      printf("\n");
+      dbgs() << "\n";
     }
-    printf("\n");
+    dbgs() << "\n";
 
-    printf("Capacity:\n");
+    dbgs() << "Capacity:" << "\n";
     for (auto Row : Capacity) {
-      for (auto Element : Row) {
-        printf("%ld\t", Element);
+      for (int64_t Element : Row) {
+        dbgs() << std::to_string(Element) << "\t";
       }
-      printf("\n");
+      dbgs() << "\n";
     }
-    printf("\n");
+    dbgs() << "\n";
 
-    printf("Height:\n");
-    for (auto Element : Height) {
-        printf("%ld\t", Element);
+    dbgs() << "Height:" << "\n";
+    for (int64_t Element : Height) {
+      dbgs() << std::to_string(Element) << "\t";
     }
-    printf("\n");
+    dbgs() << "\n";
 
-    printf("Excess:\n");
-    for (auto Element : Excess) {
-        printf("%ld\t", Element);
+    dbgs() << "Excess:" << "\n";
+    for (int64_t Element : Excess) {
+      dbgs() << std::to_string(Element) << "\t";
     }
-    printf("\n");
+    dbgs() << "\n";
   }
 
 private:
