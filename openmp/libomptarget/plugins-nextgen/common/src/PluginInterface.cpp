@@ -617,8 +617,8 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
     if (ContCount == 0)
       break;
 
-    uint32_t NumThreads = ContCount;
-    uint64_t NumBlocks = 1;
+    uint32_t NumThreads = std::min(MaxNumThreads, ContCount);
+    uint64_t NumBlocks = ContCount / NumThreads; // FIXME: launch the remaining threads if needed!
 
     // Record the kernel description after we modified the argument count and
     // num
