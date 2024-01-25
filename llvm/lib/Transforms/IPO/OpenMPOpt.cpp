@@ -39,6 +39,7 @@
 #include "llvm/Analysis/DomTreeUpdater.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/MemoryLocation.h"
+#include "llvm/Analysis/MemorySSAUpdater.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/PtrUseVisitor.h"
@@ -92,6 +93,7 @@
 #include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 
 #include <algorithm>
+#include <deque>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -2407,19 +2409,42 @@ static void rewritePHIs(Function &F) {
     rewritePHIs(*BB);
 }
 
-bool isMaterializable(Instruction &V) {
-  return (isa<CastInst>(&V) || isa<GetElementPtrInst>(&V) ||
-          isa<BinaryOperator>(&V) || isa<CmpInst>(&V) || isa<SelectInst>(&V));
-}
-
-bool isDefinitionAcrossSplit(Instruction *Def, User *U, Instruction *Split,
+bool isDefinitionAcrossSplit(Instruction &Def, User *U, Instruction *Split,
                              DominatorTree &DT) {
   Instruction *UI = dyn_cast<Instruction>(U);
-  return UI && DT.dominates(Def, Split) && DT.dominates(Split, UI);
+  return UI && DT.dominates(&Def, Split) && DT.dominates(Split, UI);
 }
 
+bool isMaterializable(Instruction *I) {
+  bool IsMaterializableInstruction =
+      (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
+       isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<SelectInst>(I));
+
+  if (IsMaterializableInstruction)
+    return true;
+
+  CallBase *Call = dyn_cast<CallBase>(I);
+  if (!Call)
+    return false;
+
+  if (Call->getCalledFunction()->getName().starts_with(
+          "llvm.nvvm.read.ptx.sreg"))
+    return false;
+
+  MemoryEffects ME = Call->getMemoryEffects();
+  if (ME.doesNotAccessMemory())
+    return true;
+
+  // if (Call->hasFnAttr(Attribute::AttrKind::Speculatable))
+  //   return true;
+
+  return false;
+}
+
+template <bool EnableRecompute>
 void determineValuesAcross(Instruction *Split, DominatorTree &DT,
-                           SetVector<Instruction *> &RequiredValues) {
+                           SetVector<Instruction *> &RequiredValues,
+                           SetVector<Instruction *> &RecomputableValues) {
   BasicBlock *BB = Split->getParent();
 
   for (BasicBlock *B : breadth_first(BB)) {
@@ -2432,15 +2457,37 @@ void determineValuesAcross(Instruction *Split, DominatorTree &DT,
         if (isa<AllocaInst>(UI))
           continue;
 
-        Type *Ty = UI->getType();
-        if (Ty->isPointerTy() && (Ty->getPointerAddressSpace() == 0 ||
-                                  Ty->getPointerAddressSpace() == 3 ||
-                                  Ty->getPointerAddressSpace() == 4 ||
-                                  Ty->getPointerAddressSpace() == 5))
-          continue;
-
-        // if (isMaterializable(*UI))
+        // Type *Ty = UI->getType();
+        // if (Ty->isPointerTy() &&
+        //     Ty->getPointerAddressSpace() !=
+        //         static_cast<unsigned>(AddressSpace::Global))
         //   continue;
+
+        if (isMaterializable(UI) && EnableRecompute) {
+          SmallVector<Instruction *> Worklist;
+          Worklist.push_back(UI);
+
+          while (!Worklist.empty()) {
+            Instruction *Todo = Worklist.pop_back_val();
+
+            if (!DT.dominates(Todo, Split))
+              continue;
+
+            if (!isMaterializable(Todo)) {
+              if (!isa<AllocaInst>(Todo))
+                RequiredValues.insert(Todo);
+              continue;
+            }
+
+            RecomputableValues.insert(Todo);
+
+            for (Use &Op : Todo->operands()) {
+              if (Instruction *I = dyn_cast<Instruction>(&Op))
+                Worklist.push_back(I);
+            }
+          }
+          continue;
+        }
 
         if (DT.dominates(UI, Split)) {
           RequiredValues.insert(UI);
@@ -2741,27 +2788,6 @@ private:
 };
 } // namespace
 
-bool isDefinitionAcrossSplit(Instruction &Def, User *U, Instruction *Split,
-                             DominatorTree &DT) {
-  Instruction *UI = dyn_cast<Instruction>(U);
-  return UI && DT.dominates(&Def, Split) && DT.dominates(Split, UI);
-}
-
-bool isMaterializable(Instruction *I) {
-  bool IsMaterializableInstruction =
-      (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
-       isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<SelectInst>(I));
-
-  if (IsMaterializableInstruction)
-    return true;
-
-  CallBase *Call = dyn_cast<CallBase>(I);
-  if (Call && Call->hasFnAttr(Attribute::AttrKind::Speculatable))
-    return true;
-
-  return false;
-}
-
 Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
   Function *Kernel = SplitInst->getFunction();
   LLVMContext &C = M.getContext();
@@ -2818,7 +2844,9 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
   }
 
   SetVector<Instruction *> RequiredValues;
-  determineValuesAcross(SplitInst, DT, RequiredValues);
+  SetVector<Instruction *> RecomputableValues;
+  determineValuesAcross<true>(SplitInst, DT, RequiredValues,
+                              RecomputableValues);
 
   unsigned ThreadLimit =
       Kernel->getFnAttributeAsParsedInteger("omp_target_thread_limit");
@@ -2934,81 +2962,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     Value *GlobalTid =
         Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
 
-    // WIP: Recompute values
-
-    SmallMapVector<Value *, SmallVector<Instruction *, 2>, 8> Spills;
-
-    auto CrossingCallback = [&DT, SplitInst](Instruction &I, User *U) {
-      return isDefinitionAcrossSplit(I, U, SplitInst, DT);
-    };
-
-    auto MaterializableCallback = [](Instruction &I) {
-      return isMaterializable(&I);
-    };
-
-    for (Instruction &I : instructions(Kernel)) {
-      if (!MaterializableCallback(I))
-        continue;
-      for (User *U : I.users())
-        if (CrossingCallback(I, U))
-          Spills[&I].push_back(cast<Instruction>(U));
-    }
-
-    SmallMapVector<Instruction *, std::unique_ptr<RematGraph>, 8> AllRemats;
-    for (auto &&[I, G] : Spills) {
-      for (Instruction *U : G) {
-        if (AllRemats.count(U))
-          continue;
-
-        AllRemats[U] = std::make_unique<RematGraph>(U, MaterializableCallback, CrossingCallback);
-      }
-    }
-
-    // Formulate Flow Problem. Use node weights instead of edge weights.
-
-    FlowNetwork Flow;
-    const DataLayout &DL = M.getDataLayout();
-
-    FlowNetworkNode Source(nullptr);
-    FlowNetworkNode Sink(nullptr);
-    Flow.addNode(Source);
-    Flow.addNode(Sink);
-
-    for (auto &&[Use, URG] : AllRemats) {
-        RematGraph *RG = URG.get();
-
-        for (RematGraph::RematNode *N : post_order(RG)) {
-          Instruction *Inst = N->Node;
-          FlowNetworkNode InNode(Inst);
-          FlowNetworkNode OutNode(Inst);
-          FlowNetworkEdge WeightEdge(OutNode, DL.getTypeAllocSize(Inst->getType()));
-          Flow.addNode(InNode);
-          Flow.addNode(OutNode);
-          Flow.connect(InNode, OutNode, WeightEdge);
-
-          for (RematGraph::RematNode *Op : N->Operands) {
-            FlowNetworkNode &OpNode = **Flow.findNode(FlowNetworkNode(Op->Node)); // TODO: find outgoing node for the given instruction!
-            FlowNetworkEdge Edge(InNode, std::numeric_limits<uint64_t>::max());
-            Flow.connect(OpNode, InNode, Edge);
-          }
-        }
-    }
-
-    // connect leaves to source
-    
-
-    
-
-
-    PushRelableMaxFlow<FlowNetwork> MinCut(Flow, &Source, &Sink);
-    MinCut.computeMaxFlow();
-    SmallVector<FlowNetworkNode*> Result;
-    MinCut.getSourceSideMinCut(Result);
-
-    // ...
-
-    DominatorTree &DT = DTGetter(SplitKernel);
     SSAUpdaterBulk SSAUpdate;
+    ValueToValueMapTy RematVMap;
 
     // Rematerialize values
     for (auto [Idx, Inst] : enumerate(RequiredValues)) {
@@ -3020,6 +2975,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
 
       Value *Load = Builder.CreateLoad(Inst->getType(), Ptr);
+      RematVMap[SplitInst] = Load;
 
       unsigned Var = SSAUpdate.AddVariable(
           (Inst->getName() + "." + Twine(Idx)).str(), Inst->getType());
@@ -3029,41 +2985,66 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       for (Use &U : SplitInst->uses()) {
         SSAUpdate.AddUse(Var, &U);
       }
-      }
+    }
 
-      SSAUpdate.RewriteAllUses(&DT);
+    DominatorTree &SplitDT = DTGetter(SplitKernel);
 
-      // Rematerialize allocas
-      for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-        AllocaInst *SplitAlloca = cast<AllocaInst>(VMap[Alloca]);
+    // Rematerialize allocas
+    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+      AllocaInst *SplitAlloca = cast<AllocaInst>(VMap[Alloca]);
 
-        // NOTE: can we just read / write from the cache directly?
-        AllocaInst *NewAlloca = Builder.CreateAlloca(
-            Alloca->getAllocatedType(), Alloca->getAddressSpace(),
-            Alloca->getArraySize(), Alloca->getName() + ".remat");
-        Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
-                                               {Builder.getInt32(0), GlobalTid},
-                                               Alloca->getName() + ".cacheidx");
-        Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+      // NOTE: can we just read / write from the cache directly?
+      AllocaInst *NewAlloca = Builder.CreateAlloca(
+          Alloca->getAllocatedType(), Alloca->getAddressSpace(),
+          Alloca->getArraySize(), Alloca->getName() + ".remat");
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
+                                             {Builder.getInt32(0), GlobalTid},
+                                             Alloca->getName() + ".cacheidx");
+      Ptr =
+          Builder.CreateStructGEP(CacheCell, Ptr, RequiredValues.size() + Idx);
 
-        Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
-        Builder.CreateStore(CachedVal, NewAlloca);
+      Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+      Builder.CreateStore(CachedVal, NewAlloca);
 
-        // FIXME: Replace all uses from AfterSplitBB onwards
-        // SplitAlloca->replaceUsesWithIf(NewAlloca, [&DT, CacheRematBB](Use &U)
-        // {
-        //   return !DT.dominates(CacheRematBB, U);
-        // });
+      RematVMap[SplitAlloca] = NewAlloca;
 
-        // SplitAlloca->replaceAllUsesWith(NewAlloca);
+      SplitAlloca->replaceUsesWithIf(NewAlloca, [&SplitDT](Use &U) {
+        return SplitDT.isReachableFromEntry(U);
+      });
 
-        // FIXME: What about aliases / geps ?
+      // FIXME: What about aliases / geps ?
 
-        // TODO: What about
-        // derived values from the pointer? What about read only values? What
-        // about read write values?
+      // TODO: What about
+      // derived values from the pointer? What about read only values? What
+      // about read write values?
+    }
+
+    // Recompute values
+    auto SortedRecomputableValues = RecomputableValues.takeVector();
+    sort(SortedRecomputableValues, [&DT](Instruction *LHS, Instruction *RHS) {
+      return DT.dominates(LHS, RHS);
+    });
+    for (auto [Idx, Inst] : enumerate(SortedRecomputableValues)) {
+      Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
+      Instruction *Clone = SplitInst->clone();
+      Instruction *Remat = Builder.Insert(Clone);
+      RematVMap[SplitInst] = Remat;
+
+      unsigned Var = SSAUpdate.AddVariable(
+          (Inst->getName() + "." + Twine(Idx + RequiredValues.size())).str(),
+          Inst->getType());
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
+      SSAUpdate.AddAvailableValue(Var, SplitInst->getParent(), SplitInst);
+
+      for (Use &U : SplitInst->uses()) {
+        SSAUpdate.AddUse(Var, &U);
       }
     }
+
+    remapInstructionsInBlocks({CacheRematBB}, RematVMap);
+
+    SSAUpdate.RewriteAllUses(&SplitDT);
+  }
 
   // Get "nvvm.annotations" metadata node.
   NamedMDNode *MD = M.getOrInsertNamedMetadata("nvvm.annotations");
