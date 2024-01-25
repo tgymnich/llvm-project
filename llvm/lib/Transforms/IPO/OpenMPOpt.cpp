@@ -22,6 +22,7 @@
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
+#include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/PushRelabelMaxFlow.h"
 #include "llvm/ADT/STLExtras.h"
@@ -32,6 +33,7 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator.h"
+#include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/DomTreeUpdater.h"
@@ -76,6 +78,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Coroutines/RematGraph.h"
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/BreakCriticalEdges.h"
@@ -89,6 +92,8 @@
 #include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 
 #include <algorithm>
+#include <limits>
+#include <memory>
 #include <optional>
 #include <queue>
 #include <string>
@@ -2407,6 +2412,12 @@ bool isMaterializable(Instruction &V) {
           isa<BinaryOperator>(&V) || isa<CmpInst>(&V) || isa<SelectInst>(&V));
 }
 
+bool isDefinitionAcrossSplit(Instruction *Def, User *U, Instruction *Split,
+                             DominatorTree &DT) {
+  Instruction *UI = dyn_cast<Instruction>(U);
+  return UI && DT.dominates(Def, Split) && DT.dominates(Split, UI);
+}
+
 void determineValuesAcross(Instruction *Split, DominatorTree &DT,
                            SetVector<Instruction *> &RequiredValues) {
   BasicBlock *BB = Split->getParent();
@@ -2447,7 +2458,8 @@ private:
   const Instruction &SplitInstruction;
   // All alias to the original AllocaInst, created before SplitInst and used
   // after SplitInst. Each entry contains the instruction and the offset in the
-  // original Alloca. They need to be recreated after SplitInst off the frame.
+  // original Alloca. They need to be recreated after SplitInst is split off the
+  // frame.
   DenseMap<Instruction *, std::optional<APInt>> AliasOffetMap;
   SmallPtrSet<Instruction *, 4> Users;
   SmallPtrSet<IntrinsicInst *, 2> LifetimeStarts;
@@ -2729,6 +2741,27 @@ private:
 };
 } // namespace
 
+bool isDefinitionAcrossSplit(Instruction &Def, User *U, Instruction *Split,
+                             DominatorTree &DT) {
+  Instruction *UI = dyn_cast<Instruction>(U);
+  return UI && DT.dominates(&Def, Split) && DT.dominates(Split, UI);
+}
+
+bool isMaterializable(Instruction *I) {
+  bool IsMaterializableInstruction =
+      (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
+       isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<SelectInst>(I));
+
+  if (IsMaterializableInstruction)
+    return true;
+
+  CallBase *Call = dyn_cast<CallBase>(I);
+  if (Call && Call->hasFnAttr(Attribute::AttrKind::Speculatable))
+    return true;
+
+  return false;
+}
+
 Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
   Function *Kernel = SplitInst->getFunction();
   LLVMContext &C = M.getContext();
@@ -2901,6 +2934,79 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     Value *GlobalTid =
         Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
 
+    // WIP: Recompute values
+
+    SmallMapVector<Value *, SmallVector<Instruction *, 2>, 8> Spills;
+
+    auto CrossingCallback = [&DT, SplitInst](Instruction &I, User *U) {
+      return isDefinitionAcrossSplit(I, U, SplitInst, DT);
+    };
+
+    auto MaterializableCallback = [](Instruction &I) {
+      return isMaterializable(&I);
+    };
+
+    for (Instruction &I : instructions(Kernel)) {
+      if (!MaterializableCallback(I))
+        continue;
+      for (User *U : I.users())
+        if (CrossingCallback(I, U))
+          Spills[&I].push_back(cast<Instruction>(U));
+    }
+
+    SmallMapVector<Instruction *, std::unique_ptr<RematGraph>, 8> AllRemats;
+    for (auto &&[I, G] : Spills) {
+      for (Instruction *U : G) {
+        if (AllRemats.count(U))
+          continue;
+
+        AllRemats[U] = std::make_unique<RematGraph>(U, MaterializableCallback, CrossingCallback);
+      }
+    }
+
+    // Formulate Flow Problem. Use node weights instead of edge weights.
+
+    FlowNetwork Flow;
+    const DataLayout &DL = M.getDataLayout();
+
+    FlowNetworkNode Source(nullptr);
+    FlowNetworkNode Sink(nullptr);
+    Flow.addNode(Source);
+    Flow.addNode(Sink);
+
+    for (auto &&[Use, URG] : AllRemats) {
+        RematGraph *RG = URG.get();
+
+        for (RematGraph::RematNode *N : post_order(RG)) {
+          Instruction *Inst = N->Node;
+          FlowNetworkNode InNode(Inst);
+          FlowNetworkNode OutNode(Inst);
+          FlowNetworkEdge WeightEdge(OutNode, DL.getTypeAllocSize(Inst->getType()));
+          Flow.addNode(InNode);
+          Flow.addNode(OutNode);
+          Flow.connect(InNode, OutNode, WeightEdge);
+
+          for (RematGraph::RematNode *Op : N->Operands) {
+            FlowNetworkNode &OpNode = **Flow.findNode(FlowNetworkNode(Op->Node)); // TODO: find outgoing node for the given instruction!
+            FlowNetworkEdge Edge(InNode, std::numeric_limits<uint64_t>::max());
+            Flow.connect(OpNode, InNode, Edge);
+          }
+        }
+    }
+
+    // connect leaves to source
+    
+
+    
+
+
+    PushRelableMaxFlow<FlowNetwork> MinCut(Flow, &Source, &Sink);
+    MinCut.computeMaxFlow();
+    SmallVector<FlowNetworkNode*> Result;
+    MinCut.getSourceSideMinCut(Result);
+
+    // ...
+
     DominatorTree &DT = DTGetter(SplitKernel);
     SSAUpdaterBulk SSAUpdate;
 
@@ -2923,40 +3029,41 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       for (Use &U : SplitInst->uses()) {
         SSAUpdate.AddUse(Var, &U);
       }
+      }
+
+      SSAUpdate.RewriteAllUses(&DT);
+
+      // Rematerialize allocas
+      for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+        AllocaInst *SplitAlloca = cast<AllocaInst>(VMap[Alloca]);
+
+        // NOTE: can we just read / write from the cache directly?
+        AllocaInst *NewAlloca = Builder.CreateAlloca(
+            Alloca->getAllocatedType(), Alloca->getAddressSpace(),
+            Alloca->getArraySize(), Alloca->getName() + ".remat");
+        Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
+                                               {Builder.getInt32(0), GlobalTid},
+                                               Alloca->getName() + ".cacheidx");
+        Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+
+        Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+        Builder.CreateStore(CachedVal, NewAlloca);
+
+        // FIXME: Replace all uses from AfterSplitBB onwards
+        // SplitAlloca->replaceUsesWithIf(NewAlloca, [&DT, CacheRematBB](Use &U)
+        // {
+        //   return !DT.dominates(CacheRematBB, U);
+        // });
+
+        // SplitAlloca->replaceAllUsesWith(NewAlloca);
+
+        // FIXME: What about aliases / geps ?
+
+        // TODO: What about
+        // derived values from the pointer? What about read only values? What
+        // about read write values?
+      }
     }
-
-    SSAUpdate.RewriteAllUses(&DT);
-
-    // Rematerialize allocas
-    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      AllocaInst *SplitAlloca = cast<AllocaInst>(VMap[Alloca]);
-
-      // NOTE: can we just read / write from the cache directly?
-      AllocaInst *NewAlloca = Builder.CreateAlloca(
-          Alloca->getAllocatedType(), Alloca->getAddressSpace(),
-          Alloca->getArraySize(), Alloca->getName() + ".remat");
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
-                                             {Builder.getInt32(0), GlobalTid},
-                                             Alloca->getName() + ".cacheidx");
-      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
-
-      Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
-      Builder.CreateStore(CachedVal, NewAlloca);
-
-      // FIXME: Replace all uses from AfterSplitBB onwards
-      // SplitAlloca->replaceUsesWithIf(NewAlloca, [&DT, CacheRematBB](Use &U) {
-      //   return !DT.dominates(CacheRematBB, U);
-      // });
-
-      // SplitAlloca->replaceAllUsesWith(NewAlloca);
-
-      // FIXME: What about aliases / geps ?
-
-      // TODO: What about
-      // derived values from the pointer? What about read only values? What
-      // about read write values?
-    }
-  }
 
   // Get "nvvm.annotations" metadata node.
   NamedMDNode *MD = M.getOrInsertNamedMetadata("nvvm.annotations");
