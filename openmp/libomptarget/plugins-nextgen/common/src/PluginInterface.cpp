@@ -614,11 +614,13 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
 
     uint32_t ContCount = KernelLaunchEnv.ContinuationCnt;
 
-    if (ContCount == 0)
-      break;
+    assert(Continuations.size() == 1);
+    if (ContCount == 0) break;
 
-    uint32_t NumThreads = std::min(MaxNumThreads, ContCount);
-    uint64_t NumBlocks = ContCount / NumThreads; // FIXME: launch the remaining threads if needed!
+    uint32_t NumThreadsCont = std::min(NumThreads, ContCount);
+    uint64_t NumBlocksCont = (ContCount + NumThreads - 1) / NumThreads; // FIXME: Mask out superflous threads from rounding up.
+
+    // TODO: oversubsribe and manually opt-out at the beginnig of cont kernel
 
     // Record the kernel description after we modified the argument count and
     // num
@@ -628,16 +630,16 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
       RecordReplay.saveKernelInput(Continuation->getName(),
                                    Continuation->getImage());
       RecordReplay.saveKernelDescr(Continuation->getName(), Ptrs.data(),
-                                   KernelArgs.NumArgs, NumBlocks, NumThreads,
-                                   KernelArgs.Tripcount);
+                                   KernelArgs.NumArgs, NumBlocksCont,
+                                   NumThreadsCont, KernelArgs.Tripcount);
     }
 
     if (auto Err = Continuation->printLaunchInfo(GenericDevice, KernelArgs,
-                                                 NumThreads, NumBlocks))
+                                                 NumThreadsCont, NumBlocksCont))
       return Err;
 
-    if (auto Err = Continuation->launchImpl(GenericDevice, NumThreads,
-                                            NumBlocks, KernelArgs,
+    if (auto Err = Continuation->launchImpl(GenericDevice, NumThreadsCont,
+                                            NumBlocksCont, KernelArgs,
                                             KernelArgsPtr, AsyncInfoWrapper))
       return Err;
   }
