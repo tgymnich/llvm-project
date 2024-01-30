@@ -2437,10 +2437,12 @@ bool isMaterializable(Instruction *I) {
   // if (Call->hasFnAttr(Attribute::AttrKind::Speculatable))
   //   return true;
 
+  // return isSafeToSpeculativelyExecute(I);
+
   return false;
 }
 
-template <bool EnableRecompute>
+template <bool EnableRecompute, bool EnableMinCut>
 void determineValuesAcross(Instruction *Split, DominatorTree &DT,
                            SetVector<Instruction *> &RequiredValues,
                            SetVector<Instruction *> &RecomputableValues) {
@@ -2802,7 +2804,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       {0, NumContinuationsIdx});
   KernelEnvironmentGV->setInitializer(NewInitializer);
 
-  Argument *KernelLaunchEnvironment = Kernel->getArg(0);
+  StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
+  Type *ContCountTy = KernelLaunchEnvTy->getElementType(3);
 
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
@@ -2844,7 +2847,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
 
   SetVector<Instruction *> RequiredValues;
   SetVector<Instruction *> RecomputableValues;
-  determineValuesAcross<true>(SplitInst, DT, RequiredValues,
+  determineValuesAcross<true, true>(SplitInst, DT, RequiredValues,
                               RecomputableValues);
 
   unsigned ThreadLimit =
@@ -2900,12 +2903,13 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     DT.addNewBlock(CacheStoreBB, BeforeSplitBB);
 
     // Keep track of the number of continuation kernels to spawn.
+    Argument *KernelLaunchEnvironment = Kernel->getArg(0);
     Value *ContCount = Builder.CreateStructGEP(
-        KernelInfo::getKernelLaunchEnvironmentTy(C), KernelLaunchEnvironment,
+        KernelLaunchEnvTy, KernelLaunchEnvironment,
         KernelInfo::ContinuationCntIdx);
-    Value *CacheIdx = Builder.CreateAtomicRMW(AtomicRMWInst::Add, ContCount,
-                                              Builder.getInt32(1), std::nullopt,
-                                              AtomicOrdering::Acquire);
+    Value *CacheIdx = Builder.CreateAtomicRMW(
+        AtomicRMWInst::Add, ContCount, ConstantInt::get(ContCountTy, 1),
+        std::nullopt, AtomicOrdering::Acquire);
     CacheIdx->setName("cacheidx");
 
     // Cache Values
@@ -2944,8 +2948,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     BasicBlock &OldEntry = SplitKernel->getEntryBlock();
     CacheRematBB->moveBefore(&OldEntry);
     CacheRematBB->takeName(&OldEntry);
-    Instruction *Term = Builder.CreateBr(cast<BasicBlock>(VMap[AfterSplitBB]));
-    Builder.SetInsertPoint(Term);
 
     // TODO: Use OMP runtime instead of ptx intrinsics.
     FunctionCallee ThreadIdFn = M.getOrInsertFunction(
@@ -2960,6 +2962,19 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     CallInst *NumThreads = Builder.CreateCall(NumThreadsFn);
     Value *GlobalTid =
         Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
+
+    // TODO: Mask out threads if gtid > NumContinuation
+    Argument *KernelLaunchEnvironment = SplitKernel->getArg(0);
+    Value *ContCountPtr = Builder.CreateStructGEP(
+        KernelLaunchEnvTy, KernelLaunchEnvironment,
+        KernelInfo::ContinuationCntIdx);
+    Value *ContCount = Builder.CreateLoad(ContCountTy, ContCountPtr);
+    Value *ShouldMask = Builder.CreateCmp(CmpInst::ICMP_ULT, GlobalTid, ContCount);
+
+    BasicBlock *TrueBB = cast<BasicBlock>(VMap[AfterSplitBB]);
+    BasicBlock *FalseBB = cast<BasicBlock>(VMap[ExitBB]);
+    Instruction *Term = Builder.CreateCondBr(ShouldMask, TrueBB, FalseBB);
+    Builder.SetInsertPoint(Term);
 
     SSAUpdaterBulk SSAUpdate;
     ValueToValueMapTy RematVMap;
