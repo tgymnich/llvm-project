@@ -2343,70 +2343,22 @@ bool OpenMPOpt::splitKernels() {
     if (!omp::isOpenMPKernel(*Kernel))
       continue;
 
-    Instruction *SplitInst = nullptr;
-    for (Use *Use : *UseVec) {
-      CallInst *Call = dyn_cast<CallInst>(Use->getUser());
-      if (!Call)
+    for (auto&& [Idx, Use] : enumerate(*UseVec)) {
+      CallInst *SplitInst = dyn_cast<CallInst>(Use->getUser());
+      if (!SplitInst)
         continue;
 
-      // TODO: handle more than one SplitInst
-      SplitInst = Call;
+      if (M.getFunction((Kernel->getName() + "_contd_" + Twine(Idx)).str()))
+        continue;
+
+      Function *SplitKernel = splitKernel(SplitInst);
+
+      if (SplitKernel)
+        Changed = true;
     }
-
-    if (!SplitInst)
-      continue;
-
-    if (M.getFunction((Kernel->getName() + "_contd" + "_0").str()))
-      continue;
-
-    Function *SplitKernel = splitKernel(SplitInst);
-
-    if (SplitKernel)
-      Changed = true;
   }
 
   return Changed;
-}
-
-// Moves the values in the PHIs in SuccBB that correspong to PredBB into a new
-// PHI in InsertedBB.
-static void movePHIValuesToInsertedBlock(BasicBlock *SuccBB,
-                                         BasicBlock *InsertedBB,
-                                         BasicBlock *PredBB,
-                                         PHINode *UntilPHI = nullptr) {
-  auto *PN = cast<PHINode>(&SuccBB->front());
-  do {
-    int Index = PN->getBasicBlockIndex(InsertedBB);
-    Value *V = PN->getIncomingValue(Index);
-    PHINode *InputV = PHINode::Create(
-        V->getType(), 1, V->getName() + Twine(".") + SuccBB->getName());
-    InputV->insertBefore(InsertedBB->begin());
-    InputV->addIncoming(V, PredBB);
-    PN->setIncomingValue(Index, InputV);
-    PN = dyn_cast<PHINode>(PN->getNextNode());
-  } while (PN != UntilPHI);
-}
-
-static void rewritePHIs(BasicBlock &BB) {
-  SmallVector<BasicBlock *> Preds(predecessors(&BB));
-  for (BasicBlock *Pred : Preds) {
-    auto *IncomingBB = SplitEdge(Pred, &BB);
-    IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
-
-    movePHIValuesToInsertedBlock(&BB, IncomingBB, Pred, nullptr);
-  }
-}
-
-static void rewritePHIs(Function &F) {
-  SmallVector<BasicBlock *> WorkList;
-
-  for (BasicBlock &BB : F)
-    if (auto *PN = dyn_cast<PHINode>(&BB.front()))
-      if (PN->getNumIncomingValues() > 1)
-        WorkList.push_back(&BB);
-
-  for (BasicBlock *BB : WorkList)
-    rewritePHIs(*BB);
 }
 
 bool isDefinitionAcrossSplit(Instruction &Def, User *U, Instruction *Split,
