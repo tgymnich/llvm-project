@@ -4555,6 +4555,7 @@ OpenMPIRBuilder::createTargetInit(const LocationDescription &Loc, bool IsSPMD,
   Constant *MinTeams = ConstantInt::getSigned(Int32, MinTeamsVal);
   Constant *MaxTeams = ConstantInt::getSigned(Int32, MaxTeamsVal);
   Constant *NumContinuations = ConstantInt::get(Int32, 0);
+  Constant *ContinuationCacheLength = ConstantInt::get(Int32, 0);
   Constant *ReductionDataSize = ConstantInt::getSigned(Int32, 0);
   Constant *ReductionBufferLength = ConstantInt::getSigned(Int32, 0);
 
@@ -4594,6 +4595,7 @@ OpenMPIRBuilder::createTargetInit(const LocationDescription &Loc, bool IsSPMD,
                                     MinTeams,
                                     MaxTeams,
                                     NumContinuations,
+                                    ContinuationCacheLength,
                                     ReductionDataSize,
                                     ReductionBufferLength,
                                 });

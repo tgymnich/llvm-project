@@ -53,6 +53,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Dominators.h"
@@ -250,7 +251,8 @@ namespace KernelInfo {
 //   uint32_t ReductionCnt;
 //   uint32_t ReductionIterCnt;
 //   void *ReductionBuffer;
-//   uint32_t ContinuationCnt;
+//   uint32_t *ContinuationCntBuffer;
+//   void **ContinuationCacheBuffer;
 // };
 
 #define KERNEL_ENVIRONMENT_IDX(MEMBER, IDX)                                    \
@@ -272,6 +274,7 @@ KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxThreads, 4)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MinTeams, 5)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxTeams, 6)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(NumContinuations, 7)
+KERNEL_ENVIRONMENT_CONFIGURATION_IDX(ContinuationCacheLength, 8)
 
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_IDX
 
@@ -281,7 +284,8 @@ KERNEL_ENVIRONMENT_CONFIGURATION_IDX(NumContinuations, 7)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionCnt, 0)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionIterCnt, 1)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionBuffer, 2)
-KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCnt, 3)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCntBuffer, 3)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCacheBuffer, 4)
 
 #undef KERNEL_LAUNCH_ENVIRONMENT_IDX
 
@@ -316,7 +320,8 @@ KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MaxTeams)
 StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
   return StructType::create(
       {IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
-       PointerType::getUnqual(C), IntegerType::getInt32Ty(C)},
+       PointerType::getUnqual(C), PointerType::getUnqual(C),
+       PointerType::getUnqual(C)},
       "struct.KernelLaunchEnvironmentTy");
 }
 
@@ -2054,7 +2059,8 @@ private:
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
 
-  Function *splitKernel(Instruction *SplitInst);
+  Function *splitKernel(Instruction *SplitInst, unsigned SplitIndex,
+                        unsigned NumSplits);
 
   bool splitKernels();
 
@@ -2343,7 +2349,7 @@ bool OpenMPOpt::splitKernels() {
     if (!omp::isOpenMPKernel(*Kernel))
       continue;
 
-    for (auto&& [Idx, Use] : enumerate(*UseVec)) {
+    for (auto &&[Idx, Use] : enumerate(*UseVec)) {
       CallInst *SplitInst = dyn_cast<CallInst>(Use->getUser());
       if (!SplitInst)
         continue;
@@ -2351,7 +2357,7 @@ bool OpenMPOpt::splitKernels() {
       if (M.getFunction((Kernel->getName() + "_contd_" + Twine(Idx)).str()))
         continue;
 
-      Function *SplitKernel = splitKernel(SplitInst);
+      Function *SplitKernel = splitKernel(SplitInst, Idx, UseVec->size());
 
       if (SplitKernel)
         Changed = true;
@@ -2742,23 +2748,18 @@ private:
 };
 } // namespace
 
-Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
+Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
+                                 unsigned NumSplits) {
   Function *Kernel = SplitInst->getFunction();
   LLVMContext &C = M.getContext();
+  const DataLayout &DL = M.getDataLayout();
 
-  auto *KernelEnvironmentGV =
-      M.getNamedGlobal((Kernel->getName() + "_kernel_environment").str());
-  assert(KernelEnvironmentGV && "Expected kernel environment global\n");
-  auto *KernelEnvironmentInitializer = KernelEnvironmentGV->getInitializer();
-  constexpr int NumContinuationsIdx = KernelInfo::NumContinuationsIdx;
-  auto *NewInitializer = ConstantFoldInsertValueInstruction(
-      KernelEnvironmentInitializer,
-      ConstantInt::get(IntegerType::getInt32Ty(C), 1),
-      {0, NumContinuationsIdx});
-  KernelEnvironmentGV->setInitializer(NewInitializer);
+  LoopInfo &LI = LIGetter(Kernel);
+  DominatorTree &DT = DTGetter(Kernel);
+  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
 
-  StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
-  Type *ContCountTy = KernelLaunchEnvTy->getElementType(3);
+  ConstantInt *SplitIdx =
+      ConstantInt::get(IntegerType::getInt32Ty(C), SplitIndex);
 
   // TODO: verify that this kernel is actually splitable at the given Split
   // instruction
@@ -2779,10 +2780,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
   }
 
-  LoopInfo &LI = LIGetter(Kernel);
-  DominatorTree &DT = DTGetter(Kernel);
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
-
   // Find Instructions that require caching
   SetVector<AllocaInst *> RequiredAllocas;
 
@@ -2801,13 +2798,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
   SetVector<Instruction *> RequiredValues;
   SetVector<Instruction *> RecomputableValues;
   determineValuesAcross<true, true>(SplitInst, DT, RequiredValues,
-                              RecomputableValues);
-
-  unsigned ThreadLimit =
-      Kernel->getFnAttributeAsParsedInteger("omp_target_thread_limit");
-  unsigned NumTeams =
-      Kernel->getFnAttributeAsParsedInteger("omp_target_num_teams");
-  unsigned MaxNumThreads = ThreadLimit * NumTeams;
+                                    RecomputableValues);
 
   // Cache values shared between the original kernel and the split kernel.
   auto ValueTys =
@@ -2819,19 +2810,53 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
 
   // NOTE: it is more efficient to create one global for ever value to be
   // cache. Doing so allows for dead stores and globals to be eliminated.
-  Type *CacheCell = StructType::create(RequiredTypes, "cache_cell");
-  Type *CacheTy = ArrayType::get(CacheCell, MaxNumThreads);
-  // TODO: dynamically allocate this in the kernel env
-  GlobalVariable *Cache = new GlobalVariable(
-      M, CacheTy, false, GlobalValue::PrivateLinkage, UndefValue::get(CacheTy),
-      Kernel->getName() + "_cont_cache");
+  Type *CacheCellTy = StructType::create(RequiredTypes, "cache_cell");
+
+  std::string KernelEnvironmentGVName =
+      (Kernel->getName() + "_kernel_environment").str();
+  auto *KernelEnvironmentGV = M.getNamedGlobal(KernelEnvironmentGVName);
+  assert(KernelEnvironmentGV && "Expected kernel environment global\n");
+  auto *KernelEnvironmentInitializer = KernelEnvironmentGV->getInitializer();
+  constexpr int NumContinuationsIdx = KernelInfo::NumContinuationsIdx;
+  Constant *NumContinuations =
+      ConstantInt::get(IntegerType::getInt32Ty(C), NumSplits);
+  auto *NewInitializer = ConstantFoldInsertValueInstruction(
+      KernelEnvironmentInitializer, NumContinuations, {0, NumContinuationsIdx});
+  // std::string CacheLengthsGVName =
+  //     (Kernel->getName() + "_cont_cache_lengths").str();
+  // Type *CacheLengthsTy = ArrayType::get(IntegerType::getInt32Ty(C),
+  // NumSplits); auto *CacheLengthsGV =
+  // cast<GlobalVariable>(M.getOrInsertGlobal(
+  //     CacheLengthsGVName, CacheLengthsTy,
+  //     [this, CacheLengthsTy, &CacheLengthsGVName]() {
+  //       return new GlobalVariable(M,
+  //           CacheLengthsTy, false, GlobalValue::WeakODRLinkage,
+  //           Constant::getNullValue(CacheLengthsTy), CacheLengthsGVName);
+  //     }));
+  Constant *ContinuationCacheLength = ConstantInt::get(
+      IntegerType::getInt32Ty(C), DL.getTypeAllocSize(CacheCellTy));
+  // auto *CacheLengthInitializer = CacheLengthsGV->getInitializer();
+  // auto *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
+  //     CacheLengthInitializer, ContinuationCacheLength, {SplitIndex});
+  // CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
+  constexpr int ContinuationCacheLengthIdx =
+      KernelInfo::ContinuationCacheLengthIdx;
+  NewInitializer = ConstantFoldInsertValueInstruction(
+      NewInitializer, ContinuationCacheLength, {0, ContinuationCacheLengthIdx});
+  KernelEnvironmentGV->setInitializer(NewInitializer);
+
+  StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
+  Type *ContCountTy = IntegerType::getInt32Ty(C);
 
   BasicBlock *BeforeSplitBB = SplitInst->getParent();
   BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DTU, &LI);
+
   SplitInst->eraseFromParent();
 
-  // Create Terminate Block
+  BasicBlock *CacheStoreBB = BasicBlock::Create(C, "CacheStore", Kernel);
   BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
+
+  // Terminate Block
   {
     IRBuilder<> Builder(ExitBB);
 
@@ -2846,7 +2871,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
   }
 
   // Store Block
-  BasicBlock *CacheStoreBB = BasicBlock::Create(C, "CacheStore", Kernel);
   {
     IRBuilder<> Builder(CacheStoreBB);
 
@@ -2857,30 +2881,44 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
 
     // Keep track of the number of continuation kernels to spawn.
     Argument *KernelLaunchEnvironment = Kernel->getArg(0);
-    Value *ContCount = Builder.CreateStructGEP(
-        KernelLaunchEnvTy, KernelLaunchEnvironment,
-        KernelInfo::ContinuationCntIdx);
+    Value *ContCountPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCntBufferIdx);
+    ContCountPtr = Builder.CreateLoad(PointerType::getUnqual(C), ContCountPtr);
+    ContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, ContCountPtr,
+                                             {SplitIdx}, "contcount.ptr");
+
     Value *CacheIdx = Builder.CreateAtomicRMW(
-        AtomicRMWInst::Add, ContCount, ConstantInt::get(ContCountTy, 1),
+        AtomicRMWInst::Add, ContCountPtr, ConstantInt::get(ContCountTy, 1),
         std::nullopt, AtomicOrdering::Acquire);
     CacheIdx->setName("cacheidx");
 
+    // Get buffer containing pointers to the caches for each split point.
+    // Get the pointer to the cache for this split point at the right offset for
+    // the current thread
+    Value *CachePtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCacheBufferIdx);
+    CachePtr = Builder.CreateLoad(PointerType::getUnqual(C), CachePtr);
+    CachePtr = Builder.CreateInBoundsGEP(PointerType::getUnqual(C), CachePtr,
+                                         {SplitIdx});
+    CachePtr = Builder.CreateLoad(PointerType::getUnqual(C), CachePtr,
+                                  "cache.out.ptr");
+
     // Cache Values
     for (auto [Idx, Inst] : enumerate(RequiredValues)) {
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
-                                             {Builder.getInt32(0), CacheIdx},
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {CacheIdx},
                                              Inst->getName() + ".cacheidx");
-      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx);
 
       Builder.CreateStore(Inst, Ptr);
     }
 
     // Cache allocas
     for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
-                                             {Builder.getInt32(0), CacheIdx},
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {CacheIdx},
                                              Alloca->getName() + ".cacheidx");
-      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx);
 
       Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
       Builder.CreateStore(ToCache, Ptr);
@@ -2894,13 +2932,15 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
   Function *SplitKernel = CloneFunction(Kernel, VMap);
   SplitKernel->setName(Kernel->getName() + "_contd" + "_0");
 
-  // Create Load Block
+  BasicBlock *CacheEntryBB = BasicBlock::Create(C, "CacheEntry", SplitKernel);
   BasicBlock *CacheRematBB = BasicBlock::Create(C, "CacheRemat", SplitKernel);
+
+  // New Entry Block + Load Block
   {
-    IRBuilder<> Builder(CacheRematBB);
+    IRBuilder<> Builder(CacheEntryBB);
     BasicBlock &OldEntry = SplitKernel->getEntryBlock();
-    CacheRematBB->moveBefore(&OldEntry);
-    CacheRematBB->takeName(&OldEntry);
+    CacheEntryBB->moveBefore(&OldEntry);
+    CacheEntryBB->takeName(&OldEntry);
 
     // TODO: Use OMP runtime instead of ptx intrinsics.
     FunctionCallee ThreadIdFn = M.getOrInsertFunction(
@@ -2918,16 +2958,36 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
 
     // TODO: Mask out threads if gtid > NumContinuation
     Argument *KernelLaunchEnvironment = SplitKernel->getArg(0);
-    Value *ContCountPtr = Builder.CreateStructGEP(
-        KernelLaunchEnvTy, KernelLaunchEnvironment,
-        KernelInfo::ContinuationCntIdx);
-    Value *ContCount = Builder.CreateLoad(ContCountTy, ContCountPtr);
-    Value *ShouldMask = Builder.CreateCmp(CmpInst::ICMP_ULT, GlobalTid, ContCount);
+    Value *ContCountPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCntBufferIdx);
+    ContCountPtr = Builder.CreateLoad(PointerType::getUnqual(C), ContCountPtr);
+    ContCountPtr = Builder.CreateInBoundsGEP(
+        ContCountTy, ContCountPtr, {NumContinuations}, "contcount.in.ptr");
 
-    BasicBlock *TrueBB = cast<BasicBlock>(VMap[AfterSplitBB]);
+    Value *ContCount =
+        Builder.CreateLoad(ContCountTy, ContCountPtr, "contcount.in");
+    Value *ShouldMask =
+        Builder.CreateCmp(CmpInst::ICMP_ULT, GlobalTid, ContCount);
+
+    BasicBlock *TrueBB = cast<BasicBlock>(CacheRematBB);
     BasicBlock *FalseBB = cast<BasicBlock>(VMap[ExitBB]);
-    Instruction *Term = Builder.CreateCondBr(ShouldMask, TrueBB, FalseBB);
-    Builder.SetInsertPoint(Term);
+    Builder.CreateCondBr(ShouldMask, TrueBB, FalseBB);
+
+    Builder.SetInsertPoint(CacheRematBB);
+
+    // Get buffer containing pointers to the caches for each split point.
+    // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
+    // Get the pointer to the cache for this split point at the right offset
+    // for the current thread
+    Value *CachePtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCacheBufferIdx);
+    CachePtr = Builder.CreateLoad(PointerType::getUnqual(C), CachePtr);
+    CachePtr = Builder.CreateInBoundsGEP(PointerType::getUnqual(C), CachePtr,
+                                         {NumContinuations});
+    CachePtr =
+        Builder.CreateLoad(PointerType::getUnqual(C), CachePtr, "cache.in.ptr");
 
     SSAUpdaterBulk SSAUpdate;
     ValueToValueMapTy RematVMap;
@@ -2936,10 +2996,9 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
     for (auto [Idx, Inst] : enumerate(RequiredValues)) {
       Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
 
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
-                                             {Builder.getInt32(0), GlobalTid},
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
                                              Inst->getName() + ".cacheidx");
-      Ptr = Builder.CreateStructGEP(CacheCell, Ptr, Idx);
+      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx);
 
       Value *Load = Builder.CreateLoad(Inst->getType(), Ptr);
       RematVMap[SplitInst] = Load;
@@ -2964,11 +3023,10 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
       AllocaInst *NewAlloca = Builder.CreateAlloca(
           Alloca->getAllocatedType(), Alloca->getAddressSpace(),
           Alloca->getArraySize(), Alloca->getName() + ".remat");
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheTy, Cache,
-                                             {Builder.getInt32(0), GlobalTid},
+      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
                                              Alloca->getName() + ".cacheidx");
-      Ptr =
-          Builder.CreateStructGEP(CacheCell, Ptr, RequiredValues.size() + Idx);
+      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr,
+                                    RequiredValues.size() + Idx);
 
       Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       Builder.CreateStore(CachedVal, NewAlloca);
@@ -3007,6 +3065,10 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst) {
         SSAUpdate.AddUse(Var, &U);
       }
     }
+
+    BasicBlock *SuccessorBB = cast<BasicBlock>(VMap[AfterSplitBB]);
+    Builder.CreateBr(SuccessorBB);
+    SplitDT.insertEdge(CacheRematBB, SuccessorBB);
 
     remapInstructionsInBlocks({CacheRematBB}, RematVMap);
 
