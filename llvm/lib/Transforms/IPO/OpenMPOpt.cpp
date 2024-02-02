@@ -3033,15 +3033,21 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
       RematVMap[SplitAlloca] = NewAlloca;
 
-      SplitAlloca->replaceUsesWithIf(NewAlloca, [&SplitDT](Use &U) {
-        return SplitDT.isReachableFromEntry(U);
-      });
-
       // FIXME: What about aliases / geps ?
 
       // TODO: What about
       // derived values from the pointer? What about read only values? What
       // about read write values?
+
+      unsigned Var = SSAUpdate.AddVariable(
+          (Alloca->getName() + ".alloca." + Twine(Idx + RequiredValues.size())).str(),
+          Alloca->getType());
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
+      SSAUpdate.AddAvailableValue(Var, SplitAlloca->getParent(), SplitAlloca);
+
+      for (Use &U : SplitAlloca->uses()) {
+        SSAUpdate.AddUse(Var, &U);
+      }
     }
 
     // Recompute values
