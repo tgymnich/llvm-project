@@ -19,10 +19,11 @@
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/ADT/DinicMaxFlow.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
-#include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/PushRelabelMaxFlow.h"
 #include "llvm/ADT/STLExtras.h"
@@ -33,7 +34,6 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator.h"
-#include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/DomTreeUpdater.h"
@@ -45,6 +45,7 @@
 #include "llvm/Analysis/PtrUseVisitor.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/CodeGen/GlobalISel/MachineIRBuilder.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include "llvm/Frontend/OpenMP/OMPDeviceConstants.h"
 #include "llvm/Frontend/OpenMP/OMPIRBuilder.h"
@@ -79,8 +80,8 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Coroutines/RematGraph.h"
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/BreakCriticalEdges.h"
@@ -88,17 +89,15 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/CodeExtractor.h"
 #include "llvm/Transforms/Utils/Local.h"
-#include "llvm/Transforms/Utils/LoopPeel.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 #include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 
 #include <algorithm>
-#include <deque>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <string>
 
 using namespace llvm;
@@ -221,6 +220,10 @@ STATISTIC(NumBytesMovedToSharedMemory,
           "Amount of memory pushed to shared memory");
 STATISTIC(NumBarriersEliminated, "Number of redundant barriers eliminated");
 
+STATISTIC(NumCachedValues, "Number of cached values across split points");
+
+STATISTIC(NumRecomputedValues, "Number of recomputed values across split points");
+
 #if !defined(NDEBUG)
 static constexpr auto TAG = "[" DEBUG_TYPE "]";
 #endif
@@ -341,6 +344,33 @@ ConstantStruct *getKernelEnvironementFromKernelInitCB(CallBase *KernelInitCB) {
 } // namespace KernelInfo
 
 namespace {
+
+enum class RematModeKind { Cache, Recompute, MinCut };
+enum class MaxFlowAlgorithmKind {  PushRelabel, Dinic };
+
+static const auto RematModeKindEnumOptions = cl::values(
+    clEnumValN(RematModeKind::Cache, "cache",
+               "cache all values across the split"),
+    clEnumValN(RematModeKind::Recompute, "recompute",
+               "aggressively recompute values across the split"),
+    clEnumValN(RematModeKind::MinCut, "mincut",
+               "try to minimize the number of cached values across the split"));
+
+static const auto MaxFlowAlgorithmKindEnumOptions = cl::values(
+    clEnumValN(MaxFlowAlgorithmKind::PushRelabel, "push-relabel",
+               "FIFO push relabel algorithm"),
+    clEnumValN(MaxFlowAlgorithmKind::Dinic, "dinic",
+               "dinic's algorithm"));
+
+static cl::opt<RematModeKind> SplitKernelRematMode(
+    "split-kernel-remat-mode", cl::Hidden,
+    cl::desc("Rematerialization mode for values alive across a split kernel."),
+    cl::init(RematModeKind::MinCut), RematModeKindEnumOptions);
+
+static cl::opt<MaxFlowAlgorithmKind> MaxFlowAlogrithm(
+    "split-kernel-max-flow-algorithm", cl::Hidden,
+    cl::desc("Algorithm to be used to solve the max flow problem in order to determine the minimal set of instructions to cache across split points."),
+    cl::init(MaxFlowAlgorithmKind::PushRelabel), MaxFlowAlgorithmKindEnumOptions);
 
 struct AAHeapToShared;
 
@@ -2367,12 +2397,6 @@ bool OpenMPOpt::splitKernels() {
   return Changed;
 }
 
-bool isDefinitionAcrossSplit(Instruction &Def, User *U, Instruction *Split,
-                             DominatorTree &DT) {
-  Instruction *UI = dyn_cast<Instruction>(U);
-  return UI && DT.dominates(&Def, Split) && DT.dominates(Split, UI);
-}
-
 bool isMaterializable(Instruction *I) {
   bool IsMaterializableInstruction =
       (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
@@ -2396,25 +2420,18 @@ bool isMaterializable(Instruction *I) {
   // if (Call->hasFnAttr(Attribute::AttrKind::Speculatable))
   //   return true;
 
-  // return isSafeToSpeculativelyExecute(I);
+  return isSafeToSpeculativelyExecute(I);
 
   return false;
 }
 
-template <bool EnableRecompute, bool EnableMinCut>
-void determineValuesAcross(Instruction *Split, DominatorTree &DT,
-                           SetVector<Instruction *> &RequiredValues,
-                           SetVector<Instruction *> &RecomputableValues) {
-  BasicBlock *BB = Split->getParent();
-
-  for (BasicBlock *B : breadth_first(BB)) {
+void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
+                           FlowNetworkBuilder &FNBuilder) {
+  for (BasicBlock *B : breadth_first(SplitBlock)) {
     for (Instruction &I : *B) {
       for (Use &U : I.operands()) {
         Instruction *UI = dyn_cast<Instruction>(U.get());
         if (!UI)
-          continue;
-
-        if (isa<AllocaInst>(UI))
           continue;
 
         // Type *Ty = UI->getType();
@@ -2423,34 +2440,61 @@ void determineValuesAcross(Instruction *Split, DominatorTree &DT,
         //         static_cast<unsigned>(AddressSpace::Global))
         //   continue;
 
-        if (isMaterializable(UI) && EnableRecompute) {
-          SmallVector<Instruction *> Worklist;
-          Worklist.push_back(UI);
+        constexpr int64_t InfEdgeWeight = 10000;
+        SetVector<std::pair<Value *, Instruction *>> Worklist;
+        Worklist.insert({UI, nullptr});
 
-          while (!Worklist.empty()) {
-            Instruction *Todo = Worklist.pop_back_val();
+        while (!Worklist.empty()) {
+          auto &&[Todo, Parent] = Worklist.pop_back_val();
 
-            if (!DT.dominates(Todo, Split))
-              continue;
-
-            if (!isMaterializable(Todo)) {
-              if (!isa<AllocaInst>(Todo))
-                RequiredValues.insert(Todo);
-              continue;
-            }
-
-            RecomputableValues.insert(Todo);
-
-            for (Use &Op : Todo->operands()) {
-              if (Instruction *I = dyn_cast<Instruction>(&Op))
-                Worklist.push_back(I);
-            }
+          Argument* Arg = dyn_cast<Argument>(Todo);
+          if (Arg && Parent) {  
+            FNBuilder.addArgumentNode(Arg);
+            FNBuilder.addArgumentEdge(Arg, Parent, InfEdgeWeight);
+            FNBuilder.addSourceEdge(Arg, 1);
+            continue;
           }
-          continue;
-        }
 
-        if (DT.dominates(UI, Split)) {
-          RequiredValues.insert(UI);
+          if (isa<Constant>(Todo))
+            continue;
+
+          Instruction *TodoInst = dyn_cast<Instruction>(Todo);
+          if (!TodoInst) {
+            llvm_unreachable("Unexpected llvm::Value subclass in worklist.");
+            continue;
+          }
+
+          if (!DT.dominates(TodoInst, SplitBlock))
+            continue;
+          
+          if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Todo)) {
+            if (Parent) {  
+              FNBuilder.addAllocaNode(Alloca);
+              FNBuilder.addAllocaEdge(Alloca, Parent, InfEdgeWeight);
+              FNBuilder.addSourceEdge(Alloca, 1);
+            }
+            continue;
+          }
+
+          bool Added = FNBuilder.addInstructionNode(TodoInst, 1);
+
+          if (Parent) {
+            FNBuilder.addInstructionEdge(TodoInst, Parent, InfEdgeWeight);
+          } else {
+            FNBuilder.addSinkEdge(TodoInst, InfEdgeWeight);
+          }
+
+          if (!Added)
+            continue;
+
+          if (!isMaterializable(TodoInst)) {
+            FNBuilder.addSourceEdge(TodoInst, InfEdgeWeight);
+            continue;
+          }
+
+          for (Use &Op : TodoInst->operands()) {
+            Worklist.insert({Op, TodoInst});
+          }
         }
       }
     }
@@ -2754,10 +2798,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   LLVMContext &C = M.getContext();
   const DataLayout &DL = M.getDataLayout();
 
-  LoopInfo &LI = LIGetter(Kernel);
-  DominatorTree &DT = DTGetter(Kernel);
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
-
   ConstantInt *SplitIdx =
       ConstantInt::get(IntegerType::getInt32Ty(C), SplitIndex);
 
@@ -2765,7 +2805,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   // instruction
 
   // Move all ptx register reads to the beginning of the Kernel, so that they
-  // will be cached.
+  // will be cached
   for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
     CallInst *Call = dyn_cast<CallInst>(&I);
     if (!Call)
@@ -2780,9 +2820,12 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
   }
 
+  LoopInfo &LI = LIGetter(Kernel);
+  DominatorTree &DT = DTGetter(Kernel);
+  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Eager);
+
   // Find Instructions that require caching
   SetVector<AllocaInst *> RequiredAllocas;
-
   for (Instruction &I : instructions(Kernel)) {
     AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
     if (!Alloca)
@@ -2795,14 +2838,97 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       RequiredAllocas.insert(Alloca);
   }
 
-  SetVector<Instruction *> RequiredValues;
-  SetVector<Instruction *> RecomputableValues;
-  determineValuesAcross<true, true>(SplitInst, DT, RequiredValues,
-                                    RecomputableValues);
+  BasicBlock *BeforeSplitBB = SplitInst->getParent();
+  BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DTU, &LI);
+
+  SplitInst->eraseFromParent();
+
+  FlowNetwork RematGraph;
+  FlowNetworkBuilder FNBuilder(RematGraph);
+
+  auto &Src = FNBuilder.createSource();
+  auto &Sink = FNBuilder.createSink();
+
+  determineValuesAcross(AfterSplitBB, DT, FNBuilder);
+
+  auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
+
+  auto IsIncomingInst = [](FlowNetworkNode *N) {
+    return N->isInstruction() && N->getIncoming();
+  };
+
+  auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
+
+  SmallVector<Instruction *, 64> CachedValues;
+  SmallVector<Instruction *, 64> RecomputedValues;
+
+  switch (SplitKernelRematMode) {
+  case RematModeKind::Cache: {
+    auto HasEdgeToSink = [&Sink](FlowNetworkNode *N) {
+      return  N->isInstruction() && !N->getIncoming() && N->hasEdgeTo(Sink);
+    };
+
+    auto CachedValuesRange =
+        map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
+
+    append_range(CachedValues, CachedValuesRange);
+
+    break;
+  }
+  case RematModeKind::Recompute: {
+    auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
+    auto SrcHasNoEdgeToNode = [&Src](FlowNetworkNode *N) {
+      return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
+    };
+
+    auto CachedValuesRange = map_range(
+        make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
+    auto RecomputedValuesRange =
+        map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
+
+    append_range(CachedValues, CachedValuesRange);
+    append_range(RecomputedValues, RecomputedValuesRange);
+
+    break;
+  }
+  case RematModeKind::MinCut: {
+    SmallPtrSet<FlowNetworkNode *, 32> Cut;
+
+    switch (MaxFlowAlogrithm) {
+      case MaxFlowAlgorithmKind::PushRelabel: {
+          PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+          MaxFlow.computeMaxFlow();
+          MaxFlow.getSinkSideMinCut(Cut);
+          break;
+      }
+      case MaxFlowAlgorithmKind::Dinic: {
+          DinicMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+          MaxFlow.computeMaxFlow();
+          MaxFlow.getSinkSideMinCut(Cut);
+          break;
+      }
+    }
+
+    RecomputedValues.reserve(Cut.size());
+    CachedValues.reserve(RematGraph.size() - Cut.size());
+
+    for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
+      if (Cut.contains(N)) {
+        RecomputedValues.push_back(N->getInstruction());
+      } else if (!Cut.contains(N) && !N->getEdges().empty()) {
+        FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
+
+        if (Cut.contains(Target))
+          CachedValues.push_back(N->getInstruction());
+      }
+    }
+    break;
+  }
+  }
 
   // Cache values shared between the original kernel and the split kernel.
   auto ValueTys =
-      map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
+      map_range(CachedValues, [](Instruction *I) { return I->getType(); });
   auto AllocaTys = map_range(
       RequiredAllocas, [](AllocaInst *I) { return I->getAllocatedType(); });
   SmallVector<Type *> RequiredTypes(ValueTys);
@@ -2848,11 +2974,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
   Type *ContCountTy = IntegerType::getInt32Ty(C);
 
-  BasicBlock *BeforeSplitBB = SplitInst->getParent();
-  BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DTU, &LI);
-
-  SplitInst->eraseFromParent();
-
   BasicBlock *CacheStoreBB = BasicBlock::Create(C, "CacheStore", Kernel);
   BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
 
@@ -2877,7 +2998,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     Instruction *OldTerm = BeforeSplitBB->getTerminator();
     OldTerm->setSuccessor(0, CacheStoreBB);
     DT.deleteEdge(BeforeSplitBB, AfterSplitBB);
-    DT.addNewBlock(CacheStoreBB, BeforeSplitBB);
+    DT.insertEdge(BeforeSplitBB, CacheStoreBB);
 
     // Keep track of the number of continuation kernels to spawn.
     Argument *KernelLaunchEnvironment = Kernel->getArg(0);
@@ -2906,7 +3027,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
                                   "cache.out.ptr");
 
     // Cache Values
-    for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
       Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {CacheIdx},
                                              Inst->getName() + ".cacheidx");
       Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx);
@@ -2956,7 +3077,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     Value *GlobalTid =
         Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
 
-    // TODO: Mask out threads if gtid > NumContinuation
     Argument *KernelLaunchEnvironment = SplitKernel->getArg(0);
     Value *ContCountPtr =
         Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
@@ -2993,7 +3113,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     ValueToValueMapTy RematVMap;
 
     // Rematerialize values
-    for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
       Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
 
       Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
@@ -3025,8 +3145,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
           Alloca->getArraySize(), Alloca->getName() + ".remat");
       Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
                                              Alloca->getName() + ".cacheidx");
-      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr,
-                                    RequiredValues.size() + Idx);
+      Ptr =
+          Builder.CreateStructGEP(CacheCellTy, Ptr, CachedValues.size() + Idx);
 
       Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       Builder.CreateStore(CachedVal, NewAlloca);
@@ -3040,7 +3160,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       // about read write values?
 
       unsigned Var = SSAUpdate.AddVariable(
-          (Alloca->getName() + ".alloca." + Twine(Idx + RequiredValues.size())).str(),
+          (Alloca->getName() + ".alloca." + Twine(Idx + CachedValues.size()))
+              .str(),
           Alloca->getType());
       SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
       SSAUpdate.AddAvailableValue(Var, SplitAlloca->getParent(), SplitAlloca);
@@ -3050,19 +3171,14 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       }
     }
 
-    // Recompute values
-    auto SortedRecomputableValues = RecomputableValues.takeVector();
-    sort(SortedRecomputableValues, [&DT](Instruction *LHS, Instruction *RHS) {
-      return DT.dominates(LHS, RHS);
-    });
-    for (auto [Idx, Inst] : enumerate(SortedRecomputableValues)) {
+    for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
       Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
       Instruction *Clone = SplitInst->clone();
       Instruction *Remat = Builder.Insert(Clone);
       RematVMap[SplitInst] = Remat;
 
       unsigned Var = SSAUpdate.AddVariable(
-          (Inst->getName() + "." + Twine(Idx + RequiredValues.size())).str(),
+          (Inst->getName() + "." + Twine(Idx + CachedValues.size())).str(),
           Inst->getType());
       SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
       SSAUpdate.AddAvailableValue(Var, SplitInst->getParent(), SplitInst);
@@ -3111,6 +3227,9 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
         SplitKernel->getName() + "_nested_parallelism", nullptr,
         NestedParallelism->getThreadLocalMode(),
         NestedParallelism->getAddressSpace());
+
+  NumCachedValues += CachedValues.size();
+  NumRecomputedValues += RecomputedValues.size();
 
   assert(!verifyFunction(*Kernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));

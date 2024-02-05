@@ -65,9 +65,9 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:   %3 = load ptr, ptr %2
 ; CHECK-NEXT:   %4 = getelementptr inbounds ptr, ptr %3, i32 0
 ; CHECK-NEXT:   %cache.out.ptr = load ptr, ptr %4
-; CHECK-NEXT:   %tid.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
-; CHECK-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx, i32 0, i32 0
-; CHECK-NEXT:   store i64 %tid, ptr %5
+; CHECK-NEXT:   %arrayidx.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %arrayidx.cacheidx, i32 0, i32 0
+; CHECK-NEXT:   store ptr %arrayidx, ptr %5
 ; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
 ; CHECK-NEXT:   unreachable
 ; CHECK-NEXT: }
@@ -95,16 +95,15 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:   %8 = load ptr, ptr %7
 ; CHECK-NEXT:   %9 = getelementptr inbounds ptr, ptr %8, i32 1
 ; CHECK-NEXT:   %cache.in.ptr = load ptr, ptr %9
-; CHECK-NEXT:   %tid.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
-; CHECK-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx1, i32 0, i32 0
-; CHECK-NEXT:   %11 = load i64, ptr %10
-; CHECK-NEXT:   %12 = getelementptr inbounds double, ptr %ptr, i64 %11
-; CHECK-NEXT:   %val1 = load double, ptr %12
+; CHECK-NEXT:   %arrayidx.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %arrayidx.cacheidx1, i32 0, i32 0
+; CHECK-NEXT:   %11 = load ptr, ptr %10
+; CHECK-NEXT:   %val1 = load double, ptr %11
 ; CHECK-NEXT:   %add = fadd double %val1, 2.000000e+00
-; CHECK-NEXT:   store double %add, ptr %12
-; CHECK-NEXT:   %val2 = load double, ptr %12
+; CHECK-NEXT:   store double %add, ptr %11
+; CHECK-NEXT:   %val2 = load double, ptr %11
 ; CHECK-NEXT:   %mul = fmul double %val2, %val2
-; CHECK-NEXT:   store double %mul, ptr %12
+; CHECK-NEXT:   store double %mul, ptr %11
 ; CHECK-NEXT:   call void @__kmpc_target_deinit()
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
