@@ -3,97 +3,145 @@
 #ifndef LLVM_ADT_REMATGRAPH_H
 #define LLVM_ADT_REMATGRAPH_H
 
-#include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 
-#include "llvm/ADT/SparseMultiSet.h"
 #include "llvm/ADT/UniqueVector.h"
+#include "llvm/IR/Value.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
+
 #include <cassert>
+#include <functional>
+#include <variant>
 
 namespace llvm {
 
-template <typename NodeTy, typename WeightTy> class RematGraphTraits;
+template <typename NodeRef> struct FlowNode {
+  struct Source {};
+  struct Sink {};
 
-template<typename NodeRef>
-struct NodeOrSourceOrSink {
-  enum Type { NODE, SOURCE, SINK };
-  
-  Type Ty;
-  NodeRef Node;
+  std::variant<Source, Sink, NodeRef> Val;
 
 private:
-  NodeOrSourceOrSink(Type Ty, NodeRef N) : Ty(Ty), Node(N) {};
+  FlowNode(std::variant<Source, Sink, NodeRef> Val) : Val(Val){};
 
 public:
-  static NodeOrSourceOrSink<NodeRef> CreateSource() {
-    return NodeOrSourceOrSink<NodeRef>(SOURCE, nullptr);
+  static FlowNode<NodeRef> CreateSource() {
+    return FlowNode<NodeRef>(Source());
   }
 
-  static NodeOrSourceOrSink<NodeRef> CreateSink() {
-    return NodeOrSourceOrSink<NodeRef>(SINK, nullptr);
+  static FlowNode<NodeRef> CreateSink() { return FlowNode<NodeRef>(Sink()); }
+
+  static FlowNode<NodeRef> CreateNode(NodeRef Node) {
+    return FlowNode<NodeRef>(Node);
   }
 
-  static NodeOrSourceOrSink<NodeRef> CreateNode(NodeRef Node) {
-    return NodeOrSourceOrSink<NodeRef>(NODE, Node);
+  bool operator==(const FlowNode &Rhs) const {
+    if (std::holds_alternative<Source>(Val)) {
+      return std::holds_alternative<Source>(Rhs.Val);
+    }
+
+    if (std::holds_alternative<Sink>(Val)) {
+      return std::holds_alternative<Sink>(Rhs.Val);
+    }
+
+    if (std::holds_alternative<NodeRef>(Val) &&
+        std::holds_alternative<NodeRef>(Rhs.Val)) {
+      return std::get<NodeRef>(Val) == std::get<NodeRef>(Rhs.Val);
+    }
+
+    return false;
+   }
+
+  bool operator<(const FlowNode &Rhs) const {
+    if (std::holds_alternative<Source>(Val)) {
+      return !std::holds_alternative<Source>(Rhs.Val);
+    }
+
+    if (std::holds_alternative<Sink>(Val)) {
+      return !(std::holds_alternative<Source>(Rhs.Val) ||
+               std::holds_alternative<Sink>(Rhs.Val));
+    }
+
+    if (std::holds_alternative<NodeRef>(Val) &&
+        std::holds_alternative<NodeRef>(Rhs.Val)) {
+      return std::get<NodeRef>(Val) < std::get<NodeRef>(Rhs.Val);
+    }
+
+    if (std::holds_alternative<NodeRef>(Val)) {
+      return !(std::holds_alternative<Source>(Rhs.Val) ||
+               std::holds_alternative<Sink>(Rhs.Val));
+    }
+
+    return false;
+  }
+
+  void print(raw_ostream &OS, bool IsForDebug = false) const {
+    if (std::holds_alternative<Source>(Val)) {
+      OS << "<src>";
+    } else if (std::holds_alternative<Sink>(Val)) {
+      OS << "<sink>";
+    } else if (std::holds_alternative<NodeRef>(Val)) {
+      NodeRef Node = std::get<NodeRef>(Val);
+      OS << *Node;
+    }
   }
 };
+
+template <typename NodeRef>
+inline raw_ostream &operator<<(raw_ostream &OS, const FlowNode<NodeRef> &Node) {
+  Node.print(OS, true);
+  return OS;
+}
 
 template <typename NodeTy, typename WeightTy> struct RematGraph {
 public:
   using NodeType = NodeTy;
-  using NodeRef = NodeTy *;
+  using NodeRef = NodeTy &;
   using WeightType = WeightTy;
   using AdjacencyMatrixTy = SmallVector<SmallVector<WeightTy>>;
-  using NodeListTy = UniqueVector<NodeRef>;
+  using NodeListTy = UniqueVector<NodeTy>;
 
   using iterator = typename NodeListTy::iterator;
   using const_iterator = typename NodeListTy::const_iterator;
 
   using nodes_iterator = typename NodeListTy::iterator;
-  using ChildIteratorType = filter_iterator<nodes_iterator, bool (*)(NodeRef)>;
-
-  friend class RematGraphTraits<NodeTy, WeightTy>;
+  // using ChildIteratorType = filter_iterator<nodes_iterator,
+  // function_ref<bool(NodeRef)>>;
 
 private:
-  NodeRef Root;
+  NodeTy Root;
   NodeListTy Nodes;
   AdjacencyMatrixTy AdjacencyMatrix;
 
 public:
-  RematGraph(){};
+  RematGraph(NodeTy Root) : Root(Root) { addNode(Root); };
 
-  struct AMNode {
-    NodeRef Node;
-    RematGraph<NodeTy, WeightTy> *Graph;
-  };
-
-  bool addNode(NodeRef Node) {
-    if (!Nodes.idFor(Node))
+  bool addNode(NodeTy Node) {
+    if (Nodes.idFor(Node) != 0)
       return false;
-
-    // auto AMN = std::make_unique<AMNode>(Node, this);
 
     Nodes.insert(Node);
 
     for (auto &Row : AdjacencyMatrix)
       Row.push_back(0);
 
-    AdjacencyMatrix.push_back(SmallVector<WeightTy>(this->size(), 0));
+    AdjacencyMatrix.push_back(SmallVector<WeightTy>(size(), 0));
 
     return true;
   }
 
-  bool removeNode(NodeRef Node) {
+  bool removeNode(NodeTy Node) {
     // FIXME: this is slow!
     unsigned NodeId = Nodes.idFor(Node);
 
     assert(NodeId != 0);
 
     NodeListTy NewNodes;
-    for (auto Node :
-         make_filter_range(Nodes, [&](NodeRef N) { return Node != N; }))
+    for (auto &Node :
+         make_filter_range(Nodes, [&](NodeTy N) { return Node != N; }))
       NewNodes.insert(Node);
 
     for (auto &&[From, Row] : enumerate(AdjacencyMatrix))
@@ -105,7 +153,7 @@ public:
     Nodes = NewNodes;
   }
 
-  void addEdge(NodeRef From, NodeRef To, WeightTy Weight) {
+  void addEdge(NodeTy From, NodeTy To, WeightTy Weight) {
     unsigned FromId = Nodes.idFor(From);
     unsigned ToId = Nodes.idFor(To);
 
@@ -114,7 +162,7 @@ public:
     AdjacencyMatrix[FromId - 1][ToId - 1] = Weight;
   }
 
-  void removeEdge(NodeRef From, NodeRef To) {
+  void removeEdge(NodeTy From, NodeTy To) {
     unsigned FromId = Nodes.idFor(From);
     unsigned ToId = Nodes.idFor(To);
 
@@ -123,9 +171,15 @@ public:
     AdjacencyMatrix[FromId - 1][ToId - 1] = 0.0;
   }
 
-  NodeRef getEntryNode() const { return Root; }
+  NodeRef getEntryNode() { return Root; }
 
-  size_t size() const { return Nodes.Size(); }
+  size_t size() const { return Nodes.size(); }
+
+  const AdjacencyMatrixTy &getWeights() const { return AdjacencyMatrix; }
+
+  unsigned operator[](NodeTy Node) const { return Nodes.idFor(Node) - 1; }
+
+  const NodeTy &operator[](unsigned Id) const { return Nodes[Id + 1]; }
 
   const_iterator begin() const { return Nodes.begin(); }
   const_iterator end() const { return Nodes.end(); }
@@ -137,70 +191,131 @@ public:
   const NodeType &back() const { return *Nodes.back(); }
   NodeType &back() { return *Nodes.back(); }
 
-  ChildIteratorType child_begin(NodeRef Node) {
-    auto Filter = [&](unsigned To) {
-      unsigned From = Nodes.idFor(Node);
-      return From < size() && To < size() &&
-             AdjacencyMatrix[From - 1][To - 1] != 0;
+  // using ChildIteratorType =
+  //     filter_iterator<nodes_iterator, function_ref<bool(NodeRef)>>;
+
+  auto children(NodeRef From) {
+    auto Filter = [&](NodeRef To) {
+      unsigned FromId = Nodes.idFor(From);
+      unsigned ToId = Nodes.idFor(To);
+      return FromId < size() && ToId < size() &&
+             AdjacencyMatrix[FromId - 1][ToId - 1] != 0;
     };
-    return ChildIterType(Nodes.begin(), Filter);
+
+    return make_filter_range(Nodes, Filter);
   }
 
-  ChildIteratorType child_end(NodeRef Node) {
-    auto Filter = [&](unsigned To) {
-      unsigned From = Nodes.idFor(Node);
-      return From < size() && To < size() &&
-             AdjacencyMatrix[From - 1][To - 1] != 0;
+  auto child_begin(NodeRef From) {
+    auto Filter = [&](NodeRef To) {
+      unsigned FromId = Nodes.idFor(From);
+      unsigned ToId = Nodes.idFor(To);
+      return FromId < size() && ToId < size() &&
+             AdjacencyMatrix[FromId - 1][ToId - 1] != 0;
     };
-    return ChildIterType(Nodes.end(), Filter);
+
+    return make_filter_range(Nodes, Filter).begin();
   }
+
+  auto child_end(NodeRef From) {
+    auto Filter = [&](NodeRef To) {
+      unsigned FromId = Nodes.idFor(From);
+      unsigned ToId = Nodes.idFor(To);
+      return FromId < size() && ToId < size() &&
+             AdjacencyMatrix[FromId - 1][ToId - 1] != 0;
+    };
+
+    return make_filter_range(Nodes, Filter).end();
+  }
+
+  void print(raw_ostream &OS, bool IsForDebug = false) const {
+    for (auto Idx = 0; Idx < size(); ++Idx) {
+      dbgs() << "\t" << std::to_string(Idx);
+    }
+    dbgs() << "\n";
+    for (auto &&[Idx, Row] : enumerate(AdjacencyMatrix)) {
+      dbgs() << std::to_string(Idx) << "\t";
+      for (auto &Weight : Row) {
+        if (Weight != 0) {
+          dbgs() << std::to_string(Weight);
+        } else {
+          dbgs() << ".";
+        }
+        dbgs() << "\t";
+      }
+      dbgs() << "\n";
+    }
+  }
+
+  LLVM_DUMP_METHOD void dump() const { print(dbgs(), true); }
 };
 
-template <typename NodeTy, typename WeightTy> class RematGraphTraits {
-  using GraphTy = RematGraph<NodeTy, WeightTy>;
-  using NodeRef = std::pair<const GraphTy *, typename GraphTy::NodeRef>;
+// template <typename NodeTy, typename WeightTy> struct RematGraphTraits {
+//   using GraphTy = RematGraph<NodeTy, WeightTy>;
+//   using NodeRef = std::pair<const GraphTy *, typename GraphTy::NodeRef>;
 
-  class WrappedSuccIterator
-      : public iterator_adaptor_base<
-            WrappedSuccIterator, typename GraphTy::nodes_iterator,
-            typename std::iterator_traits<
-                typename GraphTy::nodes_iterator>::iterator_category,
-            NodeRef, std::ptrdiff_t, NodeRef *, NodeRef> {
+// private:
+//   class WrappedSuccIterator
+//       : public iterator_adaptor_base<
+//             WrappedSuccIterator, typename GraphTy::nodes_iterator,
+//             typename std::iterator_traits<
+//                 typename GraphTy::nodes_iterator>::iterator_category,
+//             NodeRef, std::ptrdiff_t, NodeRef *, NodeRef> {
 
-    using BaseT = iterator_adaptor_base<
-        WrappedSuccIterator, typename GraphTy::nodes_iterator,
-        typename std::iterator_traits<
-            typename GraphTy::nodes_iterator>::iterator_category,
-        NodeRef, std::ptrdiff_t, NodeRef *, NodeRef>;
+//     using BaseT = iterator_adaptor_base<
+//         WrappedSuccIterator, typename GraphTy::nodes_iterator,
+//         typename std::iterator_traits<
+//             typename GraphTy::nodes_iterator>::iterator_category,
+//         NodeRef, std::ptrdiff_t, NodeRef *, NodeRef>;
 
-    const GraphTy *Graph;
+//     const GraphTy *Graph;
 
-  public:
-    WrappedSuccIterator(typename GraphTy::nodes_iterator Begin,
-                        const GraphTy *G)
-        : BaseT(Begin), Graph(G) {}
+//   public:
+//     WrappedSuccIterator(typename GraphTy::nodes_iterator Begin, const GraphTy
+//     *G)
+//         : BaseT(Begin), Graph(G) {}
 
-    NodeRef operator*() const { return {Graph, *this->I}; }
-  };
+//     NodeRef operator*() { return {Graph, *this->I}; }
+//   };
 
-  static NodeRef getEntryNode(const GraphTy &G) {
-    return {&G, G.getEntryNode()};
-  }
+// public:
+//   static NodeRef getEntryNode(const GraphTy &G) {
+//     return {&G, G.getEntryNode()};
+//   }
 
-  using ChildIteratorType = WrappedSuccIterator;
+// public:
+//   using ChildIteratorType = WrappedSuccIterator;
 
-  static ChildIteratorType child_begin(NodeRef Node) {
-    return WrappedSuccIterator(Node.first.child_begin(Node.second), Node.first);
-  }
+//   static ChildIteratorType child_begin(NodeRef Node) {
+//     return WrappedSuccIterator(Node.first->child_begin(Node.second),
+//     Node.first);
+//   }
 
-  static ChildIteratorType child_end(NodeRef Node) {
-    return WrappedSuccIterator(Node.first.child_end(Node.second), Node.first);
-  }
-};
+//   static ChildIteratorType child_end(NodeRef Node) {
+//     return WrappedSuccIterator(Node.first->child_end(Node.second),
+//     Node.first);
+//   }
+//   };
 
-template <typename NodeTy, typename WeightTy>
-    struct GraphTraits <RematGraph<NodeTy, WeightTy>> : RematGraphTraits<NodeTy, WeightTy> {};
+//   template <typename NodeTy, typename WeightTy>
+//   struct GraphTraits<RematGraph<NodeTy, WeightTy>> : RematGraphTraits<NodeTy,
+//   WeightTy> {};
 
 } // namespace llvm
+
+namespace std {
+template <typename NodeRef> struct std::hash<llvm::FlowNode<NodeRef>> {
+  std::size_t operator()(llvm::FlowNode<NodeRef> const &FN) const {
+
+    if (std::holds_alternative<llvm::FlowNode<NodeRef>::Source>(FN.Val)) {
+      return std::hash<uint8_t>{}(0);
+    } else if (std::holds_alternative<llvm::FlowNode<NodeRef>::Sink>(FN.Val)) {
+      return std::hash<uint8_t>{}(1);
+    } else if (std::holds_alternative<NodeRef>(FN.Val)) {
+      NodeRef Node = std::get<NodeRef>(FN.Val);
+      return std::hash<NodeRef>{}(Node);
+    }
+  }
+};
+} // namespace std
 
 #endif // LLVM_ADT_REMATGRAPH_H

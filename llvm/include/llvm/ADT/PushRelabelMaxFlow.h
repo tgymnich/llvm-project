@@ -1,16 +1,16 @@
 #ifndef LLVM_ADT_PUSHRELABELMAXFLOW_H
 #define LLVM_ADT_PUSHRELABELMAXFLOW_H
 
-#include "llvm/ADT/GraphTraits.h"
+#include "llvm/ADT/RematGraph.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 
-#include "llvm/ADT/iterator_range.h"
+#include "llvm/IR/Value.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
-#include <iterator>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <queue>
@@ -18,58 +18,42 @@
 
 namespace llvm {
 
-template <class GraphT, class GT = GraphTraits<GraphT *>>
-class PushRelableMaxFlow {
-  using NodeRef = typename GT::NodeRef;
-  using EdgeRef = typename GT::EdgeRef;
-  using NodeIndex = int64_t;
+template <typename GraphTy> class PushRelableMaxFlow {
+  using WeightTy = typename GraphTy::WeightType;
+  using NodeTy = FlowNode<Value *>;
+  using NodeIndex = typename GraphTy::AdjacencyMatrixTy::size_type;
 
 private:
-  GraphT &Graph;
-  const int64_t Size;
+  const GraphTy &Graph;
+  NodeTy Source;
+  NodeTy Sink;
 
-  NodeRef Source;
-  NodeRef Sink;
+  SmallVector<SmallVector<WeightTy>> Flow;
 
-  SmallVector<SmallVector<int64_t>> Flow;
-  SmallVector<SmallVector<int64_t>> Capacity;
-
-  SmallVector<int64_t> Height;
-  SmallVector<int64_t> Excess;
+  SmallVector<WeightTy> Height;
+  SmallVector<WeightTy> Excess;
 
 public:
-  PushRelableMaxFlow(GraphT &Graph, NodeRef Source, NodeRef Sink)
-      : Graph(Graph), Size(GT::size(&Graph)), Source(Source), Sink(Sink),
-        Height(Size, 0), Excess(Size, 0),
-        Flow(Size, SmallVector<int64_t>(Size, 0)),
-        Capacity(Size, SmallVector<int64_t>(Size, 0)) {
-    auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    for (auto &&[Idx, Node] : enumerate(Nodes)) {
-      for (EdgeRef Edge : Node->getEdges()) {
-        NodeRef Dst = &Edge->getTargetNode();
-        NodeIndex DstIdx =
-            std::distance(GT::nodes_begin(&Graph), find(Nodes, Dst));
-        Capacity[Idx][DstIdx] = Edge->getCapacity();
-      }
-    }
-  };
+  PushRelableMaxFlow(const GraphTy &Graph, NodeTy Source, NodeTy Sink)
+      : Graph(Graph), Source(Source), Sink(Sink),
+        Flow(Graph.size(), SmallVector<WeightTy>(Graph.size(), 0)),
+        Height(Graph.size(), 0), Excess(Graph.size(), 0) {}
 
-  void getSourceSideMinCut(SmallVectorImpl<NodeRef> &Result) {
-    auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    NodeIndex Source =
-        std::distance(GT::nodes_begin(&Graph), find(Nodes, this->Source));
+  void getSourceSideMinCut(SmallVectorImpl<NodeTy> &Result) {
+    NodeIndex SourceIdx = Graph[Source];
+
     SmallSet<NodeIndex, 32> Reachable;
-    Reachable.insert(Source);
+    Reachable.insert(SourceIdx);
     std::queue<NodeIndex> Worklist;
-    Worklist.push(Source);
+    Worklist.push(SourceIdx);
 
     while (!Worklist.empty()) {
       NodeIndex Todo = Worklist.front();
       Worklist.pop();
-      for (NodeIndex i = 0; i < Size; ++i) {
-        if (residualCapacity(Todo, i) > 0) {
-          if (std::get<1>(Reachable.insert(i))) {
-            Worklist.push(i);
+      for (NodeIndex Idx = 0; Idx < Graph.size(); ++Idx) {
+        if (residualCapacity(Todo, Idx) > 0) {
+          if (std::get<1>(Reachable.insert(Idx))) {
+            Worklist.push(Idx);
           }
         }
       }
@@ -77,16 +61,14 @@ public:
 
     Result.reserve(Reachable.size());
 
-    for (auto &&[Idx, Node] : enumerate(Nodes)) {
+    for (auto &&[Idx, Node] : enumerate(Graph)) {
       if (Reachable.contains(Idx))
         Result.push_back(Node);
     }
   }
 
-  void getSinkSideMinCut(SmallVector<NodeRef> &Result) {
-    auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    NodeIndex SinkIdx =
-        std::distance(GT::nodes_begin(&Graph), find(nodes(Graph), Sink));
+  void getSinkSideMinCut(SmallVector<NodeTy> &Result) {
+    NodeIndex SinkIdx = Graph[Sink];
     SmallSet<NodeIndex, 32> Reachable;
     Reachable.insert(SinkIdx);
     std::queue<NodeIndex> Worklist;
@@ -95,7 +77,7 @@ public:
     while (!Worklist.empty()) {
       NodeIndex Todo = Worklist.front();
       Worklist.pop();
-      for (NodeIndex Idx = 0; Idx < Size; ++Idx) {
+      for (NodeIndex Idx = 0; Idx < Graph.size(); ++Idx) {
         if (residualCapacity(Idx, Todo) > 0) {
           if (std::get<1>(Reachable.insert(Idx))) {
             Worklist.push(Idx);
@@ -106,24 +88,22 @@ public:
 
     Result.reserve(Reachable.size());
 
-    for (auto &&[Idx, Node] : enumerate(Nodes)) {
+    for (auto &&[Idx, Node] : enumerate(Graph)) {
       if (Reachable.contains(Idx))
         Result.push_back(Node);
     }
   }
 
   int64_t computeMaxFlow() {
-    auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    NodeIndex SourceIdx =
-        std::distance(GT::nodes_begin(&Graph), find(Nodes, Source));
-    NodeIndex SinkIdx = std::distance(GT::nodes_begin(&Graph), find(Nodes, Sink));
+    NodeIndex SourceIdx = Graph[Source];
+    NodeIndex SinkIdx = Graph[Sink];
 
     // init height
-    Height[SourceIdx] = Size;
-    Excess[SourceIdx] = std::numeric_limits<int64_t>::max();
+    Height[SourceIdx] = Graph.size();
+    Excess[SourceIdx] = std::numeric_limits<WeightTy>::max();
 
     // init preflow
-    for (NodeIndex Idx = 0; Idx < Size; ++Idx) {
+    for (NodeIndex Idx = 0; Idx < Graph.size(); ++Idx) {
       if (Idx != SourceIdx)
         push(SourceIdx, Idx);
     }
@@ -134,7 +114,7 @@ public:
     while (!Current.empty()) {
       for (NodeIndex i : Current) {
         bool Pushed = false;
-        for (NodeIndex j = 0; j < Size && Excess[i]; j++) {
+        for (NodeIndex j = 0; j < Graph.size() && Excess[i]; j++) {
           if (residualCapacity(i, j) > 0 && isAdmissible(i, j)) {
             push(i, j);
             Pushed = true;
@@ -155,39 +135,43 @@ public:
 
   LLVM_DUMP_METHOD void dump() {
     dbgs() << "Flow:" << "\n";
-    for (auto Row : Flow) {
-      for (int64_t Element : Row) {
-        dbgs() << std::to_string(Element) << "\t";
+    for (auto &Row : Flow) {
+      for (WeightTy Element : Row) {
+        if (Element != 0) {
+          dbgs() << std::to_string(Element);
+        } else {
+          dbgs() << ".";
+        }
+        dbgs().indent(2);
       }
       dbgs() << "\n";
     }
     dbgs() << "\n";
 
     dbgs() << "Capacity:" << "\n";
-    for (auto Row : Capacity) {
-      for (int64_t Element : Row) {
-        dbgs() << std::to_string(Element) << "\t";
-      }
-      dbgs() << "\n";
-    }
+    
+    Graph.print(dbgs(), true);
+  
     dbgs() << "\n";
 
     dbgs() << "Height:" << "\n";
-    for (int64_t Element : Height) {
-      dbgs() << std::to_string(Element) << "\t";
+    for (WeightTy Element : Height) {
+      dbgs() << std::to_string(Element);
+      dbgs().indent(2);
     }
     dbgs() << "\n";
 
     dbgs() << "Excess:" << "\n";
-    for (int64_t Element : Excess) {
-      dbgs() << std::to_string(Element) << "\t";
+    for (WeightTy Element : Excess) {
+      dbgs() << std::to_string(Element);
+      dbgs().indent(2);
     }
     dbgs() << "\n";
   }
 
 private:
-  inline int64_t residualCapacity(NodeIndex Src, NodeIndex Dest) {
-    return Capacity[Src][Dest] - Flow[Src][Dest];
+  inline WeightTy residualCapacity(NodeIndex Src, NodeIndex Dest) {
+    return Graph.getWeights()[Src][Dest] - Flow[Src][Dest];
   }
 
   inline bool isAdmissible(NodeIndex Src, NodeIndex Dest) {
@@ -195,7 +179,7 @@ private:
   }
 
   void push(NodeIndex Src, NodeIndex Dest) {
-    int64_t NewFlow = std::min(Excess[Src], residualCapacity(Src, Dest));
+    WeightTy NewFlow = std::min(Excess[Src], residualCapacity(Src, Dest));
     Flow[Src][Dest] += NewFlow;
     Flow[Dest][Src] -= NewFlow;
 
@@ -204,9 +188,9 @@ private:
   }
 
   void relabel(NodeIndex Src) {
-    std::optional<int64_t> NewLabel;
+    std::optional<WeightTy> NewLabel;
 
-    for (int64_t Dest = 0; Dest < Size; Dest++) {
+    for (NodeIndex Dest = 0; Dest < Graph.size(); Dest++) {
       if (residualCapacity(Src, Dest) > 0)
         NewLabel = NewLabel.has_value()
                        ? std::min(NewLabel.value(), Height[Dest])
@@ -219,7 +203,7 @@ private:
 
   void findMaxHeightVertices(NodeIndex Source, NodeIndex Drain,
                              SmallVectorImpl<NodeIndex> &MaxHeight) {
-    for (NodeIndex i = 0; i < Size; i++) {
+    for (NodeIndex i = 0; i < Graph.size(); i++) {
       if (i != Source && i != Drain && Excess[i] > 0) {
         if (!MaxHeight.empty() && Height[i] > Height[MaxHeight[0]])
           MaxHeight.clear();
