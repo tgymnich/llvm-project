@@ -19,13 +19,13 @@
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/PushRelabelMaxFlow.h"
-#include "llvm/ADT/RematGraph.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -2402,11 +2402,10 @@ bool isMaterializable(Instruction *I) {
 }
 
 template <bool EnableRecompute, typename WeightTy>
-void determineValuesAcross(
-    Instruction *Split, DominatorTree &DT,
-    SetVector<Instruction *> &RequiredValues,
-    SetVector<Instruction *> &RecomputableValues,
-    RematGraph<FlowNode<Value *>, WeightTy> &RematGraph) {
+void determineValuesAcross(Instruction *Split, DominatorTree &DT,
+                           SetVector<Instruction *> &RequiredValues,
+                           SetVector<Instruction *> &RecomputableValues,
+                           FlowNetwork &RematGraph) {
   BasicBlock *BB = Split->getParent();
 
   for (BasicBlock *B : breadth_first(BB)) {
@@ -2435,32 +2434,29 @@ void determineValuesAcross(
             if (!DT.dominates(Todo, Split))
               continue;
 
-            RematGraph.addNode(FlowNode<Value *>::CreateNode(Todo));
+            RematGraph.addNode(FlowNetworkNode::CreateNode(Todo));
 
             if (!isMaterializable(Todo)) {
               if (!isa<AllocaInst>(Todo)) {
                 RequiredValues.insert(Todo);
-              if (Parent)
-                RematGraph.addEdge(FlowNode<Value *>::CreateNode(Todo),
-                                   FlowNode<Value *>::CreateNode(Parent), true);
-                dbgs() << *Todo << "\t\t-->\t" << *Parent << "\n";
+                if (Parent) {
+                  RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
+                                     FlowNetworkNode::CreateNode(Parent), true);
+                }
+                RematGraph.addEdge(FlowNetworkNode::CreateSource(),
+                                   FlowNetworkNode::CreateNode(Todo), true);
               }
-              RematGraph.addEdge(FlowNode<Value *>::CreateSource(),
-                                 FlowNode<Value *>::CreateNode(Todo), true);
-              dbgs() << "<source>" << "\t\t-->\t" << *Todo << "\n";
 
               continue;
             }
 
             RecomputableValues.insert(Todo);
             if (Parent) {
-              RematGraph.addEdge(FlowNode<Value *>::CreateNode(Todo),
-                                 FlowNode<Value *>::CreateNode(Parent), true);
-              dbgs() << *Todo << "\t\t-->\t" << *Parent << "\n";
+              RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
+                                 FlowNetworkNode::CreateNode(Parent), true);
             } else {
-              RematGraph.addEdge(FlowNode<Value *>::CreateNode(Todo),
-                                 FlowNode<Value *>::CreateSink(), true);
-              dbgs() << *Todo << "\t\t-->\t" << "<sink>" << "\n";
+              RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
+                                 FlowNetworkNode::CreateSink(), true);
             }
 
             for (Use &Op : Todo->operands()) {
@@ -2819,42 +2815,20 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   SetVector<Instruction *> RequiredValues;
   SetVector<Instruction *> RecomputableValues;
-  RematGraph<FlowNode<Value *>, uint8_t> RecomputedValues(
-      FlowNode<Value *>::CreateSource());
-  RecomputedValues.addNode(FlowNode<Value *>::CreateSink());
+  FlowNetwork RematGraph;
+  auto& Src = FlowNetworkNode::CreateSource();
+  auto& Sink = FlowNetworkNode::CreateSink();
 
-  determineValuesAcross<true>(SplitInst, DT, RequiredValues,
-                                    RecomputableValues, RecomputedValues);
+  RematGraph.addNode(Src);
+  RematGraph.addNode(Sink);
 
-  PushRelableMaxFlow MaxFlow(RecomputedValues,
-                             FlowNode<Value *>::CreateSource(),
-                             FlowNode<Value *>::CreateSink());
+  determineValuesAcross<true, int64_t>(SplitInst, DT, RequiredValues,
+                                       RecomputableValues, RematGraph);
+
+  PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
   MaxFlow.computeMaxFlow();
-  SmallVector<FlowNode<Value *>> Result;
+  SmallVector<FlowNetworkNode *> Result;
   MaxFlow.getSinkSideMinCut(Result);
-
-  MaxFlow.dump();
-  dbgs() << "\n";
-
-  dbgs() << *SplitInst->getFunction() << "\n";
-
-  dbgs() << "MinCut: " << Result.size() << "\n";
-  for (auto Val : Result) {
-    dbgs() << Val << "\n";
-  }
-  dbgs() << "\n";
-
-  dbgs() << "RequiredValues: " << RecomputableValues.size() << "\n";
-  for (auto Val : RequiredValues) {
-    dbgs() << *Val << "\n";
-  }
-  dbgs() << "\n";
-
-  dbgs() << "RecomputableValues: " << RecomputableValues.size() << "\n";
-  for (auto Val : RecomputableValues) {
-    dbgs() << *Val << "\n";
-  }
-  dbgs() << "\n";
 
   // Cache values shared between the original kernel and the split kernel.
   auto ValueTys =
@@ -3107,42 +3081,11 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       }
     }
 
-    RecomputedValues.dump();
-
-    auto Src = FlowNode<Value *>::CreateSource();
-    auto Sink = FlowNode<Value *>::CreateSink();
-
-    dbgs() << "Children of Src: "
-           << "\n";
-    for (auto Node : RecomputedValues.children(Src)) {
-      if (std::holds_alternative<Value *>(Node.Val)) {
-        Value *Val = std::get<Value *>(Node.Val);
-        dbgs() << *Val << "\n";
+    for (auto *Edge : Src.getEdges()) { 
+      for (auto *Node : make_filter_range(breadth_first(&Edge->getTargetNode()), [&](FlowNetworkNode* N) { return N != &Sink; })) {
+        dbgs() << *Node << "\n";
       }
-    }
-    dbgs() << "\n";
-
-    // Recompute values
-    std::deque<FlowNode<Value *>> ToVisit;
-    ToVisit.push_back(Src);
-
-    SmallSet<FlowNode<Value *>, 32> Visited;
-    SmallVector<Value *> SortedVals;
-    while (!ToVisit.empty()) {
-      auto &Todo = ToVisit.front();
-      ToVisit.pop_front();
-
-      // Do stuff
-      if (std::holds_alternative<Value *>(Todo.Val)) {
-        Value *Node = std::get<Value *>(Todo.Val);
-        SortedVals.push_back(Node);
-      }
-
-      Visited.insert(Todo);
-      for (auto Child : RecomputedValues.children(Todo)) {
-        if (!Visited.contains(Child))
-          ToVisit.push_back(Child);
-      }
+      dbgs() << "---------------------------------------\n"; 
     }
 
     auto SortedRecomputableValues = RecomputableValues.takeVector();
@@ -3150,19 +3093,19 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       return DT.dominates(LHS, RHS);
     });
 
-    dbgs() << "SortedRecomputableValues: "
-           << "\n";
-    for (auto Val : SortedRecomputableValues) {
-      dbgs() << *Val << "\n";
-    }
-    dbgs() << "\n";
+    dbgs() << "RPO\n";
 
-    dbgs() << "Mincut Sorted"
-           << "\n";
-    for (auto Val : SortedVals) {
-      dbgs() << *Val << "\n";
+    auto RPO = ReversePostOrderTraversal<FlowNetwork*>(&RematGraph);
+    for (auto* Node : RPO) {
+      // if (!Src.hasEdgeTo(*Node))
+        dbgs() << *Node << "\n";
     }
-    dbgs() << "\n";
+
+    dbgs() << "sorted\n";
+
+    for (auto *Node : SortedRecomputableValues) {
+      dbgs() << *Node << "\n";
+    }
 
     for (auto [Idx, Inst] : enumerate(SortedRecomputableValues)) {
       Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
