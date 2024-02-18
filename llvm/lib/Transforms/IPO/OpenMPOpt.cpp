@@ -2414,62 +2414,47 @@ void determineValuesAcross(Instruction *Split, DominatorTree &DT,
         if (!UI)
           continue;
 
-        if (isa<AllocaInst>(UI))
-          continue;
-
         // Type *Ty = UI->getType();
         // if (Ty->isPointerTy() &&
         //     Ty->getPointerAddressSpace() !=
         //         static_cast<unsigned>(AddressSpace::Global))
         //   continue;
 
-        if (isMaterializable(UI)) {
-          SmallVector<std::pair<Instruction *, Instruction *>> Worklist;
-          Worklist.push_back({UI, nullptr});
+        SetVector<std::pair<Instruction *, Instruction *>> Worklist;
+        Worklist.insert({UI, nullptr});
 
-          while (!Worklist.empty()) {
-            auto &&[Todo, Parent] = Worklist.pop_back_val();
+        while (!Worklist.empty()) {
+          auto &&[Todo, Parent] = Worklist.pop_back_val();
 
-            if (isa<AllocaInst>(Todo))
-              continue;
+          if (isa<AllocaInst>(Todo))
+            continue;
 
-            if (!DT.dominates(Todo, Split))
-              continue;
+          if (!DT.dominates(Todo, Split))
+            continue;
 
-            RematGraph.addNode(FlowNetworkNode::CreateNode(Todo));
+          bool Added = RematGraph.addNode(FlowNetworkNode::CreateNode(Todo));
 
-            if (!isMaterializable(Todo)) {
-              if (Parent) {
-                RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
-                                   FlowNetworkNode::CreateNode(Parent), true);
-              }
-              RematGraph.addEdge(FlowNetworkNode::CreateSource(),
-                                 FlowNetworkNode::CreateNode(Todo), true);
-              continue;
-            }
-
-            if (Parent) {
-              RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
-                                 FlowNetworkNode::CreateNode(Parent), true);
-            } else {
-              RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
-                                 FlowNetworkNode::CreateSink(), true);
-            }
-
-            for (Use &Op : Todo->operands()) {
-              if (Instruction *I = dyn_cast<Instruction>(&Op))
-                Worklist.push_back({I, Todo});
-            }
+          if (Parent) {
+            RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
+                               FlowNetworkNode::CreateNode(Parent), true);
+          } else {
+            RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
+                               FlowNetworkNode::CreateSink(), true);
           }
-          continue;
-        }
 
-        if (DT.dominates(UI, Split)) {
-          RematGraph.addNode(FlowNetworkNode::CreateNode(UI));
-          RematGraph.addEdge(FlowNetworkNode::CreateSource(),
-                             FlowNetworkNode::CreateNode(UI), true);
-          RematGraph.addEdge(FlowNetworkNode::CreateNode(UI),
-                             FlowNetworkNode::CreateSink(), true);
+          if(!Added)
+            continue;
+
+          if (!isMaterializable(Todo)) {
+            RematGraph.addEdge(FlowNetworkNode::CreateSource(),
+                               FlowNetworkNode::CreateNode(Todo), true);
+            continue;
+          }
+
+          for (Use &Op : Todo->operands()) {
+            if (Instruction *I = dyn_cast<Instruction>(&Op))
+              Worklist.insert({I, Todo});
+          }
         }
       }
     }
@@ -2835,41 +2820,58 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
   auto IsInst = [](FlowNetworkNode *N) { return N->isInstruction(); };
-  auto GetInst = [](FlowNetworkNode *N){ return N->getInstruction(); };
+  auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
 
   dbgs() << "RPO " << RematGraph.size() << "\n";
   for (auto *Node : RPO) {
     dbgs() << *Node << "\n";
   }
 
-  auto RequiredValuesNoRecompute = make_filter_range(RPO, [&](FlowNetworkNode *N) { return N->hasEdgeTo(Sink) && N->isInstruction(); });
+  auto RequiredValuesNoRecompute =
+      make_filter_range(RPO, [&](FlowNetworkNode *N) {
+        return N->hasEdgeTo(Sink) && N->isInstruction();
+      });
   dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute)
          << "\n";
   for (auto *Node : RequiredValuesNoRecompute) {
     dbgs() << *Node->getInstruction() << "\n";
   }
 
-  auto RequiredValuesRange = map_range(make_filter_range(map_range(Src, [](FlowNetworkEdge *E) { return &E->getTargetNode(); }), IsInst), GetInst);
-  dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange) << "\n";
+  auto RequiredValuesRange =
+      map_range(make_filter_range(map_range(Src,
+                                            [](FlowNetworkEdge *E) {
+                                              return &E->getTargetNode();
+                                            }),
+                                  IsInst),
+                GetInst);
+  dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange)
+         << "\n";
   for (auto *Node : RequiredValuesRange) {
     dbgs() << *Node << "\n";
   }
 
-  auto RecomputableValuesRange = map_range(make_filter_range(RPO, [&](FlowNetworkNode *N) { return N->isInstruction() && !Src.hasEdgeTo(*N); }), GetInst);
-  dbgs() << "Graph Recomputable Values " << llvm::range_size(RecomputableValuesRange) << "\n";
+  auto RecomputableValuesRange = map_range(
+      make_filter_range(RPO,
+                        [&](FlowNetworkNode *N) {
+                          return N->isInstruction() && !Src.hasEdgeTo(*N);
+                        }),
+      GetInst);
+  dbgs() << "Graph Recomputable Values "
+         << llvm::range_size(RecomputableValuesRange) << "\n";
   for (auto *Node : RecomputableValuesRange) {
     dbgs() << *Node << "\n";
   }
 
-  auto SortedCut = make_filter_range(RPO, [&](FlowNetworkNode *N) { return N->isInstruction() && Cut.contains(N->getInstruction()); });
+  auto SortedCut = make_filter_range(RPO, [&](FlowNetworkNode *N) {
+    return N->isInstruction() && Cut.contains(N->getInstruction());
+  });
   dbgs() << "Min Cut " << llvm::range_size(SortedCut) << "\n";
   for (auto *Node : SortedCut) {
     dbgs() << *Node << "\n";
   }
 
-SmallVector<Instruction*> RequiredValues(RequiredValuesRange);
-SmallVector<Instruction*> RecomputableValues(RecomputableValuesRange);
-
+  SmallVector<Instruction *> RequiredValues(RequiredValuesRange);
+  SmallVector<Instruction *> RecomputableValues(RecomputableValuesRange);
 
   // Cache values shared between the original kernel and the split kernel.
   auto ValueTys =
