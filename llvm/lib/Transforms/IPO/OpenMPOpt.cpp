@@ -2367,12 +2367,6 @@ bool OpenMPOpt::splitKernels() {
   return Changed;
 }
 
-bool isDefinitionAcrossSplit(Instruction &Def, User *U, Instruction *Split,
-                             DominatorTree &DT) {
-  Instruction *UI = dyn_cast<Instruction>(U);
-  return UI && DT.dominates(&Def, Split) && DT.dominates(Split, UI);
-}
-
 bool isMaterializable(Instruction *I) {
   bool IsMaterializableInstruction =
       (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
@@ -2401,12 +2395,9 @@ bool isMaterializable(Instruction *I) {
   return false;
 }
 
-template <typename WeightTy>
-void determineValuesAcross(Instruction *Split, DominatorTree &DT,
+void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
                            FlowNetwork &RematGraph) {
-  BasicBlock *BB = Split->getParent();
-
-  for (BasicBlock *B : breadth_first(BB)) {
+  for (BasicBlock *B : breadth_first(SplitBlock)) {
     for (Instruction &I : *B) {
       for (Use &U : I.operands()) {
         Instruction *UI = dyn_cast<Instruction>(U.get());
@@ -2428,7 +2419,7 @@ void determineValuesAcross(Instruction *Split, DominatorTree &DT,
           if (isa<AllocaInst>(Todo))
             continue;
 
-          if (!DT.dominates(Todo, Split))
+          if (!DT.dominates(Todo, SplitBlock))
             continue;
 
           bool Added = RematGraph.addNode(FlowNetworkNode::CreateNode(Todo));
@@ -2757,10 +2748,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   LLVMContext &C = M.getContext();
   const DataLayout &DL = M.getDataLayout();
 
-  LoopInfo &LI = LIGetter(Kernel);
-  DominatorTree &DT = DTGetter(Kernel);
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
-
   ConstantInt *SplitIdx =
       ConstantInt::get(IntegerType::getInt32Ty(C), SplitIndex);
 
@@ -2783,9 +2770,12 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
   }
 
+  LoopInfo &LI = LIGetter(Kernel);
+  DominatorTree &DT = DTGetter(Kernel);
+  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Eager);
+
   // Find Instructions that require caching
   SetVector<AllocaInst *> RequiredAllocas;
-
   for (Instruction &I : instructions(Kernel)) {
     AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
     if (!Alloca)
@@ -2798,6 +2788,11 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       RequiredAllocas.insert(Alloca);
   }
 
+  BasicBlock *BeforeSplitBB = SplitInst->getParent();
+  BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DTU, &LI);
+
+  SplitInst->eraseFromParent();
+
   FlowNetwork RematGraph;
   auto &Src = FlowNetworkNode::CreateSource();
   auto &Sink = FlowNetworkNode::CreateSink();
@@ -2805,7 +2800,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   RematGraph.addNode(Src);
   RematGraph.addNode(Sink);
 
-  determineValuesAcross<int64_t>(SplitInst, DT, RematGraph);
+  determineValuesAcross(AfterSplitBB, DT, RematGraph);
 
   PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
   MaxFlow.computeMaxFlow();
@@ -2821,20 +2816,20 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   auto IsInst = [](FlowNetworkNode *N) { return N->isInstruction(); };
   auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
 
-  dbgs() << "RPO " << RematGraph.size() << "\n";
-  for (auto *Node : RPO) {
-    dbgs() << *Node << "\n";
-  }
+  // dbgs() << "RPO " << RematGraph.size() << "\n";
+  // for (auto *Node : RPO) {
+  //   dbgs() << *Node << "\n";
+  // }
 
   auto RequiredValuesNoRecompute =
       make_filter_range(RPO, [&](FlowNetworkNode *N) {
         return N->hasEdgeTo(Sink) && N->isInstruction();
       });
-  dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute)
-         << "\n";
-  for (auto *Node : RequiredValuesNoRecompute) {
-    dbgs() << *Node->getInstruction() << "\n";
-  }
+  // dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute)
+  //        << "\n";
+  // for (auto *Node : RequiredValuesNoRecompute) {
+  //   dbgs() << *Node->getInstruction() << "\n";
+  // }
 
   auto RequiredValuesRange =
       map_range(make_filter_range(map_range(Src,
@@ -2843,11 +2838,11 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
                                             }),
                                   IsInst),
                 GetInst);
-  dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange)
-         << "\n";
-  for (auto *Node : RequiredValuesRange) {
-    dbgs() << *Node << "\n";
-  }
+  // dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange)
+  //        << "\n";
+  // for (auto *Node : RequiredValuesRange) {
+  //   dbgs() << *Node << "\n";
+  // }
 
   auto RecomputableValuesRange = map_range(
       make_filter_range(RPO,
@@ -2855,19 +2850,19 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
                           return N->isInstruction() && !Src.hasEdgeTo(*N);
                         }),
       GetInst);
-  dbgs() << "Graph Recomputable Values "
-         << llvm::range_size(RecomputableValuesRange) << "\n";
-  for (auto *Node : RecomputableValuesRange) {
-    dbgs() << *Node << "\n";
-  }
+  // dbgs() << "Graph Recomputable Values "
+  //        << llvm::range_size(RecomputableValuesRange) << "\n";
+  // for (auto *Node : RecomputableValuesRange) {
+  //   dbgs() << *Node << "\n";
+  // }
 
   auto SortedCut = make_filter_range(RPO, [&](FlowNetworkNode *N) {
     return N->isInstruction() && Cut.contains(N->getInstruction());
   });
-  dbgs() << "Min Cut " << llvm::range_size(SortedCut) << "\n";
-  for (auto *Node : SortedCut) {
-    dbgs() << *Node << "\n";
-  }
+  // dbgs() << "Min Cut " << llvm::range_size(SortedCut) << "\n";
+  // for (auto *Node : SortedCut) {
+  //   dbgs() << *Node << "\n";
+  // }
 
   SmallVector<Instruction *> RequiredValues(RequiredValuesRange);
   SmallVector<Instruction *> RecomputableValues(RecomputableValuesRange);
@@ -2920,11 +2915,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
   Type *ContCountTy = IntegerType::getInt32Ty(C);
 
-  BasicBlock *BeforeSplitBB = SplitInst->getParent();
-  BasicBlock *AfterSplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DTU, &LI);
-
-  SplitInst->eraseFromParent();
-
   BasicBlock *CacheStoreBB = BasicBlock::Create(C, "CacheStore", Kernel);
   BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
 
@@ -2949,7 +2939,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     Instruction *OldTerm = BeforeSplitBB->getTerminator();
     OldTerm->setSuccessor(0, CacheStoreBB);
     DT.deleteEdge(BeforeSplitBB, AfterSplitBB);
-    DT.addNewBlock(CacheStoreBB, BeforeSplitBB);
+    DT.insertEdge(BeforeSplitBB, CacheStoreBB);
 
     // Keep track of the number of continuation kernels to spawn.
     Argument *KernelLaunchEnvironment = Kernel->getArg(0);
