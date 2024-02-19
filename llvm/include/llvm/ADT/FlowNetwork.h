@@ -165,8 +165,8 @@ inline raw_ostream &operator<<(raw_ostream &OS, const FlowNetwork &G) {
     OS << (Node->getEdges().empty() ? " Edges:none!\n" : " Edges:\n");
     for (const auto &Edge : Node->getEdges())
       OS.indent(2) << *Edge;
+    OS << "\n";
   }
-  OS << "\n";
   return OS;
 }
 
@@ -187,7 +187,7 @@ template <> struct GraphTraits<FlowNetworkNode *> {
   // find the target nodes without having to explicitly go through the edges.
   using ChildIteratorType =
       mapped_iterator<FlowNetworkNode::iterator, decltype(&FNGetTargetNode)>;
-  using ChildEdgeIteratorType = FlowNetworkNode::iterator;
+  using ChildEdgeIteratorType = FlowNetworkNode::EdgeListTy::iterator;
 
   static NodeRef getEntryNode(NodeRef N) { return N; }
   static ChildIteratorType child_begin(NodeRef N) {
@@ -198,9 +198,9 @@ template <> struct GraphTraits<FlowNetworkNode *> {
   }
 
   static ChildEdgeIteratorType child_edge_begin(NodeRef N) {
-    return N->begin();
+    return N->getEdges().begin();
   }
-  static ChildEdgeIteratorType child_edge_end(NodeRef N) { return N->end(); }
+  static ChildEdgeIteratorType child_edge_end(NodeRef N) { return N->getEdges().end(); }
 };
 
 template <>
