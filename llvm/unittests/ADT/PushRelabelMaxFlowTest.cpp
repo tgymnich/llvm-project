@@ -152,23 +152,18 @@ TEST(PushRelabelMaxFlowTest, SinkSideMinCut) {
   EXPECT_EQ(MaxFlow.getFlowMatrix(), ExpectedFlowMatrix);
 
 
-  SmallVector<FNTestNode *> SourceSide;
-  SmallVector<FNTestNode *> SourceSideExpected = {&Source, &N3, &N4};
+  SmallPtrSet<FNTestNode *, 5> SourceSide;
+  SmallPtrSet<FNTestNode *, 5> SourceSideExpected = {&Source, &N3, &N4};
   MaxFlow.getSourceSideMinCut(SourceSide);
 
   EXPECT_EQ(SourceSide, SourceSideExpected);
 
 
-  SmallVector<FNTestNode *> SinkSide;
-  SmallVector<FNTestNode *> SinkSideExpected = {&N2, &Sink};
+  SmallPtrSet<FNTestNode *, 5> SinkSide;
+  SmallPtrSet<FNTestNode *, 5> SinkSideExpected = {&N2, &Sink};
   MaxFlow.getSinkSideMinCut(SinkSide);
 
   EXPECT_EQ(SinkSide, SinkSideExpected);
-
-
-  // MaxFlow.getMinCut(SourceSide, SinkSide);
-
-
 }
 
 } // namespace llvm

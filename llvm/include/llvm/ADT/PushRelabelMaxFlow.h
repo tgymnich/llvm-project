@@ -64,55 +64,33 @@ public:
     }
   };
 
-  void getSourceSideMinCut(SmallVectorImpl<NodeRef> &Result) {
-    unsigned Size = GT::size(&Graph);
+  void getSourceSideMinCut(SmallPtrSetImpl<NodeRef> &Result) {
+    auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
     SetVector<NodeIndex> Q;
-    SmallSet<NodeIndex, 32> Reachable;
     Q.insert(SourceIdx);
+    Result.insert(Source);
 
     while (!Q.empty()) {
-      NodeIndex Src = Q.pop_back_val();
-      Reachable.insert(Src);
+      NodeIndex SrcIdx = Q.pop_back_val();
 
-      for (NodeIndex Dst = 0; Dst < Size; ++Dst) {
-        if (Capacity[Src][Dst] - Flow[Src][Dst] > 0 &&
-            !Reachable.contains(Dst) && !Q.contains(Dst)) {
-          Q.insert(Dst);
+      for (auto && [DstIdx, Dst] : enumerate(Nodes)) {
+        if (Capacity[SrcIdx][DstIdx] - Flow[SrcIdx][DstIdx] > 0 &&
+            !Result.contains(Dst) && !Q.contains(DstIdx)) {
+          Q.insert(DstIdx);
+          Result.insert(Dst);
         }
       }
-    }
-
-    Result.reserve(Reachable.size());
-    auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    for (auto &&[Idx, Node] : enumerate(Nodes)) {
-      if (Reachable.contains(Idx))
-        Result.push_back(Node);
     }
   }
 
-  void getSinkSideMinCut(SmallVectorImpl<NodeRef> &Result) {
-    unsigned Size = GT::size(&Graph);
-    SetVector<NodeIndex> Q;
-    SmallSet<NodeIndex, 32> Reachable;
-    Q.insert(SourceIdx);
+  void getSinkSideMinCut(SmallPtrSetImpl<NodeRef> &Result) {
+    SmallPtrSet<NodeRef, 32> SourceSide;
+    getSourceSideMinCut(SourceSide);
 
-    while (!Q.empty()) {
-      NodeIndex Src = Q.pop_back_val();
-      Reachable.insert(Src);
-
-      for (NodeIndex Dst = 0; Dst < Size; ++Dst) {
-        if (Capacity[Src][Dst] - Flow[Src][Dst] > 0 &&
-            !Reachable.contains(Dst) && !Q.contains(Dst)) {
-          Q.insert(Dst);
-        }
-      }
-    }
-
-    Result.reserve(Reachable.size());
     auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    for (auto &&[Idx, Node] : enumerate(Nodes)) {
-      if (!Reachable.contains(Idx))
-        Result.push_back(Node);
+    for (auto& Node : Nodes) {
+      if (!SourceSide.contains(Node))
+        Result.insert(Node);
     }
   }
 
@@ -121,12 +99,12 @@ public:
   }
 
   WeightTy computeMaxFlow() {
-    unsigned Size = GT::size(&Graph);
+    auto Size = GT::size(&Graph);
 
     SmallVector<uint64_t> Height(Size, 0);
     Height[SourceIdx] = Size;
 
-    SmallVector<int64_t> Count(2 * Size + 1, 0);
+    SmallVector<uint64_t> Count(2 * Size + 1, 0);
     Count[0] = Size - 1;
     Count[Size] = 1;
 
@@ -181,7 +159,7 @@ private:
 
   void discharge(NodeIndex Src, SmallVectorImpl<uint64_t> &Height,
                  SmallVectorImpl<WeightTy> &Excess, SmallBitVector &Active,
-                 SmallVectorImpl<int64_t> &Count, std::deque<NodeIndex> &Q) {
+                 SmallVectorImpl<uint64_t> &Count, std::deque<NodeIndex> &Q) {
     for (NodeIndex Dst = 0; Dst < GT::size(&Graph) && Excess[Src] != 0; ++Dst) {
       pushFlow(Src, Dst, Height, Excess, Active, Q);
     }
@@ -197,8 +175,8 @@ private:
 
   void gap(uint64_t H, SmallVectorImpl<uint64_t> &Height,
            SmallVectorImpl<WeightTy> &Excess, SmallBitVector &Active,
-           SmallVectorImpl<int64_t> &Count, std::deque<NodeIndex> &Q) {
-    unsigned Size = GT::size(&Graph);
+           SmallVectorImpl<uint64_t> &Count, std::deque<NodeIndex> &Q) {
+    auto Size = GT::size(&Graph);
 
     for (NodeIndex Idx = 0; Idx < Size; ++Idx) {
       if (Height[Idx] < H)
@@ -217,8 +195,8 @@ private:
 
   void relabel(NodeIndex Src, SmallVectorImpl<uint64_t> &Height,
                SmallVectorImpl<WeightTy> &Excess, SmallBitVector &Active,
-               SmallVectorImpl<int64_t> &Count, std::deque<NodeIndex> &Q) {
-    unsigned Size = GT::size(&Graph);
+               SmallVectorImpl<uint64_t> &Count, std::deque<NodeIndex> &Q) {
+    auto Size = GT::size(&Graph);
 
     Count[Height[Src]] -= 1;
     Height[Src] = 2 * Size;

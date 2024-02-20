@@ -2805,7 +2805,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
   MaxFlow.computeMaxFlow();
-  SmallVector<FlowNetworkNode *> Result;
+  SmallPtrSet<FlowNetworkNode *, 32> Result;
   MaxFlow.getSinkSideMinCut(Result);
   SmallSet<Instruction *, 32> Cut;
   for (auto *I : Result) {
