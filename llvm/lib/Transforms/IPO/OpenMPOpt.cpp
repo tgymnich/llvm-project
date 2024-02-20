@@ -2438,7 +2438,7 @@ void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
 
           if (!isMaterializable(Todo)) {
             RematGraph.addEdge(FlowNetworkNode::CreateSource(),
-                               FlowNetworkNode::CreateNode(Todo), true);
+                               FlowNetworkNode::CreateNode(Todo), std::numeric_limits<int64_t>::max());
             continue;
           }
 
