@@ -16,7 +16,6 @@
 
 #include "llvm/ADT/DirectedGraph.h"
 #include "llvm/ADT/GraphTraits.h"
-#include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "gtest/gtest.h"
 
