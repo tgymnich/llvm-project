@@ -5,7 +5,6 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallBitVector.h"
-#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 
 #include "llvm/ADT/iterator_range.h"
@@ -15,7 +14,6 @@
 #include <deque>
 #include <iterator>
 #include <limits>
-#include <queue>
 #include <string>
 
 namespace llvm {
@@ -73,7 +71,7 @@ public:
     while (!Q.empty()) {
       NodeIndex SrcIdx = Q.pop_back_val();
 
-      for (auto && [DstIdx, Dst] : enumerate(Nodes)) {
+      for (auto &&[DstIdx, Dst] : enumerate(Nodes)) {
         if (Capacity[SrcIdx][DstIdx] - Flow[SrcIdx][DstIdx] > 0 &&
             !Result.contains(Dst) && !Q.contains(DstIdx)) {
           Q.insert(DstIdx);
@@ -88,17 +86,18 @@ public:
     getSourceSideMinCut(SourceSide);
 
     auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    for (auto& Node : Nodes) {
+    for (auto &Node : Nodes) {
       if (!SourceSide.contains(Node))
         Result.insert(Node);
     }
   }
 
-  void getMinCut(SmallPtrSetImpl<NodeRef> &SourceSide, SmallPtrSetImpl<NodeRef> &SinkSide) {
+  void getMinCut(SmallPtrSetImpl<NodeRef> &SourceSide,
+                 SmallPtrSetImpl<NodeRef> &SinkSide) {
     getSourceSideMinCut(SourceSide);
 
     auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
-    for (auto& Node : Nodes) {
+    for (auto &Node : Nodes) {
       if (!SourceSide.contains(Node))
         SinkSide.insert(Node);
     }
@@ -147,7 +146,8 @@ private:
   void pushFlow(NodeIndex Src, NodeIndex Dst, SmallVectorImpl<uint64_t> &Height,
                 SmallVectorImpl<WeightTy> &Excess, SmallBitVector &Active,
                 std::deque<NodeIndex> &Q) {
-    WeightTy NewFlow = std::min(Excess[Src], Capacity[Src][Dst] - Flow[Src][Dst]);
+    WeightTy NewFlow =
+        std::min(Excess[Src], Capacity[Src][Dst] - Flow[Src][Dst]);
 
     if (NewFlow == 0)
       return;
@@ -193,7 +193,7 @@ private:
         continue;
 
       Count[Height[Idx]] -= 1;
-      Height[Idx] = std::max(Height[Idx], (uint64_t (Size)) + 1);
+      Height[Idx] = std::max(Height[Idx], (uint64_t(Size)) + 1);
       Count[Height[Idx]] += 1;
 
       if (!Active[Idx] && Excess[Idx] > 0) {
@@ -227,7 +227,8 @@ private:
 
 public:
   LLVM_DUMP_METHOD void dump() {
-    dbgs() << "Flow:" << "\n";
+    dbgs() << "Flow:"
+           << "\n";
     for (auto &Row : Flow) {
       for (int64_t Element : Row) {
         dbgs() << std::to_string(Element) << "\t";
@@ -236,7 +237,8 @@ public:
     }
     dbgs() << "\n";
 
-    dbgs() << "Capacity:" << "\n";
+    dbgs() << "Capacity:"
+           << "\n";
     for (auto Row : Capacity) {
       for (WeightTy Element : Row) {
         dbgs() << std::to_string(Element) << "\t";

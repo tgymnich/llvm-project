@@ -2423,22 +2423,29 @@ void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
           if (!DT.dominates(Todo, SplitBlock))
             continue;
 
-          bool Added = RematGraph.addNode(FlowNetworkNode::CreateNode(Todo));
+          bool Added = RematGraph.addNode(FlowNetworkNode::CreateIncomingNode(Todo)) &&
+              RematGraph.addNode(FlowNetworkNode::CreateOutgoingNode(Todo));
+
+          RematGraph.addEdge(FlowNetworkNode::CreateIncomingNode(Todo),
+                             FlowNetworkNode::CreateOutgoingNode(Todo), true);
 
           if (Parent) {
-            RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
-                               FlowNetworkNode::CreateNode(Parent), true);
+            RematGraph.addEdge(FlowNetworkNode::CreateOutgoingNode(Todo),
+                               FlowNetworkNode::CreateIncomingNode(Parent),
+                               std::numeric_limits<int64_t>::max());
           } else {
-            RematGraph.addEdge(FlowNetworkNode::CreateNode(Todo),
-                               FlowNetworkNode::CreateSink(), true);
+            RematGraph.addEdge(FlowNetworkNode::CreateOutgoingNode(Todo),
+                               FlowNetworkNode::CreateSink(),
+                               std::numeric_limits<int64_t>::max());
           }
 
-          if(!Added)
+          if (!Added)
             continue;
 
           if (!isMaterializable(Todo)) {
             RematGraph.addEdge(FlowNetworkNode::CreateSource(),
-                               FlowNetworkNode::CreateNode(Todo), std::numeric_limits<int64_t>::max());
+                               FlowNetworkNode::CreateIncomingNode(Todo),
+                               std::numeric_limits<int64_t>::max());
             continue;
           }
 
@@ -2807,30 +2814,27 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   MaxFlow.computeMaxFlow();
   SmallPtrSet<FlowNetworkNode *, 32> Result;
   MaxFlow.getSinkSideMinCut(Result);
-  SmallSet<Instruction *, 32> Cut;
-  for (auto *I : Result) {
-    if (I->isInstruction())
-      Cut.insert(I->getInstruction());
-  }
 
   auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
   auto IsInst = [](FlowNetworkNode *N) { return N->isInstruction(); };
   auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
 
-  // dbgs() << "RPO " << RematGraph.size() << "\n";
-  // for (auto *Node : RPO) {
-  //   dbgs() << *Node << "\n";
-  // }
+  dbgs() << RematGraph << "\n";
+
+  dbgs() << "RPO " << RematGraph.size() << "\n";
+  for (auto *Node : RPO) {
+    dbgs() << *Node << "\n";
+  }
 
   auto RequiredValuesNoRecompute =
       make_filter_range(RPO, [&](FlowNetworkNode *N) {
         return N->hasEdgeTo(Sink) && N->isInstruction();
       });
-  // dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute)
-  //        << "\n";
-  // for (auto *Node : RequiredValuesNoRecompute) {
-  //   dbgs() << *Node->getInstruction() << "\n";
-  // }
+  dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute)
+         << "\n";
+  for (auto *Node : RequiredValuesNoRecompute) {
+    dbgs() << *Node->getInstruction() << "\n";
+  }
 
   auto RequiredValuesRange =
       map_range(make_filter_range(map_range(Src,
@@ -2839,11 +2843,11 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
                                             }),
                                   IsInst),
                 GetInst);
-  // dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange)
-  //        << "\n";
-  // for (auto *Node : RequiredValuesRange) {
-  //   dbgs() << *Node << "\n";
-  // }
+  dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange)
+         << "\n";
+  for (auto *Node : RequiredValuesRange) {
+    dbgs() << *Node << "\n";
+  }
 
   auto RecomputableValuesRange = map_range(
       make_filter_range(RPO,
@@ -2851,19 +2855,19 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
                           return N->isInstruction() && !Src.hasEdgeTo(*N);
                         }),
       GetInst);
-  // dbgs() << "Graph Recomputable Values "
-  //        << llvm::range_size(RecomputableValuesRange) << "\n";
-  // for (auto *Node : RecomputableValuesRange) {
-  //   dbgs() << *Node << "\n";
-  // }
+  dbgs() << "Graph Recomputable Values "
+         << llvm::range_size(RecomputableValuesRange) << "\n";
+  for (auto *Node : RecomputableValuesRange) {
+    dbgs() << *Node << "\n";
+  }
 
   auto SortedCut = make_filter_range(RPO, [&](FlowNetworkNode *N) {
-    return N->isInstruction() && Cut.contains(N->getInstruction());
+    return N->isInstruction() && Result.contains(N);
   });
-  // dbgs() << "Min Cut " << llvm::range_size(SortedCut) << "\n";
-  // for (auto *Node : SortedCut) {
-  //   dbgs() << *Node << "\n";
-  // }
+  dbgs() << "Min Cut " << llvm::range_size(SortedCut) << "\n";
+  for (auto *Node : SortedCut) {
+    dbgs() << *Node << "\n";
+  }
 
   SmallVector<Instruction *> RequiredValues(RequiredValuesRange);
   SmallVector<Instruction *> RecomputableValues(RecomputableValuesRange);
