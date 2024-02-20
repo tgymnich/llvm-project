@@ -94,6 +94,16 @@ public:
     }
   }
 
+  void getMinCut(SmallPtrSetImpl<NodeRef> &SourceSide, SmallPtrSetImpl<NodeRef> &SinkSide) {
+    getSourceSideMinCut(SourceSide);
+
+    auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
+    for (auto& Node : Nodes) {
+      if (!SourceSide.contains(Node))
+        SinkSide.insert(Node);
+    }
+  }
+
   const SmallVector<SmallVector<WeightTy>> &getFlowMatrix() const {
     return Flow;
   }
