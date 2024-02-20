@@ -23,6 +23,7 @@ add_llvm_unittest(ADTTests
   DenseMapTest.cpp
   DenseSetTest.cpp
   DepthFirstIteratorTest.cpp
+  DinicMaxFlowTest.cpp
   DirectedGraphTest.cpp
   EditDistanceTest.cpp
   EnumeratedArrayTest.cpp
