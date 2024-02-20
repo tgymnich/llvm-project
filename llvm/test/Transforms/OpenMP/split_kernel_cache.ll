@@ -28,8 +28,6 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
   if:
     call void @__ompx_split()
     store double %mul, ptr %arrayidx1
-    %add = fmul double %val1, %val2    
-    store double %add, ptr %arrayidx2
     br label %end
   end:
     %mul1 = fmul double %mul, %mul
