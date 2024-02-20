@@ -5,6 +5,7 @@
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/IR/Instruction.h"
 #include <string>
+#include <utility>
 #include <variant>
 
 namespace llvm {
@@ -34,7 +35,7 @@ public:
 
   size_t getCapacity() const { return Capacity; }
 };
-inline raw_ostream &operator<<(raw_ostream&, const FlowNetworkNode&);
+inline raw_ostream &operator<<(raw_ostream &, const FlowNetworkNode &);
 
 inline raw_ostream &operator<<(raw_ostream &OS, const FlowNetworkEdge &Edge) {
   OS << "[" << std::to_string(Edge.getCapacity()) << "] to "
@@ -46,14 +47,17 @@ class FlowNetworkNode : public FNNodeBase {
 private:
   struct Source {};
   struct Sink {};
-  std::variant<Source, Sink, Instruction *> Val;
+  std::variant<Source, Sink, std::pair<Instruction *, bool>> Val;
 
   friend FNNodeBase;
 
 public:
   FlowNetworkNode() = delete;
-  FlowNetworkNode(std::variant<Source, Sink, Instruction *> Val) : Val(Val){};
-  FlowNetworkNode(Instruction *Inst) : Val(Inst){};
+  FlowNetworkNode(
+      std::variant<Source, Sink, std::pair<Instruction *, bool>> Val)
+      : Val(Val){};
+  FlowNetworkNode(Instruction *Inst, bool isIncoming)
+      : Val(std::make_pair(Inst, isIncoming)){};
   FlowNetworkNode(Source Src) : Val(Src){};
   FlowNetworkNode(Sink Sink) : Val(Sink){};
   FlowNetworkNode(const FlowNetworkNode &N) = default;
@@ -70,8 +74,13 @@ public:
     return *Node;
   }
 
-  static FlowNetworkNode &CreateNode(Instruction *Inst) {
-    FlowNetworkNode *Node = new FlowNetworkNode(Inst);
+  static FlowNetworkNode &CreateIncomingNode(Instruction *Inst) {
+    FlowNetworkNode *Node = new FlowNetworkNode(Inst, true);
+    return *Node;
+  }
+
+  static FlowNetworkNode &CreateOutgoingNode(Instruction *Inst) {
+    FlowNetworkNode *Node = new FlowNetworkNode(Inst, false);
     return *Node;
   }
 
@@ -79,37 +88,40 @@ public:
   inline bool isSource() const { return std::holds_alternative<Source>(Val); }
   inline bool isSink() const { return std::holds_alternative<Sink>(Val); }
   inline bool isInstruction() const {
-    return std::holds_alternative<Instruction *>(Val);
+    return std::holds_alternative<std::pair<Instruction *, bool>>(Val);
   }
   inline Instruction *getInstruction() const {
-    return std::get<Instruction *>(Val);
+    return std::get<std::pair<Instruction *, bool>>(Val).first;
+  }
+  inline bool getIncoming() const {
+    return std::get<std::pair<Instruction *, bool>>(Val).second;
   }
 
 public:
   void print(raw_ostream &OS, bool IsForDebug = false) const {
-    if (std::holds_alternative<Source>(Val)) {
+    if (isSource()) {
       OS << "<src>";
-    } else if (std::holds_alternative<Sink>(Val)) {
+    } else if (isSink()) {
       OS << "<sink>";
-    } else if (std::holds_alternative<Instruction *>(Val)) {
-      Instruction *Inst = std::get<Instruction *>(Val);
-      OS << *Inst;
+    } else if (isInstruction()) {
+      Instruction *Inst = getInstruction();
+      OS << (getIncoming() ? "[In] " : "[Out] ") << *Inst;
     }
   }
 
 protected:
   bool isEqualTo(const FlowNetworkNode &Rhs) const {
-    if (std::holds_alternative<Source>(Val)) {
-      return std::holds_alternative<Source>(Rhs.Val);
+    if (isSource()) {
+      return Rhs.isSource();
     }
 
-    if (std::holds_alternative<Sink>(Val)) {
-      return std::holds_alternative<Sink>(Rhs.Val);
+    if (isSink()) {
+      return Rhs.isSink();
     }
 
-    if (std::holds_alternative<Instruction *>(Val) &&
-        std::holds_alternative<Instruction *>(Rhs.Val)) {
-      return std::get<Instruction *>(Val) == std::get<Instruction *>(Rhs.Val);
+    if (isInstruction() && Rhs.isInstruction()) {
+      return getInstruction() == Rhs.getInstruction() &&
+             getIncoming() == Rhs.getIncoming();
     }
 
     return false;
@@ -142,7 +154,7 @@ public:
       delete &N;
       return false;
     }
-    
+
     Nodes.push_back(&N);
     return true;
   }
@@ -200,7 +212,9 @@ template <> struct GraphTraits<FlowNetworkNode *> {
   static ChildEdgeIteratorType child_edge_begin(NodeRef N) {
     return N->getEdges().begin();
   }
-  static ChildEdgeIteratorType child_edge_end(NodeRef N) { return N->getEdges().end(); }
+  static ChildEdgeIteratorType child_edge_end(NodeRef N) {
+    return N->getEdges().end();
+  }
 };
 
 template <>
