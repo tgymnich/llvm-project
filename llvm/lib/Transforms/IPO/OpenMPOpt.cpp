@@ -95,6 +95,7 @@
 #include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <deque>
 #include <limits>
 #include <memory>
@@ -2416,6 +2417,7 @@ void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
 
         while (!Worklist.empty()) {
           auto &&[Todo, Parent] = Worklist.pop_back_val();
+          constexpr int64_t InfEdgeWeight = 10000;
 
           if (isa<AllocaInst>(Todo))
             continue;
@@ -2432,11 +2434,11 @@ void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
           if (Parent) {
             RematGraph.addEdge(FlowNetworkNode::CreateOutgoingNode(Todo),
                                FlowNetworkNode::CreateIncomingNode(Parent),
-                               10000);
+                               InfEdgeWeight);
           } else {
             RematGraph.addEdge(FlowNetworkNode::CreateOutgoingNode(Todo),
                                FlowNetworkNode::CreateSink(),
-                               10000);
+                               InfEdgeWeight);
           }
 
           if (!Added)
@@ -2445,7 +2447,7 @@ void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
           if (!isMaterializable(Todo)) {
             RematGraph.addEdge(FlowNetworkNode::CreateSource(),
                                FlowNetworkNode::CreateIncomingNode(Todo),
-                               10000);
+                               InfEdgeWeight);
             continue;
           }
 
@@ -2863,7 +2865,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   });
   dbgs() << "Min Cut " << llvm::range_size(SortedCut) << "\n";
   for (auto *Node : SortedCut) {
-    dbgs() << *Node << "\n";
+    dbgs() << *Node->getInstruction() << "\n";
   }
 
   auto CutEdges = make_filter_range(RPO, [&](FlowNetworkNode *N) {

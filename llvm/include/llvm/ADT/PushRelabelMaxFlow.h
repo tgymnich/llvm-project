@@ -10,8 +10,11 @@
 
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
 #include <deque>
 #include <iterator>
 #include <limits>
@@ -41,8 +44,8 @@ private:
 public:
   PushRelableMaxFlow(GraphT &Graph, NodeRef Source, NodeRef Sink)
       : Graph(Graph), Source(Source), Sink(Sink),
-        Flow(GT::size(&Graph), SmallVector<int64_t>(GT::size(&Graph), 0)),
-        Capacity(GT::size(&Graph), SmallVector<int64_t>(GT::size(&Graph))) {
+        Flow(GT::size(&Graph), SmallVector<WeightTy>(GT::size(&Graph), 0)),
+        Capacity(GT::size(&Graph), SmallVector<WeightTy>(GT::size(&Graph))) {
 
     auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
     for (auto &&[Idx, Node] : enumerate(Nodes)) {

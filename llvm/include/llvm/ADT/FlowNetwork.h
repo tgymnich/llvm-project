@@ -159,6 +159,75 @@ public:
     return true;
   }
 
+  bool addInstructionNode(Instruction *I, bool Incoming) {
+    auto *It = llvm::find_if(Nodes, [I, Incoming](NodeType *N) { return N->isInstruction() && N->getInstruction() == I && N->getIncoming() == Incoming; });
+    
+    NodeType &N = It == nullptr ? **It : Incoming ? NodeType::CreateIncomingNode(I) : NodeType::CreateOutgoingNode(I);
+
+    Nodes.push_back(&N);
+    return true;
+  }
+
+  bool addSourceNode() {
+    auto *It = llvm::find_if(Nodes, [](NodeType *N) { return N->isSource(); });
+
+    NodeType &N = It == nullptr ? **It : NodeType::CreateSource();
+
+    Nodes.push_back(&N);
+    return true;
+  }
+
+  bool addSinkNode() {
+    auto *It = llvm::find_if(Nodes, [](NodeType *N) { return N->isSink(); });
+
+    NodeType &N = It == nullptr ? **It : NodeType::CreateSink();
+
+    Nodes.push_back(&N);
+    return true;
+  }
+
+  void addInstructionEdge(Instruction* Src, Instruction* Dst, int64_t Capacity) {
+    auto *SrcIt = llvm::find_if(Nodes, [Src](NodeType *N) { return N->isInstruction() && N->getInstruction() == Src && N->getIncoming(); });
+    auto *DstIt = llvm::find_if(Nodes, [Dst](NodeType *N) { return N->isInstruction() && N->getInstruction() == Dst && !N->getIncoming(); });
+
+    NodeType &SrcNode = SrcIt == nullptr ? **SrcIt : NodeType::CreateIncomingNode(Src);
+    NodeType &DstNode = DstIt == nullptr ? **DstIt : NodeType::CreateOutgoingNode(Dst);
+
+    if (SrcNode.hasEdgeTo(DstNode))
+      return;
+
+    EdgeType *Edge = new EdgeType(SrcNode, Capacity);
+    connect(SrcNode, DstNode, *Edge);
+  }
+
+  void addSourceEdge(Instruction* Dst, int64_t Capacity) {
+    auto *SrcIt = llvm::find_if(Nodes, [](NodeType *N) { return N->isSource(); });
+    auto *DstIt = llvm::find_if(Nodes, [Dst](NodeType *N) { return N->isInstruction() && N->getInstruction() == Dst && !N->getIncoming(); });
+
+    NodeType &SrcNode = SrcIt == nullptr ? **SrcIt : NodeType::CreateSource();
+    NodeType &DstNode = DstIt == nullptr ? **DstIt : NodeType::CreateOutgoingNode(Dst);
+
+    if (SrcNode.hasEdgeTo(DstNode))
+      return;
+
+    EdgeType *Edge = new EdgeType(SrcNode, Capacity);
+    connect(SrcNode, DstNode, *Edge);
+  }
+
+  void addSinkEdge(Instruction* Src, int64_t Capacity) {
+    auto *SrcIt = llvm::find_if(Nodes, [Src](NodeType *N) { return N->isInstruction() && N->getInstruction() == Src && N->getIncoming(); });
+    auto *DstIt = llvm::find_if(Nodes, [](NodeType *N) { return N->isSink(); });
+
+    NodeType &SrcNode = SrcIt == nullptr ? **SrcIt : NodeType::CreateIncomingNode(Src);
+    NodeType &DstNode = DstIt == nullptr ? **DstIt : NodeType::CreateSink();
+
+    if (SrcNode.hasEdgeTo(DstNode))
+      return;
+
+    EdgeType *Edge = new EdgeType(SrcNode, Capacity);
+    connect(SrcNode, DstNode, *Edge);
+  }
+
   void addEdge(NodeType &Src, NodeType &Dst, int64_t Capacity) {
     auto &SrcIt = **findNode(Src);
     auto &DstIt = **findNode(Dst);
