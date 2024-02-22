@@ -2795,7 +2795,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   FlowNetwork RematGraph;
   FlowNetworkBuilder FNBuilder(RematGraph);
-  
+
   auto &Src = FNBuilder.createSource();
   auto &Sink = FNBuilder.createSink();
 
@@ -2810,76 +2810,52 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   auto IsIncomingInst = [](FlowNetworkNode *N) {
     return N->isInstruction() && N->getIncoming();
   };
+
   auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
 
-  dbgs() << RematGraph << "\n";
+  enum class RematMode { CACHE, RECOMPUTE, MINCUT };
 
-  dbgs() << "RPO " << RematGraph.size() << "\n";
-  for (auto *Node : RPO) {
-    dbgs() << *Node << "\n";
+  constexpr RematMode Mode = RematMode::CACHE;
+
+  SmallVector<Instruction *> RequiredValues;
+  SmallVector<Instruction *> RecomputableValues;
+
+  if constexpr (Mode == RematMode::CACHE) {
+    auto HasEdgeToSink = [&](FlowNetworkNode *N) {
+      return N->hasEdgeTo(Sink) && N->isInstruction() && !N->getIncoming();
+    };
+
+    auto RequiredValuesNoRecompute = map_range(
+        make_filter_range(RPO, HasEdgeToSink), GetInst);
+
+    append_range(RequiredValues, RequiredValuesNoRecompute);
+
+  } else if constexpr (Mode == RematMode::RECOMPUTE) {
+    auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
+
+    auto RequiredValuesRange =
+        map_range(make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
+
+    auto RecomputableValuesRange =
+        map_range(make_filter_range(RPO,
+                                    [&](FlowNetworkNode *N) {
+                                      return N->isInstruction() &&
+                                             !N->getIncoming() &&
+                                             !Src.hasEdgeTo(*N);
+                                    }),
+                  GetInst);
+
+  } else if constexpr (Mode == RematMode::MINCUT) {
+
+    auto CutEdges = make_filter_range(RPO, [&](FlowNetworkNode *N) {
+      if (!(N->isInstruction() && N->getIncoming() && !Result.contains(N)))
+        return false;
+
+      for (auto Edge : N->getEdges()) {
+        return Result.contains(&Edge->getTargetNode());
+      }
+    });
   }
-
-  auto RequiredValuesNoRecompute =
-      make_filter_range(RPO, [&](FlowNetworkNode *N) {
-        return N->hasEdgeTo(Sink) && N->isInstruction() && !N->getIncoming();
-      });
-  dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute)
-         << "\n";
-  for (auto *Node : RequiredValuesNoRecompute) {
-    dbgs() << *Node->getInstruction() << "\n";
-  }
-
-  auto RequiredValuesRange =
-      map_range(make_filter_range(map_range(Src,
-                                            [](FlowNetworkEdge *E) {
-                                              return &E->getTargetNode();
-                                            }),
-                                  IsIncomingInst),
-                GetInst);
-  dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange)
-         << "\n";
-  for (auto *Node : RequiredValuesRange) {
-    dbgs() << *Node << "\n";
-  }
-
-  auto RecomputableValuesRange =
-      map_range(make_filter_range(RPO,
-                                  [&](FlowNetworkNode *N) {
-                                    return N->isInstruction() &&
-                                           !N->getIncoming() &&
-                                           !Src.hasEdgeTo(*N);
-                                  }),
-                GetInst);
-  dbgs() << "Graph Recomputable Values "
-         << llvm::range_size(RecomputableValuesRange) << "\n";
-  for (auto *Node : RecomputableValuesRange) {
-    dbgs() << *Node << "\n";
-  }
-
-  auto SortedCut = make_filter_range(RPO, [&](FlowNetworkNode *N) {
-    return N->isInstruction() && !N->getIncoming() && Result.contains(N);
-  });
-  dbgs() << "Min Cut " << llvm::range_size(SortedCut) << "\n";
-  for (auto *Node : SortedCut) {
-    dbgs() << *Node->getInstruction() << "\n";
-  }
-
-  auto CutEdges = make_filter_range(RPO, [&](FlowNetworkNode *N) {
-    if (!(N->isInstruction() && N->getIncoming() && !Result.contains(N)))
-      return false;
-
-    for (auto Edge : N->getEdges()) {
-      return Result.contains(&Edge->getTargetNode());
-    }
-  });
-
-  dbgs() << "Cut Edges " << llvm::range_size(CutEdges) << "\n";
-  for (auto *Node : CutEdges) {
-    dbgs() << *Node->getInstruction() << "\n";
-  }
-
-  SmallVector<Instruction *> RequiredValues(RequiredValuesRange);
-  SmallVector<Instruction *> RecomputableValues(RecomputableValuesRange);
 
   // Cache values shared between the original kernel and the split kernel.
   auto ValueTys =
