@@ -344,6 +344,21 @@ ConstantStruct *getKernelEnvironementFromKernelInitCB(CallBase *KernelInitCB) {
 
 namespace {
 
+enum class RematModeKind { Cache, Recompute, MinCut };
+
+static const auto RematModeKindEnumOptions = cl::values(
+    clEnumValN(RematModeKind::Cache, "cache",
+               "cache all values across the split"),
+    clEnumValN(RematModeKind::Recompute, "recompute",
+               "aggressively recompute values across the split"),
+    clEnumValN(RematModeKind::MinCut, "mincut",
+               "try to minimize the number of cached values across the split"));
+
+static cl::opt<RematModeKind> SplitKernelRematMode(
+    "split-kernel-remat-mode", cl::Hidden,
+    cl::desc("Rematerialization mode for values alive across a split kernel."),
+    cl::init(RematModeKind::MinCut), RematModeKindEnumOptions);
+
 struct AAHeapToShared;
 
 struct AAICVTracker;
@@ -2801,60 +2816,67 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   determineValuesAcross(AfterSplitBB, DT, FNBuilder);
 
-  PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
-  MaxFlow.computeMaxFlow();
-  SmallPtrSet<FlowNetworkNode *, 32> Result;
-  MaxFlow.getSinkSideMinCut(Result);
-
   auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
+
   auto IsIncomingInst = [](FlowNetworkNode *N) {
     return N->isInstruction() && N->getIncoming();
   };
 
   auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
 
-  enum class RematMode { CACHE, RECOMPUTE, MINCUT };
+  SmallVector<Instruction *, 64> RequiredValues;
+  SmallVector<Instruction *, 64> RecomputableValues;
 
-  constexpr RematMode Mode = RematMode::CACHE;
-
-  SmallVector<Instruction *> RequiredValues;
-  SmallVector<Instruction *> RecomputableValues;
-
-  if constexpr (Mode == RematMode::CACHE) {
-    auto HasEdgeToSink = [&](FlowNetworkNode *N) {
+  switch (SplitKernelRematMode) {
+  case RematModeKind::Cache: {
+    auto HasEdgeToSink = [Sink](FlowNetworkNode *N) {
       return N->hasEdgeTo(Sink) && N->isInstruction() && !N->getIncoming();
     };
 
-    auto RequiredValuesNoRecompute = map_range(
-        make_filter_range(RPO, HasEdgeToSink), GetInst);
-
-    append_range(RequiredValues, RequiredValuesNoRecompute);
-
-  } else if constexpr (Mode == RematMode::RECOMPUTE) {
-    auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
-
     auto RequiredValuesRange =
-        map_range(make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
+        map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
 
+    append_range(RequiredValues, RequiredValuesRange);
+
+    break;
+  }
+  case RematModeKind::Recompute: {
+    auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
+    auto SrcHasNoEdgeToNode = [Src](FlowNetworkNode *N) {
+      return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
+    };
+
+    auto RequiredValuesRange = map_range(
+        make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
     auto RecomputableValuesRange =
-        map_range(make_filter_range(RPO,
-                                    [&](FlowNetworkNode *N) {
-                                      return N->isInstruction() &&
-                                             !N->getIncoming() &&
-                                             !Src.hasEdgeTo(*N);
-                                    }),
-                  GetInst);
+        map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
 
-  } else if constexpr (Mode == RematMode::MINCUT) {
+    append_range(RequiredValues, RequiredValuesRange);
+    append_range(RecomputableValues, RecomputableValuesRange);
 
-    auto CutEdges = make_filter_range(RPO, [&](FlowNetworkNode *N) {
-      if (!(N->isInstruction() && N->getIncoming() && !Result.contains(N)))
-        return false;
+    break;
+  }
+  case RematModeKind::MinCut: {
+    PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+    MaxFlow.computeMaxFlow();
+    SmallPtrSet<FlowNetworkNode *, 32> Cut;
+    MaxFlow.getSinkSideMinCut(Cut);
 
-      for (auto Edge : N->getEdges()) {
-        return Result.contains(&Edge->getTargetNode());
+    RecomputableValues.reserve(Cut.size());
+    RequiredValues.reserve(RematGraph.size() - Cut.size());
+
+    for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
+      if (Cut.contains(N)) {
+        RecomputableValues.push_back(N->getInstruction());
+      } else if (!Cut.contains(N) && !N->getEdges().empty()) {
+        FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
+
+        if (Cut.contains(Target))
+          RequiredValues.push_back(N->getInstruction());
       }
-    });
+    }
+    break;
+  }
   }
 
   // Cache values shared between the original kernel and the split kernel.
