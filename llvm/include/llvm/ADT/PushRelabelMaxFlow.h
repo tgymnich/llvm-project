@@ -215,9 +215,6 @@ private:
     Count[Height[Src]] -= 1;
     Height[Src] = 2 * Size;
     for (NodeIndex Dst = 0; Dst < Size; ++Dst) {
-      if (Capacity[Src][Dst] == 0)
-        continue;
-
       if (Capacity[Src][Dst] > Flow[Src][Dst])
         Height[Src] = std::min(Height[Src], Height[Dst] + 1);
     }
