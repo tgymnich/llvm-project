@@ -43,13 +43,18 @@ inline raw_ostream &operator<<(raw_ostream &OS, const FlowNetworkEdge &Edge) {
   return OS;
 }
 
+class FlowNetworkBuilder;
+
 class FlowNetworkNode : public FNNodeBase {
 private:
   struct Source {};
   struct Sink {};
+
+private:
   std::variant<Source, Sink, std::pair<Instruction *, bool>> Val;
 
   friend FNNodeBase;
+  friend FlowNetworkBuilder;
 
 public:
   FlowNetworkNode() = delete;
@@ -62,27 +67,6 @@ public:
   FlowNetworkNode(Sink Sink) : Val(Sink){};
   FlowNetworkNode(const FlowNetworkNode &N) = default;
   FlowNetworkNode(FlowNetworkNode &&N) : FNNodeBase(std::move(N)), Val(N.Val){};
-
-public:
-  static FlowNetworkNode &CreateSource() {
-    FlowNetworkNode *Node = new FlowNetworkNode(Source());
-    return *Node;
-  }
-
-  static FlowNetworkNode &CreateSink() {
-    FlowNetworkNode *Node = new FlowNetworkNode(Sink());
-    return *Node;
-  }
-
-  static FlowNetworkNode &CreateIncomingNode(Instruction *Inst) {
-    FlowNetworkNode *Node = new FlowNetworkNode(Inst, true);
-    return *Node;
-  }
-
-  static FlowNetworkNode &CreateOutgoingNode(Instruction *Inst) {
-    FlowNetworkNode *Node = new FlowNetworkNode(Inst, false);
-    return *Node;
-  }
 
 public:
   inline bool isSource() const { return std::holds_alternative<Source>(Val); }
@@ -137,6 +121,9 @@ class FlowNetwork : public FlowNetworkBase {
 public:
   using NodeType = FlowNetworkNode;
   using EdgeType = FlowNetworkEdge;
+  using WeightType = int64_t;
+
+  friend class FlowNetworkBuilder;
 
 public:
   FlowNetwork() = default;
@@ -148,95 +135,159 @@ public:
       delete Node;
     }
   }
+};
 
-  bool addNode(NodeType &N) {
-    if (findNode(N) != Nodes.end()) {
-      delete &N;
-      return false;
-    }
+class FlowNetworkBuilder {
+private:
+  using NodeType = typename FlowNetwork::NodeType;
+  using EdgeType = typename FlowNetwork::EdgeType;
+  using WeightType = typename FlowNetwork::WeightType;
 
-    Nodes.push_back(&N);
-    return true;
+private:
+  FlowNetwork &FN;
+
+public:
+  FlowNetworkBuilder(FlowNetwork &FN) : FN(FN) {}
+
+public:
+  NodeType &createSource() {
+    NodeType *Node = new NodeType(NodeType::Source());
+    FN.addNode(*Node);
+    return *Node;
   }
 
-  bool addInstructionNode(Instruction *I, bool Incoming) {
-    auto *It = llvm::find_if(Nodes, [I, Incoming](NodeType *N) { return N->isInstruction() && N->getInstruction() == I && N->getIncoming() == Incoming; });
-    
-    NodeType &N = It == nullptr ? **It : Incoming ? NodeType::CreateIncomingNode(I) : NodeType::CreateOutgoingNode(I);
+  NodeType &createSink() {
+    NodeType *Node = new NodeType(NodeType::Sink());
+    FN.addNode(*Node);
+    return *Node;
+  }
 
-    Nodes.push_back(&N);
+  NodeType &createIncomingNode(Instruction *Inst) {
+    NodeType *Node = new NodeType(Inst, true);
+    FN.addNode(*Node);
+    return *Node;
+  }
+
+  NodeType &createOutgoingNode(Instruction *Inst) {
+    NodeType *Node = new NodeType(Inst, false);
+    FN.addNode(*Node);
+    return *Node;
+  }
+
+public:
+  bool addInstruction(Instruction *I, WeightType Capacity) {
+    auto *It = find_if(FN.Nodes, [I](NodeType *N) {
+      return N->isInstruction() && N->getInstruction() == I && N->getIncoming();
+    });
+
+    if (It != FN.Nodes.end())
+      return false;
+
+    NodeType *IncomingNode = new NodeType(I, true);
+    NodeType *OutgoingNode = new NodeType(I, false);
+
+    FN.Nodes.push_back(IncomingNode);
+    FN.Nodes.push_back(OutgoingNode);
+
+    EdgeType *Edge = new EdgeType(*OutgoingNode, Capacity);
+    FN.connect(*IncomingNode, *OutgoingNode, *Edge);
+
     return true;
   }
 
   bool addSourceNode() {
-    auto *It = llvm::find_if(Nodes, [](NodeType *N) { return N->isSource(); });
+    auto *It = find_if(FN.Nodes, [](NodeType *N) { return N->isSource(); });
 
-    NodeType &N = It == nullptr ? **It : NodeType::CreateSource();
+    if (It != FN.Nodes.end())
+      return false;
 
-    Nodes.push_back(&N);
+    NodeType *N = new NodeType(NodeType::Source());
+    FN.Nodes.push_back(N);
+
     return true;
   }
 
   bool addSinkNode() {
-    auto *It = llvm::find_if(Nodes, [](NodeType *N) { return N->isSink(); });
+    auto *It = find_if(FN.Nodes, [](NodeType *N) { return N->isSink(); });
 
-    NodeType &N = It == nullptr ? **It : NodeType::CreateSink();
+    if (It != FN.Nodes.end())
+      return false;
 
-    Nodes.push_back(&N);
+    NodeType *N = new NodeType(NodeType::Sink());
+    FN.Nodes.push_back(N);
+    
     return true;
   }
 
-  void addInstructionEdge(Instruction* Src, Instruction* Dst, int64_t Capacity) {
-    auto *SrcIt = llvm::find_if(Nodes, [Src](NodeType *N) { return N->isInstruction() && N->getInstruction() == Src && N->getIncoming(); });
-    auto *DstIt = llvm::find_if(Nodes, [Dst](NodeType *N) { return N->isInstruction() && N->getInstruction() == Dst && !N->getIncoming(); });
+  void addInstructionEdge(Instruction *Src, Instruction *Dst,
+                          WeightType Capacity) {
+    auto *SrcIt = find_if(FN.Nodes, [Src](NodeType *N) {
+      return N->isInstruction() && N->getInstruction() == Src &&
+             !N->getIncoming();
+    });
+    auto *DstIt = find_if(FN.Nodes, [Dst](NodeType *N) {
+      return N->isInstruction() && N->getInstruction() == Dst &&
+             N->getIncoming();
+    });
 
-    NodeType &SrcNode = SrcIt == nullptr ? **SrcIt : NodeType::CreateIncomingNode(Src);
-    NodeType &DstNode = DstIt == nullptr ? **DstIt : NodeType::CreateOutgoingNode(Dst);
+    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src, false);
+    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
 
-    if (SrcNode.hasEdgeTo(DstNode))
+    if (SrcIt == FN.Nodes.end())
+      FN.Nodes.push_back(SrcNode);
+
+    if (DstIt == FN.Nodes.end())
+      FN.Nodes.push_back(DstNode);
+
+    if (SrcNode->hasEdgeTo(*DstNode))
       return;
 
-    EdgeType *Edge = new EdgeType(SrcNode, Capacity);
-    connect(SrcNode, DstNode, *Edge);
+    EdgeType *Edge = new EdgeType(*DstNode, Capacity);
+    FN.connect(*SrcNode, *DstNode, *Edge);
   }
 
-  void addSourceEdge(Instruction* Dst, int64_t Capacity) {
-    auto *SrcIt = llvm::find_if(Nodes, [](NodeType *N) { return N->isSource(); });
-    auto *DstIt = llvm::find_if(Nodes, [Dst](NodeType *N) { return N->isInstruction() && N->getInstruction() == Dst && !N->getIncoming(); });
+  void addSourceEdge(Instruction *Dst, WeightType Capacity) {
+    auto *SrcIt = find_if(FN.Nodes, [](NodeType *N) { return N->isSource(); });
+    auto *DstIt = find_if(FN.Nodes, [Dst](NodeType *N) {
+      return N->isInstruction() && N->getInstruction() == Dst && N->getIncoming();
+    });
 
-    NodeType &SrcNode = SrcIt == nullptr ? **SrcIt : NodeType::CreateSource();
-    NodeType &DstNode = DstIt == nullptr ? **DstIt : NodeType::CreateOutgoingNode(Dst);
+    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(NodeType::Source());
+    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
 
-    if (SrcNode.hasEdgeTo(DstNode))
+    if (SrcIt == FN.Nodes.end())
+      FN.Nodes.push_back(SrcNode);
+
+    if (DstIt == FN.Nodes.end())
+      FN.Nodes.push_back(DstNode);
+
+    if (SrcNode->hasEdgeTo(*DstNode))
       return;
 
-    EdgeType *Edge = new EdgeType(SrcNode, Capacity);
-    connect(SrcNode, DstNode, *Edge);
+    EdgeType *Edge = new EdgeType(*DstNode, Capacity);
+    FN.connect(*SrcNode, *DstNode, *Edge);
   }
 
-  void addSinkEdge(Instruction* Src, int64_t Capacity) {
-    auto *SrcIt = llvm::find_if(Nodes, [Src](NodeType *N) { return N->isInstruction() && N->getInstruction() == Src && N->getIncoming(); });
-    auto *DstIt = llvm::find_if(Nodes, [](NodeType *N) { return N->isSink(); });
+  void addSinkEdge(Instruction *Src, WeightType Capacity) {
+    auto *SrcIt = find_if(FN.Nodes, [Src](NodeType *N) {
+      return N->isInstruction() && N->getInstruction() == Src && !N->getIncoming();
+    });
+    auto *DstIt = find_if(FN.Nodes, [](NodeType *N) { return N->isSink(); });
 
-    NodeType &SrcNode = SrcIt == nullptr ? **SrcIt : NodeType::CreateIncomingNode(Src);
-    NodeType &DstNode = DstIt == nullptr ? **DstIt : NodeType::CreateSink();
+    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src, false);
+    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(NodeType::Sink());
 
-    if (SrcNode.hasEdgeTo(DstNode))
+    if (SrcIt == FN.Nodes.end())
+      FN.Nodes.push_back(SrcNode);
+
+    if (DstIt == FN.Nodes.end())
+      FN.Nodes.push_back(DstNode);
+
+    if (SrcNode->hasEdgeTo(*DstNode))
       return;
 
-    EdgeType *Edge = new EdgeType(SrcNode, Capacity);
-    connect(SrcNode, DstNode, *Edge);
-  }
-
-  void addEdge(NodeType &Src, NodeType &Dst, int64_t Capacity) {
-    auto &SrcIt = **findNode(Src);
-    auto &DstIt = **findNode(Dst);
-
-    if (SrcIt.hasEdgeTo(DstIt))
-      return;
-
-    EdgeType *Edge = new EdgeType(DstIt, Capacity);
-    connect(SrcIt, DstIt, *Edge);
+    EdgeType *Edge = new EdgeType(*DstNode, Capacity);
+    FN.connect(*SrcNode, *DstNode, *Edge);
   }
 };
 

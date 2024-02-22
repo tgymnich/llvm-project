@@ -2398,7 +2398,7 @@ bool isMaterializable(Instruction *I) {
 }
 
 void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
-                           FlowNetwork &RematGraph) {
+                           FlowNetworkBuilder &FNBuilder) {
   for (BasicBlock *B : breadth_first(SplitBlock)) {
     for (Instruction &I : *B) {
       for (Use &U : I.operands()) {
@@ -2425,29 +2425,19 @@ void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
           if (!DT.dominates(Todo, SplitBlock))
             continue;
 
-          bool Added = RematGraph.addNode(FlowNetworkNode::CreateIncomingNode(Todo)) &&
-              RematGraph.addNode(FlowNetworkNode::CreateOutgoingNode(Todo));
-
-          RematGraph.addEdge(FlowNetworkNode::CreateIncomingNode(Todo),
-                             FlowNetworkNode::CreateOutgoingNode(Todo), 1);
+          bool Added = FNBuilder.addInstruction(Todo, 1);
 
           if (Parent) {
-            RematGraph.addEdge(FlowNetworkNode::CreateOutgoingNode(Todo),
-                               FlowNetworkNode::CreateIncomingNode(Parent),
-                               InfEdgeWeight);
+            FNBuilder.addInstructionEdge(Todo, Parent, InfEdgeWeight);
           } else {
-            RematGraph.addEdge(FlowNetworkNode::CreateOutgoingNode(Todo),
-                               FlowNetworkNode::CreateSink(),
-                               InfEdgeWeight);
+            FNBuilder.addSinkEdge(Todo, InfEdgeWeight);
           }
 
           if (!Added)
             continue;
 
           if (!isMaterializable(Todo)) {
-            RematGraph.addEdge(FlowNetworkNode::CreateSource(),
-                               FlowNetworkNode::CreateIncomingNode(Todo),
-                               InfEdgeWeight);
+            FNBuilder.addSourceEdge(Todo, InfEdgeWeight);
             continue;
           }
 
@@ -2804,13 +2794,12 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   SplitInst->eraseFromParent();
 
   FlowNetwork RematGraph;
-  auto &Src = FlowNetworkNode::CreateSource();
-  auto &Sink = FlowNetworkNode::CreateSink();
+  FlowNetworkBuilder FNBuilder(RematGraph);
+  
+  auto &Src = FNBuilder.createSource();
+  auto &Sink = FNBuilder.createSink();
 
-  RematGraph.addNode(Src);
-  RematGraph.addNode(Sink);
-
-  determineValuesAcross(AfterSplitBB, DT, RematGraph);
+  determineValuesAcross(AfterSplitBB, DT, FNBuilder);
 
   PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
   MaxFlow.computeMaxFlow();
@@ -2818,7 +2807,9 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   MaxFlow.getSinkSideMinCut(Result);
 
   auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
-  auto IsIncomingInst = [](FlowNetworkNode *N) { return N->isInstruction() && N->getIncoming(); };
+  auto IsIncomingInst = [](FlowNetworkNode *N) {
+    return N->isInstruction() && N->getIncoming();
+  };
   auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
 
   dbgs() << RematGraph << "\n";
@@ -2832,7 +2823,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       make_filter_range(RPO, [&](FlowNetworkNode *N) {
         return N->hasEdgeTo(Sink) && N->isInstruction() && !N->getIncoming();
       });
-  dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute) << "\n";
+  dbgs() << "Edge to Sink " << llvm::range_size(RequiredValuesNoRecompute)
+         << "\n";
   for (auto *Node : RequiredValuesNoRecompute) {
     dbgs() << *Node->getInstruction() << "\n";
   }
@@ -2844,18 +2836,22 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
                                             }),
                                   IsIncomingInst),
                 GetInst);
-  dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange) << "\n";
+  dbgs() << "Edge from Source " << llvm::range_size(RequiredValuesRange)
+         << "\n";
   for (auto *Node : RequiredValuesRange) {
     dbgs() << *Node << "\n";
   }
 
-  auto RecomputableValuesRange = map_range(
-      make_filter_range(RPO,
-                        [&](FlowNetworkNode *N) {
-                          return N->isInstruction() && !N->getIncoming() && !Src.hasEdgeTo(*N);
-                        }),
-      GetInst);
-  dbgs() << "Graph Recomputable Values " << llvm::range_size(RecomputableValuesRange) << "\n";
+  auto RecomputableValuesRange =
+      map_range(make_filter_range(RPO,
+                                  [&](FlowNetworkNode *N) {
+                                    return N->isInstruction() &&
+                                           !N->getIncoming() &&
+                                           !Src.hasEdgeTo(*N);
+                                  }),
+                GetInst);
+  dbgs() << "Graph Recomputable Values "
+         << llvm::range_size(RecomputableValuesRange) << "\n";
   for (auto *Node : RecomputableValuesRange) {
     dbgs() << *Node << "\n";
   }
