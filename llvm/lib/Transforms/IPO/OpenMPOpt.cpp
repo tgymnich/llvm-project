@@ -23,7 +23,6 @@
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
-#include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/PushRelabelMaxFlow.h"
 #include "llvm/ADT/STLExtras.h"
@@ -34,7 +33,6 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/iterator.h"
-#include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/DomTreeUpdater.h"
@@ -90,18 +88,15 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/CodeExtractor.h"
 #include "llvm/Transforms/Utils/Local.h"
-#include "llvm/Transforms/Utils/LoopPeel.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 #include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 
 #include <algorithm>
 #include <cstdint>
-#include <deque>
 #include <limits>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <string>
 
 using namespace llvm;
