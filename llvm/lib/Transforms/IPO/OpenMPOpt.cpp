@@ -3077,7 +3077,6 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     Value *GlobalTid =
         Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
 
-    // TODO: Mask out threads if gtid > NumContinuation
     Argument *KernelLaunchEnvironment = SplitKernel->getArg(0);
     Value *ContCountPtr =
         Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
