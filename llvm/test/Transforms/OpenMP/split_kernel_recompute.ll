@@ -126,9 +126,9 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-MINCUT-NEXT:   %3 = load ptr, ptr %2
 ; CHECK-MINCUT-NEXT:   %4 = getelementptr inbounds ptr, ptr %3, i32 0
 ; CHECK-MINCUT-NEXT:   %cache.out.ptr = load ptr, ptr %4
-; CHECK-MINCUT-NEXT:   %tid.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
-; CHECK-MINCUT-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx, i32 0, i32 0
-; CHECK-MINCUT-NEXT:   store i64 %tid, ptr %5
+; CHECK-MINCUT-NEXT:   %arrayidx.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-MINCUT-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %arrayidx.cacheidx, i32 0, i32 0
+; CHECK-MINCUT-NEXT:   store ptr %arrayidx, ptr %5
 ; CHECK-MINCUT-NEXT:   %val.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
 ; CHECK-MINCUT-NEXT:   %6 = getelementptr inbounds %cache_cell, ptr %val.cacheidx, i32 0, i32 1
 ; CHECK-MINCUT-NEXT:   store double %val, ptr %6
@@ -219,23 +219,22 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-MINCUT-NEXT:   %8 = load ptr, ptr %7
 ; CHECK-MINCUT-NEXT:   %9 = getelementptr inbounds ptr, ptr %8, i32 1
 ; CHECK-MINCUT-NEXT:   %cache.in.ptr = load ptr, ptr %9
-; CHECK-MINCUT-NEXT:   %tid.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
-; CHECK-MINCUT-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx1, i32 0, i32 0
-; CHECK-MINCUT-NEXT:   %11 = load i64, ptr %10
+; CHECK-MINCUT-NEXT:   %arrayidx.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-MINCUT-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %arrayidx.cacheidx1, i32 0, i32 0
+; CHECK-MINCUT-NEXT:   %11 = load ptr, ptr %10
 ; CHECK-MINCUT-NEXT:   %val.cacheidx2 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
 ; CHECK-MINCUT-NEXT:   %12 = getelementptr inbounds %cache_cell, ptr %val.cacheidx2, i32 0, i32 1
 ; CHECK-MINCUT-NEXT:   %13 = load double, ptr %12
-; CHECK-MINCUT-NEXT:   %14 = getelementptr inbounds double, ptr %ptr, i64 %11
-; CHECK-MINCUT-NEXT:   %15 = fmul double %13, 4.000000e+00
-; CHECK-MINCUT-NEXT:   %16 = fmul double %13, 3.000000e+00
-; CHECK-MINCUT-NEXT:   %17 = fadd double %13, 2.000000e+00
-; CHECK-MINCUT-NEXT:   %18 = fsub double %13, 1.000000e+00
-; CHECK-MINCUT-NEXT:   %res1 = fmul double %18, %17
-; CHECK-MINCUT-NEXT:   %res2 = fmul double %res1, %16
-; CHECK-MINCUT-NEXT:   %res3 = fmul double %res2, %15
-; CHECK-MINCUT-NEXT:   store double %res3, ptr %14
+; CHECK-MINCUT-NEXT:   %14 = fmul double %13, 4.000000e+00
+; CHECK-MINCUT-NEXT:   %15 = fmul double %13, 3.000000e+00
+; CHECK-MINCUT-NEXT:   %16 = fadd double %13, 2.000000e+00
+; CHECK-MINCUT-NEXT:   %17 = fsub double %13, 1.000000e+00
+; CHECK-MINCUT-NEXT:   %res1 = fmul double %17, %16
+; CHECK-MINCUT-NEXT:   %res2 = fmul double %res1, %15
+; CHECK-MINCUT-NEXT:   %res3 = fmul double %res2, %14
+; CHECK-MINCUT-NEXT:   store double %res3, ptr %11
 ; CHECK-MINCUT-NEXT:   %mul1 = fmul double %13, %13
-; CHECK-MINCUT-NEXT:   store double %mul1, ptr %14
+; CHECK-MINCUT-NEXT:   store double %mul1, ptr %11
 ; CHECK-MINCUT-NEXT:   call void @__kmpc_target_deinit()
 ; CHECK-MINCUT-NEXT:   ret void
 ; CHECK-MINCUT-NEXT: }
