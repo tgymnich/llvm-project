@@ -81,6 +81,7 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
@@ -2411,7 +2412,7 @@ bool isMaterializable(Instruction *I) {
   // if (Call->hasFnAttr(Attribute::AttrKind::Speculatable))
   //   return true;
 
-  // return isSafeToSpeculativelyExecute(I);
+  return isSafeToSpeculativelyExecute(I);
 
   return false;
 }
@@ -2431,38 +2432,60 @@ void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
         //         static_cast<unsigned>(AddressSpace::Global))
         //   continue;
 
-        SetVector<std::pair<Instruction *, Instruction *>> Worklist;
+        constexpr int64_t InfEdgeWeight = 10000;
+        SetVector<std::pair<Value *, Instruction *>> Worklist;
         Worklist.insert({UI, nullptr});
 
         while (!Worklist.empty()) {
           auto &&[Todo, Parent] = Worklist.pop_back_val();
-          constexpr int64_t InfEdgeWeight = 10000;
 
-          if (isa<AllocaInst>(Todo))
+          Argument* Arg = dyn_cast<Argument>(Todo);
+          if (Arg && Parent) {  
+            FNBuilder.addArgumentNode(Arg);
+            FNBuilder.addArgumentEdge(Arg, Parent, InfEdgeWeight);
+            FNBuilder.addSourceEdge(Arg, 1);
+            continue;
+          }
+
+          if (isa<Constant>(Todo))
             continue;
 
-          if (!DT.dominates(Todo, SplitBlock))
+          Instruction *TodoInst = dyn_cast<Instruction>(Todo);
+          if (!TodoInst) {
+            llvm_unreachable("Unexpected llvm::Value subclass in worklist.");
             continue;
+          }
 
-          bool Added = FNBuilder.addInstruction(Todo, 1);
+          if (!DT.dominates(TodoInst, SplitBlock))
+            continue;
+          
+          if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Todo)) {
+            if (Parent) {  
+              FNBuilder.addAllocaNode(Alloca);
+              FNBuilder.addAllocaEdge(Alloca, Parent, InfEdgeWeight);
+              FNBuilder.addSourceEdge(Alloca, 1);
+            }
+            continue;
+          }
+
+          bool Added = FNBuilder.addInstructionNode(TodoInst, 1);
 
           if (Parent) {
-            FNBuilder.addInstructionEdge(Todo, Parent, InfEdgeWeight);
+            FNBuilder.addInstructionEdge(TodoInst, Parent, InfEdgeWeight);
           } else {
-            FNBuilder.addSinkEdge(Todo, InfEdgeWeight);
+            FNBuilder.addSinkEdge(TodoInst, InfEdgeWeight);
           }
 
           if (!Added)
             continue;
 
-          if (!isMaterializable(Todo)) {
-            FNBuilder.addSourceEdge(Todo, InfEdgeWeight);
+          if (!isMaterializable(TodoInst)) {
+            FNBuilder.addSourceEdge(TodoInst, InfEdgeWeight);
             continue;
           }
 
-          for (Use &Op : Todo->operands()) {
-            if (Instruction *I = dyn_cast<Instruction>(&Op))
-              Worklist.insert({I, Todo});
+          for (Use &Op : TodoInst->operands()) {
+            Worklist.insert({Op, TodoInst});
           }
         }
       }
@@ -2833,8 +2856,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   switch (SplitKernelRematMode) {
   case RematModeKind::Cache: {
-    auto HasEdgeToSink = [Sink](FlowNetworkNode *N) {
-      return N->hasEdgeTo(Sink) && N->isInstruction() && !N->getIncoming();
+    auto HasEdgeToSink = [&Sink](FlowNetworkNode *N) {
+      return  N->isInstruction() && !N->getIncoming() && N->hasEdgeTo(Sink);
     };
 
     auto CachedValuesRange =
@@ -2846,7 +2869,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
   }
   case RematModeKind::Recompute: {
     auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
-    auto SrcHasNoEdgeToNode = [Src](FlowNetworkNode *N) {
+    auto SrcHasNoEdgeToNode = [&Src](FlowNetworkNode *N) {
       return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
     };
 

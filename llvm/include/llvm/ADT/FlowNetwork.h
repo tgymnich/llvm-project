@@ -3,7 +3,9 @@
 
 #include "llvm/ADT/DirectedGraph.h"
 #include "llvm/ADT/GraphTraits.h"
+#include "llvm/IR/Argument.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/Instructions.h"
 #include <string>
 #include <utility>
 #include <variant>
@@ -50,19 +52,20 @@ private:
   struct Source {};
   struct Sink {};
 
+  using Union = std::variant<Source, Sink, Argument *, AllocaInst *,
+                             std::pair<Instruction *, bool>>;
+
 private:
-  std::variant<Source, Sink, std::pair<Instruction *, bool>> Val;
+  Union Val;
 
   friend FNNodeBase;
   friend FlowNetworkBuilder;
 
 public:
   FlowNetworkNode() = delete;
-  FlowNetworkNode(
-      std::variant<Source, Sink, std::pair<Instruction *, bool>> Val)
-      : Val(Val){};
-  FlowNetworkNode(Instruction *Inst, bool isIncoming)
-      : Val(std::make_pair(Inst, isIncoming)){};
+  FlowNetworkNode(Union Val) : Val(Val){};
+  FlowNetworkNode(Instruction *Inst, bool IsIncoming)
+      : Val(std::make_pair(Inst, IsIncoming)){};
   FlowNetworkNode(Source Src) : Val(Src){};
   FlowNetworkNode(Sink Sink) : Val(Sink){};
   FlowNetworkNode(const FlowNetworkNode &N) = default;
@@ -74,12 +77,20 @@ public:
   inline bool isInstruction() const {
     return std::holds_alternative<std::pair<Instruction *, bool>>(Val);
   }
+  inline bool isArgument() const {
+    return std::holds_alternative<Argument *>(Val);
+  }
+  inline bool isAlloca() const {
+    return std::holds_alternative<AllocaInst *>(Val);
+  }
   inline Instruction *getInstruction() const {
     return std::get<std::pair<Instruction *, bool>>(Val).first;
   }
   inline bool getIncoming() const {
     return std::get<std::pair<Instruction *, bool>>(Val).second;
   }
+  inline Argument *getArgument() const { return std::get<Argument *>(Val); }
+  inline AllocaInst *getAlloca() const { return std::get<AllocaInst *>(Val); }
 
 public:
   void print(raw_ostream &OS, bool IsForDebug = false) const {
@@ -90,6 +101,10 @@ public:
     } else if (isInstruction()) {
       Instruction *Inst = getInstruction();
       OS << (getIncoming() ? "[In] " : "[Out] ") << *Inst;
+    } else if (isArgument()) {
+      OS << getArgument();
+    } else if (isAlloca()) {
+      OS << getAlloca();
     }
   }
 
@@ -106,6 +121,14 @@ protected:
     if (isInstruction() && Rhs.isInstruction()) {
       return getInstruction() == Rhs.getInstruction() &&
              getIncoming() == Rhs.getIncoming();
+    }
+
+    if (isArgument() && Rhs.isArgument()) {
+      return getArgument() == Rhs.getArgument();
+    }
+
+    if (isAlloca() && Rhs.isAlloca()) {
+      return getAlloca() == Rhs.getAlloca();
     }
 
     return false;
@@ -174,8 +197,20 @@ public:
     return *Node;
   }
 
+  NodeType &createArgumentNode(Argument *Arg) {
+    NodeType *Node = new NodeType(Arg);
+    FN.addNode(*Node);
+    return *Node;
+  }
+
+  NodeType &createAllocaNode(AllocaInst *Alloca) {
+    NodeType *Node = new NodeType(Alloca);
+    FN.addNode(*Node);
+    return *Node;
+  }
+
 public:
-  bool addInstruction(Instruction *I, WeightType Capacity) {
+  bool addInstructionNode(Instruction *I, WeightType Capacity) {
     auto *It = find_if(FN.Nodes, [I](NodeType *N) {
       return N->isInstruction() && N->getInstruction() == I && N->getIncoming();
     });
@@ -215,7 +250,35 @@ public:
 
     NodeType *N = new NodeType(NodeType::Sink());
     FN.Nodes.push_back(N);
-    
+
+    return true;
+  }
+
+  bool addArgumentNode(Argument *Arg) {
+    auto *It = find_if(FN.Nodes, [Arg](NodeType *N) {
+      return N->isArgument() && N->getArgument() == Arg;
+    });
+
+    if (It != FN.Nodes.end())
+      return false;
+
+    NodeType *N = new NodeType(Arg);
+    FN.Nodes.push_back(N);
+
+    return true;
+  }
+
+  bool addAllocaNode(AllocaInst *Alloca) {
+    auto *It = find_if(FN.Nodes, [Alloca](NodeType *N) {
+      return N->isAlloca() && N->getAlloca() == Alloca;
+    });
+
+    if (It != FN.Nodes.end())
+      return false;
+
+    NodeType *N = new NodeType(Alloca);
+    FN.Nodes.push_back(N);
+
     return true;
   }
 
@@ -230,8 +293,62 @@ public:
              N->getIncoming();
     });
 
-    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src, false);
-    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
+    NodeType *SrcNode =
+        SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src, false);
+    NodeType *DstNode =
+        DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
+
+    if (SrcIt == FN.Nodes.end())
+      FN.Nodes.push_back(SrcNode);
+
+    if (DstIt == FN.Nodes.end())
+      FN.Nodes.push_back(DstNode);
+
+    if (SrcNode->hasEdgeTo(*DstNode))
+      return;
+
+    EdgeType *Edge = new EdgeType(*DstNode, Capacity);
+    FN.connect(*SrcNode, *DstNode, *Edge);
+  }
+
+  void addArgumentEdge(Argument *Src, Instruction *Dst, WeightType Capacity) {
+    auto *SrcIt = find_if(FN.Nodes, [Src](NodeType *N) {
+      return N->isArgument() && N->getArgument() == Src;
+    });
+    auto *DstIt = find_if(FN.Nodes, [Dst](NodeType *N) {
+      return N->isInstruction() && N->getInstruction() == Dst &&
+             N->getIncoming();
+    });
+
+    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src);
+    NodeType *DstNode =
+        DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
+
+    if (SrcIt == FN.Nodes.end())
+      FN.Nodes.push_back(SrcNode);
+
+    if (DstIt == FN.Nodes.end())
+      FN.Nodes.push_back(DstNode);
+
+    if (SrcNode->hasEdgeTo(*DstNode))
+      return;
+
+    EdgeType *Edge = new EdgeType(*DstNode, Capacity);
+    FN.connect(*SrcNode, *DstNode, *Edge);
+  }
+
+  void addAllocaEdge(AllocaInst *Src, Instruction *Dst, WeightType Capacity) {
+    auto *SrcIt = find_if(FN.Nodes, [Src](NodeType *N) {
+      return N->isAlloca() && N->getAlloca() == Src;
+    });
+    auto *DstIt = find_if(FN.Nodes, [Dst](NodeType *N) {
+      return N->isInstruction() && N->getInstruction() == Dst &&
+             N->getIncoming();
+    });
+
+    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src);
+    NodeType *DstNode =
+        DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
 
     if (SrcIt == FN.Nodes.end())
       FN.Nodes.push_back(SrcNode);
@@ -249,11 +366,37 @@ public:
   void addSourceEdge(Instruction *Dst, WeightType Capacity) {
     auto *SrcIt = find_if(FN.Nodes, [](NodeType *N) { return N->isSource(); });
     auto *DstIt = find_if(FN.Nodes, [Dst](NodeType *N) {
-      return N->isInstruction() && N->getInstruction() == Dst && N->getIncoming();
+      return N->isInstruction() && N->getInstruction() == Dst &&
+             N->getIncoming();
     });
 
-    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(NodeType::Source());
-    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
+    NodeType *SrcNode =
+        SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(NodeType::Source());
+    NodeType *DstNode =
+        DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst, true);
+
+    if (SrcIt == FN.Nodes.end())
+      FN.Nodes.push_back(SrcNode);
+
+    if (DstIt == FN.Nodes.end())
+      FN.Nodes.push_back(DstNode);
+
+    if (SrcNode->hasEdgeTo(*DstNode))
+      return;
+
+    EdgeType *Edge = new EdgeType(*DstNode, Capacity);
+    FN.connect(*SrcNode, *DstNode, *Edge);
+  }
+
+  void addSourceEdge(Argument *Dst, WeightType Capacity) {
+    auto *SrcIt = find_if(FN.Nodes, [](NodeType *N) { return N->isSource(); });
+    auto *DstIt = find_if(FN.Nodes, [Dst](NodeType *N) {
+      return N->isArgument() && N->getArgument() == Dst;
+    });
+
+    NodeType *SrcNode =
+        SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(NodeType::Source());
+    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(Dst);
 
     if (SrcIt == FN.Nodes.end())
       FN.Nodes.push_back(SrcNode);
@@ -270,12 +413,15 @@ public:
 
   void addSinkEdge(Instruction *Src, WeightType Capacity) {
     auto *SrcIt = find_if(FN.Nodes, [Src](NodeType *N) {
-      return N->isInstruction() && N->getInstruction() == Src && !N->getIncoming();
+      return N->isInstruction() && N->getInstruction() == Src &&
+             !N->getIncoming();
     });
     auto *DstIt = find_if(FN.Nodes, [](NodeType *N) { return N->isSink(); });
 
-    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src, false);
-    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(NodeType::Sink());
+    NodeType *SrcNode =
+        SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src, false);
+    NodeType *DstNode =
+        DstIt != FN.Nodes.end() ? *DstIt : new NodeType(NodeType::Sink());
 
     if (SrcIt == FN.Nodes.end())
       FN.Nodes.push_back(SrcNode);
