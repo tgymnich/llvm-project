@@ -1,6 +1,6 @@
 ; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" --split-kernel-remat-mode=cache | FileCheck %s --check-prefix=CHECK-CACHE
 ; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" --split-kernel-remat-mode=recompute | FileCheck %s --check-prefix=CHECK-RECOMPUTE
-; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" =--split-kernel-remat-mode=mincut | FileCheck %s --check-prefix=CHECK-MINCUT
+; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" --split-kernel-remat-mode=mincut | FileCheck %s --check-prefix=CHECK-MINCUT
 
 target triple = "nvptx64"
 

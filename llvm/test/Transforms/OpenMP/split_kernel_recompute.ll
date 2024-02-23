@@ -1,4 +1,6 @@
-; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" | FileCheck %s
+; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" --split-kernel-remat-mode=cache | FileCheck %s --check-prefix=CHECK-CACHE
+; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" --split-kernel-remat-mode=recompute | FileCheck %s --check-prefix=CHECK-RECOMPUTE
+; RUN: opt < %s -S -passes="cgscc(openmp-opt-postlink-cgscc),ipsccp,simplifycfg" --split-kernel-remat-mode=mincut | FileCheck %s --check-prefix=CHECK-MINCUT
 
 target triple = "nvptx64"
 
@@ -65,24 +67,75 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:   call void @__kmpc_target_deinit()
 ; CHECK-NEXT:   ret void
 ;
-; CHECK: CacheStore:                                       ; preds = %entry
-; CHECK-NEXT:   %0 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 3
-; CHECK-NEXT:   %1 = load ptr, ptr %0
-; CHECK-NEXT:   %contcount.ptr = getelementptr inbounds i32, ptr %1, i32 0
-; CHECK-NEXT:   %cacheidx = atomicrmw add ptr %contcount.ptr, i32 1 acquire
-; CHECK-NEXT:   %2 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
-; CHECK-NEXT:   %3 = load ptr, ptr %2
-; CHECK-NEXT:   %4 = getelementptr inbounds ptr, ptr %3, i32 0
-; CHECK-NEXT:   %cache.out.ptr = load ptr, ptr %4
-; CHECK-NEXT:   %val.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
-; CHECK-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %val.cacheidx, i32 0, i32 0
-; CHECK-NEXT:   store double %val, ptr %5
-; CHECK-NEXT:   %tid.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
-; CHECK-NEXT:   %6 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx, i32 0, i32 1
-; CHECK-NEXT:   store i64 %tid, ptr %6
-; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
-; CHECK-NEXT:   unreachable
-; CHECK-NEXT: }
+; CHECK-CACHE: CacheStore:                                       ; preds = %entry
+; CHECK-CACHE-NEXT:   %0 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 3
+; CHECK-CACHE-NEXT:   %1 = load ptr, ptr %0
+; CHECK-CACHE-NEXT:   %contcount.ptr = getelementptr inbounds i32, ptr %1, i32 0
+; CHECK-CACHE-NEXT:   %cacheidx = atomicrmw add ptr %contcount.ptr, i32 1 acquire
+; CHECK-CACHE-NEXT:   %2 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
+; CHECK-CACHE-NEXT:   %3 = load ptr, ptr %2
+; CHECK-CACHE-NEXT:   %4 = getelementptr inbounds ptr, ptr %3, i32 0
+; CHECK-CACHE-NEXT:   %cache.out.ptr = load ptr, ptr %4
+; CHECK-CACHE-NEXT:   %arrayidx.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-CACHE-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %arrayidx.cacheidx, i32 0, i32 0
+; CHECK-CACHE-NEXT:   store ptr %arrayidx, ptr %5
+; CHECK-CACHE-NEXT:   %val.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-CACHE-NEXT:   %6 = getelementptr inbounds %cache_cell, ptr %val.cacheidx, i32 0, i32 1
+; CHECK-CACHE-NEXT:   store double %val, ptr %6
+; CHECK-CACHE-NEXT:   %div.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-CACHE-NEXT:   %7 = getelementptr inbounds %cache_cell, ptr %div.cacheidx, i32 0, i32 2
+; CHECK-CACHE-NEXT:   store double %div, ptr %7
+; CHECK-CACHE-NEXT:   %mul.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-CACHE-NEXT:   %8 = getelementptr inbounds %cache_cell, ptr %mul.cacheidx, i32 0, i32 3
+; CHECK-CACHE-NEXT:   store double %mul, ptr %8
+; CHECK-CACHE-NEXT:   %add.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-CACHE-NEXT:   %9 = getelementptr inbounds %cache_cell, ptr %add.cacheidx, i32 0, i32 4
+; CHECK-CACHE-NEXT:   store double %add, ptr %9
+; CHECK-CACHE-NEXT:   %sub.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-CACHE-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %sub.cacheidx, i32 0, i32 5
+; CHECK-CACHE-NEXT:   store double %sub, ptr %10
+; CHECK-CACHE-NEXT:   call void asm sideeffect "exit;", ""()
+; CHECK-CACHE-NEXT:   unreachable
+; CHECK-CACHE-NEXT: }
+;
+; CHECK-RECOMPUTE: CacheStore:                                       ; preds = %entry
+; CHECK-RECOMPUTE-NEXT:   %0 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 3
+; CHECK-RECOMPUTE-NEXT:   %1 = load ptr, ptr %0
+; CHECK-RECOMPUTE-NEXT:   %contcount.ptr = getelementptr inbounds i32, ptr %1, i32 0
+; CHECK-RECOMPUTE-NEXT:   %cacheidx = atomicrmw add ptr %contcount.ptr, i32 1 acquire
+; CHECK-RECOMPUTE-NEXT:   %2 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
+; CHECK-RECOMPUTE-NEXT:   %3 = load ptr, ptr %2
+; CHECK-RECOMPUTE-NEXT:   %4 = getelementptr inbounds ptr, ptr %3, i32 0
+; CHECK-RECOMPUTE-NEXT:   %cache.out.ptr = load ptr, ptr %4
+; CHECK-RECOMPUTE-NEXT:   %val.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-RECOMPUTE-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %val.cacheidx, i32 0, i32 0
+; CHECK-RECOMPUTE-NEXT:   store double %val, ptr %5
+; CHECK-RECOMPUTE-NEXT:   %tid.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-RECOMPUTE-NEXT:   %6 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx, i32 0, i32 1
+; CHECK-RECOMPUTE-NEXT:   store i64 %tid, ptr %6
+; CHECK-RECOMPUTE-NEXT:   call void asm sideeffect "exit;", ""()
+; CHECK-RECOMPUTE-NEXT:   unreachable
+; CHECK-RECOMPUTE-NEXT: }
+;
+; CHECK-MINCUT: CacheStore:                                       ; preds = %entry
+; CHECK-MINCUT-NEXT:   %0 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 3
+; CHECK-MINCUT-NEXT:   %1 = load ptr, ptr %0
+; CHECK-MINCUT-NEXT:   %contcount.ptr = getelementptr inbounds i32, ptr %1, i32 0
+; CHECK-MINCUT-NEXT:   %cacheidx = atomicrmw add ptr %contcount.ptr, i32 1 acquire
+; CHECK-MINCUT-NEXT:   %2 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
+; CHECK-MINCUT-NEXT:   %3 = load ptr, ptr %2
+; CHECK-MINCUT-NEXT:   %4 = getelementptr inbounds ptr, ptr %3, i32 0
+; CHECK-MINCUT-NEXT:   %cache.out.ptr = load ptr, ptr %4
+; CHECK-MINCUT-NEXT:   %tid.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-MINCUT-NEXT:   %5 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx, i32 0, i32 0
+; CHECK-MINCUT-NEXT:   store i64 %tid, ptr %5
+; CHECK-MINCUT-NEXT:   %val.cacheidx = getelementptr inbounds %cache_cell, ptr %cache.out.ptr, i32 %cacheidx
+; CHECK-MINCUT-NEXT:   %6 = getelementptr inbounds %cache_cell, ptr %val.cacheidx, i32 0, i32 1
+; CHECK-MINCUT-NEXT:   store double %val, ptr %6
+; CHECK-MINCUT-NEXT:   call void asm sideeffect "exit;", ""()
+; CHECK-MINCUT-NEXT:   unreachable
+; CHECK-MINCUT-NEXT: }
+;
 ;
 ; CHECK: define void @test_contd_0(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn)
 ; CHECK-NEXT: entry:
@@ -102,28 +155,87 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:   call void asm sideeffect "exit;", ""()
 ; CHECK-NEXT:   unreachable
 ;
-; CHECK: CacheRemat:                                       ; preds = %entry
-; CHECK-NEXT:   %7 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
-; CHECK-NEXT:   %8 = load ptr, ptr %7
-; CHECK-NEXT:   %9 = getelementptr inbounds ptr, ptr %8, i32 1
-; CHECK-NEXT:   %cache.in.ptr = load ptr, ptr %9
-; CHECK-NEXT:   %val.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
-; CHECK-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %val.cacheidx1, i32 0, i32 0
-; CHECK-NEXT:   %11 = load double, ptr %10
-; CHECK-NEXT:   %tid.cacheidx2 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
-; CHECK-NEXT:   %12 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx2, i32 0, i32 1
-; CHECK-NEXT:   %13 = load i64, ptr %12
-; CHECK-NEXT:   %14 = getelementptr inbounds double, ptr %ptr, i64 %13
-; CHECK-NEXT:   %15 = fmul double %11, 4.000000e+00
-; CHECK-NEXT:   %16 = fmul double %11, 3.000000e+00
-; CHECK-NEXT:   %17 = fadd double %11, 2.000000e+00
-; CHECK-NEXT:   %18 = fsub double %11, 1.000000e+00
-; CHECK-NEXT:   %res1 = fmul double %18, %17
-; CHECK-NEXT:   %res2 = fmul double %res1, %16
-; CHECK-NEXT:   %res3 = fmul double %res2, %15
-; CHECK-NEXT:   store double %res3, ptr %14
-; CHECK-NEXT:   %mul1 = fmul double %11, %11
-; CHECK-NEXT:   store double %mul1, ptr %14
-; CHECK-NEXT:   call void @__kmpc_target_deinit()
-; CHECK-NEXT:   ret void
-; CHECK-NEXT: }
+; CHECK-CACHE: CacheRemat:                                       ; preds = %entry
+; CHECK-CACHE-NEXT:   %7 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
+; CHECK-CACHE-NEXT:   %8 = load ptr, ptr %7
+; CHECK-CACHE-NEXT:   %9 = getelementptr inbounds ptr, ptr %8, i32 1
+; CHECK-CACHE-NEXT:   %cache.in.ptr = load ptr, ptr %9
+; CHECK-CACHE-NEXT:   %arrayidx.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-CACHE-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %arrayidx.cacheidx1, i32 0, i32 0
+; CHECK-CACHE-NEXT:   %11 = load ptr, ptr %10
+; CHECK-CACHE-NEXT:   %val.cacheidx2 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-CACHE-NEXT:   %12 = getelementptr inbounds %cache_cell, ptr %val.cacheidx2, i32 0, i32 1
+; CHECK-CACHE-NEXT:   %13 = load double, ptr %12
+; CHECK-CACHE-NEXT:   %div.cacheidx3 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-CACHE-NEXT:   %14 = getelementptr inbounds %cache_cell, ptr %div.cacheidx3, i32 0, i32 2
+; CHECK-CACHE-NEXT:   %15 = load double, ptr %14
+; CHECK-CACHE-NEXT:   %mul.cacheidx4 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-CACHE-NEXT:   %16 = getelementptr inbounds %cache_cell, ptr %mul.cacheidx4, i32 0, i32 3
+; CHECK-CACHE-NEXT:   %17 = load double, ptr %16
+; CHECK-CACHE-NEXT:   %add.cacheidx5 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-CACHE-NEXT:   %18 = getelementptr inbounds %cache_cell, ptr %add.cacheidx5, i32 0, i32 4
+; CHECK-CACHE-NEXT:   %19 = load double, ptr %18
+; CHECK-CACHE-NEXT:   %sub.cacheidx6 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-CACHE-NEXT:   %20 = getelementptr inbounds %cache_cell, ptr %sub.cacheidx6, i32 0, i32 5
+; CHECK-CACHE-NEXT:   %21 = load double, ptr %20
+; CHECK-CACHE-NEXT:   %res1 = fmul double %21, %19
+; CHECK-CACHE-NEXT:   %res2 = fmul double %res1, %17
+; CHECK-CACHE-NEXT:   %res3 = fmul double %res2, %15
+; CHECK-CACHE-NEXT:   store double %res3, ptr %11
+; CHECK-CACHE-NEXT:   %mul1 = fmul double %13, %13
+; CHECK-CACHE-NEXT:   store double %mul1, ptr %11
+; CHECK-CACHE-NEXT:   call void @__kmpc_target_deinit()
+; CHECK-CACHE-NEXT:   ret void
+; CHECK-CACHE-NEXT: }
+;
+; CHECK-RECOMPUTE: CacheRemat:                                       ; preds = %entry
+; CHECK-RECOMPUTE-NEXT:   %7 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
+; CHECK-RECOMPUTE-NEXT:   %8 = load ptr, ptr %7
+; CHECK-RECOMPUTE-NEXT:   %9 = getelementptr inbounds ptr, ptr %8, i32 1
+; CHECK-RECOMPUTE-NEXT:   %cache.in.ptr = load ptr, ptr %9
+; CHECK-RECOMPUTE-NEXT:   %val.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-RECOMPUTE-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %val.cacheidx1, i32 0, i32 0
+; CHECK-RECOMPUTE-NEXT:   %11 = load double, ptr %10
+; CHECK-RECOMPUTE-NEXT:   %tid.cacheidx2 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-RECOMPUTE-NEXT:   %12 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx2, i32 0, i32 1
+; CHECK-RECOMPUTE-NEXT:   %13 = load i64, ptr %12
+; CHECK-RECOMPUTE-NEXT:   %14 = getelementptr inbounds double, ptr %ptr, i64 %13
+; CHECK-RECOMPUTE-NEXT:   %15 = fmul double %11, 4.000000e+00
+; CHECK-RECOMPUTE-NEXT:   %16 = fmul double %11, 3.000000e+00
+; CHECK-RECOMPUTE-NEXT:   %17 = fadd double %11, 2.000000e+00
+; CHECK-RECOMPUTE-NEXT:   %18 = fsub double %11, 1.000000e+00
+; CHECK-RECOMPUTE-NEXT:   %res1 = fmul double %18, %17
+; CHECK-RECOMPUTE-NEXT:   %res2 = fmul double %res1, %16
+; CHECK-RECOMPUTE-NEXT:   %res3 = fmul double %res2, %15
+; CHECK-RECOMPUTE-NEXT:   store double %res3, ptr %14
+; CHECK-RECOMPUTE-NEXT:   %mul1 = fmul double %11, %11
+; CHECK-RECOMPUTE-NEXT:   store double %mul1, ptr %14
+; CHECK-RECOMPUTE-NEXT:   call void @__kmpc_target_deinit()
+; CHECK-RECOMPUTE-NEXT:   ret void
+; CHECK-RECOMPUTE-NEXT: }
+;
+; CHECK-MINCUT: CacheRemat:                                       ; preds = %entry
+; CHECK-MINCUT-NEXT:   %7 = getelementptr inbounds %struct.KernelLaunchEnvironmentTy.0, ptr %launch_env, i32 0, i32 4
+; CHECK-MINCUT-NEXT:   %8 = load ptr, ptr %7
+; CHECK-MINCUT-NEXT:   %9 = getelementptr inbounds ptr, ptr %8, i32 1
+; CHECK-MINCUT-NEXT:   %cache.in.ptr = load ptr, ptr %9
+; CHECK-MINCUT-NEXT:   %tid.cacheidx1 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-MINCUT-NEXT:   %10 = getelementptr inbounds %cache_cell, ptr %tid.cacheidx1, i32 0, i32 0
+; CHECK-MINCUT-NEXT:   %11 = load i64, ptr %10
+; CHECK-MINCUT-NEXT:   %val.cacheidx2 = getelementptr inbounds %cache_cell, ptr %cache.in.ptr, i32 %gtid
+; CHECK-MINCUT-NEXT:   %12 = getelementptr inbounds %cache_cell, ptr %val.cacheidx2, i32 0, i32 1
+; CHECK-MINCUT-NEXT:   %13 = load double, ptr %12
+; CHECK-MINCUT-NEXT:   %14 = getelementptr inbounds double, ptr %ptr, i64 %11
+; CHECK-MINCUT-NEXT:   %15 = fmul double %13, 4.000000e+00
+; CHECK-MINCUT-NEXT:   %16 = fmul double %13, 3.000000e+00
+; CHECK-MINCUT-NEXT:   %17 = fadd double %13, 2.000000e+00
+; CHECK-MINCUT-NEXT:   %18 = fsub double %13, 1.000000e+00
+; CHECK-MINCUT-NEXT:   %res1 = fmul double %18, %17
+; CHECK-MINCUT-NEXT:   %res2 = fmul double %res1, %16
+; CHECK-MINCUT-NEXT:   %res3 = fmul double %res2, %15
+; CHECK-MINCUT-NEXT:   store double %res3, ptr %14
+; CHECK-MINCUT-NEXT:   %mul1 = fmul double %13, %13
+; CHECK-MINCUT-NEXT:   store double %mul1, ptr %14
+; CHECK-MINCUT-NEXT:   call void @__kmpc_target_deinit()
+; CHECK-MINCUT-NEXT:   ret void
+; CHECK-MINCUT-NEXT: }
