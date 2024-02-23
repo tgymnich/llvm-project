@@ -24,7 +24,7 @@ template <typename GraphT, typename WeightTy,
 class DinicMaxFlow {
   using NodeRef = typename GT::NodeRef;
   using EdgeRef = typename GT::EdgeRef;
-  using NodeIndex = size_t;
+  using NodeIndex = int64_t;
 
 private:
   GraphT &Graph;
@@ -41,8 +41,8 @@ private:
 public:
   DinicMaxFlow(GraphT &Graph, NodeRef Source, NodeRef Sink)
       : Graph(Graph), Source(Source), Sink(Sink),
-        Flow(GT::size(&Graph), SmallVector<int64_t>(GT::size(&Graph), 0)),
-        Capacity(GT::size(&Graph), SmallVector<int64_t>(GT::size(&Graph))) {
+        Flow(GT::size(&Graph), SmallVector<WeightTy>(GT::size(&Graph), 0)),
+        Capacity(GT::size(&Graph), SmallVector<WeightTy>(GT::size(&Graph))) {
 
     auto Nodes = make_range(GT::nodes_begin(&Graph), GT::nodes_end(&Graph));
     for (auto &&[Idx, Node] : enumerate(Nodes)) {
@@ -110,9 +110,7 @@ public:
 
   WeightTy computeMaxFlow() {
     auto Size = GT::size(&Graph);
-
     SmallVector<int64_t> P(Size, 0);
-
     WeightTy F = 0;
 
     while (true) {
@@ -120,24 +118,26 @@ public:
 
         if (NewFlow == 0)
             break;
+
         F += NewFlow; 
     }
+    return F;
   }
 
 private:
   WeightTy blockingFlow(SmallVectorImpl<int64_t> &P) {
     auto Size = GT::size(&Graph);
-
     std::fill(P.begin(), P.end(), -1);
     P[SourceIdx] = -2;
 
     std::deque<int64_t> Q;
+    Q.push_back(SourceIdx);
 
     while (!Q.empty()) {
       NodeIndex Src = Q.back();
       Q.pop_back();
 
-      for (int64_t Dst = 0; Dst < Size; ++Dst) {
+      for (NodeIndex Dst = 0; Dst < Size; ++Dst) {
         if (P[Dst] == -1 && Capacity[Src][Dst] > Flow[Src][Dst]) {
           P[Dst] = Src;
           Q.push_front(Dst);
@@ -150,20 +150,20 @@ private:
 
     WeightTy TotalFlow = 0;
 
-    for (int64_t Idx = 0; Idx < Size; ++Idx) {
+    for (NodeIndex Idx = 0; Idx < Size; ++Idx) {
       WeightTy F = std::numeric_limits<WeightTy>::max();
-      int64_t Dst = SinkIdx;
-      int64_t Src = Idx;
+      NodeIndex Dst = SinkIdx;
+      NodeIndex Src = Idx;
 
       while (Dst != SourceIdx) {
-        if (Dst == -1) {
+        if (Src == -1) {
           F = 0;
           break;
-        } else {
-          F = std::min(F, Capacity[Src][Dst] - Flow[Src][Dst]);
-          Dst = Src;
-          Src = P[Src];
         }
+        
+        F = std::min(F, Capacity[Src][Dst] - Flow[Src][Dst]);
+        Dst = Src;
+        Src = P[Src];
       }
 
       if (F == 0)
