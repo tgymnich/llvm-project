@@ -223,6 +223,10 @@ STATISTIC(NumBytesMovedToSharedMemory,
           "Amount of memory pushed to shared memory");
 STATISTIC(NumBarriersEliminated, "Number of redundant barriers eliminated");
 
+STATISTIC(NumCachedValues, "Number of cached values across split points");
+
+STATISTIC(NumRecomputedValues, "Number of recomputed values across split points");
+
 #if !defined(NDEBUG)
 static constexpr auto TAG = "[" DEBUG_TYPE "]";
 #endif
@@ -2824,8 +2828,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
 
-  SmallVector<Instruction *, 64> RequiredValues;
-  SmallVector<Instruction *, 64> RecomputableValues;
+  SmallVector<Instruction *, 64> CachedValues;
+  SmallVector<Instruction *, 64> RecomputedValues;
 
   switch (SplitKernelRematMode) {
   case RematModeKind::Cache: {
@@ -2833,10 +2837,10 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       return N->hasEdgeTo(Sink) && N->isInstruction() && !N->getIncoming();
     };
 
-    auto RequiredValuesRange =
+    auto CachedValuesRange =
         map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
 
-    append_range(RequiredValues, RequiredValuesRange);
+    append_range(CachedValues, CachedValuesRange);
 
     break;
   }
@@ -2846,13 +2850,13 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
     };
 
-    auto RequiredValuesRange = map_range(
+    auto CachedValuesRange = map_range(
         make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
-    auto RecomputableValuesRange =
+    auto RecomputedValuesRange =
         map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
 
-    append_range(RequiredValues, RequiredValuesRange);
-    append_range(RecomputableValues, RecomputableValuesRange);
+    append_range(CachedValues, CachedValuesRange);
+    append_range(RecomputedValues, RecomputedValuesRange);
 
     break;
   }
@@ -2862,17 +2866,17 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     SmallPtrSet<FlowNetworkNode *, 32> Cut;
     MaxFlow.getSinkSideMinCut(Cut);
 
-    RecomputableValues.reserve(Cut.size());
-    RequiredValues.reserve(RematGraph.size() - Cut.size());
+    RecomputedValues.reserve(Cut.size());
+    CachedValues.reserve(RematGraph.size() - Cut.size());
 
     for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
       if (Cut.contains(N)) {
-        RecomputableValues.push_back(N->getInstruction());
+        RecomputedValues.push_back(N->getInstruction());
       } else if (!Cut.contains(N) && !N->getEdges().empty()) {
         FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
 
         if (Cut.contains(Target))
-          RequiredValues.push_back(N->getInstruction());
+          CachedValues.push_back(N->getInstruction());
       }
     }
     break;
@@ -2881,7 +2885,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
 
   // Cache values shared between the original kernel and the split kernel.
   auto ValueTys =
-      map_range(RequiredValues, [](Instruction *I) { return I->getType(); });
+      map_range(CachedValues, [](Instruction *I) { return I->getType(); });
   auto AllocaTys = map_range(
       RequiredAllocas, [](AllocaInst *I) { return I->getAllocatedType(); });
   SmallVector<Type *> RequiredTypes(ValueTys);
@@ -2980,7 +2984,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
                                   "cache.out.ptr");
 
     // Cache Values
-    for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
       Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {CacheIdx},
                                              Inst->getName() + ".cacheidx");
       Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx);
@@ -3067,7 +3071,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     ValueToValueMapTy RematVMap;
 
     // Rematerialize values
-    for (auto [Idx, Inst] : enumerate(RequiredValues)) {
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
       Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
 
       Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
@@ -3099,8 +3103,8 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
           Alloca->getArraySize(), Alloca->getName() + ".remat");
       Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
                                              Alloca->getName() + ".cacheidx");
-      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr,
-                                    RequiredValues.size() + Idx);
+      Ptr =
+          Builder.CreateStructGEP(CacheCellTy, Ptr, CachedValues.size() + Idx);
 
       Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       Builder.CreateStore(CachedVal, NewAlloca);
@@ -3114,7 +3118,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       // about read write values?
 
       unsigned Var = SSAUpdate.AddVariable(
-          (Alloca->getName() + ".alloca." + Twine(Idx + RequiredValues.size()))
+          (Alloca->getName() + ".alloca." + Twine(Idx + CachedValues.size()))
               .str(),
           Alloca->getType());
       SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
@@ -3125,14 +3129,14 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       }
     }
 
-    for (auto [Idx, Inst] : enumerate(RecomputableValues)) {
+    for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
       Instruction *SplitInst = cast<Instruction>(VMap[Inst]);
       Instruction *Clone = SplitInst->clone();
       Instruction *Remat = Builder.Insert(Clone);
       RematVMap[SplitInst] = Remat;
 
       unsigned Var = SSAUpdate.AddVariable(
-          (Inst->getName() + "." + Twine(Idx + RequiredValues.size())).str(),
+          (Inst->getName() + "." + Twine(Idx + CachedValues.size())).str(),
           Inst->getType());
       SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
       SSAUpdate.AddAvailableValue(Var, SplitInst->getParent(), SplitInst);
@@ -3181,6 +3185,9 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
         SplitKernel->getName() + "_nested_parallelism", nullptr,
         NestedParallelism->getThreadLocalMode(),
         NestedParallelism->getAddressSpace());
+
+  NumCachedValues += CachedValues.size();
+  NumRecomputedValues += RecomputedValues.size();
 
   assert(!verifyFunction(*Kernel, &errs()));
   assert(!verifyFunction(*SplitKernel, &errs()));
