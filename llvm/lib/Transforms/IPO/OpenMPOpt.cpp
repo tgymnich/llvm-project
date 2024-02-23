@@ -21,6 +21,7 @@
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/ADT/DinicMaxFlow.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -345,6 +346,7 @@ ConstantStruct *getKernelEnvironementFromKernelInitCB(CallBase *KernelInitCB) {
 namespace {
 
 enum class RematModeKind { Cache, Recompute, MinCut };
+enum class MaxFlowAlgorithmKind {  PushRelabel, Dinic };
 
 static const auto RematModeKindEnumOptions = cl::values(
     clEnumValN(RematModeKind::Cache, "cache",
@@ -354,10 +356,21 @@ static const auto RematModeKindEnumOptions = cl::values(
     clEnumValN(RematModeKind::MinCut, "mincut",
                "try to minimize the number of cached values across the split"));
 
+static const auto MaxFlowAlgorithmKindEnumOptions = cl::values(
+    clEnumValN(MaxFlowAlgorithmKind::PushRelabel, "push-relabel",
+               "FIFO push relabel algorithm"),
+    clEnumValN(MaxFlowAlgorithmKind::Dinic, "dinic",
+               "dinic's algorithm"));
+
 static cl::opt<RematModeKind> SplitKernelRematMode(
     "split-kernel-remat-mode", cl::Hidden,
     cl::desc("Rematerialization mode for values alive across a split kernel."),
     cl::init(RematModeKind::MinCut), RematModeKindEnumOptions);
+
+static cl::opt<MaxFlowAlgorithmKind> MaxFlowAlogrithm(
+    "split-kernel-max-flow-algorithm", cl::Hidden,
+    cl::desc("Algorithm to be used to solve the max flow problem in order to determine the minimal set of instructions to cache across split points."),
+    cl::init(MaxFlowAlgorithmKind::PushRelabel), MaxFlowAlgorithmKindEnumOptions);
 
 struct AAHeapToShared;
 
@@ -2879,10 +2892,22 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
     break;
   }
   case RematModeKind::MinCut: {
-    PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
-    MaxFlow.computeMaxFlow();
     SmallPtrSet<FlowNetworkNode *, 32> Cut;
-    MaxFlow.getSinkSideMinCut(Cut);
+
+    switch (MaxFlowAlogrithm) {
+      case MaxFlowAlgorithmKind::PushRelabel: {
+          PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+          MaxFlow.computeMaxFlow();
+          MaxFlow.getSinkSideMinCut(Cut);
+          break;
+      }
+      case MaxFlowAlgorithmKind::Dinic: {
+          DinicMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+          MaxFlow.computeMaxFlow();
+          MaxFlow.getSinkSideMinCut(Cut);
+          break;
+      }
+    }
 
     RecomputedValues.reserve(Cut.size());
     CachedValues.reserve(RematGraph.size() - Cut.size());
