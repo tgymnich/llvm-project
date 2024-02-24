@@ -6,6 +6,8 @@
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/Support/DOTGraphTraits.h"
+#include "llvm/Support/GraphWriter.h"
 #include <string>
 #include <utility>
 #include <variant>
@@ -157,6 +159,15 @@ public:
       }
       delete Node;
     }
+  }
+
+  void viewGraph() const {
+#ifndef NDEBUG
+    ViewGraph(this, "flow-network", true);
+#else
+    errs() << "FlowNetwork::viewGraph is only available in debug builds on "
+           << "systems with Graphviz or gv!\n";
+#endif // NDEBUG
   }
 };
 
@@ -449,7 +460,7 @@ inline raw_ostream &operator<<(raw_ostream &OS, const FlowNetwork &G) {
 }
 
 //===--------------------------------------------------------------------===//
-// GraphTraits specializations for the DGTest
+// GraphTraits specializations for the FlowNetwork
 //===--------------------------------------------------------------------===//
 
 template <> struct GraphTraits<FlowNetworkNode *> {
@@ -490,7 +501,123 @@ struct GraphTraits<FlowNetwork *> : public GraphTraits<FlowNetworkNode *> {
   static nodes_iterator nodes_begin(FlowNetwork *FN) { return FN->begin(); }
   static nodes_iterator nodes_end(FlowNetwork *FN) { return FN->end(); }
   static unsigned size(FlowNetwork *FN) { return FN->size(); }
+};
+
+template <> struct GraphTraits<const FlowNetworkNode *> {
+  using NodeRef = const FlowNetworkNode *;
+  using EdgeRef = const FlowNetworkEdge *;
+
+  static const FlowNetworkNode *
+  FNGetTargetNode(DGEdge<FlowNetworkNode, FlowNetworkEdge> *P) {
+    return &P->getTargetNode();
+  }
+
+  // Provide a mapped iterator so that the GraphTrait-based implementations can
+  // find the target nodes without having to explicitly go through the edges.
+  using ChildIteratorType = mapped_iterator<FlowNetworkNode::const_iterator,
+                                            decltype(&FNGetTargetNode)>;
+  using ChildEdgeIteratorType = FlowNetworkNode::EdgeListTy::const_iterator;
+
+  static NodeRef getEntryNode(NodeRef N) { return N; }
+  static ChildIteratorType child_begin(NodeRef N) {
+    return ChildIteratorType(N->begin(), &FNGetTargetNode);
+  }
+  static ChildIteratorType child_end(NodeRef N) {
+    return ChildIteratorType(N->end(), &FNGetTargetNode);
+  }
+
+  static ChildEdgeIteratorType child_edge_begin(NodeRef N) {
+    return N->getEdges().begin();
+  }
+  static ChildEdgeIteratorType child_edge_end(NodeRef N) {
+    return N->getEdges().end();
+  }
+};
+
+template <>
+struct GraphTraits<const FlowNetwork *>
+    : public GraphTraits<const FlowNetworkNode *> {
+  using nodes_iterator = FlowNetwork::const_iterator;
+  static NodeRef getEntryNode(const FlowNetwork *FN) { return *FN->begin(); }
+  static nodes_iterator nodes_begin(const FlowNetwork *FN) {
+    return FN->begin();
+  }
+  static nodes_iterator nodes_end(const FlowNetwork *FN) { return FN->end(); }
   static unsigned size(const FlowNetwork *FN) { return FN->size(); }
+};
+
+//===--------------------------------------------------------------------===//
+// DOTGraphTraits specializations for the FlowNetwork
+//===--------------------------------------------------------------------===//
+
+template <>
+struct DOTGraphTraits<const FlowNetwork *> : public DefaultDOTGraphTraits {
+  DOTGraphTraits(bool isSimple = false) : DefaultDOTGraphTraits(isSimple) {}
+
+  // std::string getNodeIdentifierLabel(const FlowNetworkNode *N, const FlowNetwork *FN) {
+  //   std::string Output;
+  //   llvm::raw_string_ostream OS(Output);
+  //   OS << static_cast<const void *>(N);
+  //   OS.flush();
+  //   return "";
+  // }
+
+  std::string getNodeLabel(const FlowNetworkNode *N, const FlowNetwork *FN) {
+    std::string Output;
+    llvm::raw_string_ostream OS(Output);
+
+    if (N->isSource()) {
+      OS << "<src>";
+    } else if (N->isSink()) {
+      OS << "<sink>";
+    } else if (N->isInstruction()) {
+      if (isSimple())
+        N->getInstruction()->printAsOperand(OS);
+      else
+        OS << *N->getInstruction();
+    } else if (N->isArgument()) {
+      N->getArgument()->printAsOperand(OS);
+    } else if (N->isAlloca()) {
+      if (isSimple())
+        N->getAlloca()->printAsOperand(OS);
+      else
+        OS << *N->getAlloca();
+    }
+
+    OS.flush();
+    return Output;
+  }
+
+  std::string
+  getEdgeAttributes(const FlowNetworkNode *Node,
+                    GraphTraits<const FlowNetwork *>::ChildIteratorType EI,
+                    const FlowNetwork *FN) {
+    std::string Output;
+    raw_string_ostream OS(Output);
+
+    SmallVector<FlowNetworkEdge *> EL;
+    Node->findEdgesTo(**EI, EL);
+
+    OS << format("label=\"%d\"", EL.front()->getCapacity());
+
+    OS.flush();
+    return Output;
+  }
+
+  // static void addCustomGraphFeatures(const FlowNetwork *FN, GraphWriter<const FlowNetwork *> &GW) {
+  //   raw_ostream &OS = GW.getOStream();
+
+  //   for (const FlowNetworkNode *N : *FN) {
+  //     if (N->isInstruction() && N->getIncoming()) {
+  //       Instruction *I = N->getInstruction();
+  //       OS.indent(4) << "subgraph cluster" << static_cast<const void *>(I) << " {\n";
+  //       auto It = GraphTraits<const FlowNetwork*>::child_begin(N);
+  //       OS.indent(8) << "Node" << static_cast<const void *>(N) << ";\n";
+  //       OS.indent(8) << "Node" << static_cast<const void *>(*It) << ";\n";
+  //       OS << "}\n";
+  //     }
+  //   }
+  // }
 };
 
 } // namespace llvm
