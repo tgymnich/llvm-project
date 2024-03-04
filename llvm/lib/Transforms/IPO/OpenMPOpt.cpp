@@ -3123,8 +3123,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       Value *Load = Builder.CreateLoad(Inst->getType(), Ptr);
       RematVMap[SplitInst] = Load;
 
-      unsigned Var = SSAUpdate.AddVariable(
-          (Inst->getName() + "." + Twine(Idx)).str(), Inst->getType());
+      unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
       SSAUpdate.AddAvailableValue(Var, CacheRematBB, Load);
       SSAUpdate.AddAvailableValue(Var, SplitInst->getParent(), SplitInst);
 
@@ -3159,10 +3158,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       // derived values from the pointer? What about read only values? What
       // about read write values?
 
-      unsigned Var = SSAUpdate.AddVariable(
-          (Alloca->getName() + ".alloca." + Twine(Idx + CachedValues.size()))
-              .str(),
-          Alloca->getType());
+      unsigned Var = SSAUpdate.AddVariable(Alloca->getName(), Alloca->getType());
       SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
       SSAUpdate.AddAvailableValue(Var, SplitAlloca->getParent(), SplitAlloca);
 
@@ -3177,9 +3173,7 @@ Function *OpenMPOpt::splitKernel(Instruction *SplitInst, unsigned SplitIndex,
       Instruction *Remat = Builder.Insert(Clone);
       RematVMap[SplitInst] = Remat;
 
-      unsigned Var = SSAUpdate.AddVariable(
-          (Inst->getName() + "." + Twine(Idx + CachedValues.size())).str(),
-          Inst->getType());
+      unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
       SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
       SSAUpdate.AddAvailableValue(Var, SplitInst->getParent(), SplitInst);
 
