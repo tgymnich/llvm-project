@@ -42,12 +42,13 @@ KernelSet getDeviceKernels(Module &M);
 class OpenMPOptPass : public PassInfoMixin<OpenMPOptPass> {
 public:
   OpenMPOptPass() = default;
-  OpenMPOptPass(ThinOrFullLTOPhase LTOPhase) : LTOPhase(LTOPhase) {}
+  OpenMPOptPass(ThinOrFullLTOPhase LTOPhase, bool SplitKernels) : LTOPhase(LTOPhase), SplitKernels(SplitKernels) {}
 
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 
 private:
   const ThinOrFullLTOPhase LTOPhase = ThinOrFullLTOPhase::None;
+  const bool SplitKernels = false;
 };
 
 class OpenMPOptCGSCCPass : public PassInfoMixin<OpenMPOptCGSCCPass> {
