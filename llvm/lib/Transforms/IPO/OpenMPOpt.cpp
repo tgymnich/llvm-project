@@ -1094,7 +1094,7 @@ struct OpenMPOpt {
     }
 
     if (SplitKernels && OMPInfoCache.OpenMPPostLink)
-        Changed |= splitKernels();
+      Changed |= splitKernels();
 
     if (OMPInfoCache.OpenMPPostLink)
       Changed |= removeRuntimeSymbols();
@@ -2818,7 +2818,7 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
 
   // Move all ptx register reads to the beginning of the Kernel, so that they
   // will be cached
-  DenseMap<Function*, CallInst*> MovedCalls;
+  DenseMap<Function *, CallInst *> MovedCalls;
 
   for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
     CallInst *Call = dyn_cast<CallInst>(&I);
@@ -2836,9 +2836,10 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
         Call->replaceAllUsesWith(It->getSecond());
         Call->eraseFromParent();
       } else {
-        Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+        Call->moveBefore(
+            &*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
         MovedCalls[Callee] = Call;
-      }  
+      }
     }
   }
 
