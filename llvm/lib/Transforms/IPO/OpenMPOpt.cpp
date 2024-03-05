@@ -2818,6 +2818,8 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
 
   // Move all ptx register reads to the beginning of the Kernel, so that they
   // will be cached
+  DenseMap<Function*, CallInst*> MovedCalls;
+
   for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
     CallInst *Call = dyn_cast<CallInst>(&I);
     if (!Call)
@@ -2828,8 +2830,16 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
     if (!Callee)
       continue;
 
-    if (Callee->getName().starts_with("llvm.nvvm.read.ptx.sreg"))
-      Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+    if (Callee->getName().starts_with("llvm.nvvm.read.ptx.sreg.")) {
+      auto It = MovedCalls.find(Callee);
+      if (It != MovedCalls.end()) {
+        Call->replaceAllUsesWith(It->getSecond());
+        Call->eraseFromParent();
+      } else {
+        Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+        MovedCalls[Callee] = Call;
+      }  
+    }
   }
 
   LoopInfo &LI = LIGetter(Kernel);
