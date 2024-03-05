@@ -216,14 +216,11 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[ARRAYIDX2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL]], i32 0, i32 0
 ; CHECK-NEXT:    store ptr [[ARRAYIDX2]], ptr [[ARRAYIDX2_CACHEIDX]], align 8
-; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
-; CHECK-NEXT:    [[ARRAYIDX1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL1]], i32 0, i32 1
+; CHECK-NEXT:    [[ARRAYIDX1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL]], i32 0, i32 1
 ; CHECK-NEXT:    store ptr [[ARRAYIDX1]], ptr [[ARRAYIDX1_CACHEIDX]], align 8
-; CHECK-NEXT:    [[CACHECELL2:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
-; CHECK-NEXT:    [[VAL1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL2]], i32 0, i32 2
+; CHECK-NEXT:    [[VAL1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL]], i32 0, i32 2
 ; CHECK-NEXT:    store double [[VAL1]], ptr [[VAL1_CACHEIDX]], align 8
-; CHECK-NEXT:    [[CACHECELL3:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
-; CHECK-NEXT:    [[VAL2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL3]], i32 0, i32 3
+; CHECK-NEXT:    [[VAL2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL]], i32 0, i32 3
 ; CHECK-NEXT:    store double [[VAL2]], ptr [[VAL2_CACHEIDX]], align 8
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
@@ -253,18 +250,15 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-NEXT:    [[TMP7:%.*]] = load ptr, ptr [[TMP6]], align 8
 ; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds ptr, ptr [[TMP7]], i32 1
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
-; CHECK-NEXT:    [[CACHECELL4:%.*]] = getelementptr inbounds [[CACHE_CELL:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[ARRAYIDX2_CACHEIDX5:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL4]], i32 0, i32 0
-; CHECK-NEXT:    [[ARRAYIDX2_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX2_CACHEIDX5]], align 8
-; CHECK-NEXT:    [[CACHECELL6:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[ARRAYIDX1_CACHEIDX7:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL6]], i32 0, i32 1
-; CHECK-NEXT:    [[ARRAYIDX1_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX1_CACHEIDX7]], align 8
-; CHECK-NEXT:    [[CACHECELL8:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[VAL1_CACHEIDX9:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL8]], i32 0, i32 2
-; CHECK-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX9]], align 8
-; CHECK-NEXT:    [[CACHECELL10:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[VAL2_CACHEIDX11:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL10]], i32 0, i32 3
-; CHECK-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX11]], align 8
+; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
+; CHECK-NEXT:    [[ARRAYIDX2_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL1]], i32 0, i32 0
+; CHECK-NEXT:    [[ARRAYIDX2_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX2_CACHEIDX2]], align 8
+; CHECK-NEXT:    [[ARRAYIDX1_CACHEIDX3:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL1]], i32 0, i32 1
+; CHECK-NEXT:    [[ARRAYIDX1_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX1_CACHEIDX3]], align 8
+; CHECK-NEXT:    [[VAL1_CACHEIDX4:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL1]], i32 0, i32 2
+; CHECK-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX4]], align 8
+; CHECK-NEXT:    [[VAL2_CACHEIDX5:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL1]], i32 0, i32 3
+; CHECK-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX5]], align 8
 ; CHECK-NEXT:    [[MUL_RECOMPUTE:%.*]] = fmul double [[VAL1_CACHE]], [[VAL2_CACHE]]
 ; CHECK-NEXT:    store double [[MUL_RECOMPUTE]], ptr [[ARRAYIDX1_CACHE]], align 8
 ; CHECK-NEXT:    [[ADD:%.*]] = fmul double [[VAL1_CACHE]], [[VAL2_CACHE]]

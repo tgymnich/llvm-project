@@ -3033,22 +3033,21 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
     CachePtr =
         Builder.CreateLoad(Builder.getPtrTy(), CachePtr, "cache.out.ptr");
 
+    Value *CacheCell = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr,
+                                                 {CacheIdx}, "cachecell");
+
     // Cache Values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {CacheIdx},
-                                             "cachecell");
-      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx,
-                                    Inst->getName() + ".cacheidx");
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, Idx,
+                                           Inst->getName() + ".cacheidx");
 
       Builder.CreateStore(Inst, Ptr);
     }
 
     // Cache allocas
     for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {CacheIdx},
-                                             "cachecell");
-      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx,
-                                    Alloca->getName() + ".cacheidx");
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, Idx,
+                                           Alloca->getName() + ".cacheidx");
 
       Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
       Builder.CreateStore(ToCache, Ptr);
@@ -3114,6 +3113,9 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
                                          {NumContinuations});
     CachePtr = Builder.CreateLoad(Builder.getPtrTy(), CachePtr, "cache.in.ptr");
 
+    Value *CacheCell = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr,
+                                                 {GlobalTid}, "cachecell");
+
     CFGUpdate Updates[] = {
         {DT.Delete, BeforeSplitBB, AfterSplitBB},
         {DT.Insert, BeforeSplitBB, CacheEntryBB},
@@ -3129,10 +3131,8 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
 
     // Rematerialize values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
-                                             "cachecell");
-      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, Idx,
-                                    Inst->getName() + ".cacheidx");
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, Idx,
+                                           Inst->getName() + ".cacheidx");
 
       Value *Load =
           Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
@@ -3162,11 +3162,9 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
       Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
       RematVMap[Alloca] = NewAlloca;
 
-      Value *Ptr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr, {GlobalTid},
-                                             "cachecell");
       unsigned CacheIdx = CachedValues.size() + Idx;
-      Ptr = Builder.CreateStructGEP(CacheCellTy, Ptr, CacheIdx,
-                                    Alloca->getName() + ".cacheidx");
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, CacheIdx,
+                                           Alloca->getName() + ".cacheidx");
 
       Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       Builder.CreateStore(CachedVal, NewAlloca);
