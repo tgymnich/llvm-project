@@ -1047,7 +1047,7 @@ struct OpenMPOpt {
   }
 
   /// Run all OpenMP optimizations on the underlying SCC.
-  bool run(bool IsModulePass) {
+  bool run(bool IsModulePass, bool SplitKernels) {
     if (SCC.empty())
       return false;
 
@@ -1091,10 +1091,10 @@ struct OpenMPOpt {
           Changed = true;
         }
       }
-
-      if (OMPInfoCache.OpenMPPostLink)
-        Changed |= splitKernels();
     }
+
+    if (SplitKernels && OMPInfoCache.OpenMPPostLink)
+        Changed |= splitKernels();
 
     if (OMPInfoCache.OpenMPPostLink)
       Changed |= removeRuntimeSymbols();
@@ -6889,7 +6889,7 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, DTGetter, ACGetter,
                    SCEVGetter, InfoCache, A);
 
-  Changed |= OMPOpt.run(true);
+  Changed |= OMPOpt.run(true, SplitKernels);
 
   // Optionally inline device functions for potentially better performance.
   if (AlwaysInlineDeviceFunctions && isOpenMPDevice(M))
@@ -6985,7 +6985,7 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
   OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, DTGetter, ACGetter,
                    SCEVGetter, InfoCache, A);
 
-  bool Changed = OMPOpt.run(false);
+  bool Changed = OMPOpt.run(false, false);
 
   if (PrintModuleAfterOptimizations)
     LLVM_DEBUG(dbgs() << TAG << "Module after OpenMPOpt CGSCC Pass:\n" << M);
