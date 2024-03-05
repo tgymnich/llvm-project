@@ -3028,7 +3028,7 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
 
     Value *CacheIdx = Builder.CreateAtomicRMW(
         AtomicRMWInst::Add, ContCountPtr, ConstantInt::get(ContCountTy, 1),
-        std::nullopt, AtomicOrdering::Acquire);
+        std::nullopt, AtomicOrdering::Monotonic);
     CacheIdx->setName("cacheidx");
 
     // Get buffer containing pointers to the caches for each split point.
