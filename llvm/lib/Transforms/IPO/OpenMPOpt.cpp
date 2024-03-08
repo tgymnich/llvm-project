@@ -2446,11 +2446,10 @@ class SuspendCrossingInfo {
 
   BlockToIndexMapping Mapping;
   SmallVector<BlockData> Block;
-  SmallPtrSetImpl<Instruction *> &SplitPoints;
 
 public:
   SuspendCrossingInfo(Function &F, SmallPtrSetImpl<Instruction *> &SplitPoints)
-      : Mapping(F), SplitPoints(SplitPoints) {
+      : Mapping(F) {
     size_t N = Mapping.size();
     Block.resize(N);
 
@@ -2463,16 +2462,8 @@ public:
       B.Changed = true;
     }
 
-    // Mark all CoroEnd Blocks. We do not propagate Kills beyond coro.ends as
-    // the code beyond coro.end is reachable during initial invocation of the
-    // coroutine.
-    // for (auto *CE : Shape.CoroEnds)
-    //   getBlockData(CE->getParent()).End = true;
-
     // Mark all suspend blocks and indicate that they kill everything they
-    // consume. Note, that crossing coro.save also requires a spill, as any code
-    // between coro.save and coro.suspend may resume the coroutine and all of
-    // the state needs to be saved by that time.
+    // consume.
     for (auto *SI : SplitPoints) {
       BasicBlock *SuspendBlock = SI->getParent();
       auto &B = getBlockData(SuspendBlock);
@@ -2543,13 +2534,6 @@ public:
         // If block B is a suspend block, it should kill all of the blocks it
         // consumes.
         B.Kills |= B.Consumes;
-        // } else if (B.End) {
-        //   // If block B is an end block, it should not propagate kills as the
-        //   // blocks following coro.end() are reached during initial
-        //   invocation
-        //   // of the coroutine while all the data are still available on the
-        //   // stack or in the registers.
-        //   B.Kills.reset();
       } else {
         // This is reached when B block it not Suspend nor coro.end and it
         // need to make sure that it is not in the kill set.
@@ -2623,14 +2607,6 @@ public:
 
     BasicBlock *UseBB = I->getParent();
 
-    // As a special case, treat uses by an llvm.coro.suspend.retcon or an
-    // llvm.coro.suspend.async as if they were uses in the suspend's single
-    // predecessor: the uses conceptually occur before the suspend.
-    if (SplitPoints.contains(I)) {
-      UseBB = UseBB->getSinglePredecessor();
-      assert(UseBB && "should have split coro.suspend into its own block");
-    }
-
     return hasPathCrossingSuspendPoint(DefBB, UseBB);
   }
 
@@ -2640,14 +2616,6 @@ public:
 
   bool isDefinitionAcrossSuspend(Instruction &I, User *U) const {
     BasicBlock *DefBB = I.getParent();
-
-    // As a special case, treat values produced by an llvm.coro.suspend.*
-    // as if they were defined in the single successor: the uses
-    // conceptually occur after the suspend.
-    if (SplitPoints.contains(&I)) {
-      DefBB = DefBB->getSingleSuccessor();
-      assert(DefBB && "should have split coro.suspend into its own block");
-    }
 
     return isDefinitionAcrossSuspend(DefBB, U);
   }
@@ -3026,8 +2994,6 @@ static void rewritePHIs(BasicBlock &BB, DominatorTree *DT = nullptr,
     auto *IncomingBB = SplitEdge(Pred, &BB, DT, LI);
     IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
 
-    // Stop the moving of values at ReplPHI, as this is either null or the PHI
-    // that replaced the landing pad.
     movePHIValuesToInsertedBlock(&BB, IncomingBB, Pred);
   }
 }
