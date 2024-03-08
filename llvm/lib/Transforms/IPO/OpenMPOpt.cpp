@@ -2983,6 +2983,66 @@ bool isMaterializable(Instruction *I) {
   return false;
 }
 
+// Moves the values in the PHIs in SuccBB that correspong to PredBB into a new
+// PHI in InsertedBB.
+static void movePHIValuesToInsertedBlock(BasicBlock *SuccBB,
+                                         BasicBlock *InsertedBB,
+                                         BasicBlock *PredBB,
+                                         PHINode *UntilPHI = nullptr) {
+  auto *PN = cast<PHINode>(&SuccBB->front());
+  do {
+    int Index = PN->getBasicBlockIndex(InsertedBB);
+    Value *V = PN->getIncomingValue(Index);
+    PHINode *InputV = PHINode::Create(
+        V->getType(), 1, V->getName() + Twine(".") + SuccBB->getName());
+    InputV->insertBefore(InsertedBB->begin());
+    InputV->addIncoming(V, PredBB);
+    PN->setIncomingValue(Index, InputV);
+    PN = dyn_cast<PHINode>(PN->getNextNode());
+  } while (PN != UntilPHI);
+}
+
+static void cleanupSinglePredPHIs(Function &F) {
+  SmallVector<PHINode *, 32> Worklist;
+  for (auto &BB : F) {
+    for (auto &Phi : BB.phis()) {
+      if (Phi.getNumIncomingValues() == 1) {
+        Worklist.push_back(&Phi);
+      } else
+        break;
+    }
+  }
+  while (!Worklist.empty()) {
+    auto *Phi = Worklist.pop_back_val();
+    auto *OriginalValue = Phi->getIncomingValue(0);
+    Phi->replaceAllUsesWith(OriginalValue);
+  }
+}
+
+static void rewritePHIs(BasicBlock &BB) {
+  SmallVector<BasicBlock *, 8> Preds(predecessors(&BB));
+  for (BasicBlock *Pred : Preds) {
+    auto *IncomingBB = SplitEdge(Pred, &BB);
+    IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
+
+    // Stop the moving of values at ReplPHI, as this is either null or the PHI
+    // that replaced the landing pad.
+    movePHIValuesToInsertedBlock(&BB, IncomingBB, Pred);
+  }
+}
+
+static void rewritePHIs(Function &F) {
+  SmallVector<BasicBlock *, 8> WorkList;
+
+  for (BasicBlock &BB : F)
+    if (auto *PN = dyn_cast<PHINode>(&BB.front()))
+      if (PN->getNumIncomingValues() > 1)
+        WorkList.push_back(&BB);
+
+  for (BasicBlock *BB : WorkList)
+    rewritePHIs(*BB);
+}
+
 void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
                            FlowNetworkBuilder &FNBuilder) {
   for (BasicBlock *B : breadth_first(SplitBlock)) {
@@ -2991,6 +3051,9 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
         Instruction *UI = dyn_cast<Instruction>(U.get());
         if (!UI)
           continue;
+
+        // if (UI->getNameOrAsOperand() == "%160")
+        //   __builtin_debugtrap();
 
         // Type *Ty = UI->getType();
         // if (Ty->isPointerTy() &&
@@ -3005,6 +3068,12 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
         while (!Worklist.empty()) {
           auto &&[Todo, Parent] = Worklist.pop_back_val();
 
+          if (isa<Constant>(Todo))
+            continue;
+
+          if (!SCI.isDefinitionAcrossSuspend(*Todo, U.getUser()))
+            continue;
+
           Argument *Arg = dyn_cast<Argument>(Todo);
           if (Arg && Parent) {
             FNBuilder.addArgumentNode(Arg);
@@ -3013,17 +3082,11 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
             continue;
           }
 
-          if (isa<Constant>(Todo))
-            continue;
-
           Instruction *TodoInst = dyn_cast<Instruction>(Todo);
           if (!TodoInst) {
             llvm_unreachable("Unexpected llvm::Value subclass in worklist.");
             continue;
           }
-
-          if (!SCI.isDefinitionAcrossSuspend(*TodoInst, U.getUser()))
-            continue;
 
           if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Todo)) {
             if (Parent) {
@@ -3098,8 +3161,12 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
     }
   }
 
+  rewritePHIs(*Kernel);
+  assert(!verifyFunction(*Kernel, &errs()));
+
   LoopInfo &LI = LIGetter(Kernel);
   DominatorTree &DT = DTGetter(Kernel);
+  DT.recalculate(*Kernel);
   DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Eager);
 
   // Find Instructions that require caching
@@ -3116,6 +3183,8 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
       RequiredAllocas.insert(Alloca);
   }
 
+  assert(DT.verify());
+  DTU.flush();
   BasicBlock *AfterSplitBB = SplitInst->getParent();
   BasicBlock *BeforeSplitBB = SplitBlock(AfterSplitBB, SplitInst->getNextNode(),
                                          &DTU, &LI, nullptr, "", true);
