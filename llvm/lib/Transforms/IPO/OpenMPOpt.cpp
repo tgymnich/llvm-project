@@ -18,6 +18,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
+#include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DepthFirstIterator.h"
@@ -78,7 +79,6 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/AtomicOrdering.h"
-#include "llvm/Support/CFGUpdate.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
@@ -2408,110 +2408,261 @@ bool OpenMPOpt::splitKernels() {
 
   return Changed;
 }
+namespace {
 
-bool isMaterializable(Instruction *I) {
-  bool IsMaterializableInstruction =
-      (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
-       isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<SelectInst>(I));
+class BlockToIndexMapping {
+  SmallVector<BasicBlock *, 32> V;
 
-  if (IsMaterializableInstruction)
-    return true;
+public:
+  size_t size() const { return V.size(); }
 
-  CallBase *Call = dyn_cast<CallBase>(I);
-  if (!Call)
-    return false;
+  BlockToIndexMapping(Function &F) {
+    for (BasicBlock &BB : F)
+      V.push_back(&BB);
+    sort(V);
+  }
 
-  if (Call->getCalledFunction()->getName().starts_with(
-          "llvm.nvvm.read.ptx.sreg"))
-    return false;
+  size_t blockToIndex(BasicBlock *BB) const {
+    auto *I = llvm::lower_bound(V, BB);
+    assert(I != V.end() && *I == BB && "BasicBlockNumbering: Unknown block");
+    return I - V.begin();
+  }
 
-  MemoryEffects ME = Call->getMemoryEffects();
-  if (ME.doesNotAccessMemory())
-    return true;
+  BasicBlock *indexToBlock(unsigned Index) const { return V[Index]; }
 
-  // if (Call->hasFnAttr(Attribute::AttrKind::Speculatable))
-  //   return true;
+  unsigned operator[](BasicBlock *BB) const { return blockToIndex(BB); }
 
-  return isSafeToSpeculativelyExecute(I);
+  BasicBlock *operator[](unsigned Index) const { return indexToBlock(Index); }
+};
+class SuspendCrossingInfo {
+  struct BlockData {
+    BitVector Consumes;
+    BitVector Kills;
+    bool Suspend = false;
+    bool End = false;
+    bool KillLoop = false;
+    bool Changed = false;
+  };
 
-  return false;
-}
+  BlockToIndexMapping Mapping;
+  SmallVector<BlockData> Block;
+  SmallPtrSetImpl<Instruction *> &SplitPoints;
 
-void determineValuesAcross(BasicBlock *SplitBlock, DominatorTree &DT,
-                           FlowNetworkBuilder &FNBuilder) {
-  for (BasicBlock *B : breadth_first(SplitBlock)) {
-    for (Instruction &I : *B) {
-      for (Use &U : I.operands()) {
-        Instruction *UI = dyn_cast<Instruction>(U.get());
-        if (!UI)
+public:
+  SuspendCrossingInfo(Function &F, SmallPtrSetImpl<Instruction *> &SplitPoints)
+      : Mapping(F), SplitPoints(SplitPoints) {
+    size_t N = Mapping.size();
+    Block.resize(N);
+
+    // Initialize every block so that it consumes itself
+    for (size_t I = 0; I < N; ++I) {
+      auto &B = Block[I];
+      B.Consumes.resize(N);
+      B.Kills.resize(N);
+      B.Consumes.set(I);
+      B.Changed = true;
+    }
+
+    // Mark all CoroEnd Blocks. We do not propagate Kills beyond coro.ends as
+    // the code beyond coro.end is reachable during initial invocation of the
+    // coroutine.
+    // for (auto *CE : Shape.CoroEnds)
+    //   getBlockData(CE->getParent()).End = true;
+
+    // Mark all suspend blocks and indicate that they kill everything they
+    // consume. Note, that crossing coro.save also requires a spill, as any code
+    // between coro.save and coro.suspend may resume the coroutine and all of
+    // the state needs to be saved by that time.
+    for (auto *SI : SplitPoints) {
+      BasicBlock *SuspendBlock = SI->getParent();
+      auto &B = getBlockData(SuspendBlock);
+      B.Suspend = true;
+      B.Kills |= B.Consumes;
+    }
+
+    // It is considered to be faster to use RPO traversal for forward-edges
+    // dataflow analysis.
+    ReversePostOrderTraversal<Function *> RPOT(&F);
+    computeBlockData</*Initialize=*/true>(RPOT);
+    while (computeBlockData</*Initialize*/ false>(RPOT))
+      ;
+
+    LLVM_DEBUG(dump());
+  }
+
+  iterator_range<pred_iterator> predecessors(BlockData const &BD) const {
+    BasicBlock *BB = Mapping[&BD - &Block[0]];
+    return llvm::predecessors(BB);
+  }
+
+  BlockData &getBlockData(BasicBlock *BB) { return Block[Mapping[BB]]; }
+
+  /// Compute the BlockData for the current function in one iteration.
+  /// Initialize - Whether this is the first iteration, we can optimize
+  /// the initial case a little bit by manual loop switch.
+  /// Returns whether the BlockData changes in this iteration.
+  template <bool Initialize>
+  bool computeBlockData(ReversePostOrderTraversal<Function *> &RPOT) {
+    bool Changed = false;
+
+    for (BasicBlock *BB : RPOT) {
+      unsigned BBNo = Mapping[BB];
+      BlockData &B = Block[BBNo];
+
+      // We don't need to count the predecessors when initialization.
+      if constexpr (!Initialize)
+        // If all the predecessors of the current Block don't change,
+        // the BlockData for the current block must not change too.
+        if (all_of(predecessors(B), [&](BasicBlock *BB) {
+              return !Block[Mapping[BB]].Changed;
+            })) {
+          B.Changed = false;
           continue;
-
-        // Type *Ty = UI->getType();
-        // if (Ty->isPointerTy() &&
-        //     Ty->getPointerAddressSpace() !=
-        //         static_cast<unsigned>(AddressSpace::Global))
-        //   continue;
-
-        constexpr int64_t InfEdgeWeight = 10000;
-        SetVector<std::pair<Value *, Instruction *>> Worklist;
-        Worklist.insert({UI, nullptr});
-
-        while (!Worklist.empty()) {
-          auto &&[Todo, Parent] = Worklist.pop_back_val();
-
-          Argument *Arg = dyn_cast<Argument>(Todo);
-          if (Arg && Parent) {
-            FNBuilder.addArgumentNode(Arg);
-            FNBuilder.addArgumentEdge(Arg, Parent, InfEdgeWeight);
-            FNBuilder.addSourceEdge(Arg, 1);
-            continue;
-          }
-
-          if (isa<Constant>(Todo))
-            continue;
-
-          Instruction *TodoInst = dyn_cast<Instruction>(Todo);
-          if (!TodoInst) {
-            llvm_unreachable("Unexpected llvm::Value subclass in worklist.");
-            continue;
-          }
-
-          if (!DT.dominates(TodoInst, SplitBlock))
-            continue;
-
-          if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Todo)) {
-            if (Parent) {
-              FNBuilder.addAllocaNode(Alloca);
-              FNBuilder.addAllocaEdge(Alloca, Parent, InfEdgeWeight);
-              FNBuilder.addSourceEdge(Alloca, 1);
-            }
-            continue;
-          }
-
-          bool Added = FNBuilder.addInstructionNode(TodoInst, 1);
-
-          if (Parent) {
-            FNBuilder.addInstructionEdge(TodoInst, Parent, InfEdgeWeight);
-          } else {
-            FNBuilder.addSinkEdge(TodoInst, InfEdgeWeight);
-          }
-
-          if (!Added)
-            continue;
-
-          if (!isMaterializable(TodoInst)) {
-            FNBuilder.addSourceEdge(TodoInst, InfEdgeWeight);
-            continue;
-          }
-
-          for (Use &Op : TodoInst->operands()) {
-            Worklist.insert({Op, TodoInst});
-          }
         }
+
+      // Saved Consumes and Kills bitsets so that it is easy to see
+      // if anything changed after propagation.
+      BitVector SavedConsumes = B.Consumes;
+      BitVector SavedKills = B.Kills;
+
+      for (BasicBlock *PI : predecessors(B)) {
+        unsigned PrevNo = Mapping[PI];
+        auto &P = Block[PrevNo];
+
+        // Propagate Kills and Consumes from predecessors into B.
+        B.Consumes |= P.Consumes;
+        B.Kills |= P.Kills;
+
+        // If block P is a suspend block, it should propagate kills into block
+        // B for every block P consumes.
+        if (P.Suspend)
+          B.Kills |= P.Consumes;
+      }
+
+      if (B.Suspend) {
+        // If block B is a suspend block, it should kill all of the blocks it
+        // consumes.
+        B.Kills |= B.Consumes;
+        // } else if (B.End) {
+        //   // If block B is an end block, it should not propagate kills as the
+        //   // blocks following coro.end() are reached during initial
+        //   invocation
+        //   // of the coroutine while all the data are still available on the
+        //   // stack or in the registers.
+        //   B.Kills.reset();
+      } else {
+        // This is reached when B block it not Suspend nor coro.end and it
+        // need to make sure that it is not in the kill set.
+        B.KillLoop |= B.Kills[BBNo];
+        B.Kills.reset(BBNo);
+      }
+
+      if constexpr (!Initialize) {
+        B.Changed = (B.Kills != SavedKills) || (B.Consumes != SavedConsumes);
+        Changed |= B.Changed;
       }
     }
+
+    return Changed;
   }
-}
+
+public:
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  LLVM_DUMP_METHOD void dump(StringRef Label, BitVector const &BV) const {
+    dbgs() << Label << ":";
+    for (size_t I = 0, N = BV.size(); I < N; ++I)
+      if (BV[I])
+        dbgs() << " " << Mapping[I]->getName();
+    dbgs() << "\n";
+  }
+
+  LLVM_DUMP_METHOD void dump() const {
+    for (size_t I = 0, N = Block.size(); I < N; ++I) {
+      BasicBlock *const B = Mapping[I];
+      dbgs() << B->getName() << ":\n";
+      dump("   Consumes", Block[I].Consumes);
+      dump("      Kills", Block[I].Kills);
+    }
+    dbgs() << "\n";
+  }
+#endif
+
+  /// Returns true if there is a path from \p From to \p To crossing a suspend
+  /// point without crossing \p From a 2nd time.
+  bool hasPathCrossingSuspendPoint(BasicBlock *From, BasicBlock *To) const {
+    unsigned FromIndex = Mapping[From];
+    unsigned ToIndex = Mapping[To];
+    bool Result = Block[ToIndex].Kills[FromIndex];
+    LLVM_DEBUG(dbgs() << From->getName() << " => " << To->getName()
+                      << " answer is " << Result << "\n");
+    return Result;
+  }
+
+  /// Returns true if there is a path from \p From to \p To crossing a suspend
+  /// point without crossing \p From a 2nd time. If \p From is the same as \p To
+  /// this will also check if there is a looping path crossing a suspend point.
+  bool hasPathOrLoopCrossingSuspendPoint(BasicBlock *From,
+                                         BasicBlock *To) const {
+    unsigned FromIndex = Mapping[From];
+    unsigned ToIndex = Mapping[To];
+    bool Result = Block[ToIndex].Kills[FromIndex] ||
+                  (From == To && Block[ToIndex].KillLoop);
+    LLVM_DEBUG(dbgs() << From->getName() << " => " << To->getName()
+                      << " answer is " << Result << " (path or loop)\n");
+    return Result;
+  }
+
+  bool isDefinitionAcrossSuspend(BasicBlock *DefBB, User *U) const {
+    Instruction *I = cast<Instruction>(U);
+
+    // We rewrote PHINodes, so that only the ones with exactly one incoming
+    // value need to be analyzed.
+    if (auto *PN = dyn_cast<PHINode>(I))
+      if (PN->getNumIncomingValues() > 1)
+        return false;
+
+    BasicBlock *UseBB = I->getParent();
+
+    // As a special case, treat uses by an llvm.coro.suspend.retcon or an
+    // llvm.coro.suspend.async as if they were uses in the suspend's single
+    // predecessor: the uses conceptually occur before the suspend.
+    if (SplitPoints.contains(I)) {
+      UseBB = UseBB->getSinglePredecessor();
+      assert(UseBB && "should have split coro.suspend into its own block");
+    }
+
+    return hasPathCrossingSuspendPoint(DefBB, UseBB);
+  }
+
+  bool isDefinitionAcrossSuspend(Argument &A, User *U) const {
+    return isDefinitionAcrossSuspend(&A.getParent()->getEntryBlock(), U);
+  }
+
+  bool isDefinitionAcrossSuspend(Instruction &I, User *U) const {
+    BasicBlock *DefBB = I.getParent();
+
+    // As a special case, treat values produced by an llvm.coro.suspend.*
+    // as if they were defined in the single successor: the uses
+    // conceptually occur after the suspend.
+    if (SplitPoints.contains(&I)) {
+      DefBB = DefBB->getSingleSuccessor();
+      assert(DefBB && "should have split coro.suspend into its own block");
+    }
+
+    return isDefinitionAcrossSuspend(DefBB, U);
+  }
+
+  bool isDefinitionAcrossSuspend(Value &V, User *U) const {
+    if (auto *Arg = dyn_cast<Argument>(&V))
+      return isDefinitionAcrossSuspend(*Arg, U);
+    if (auto *Inst = dyn_cast<Instruction>(&V))
+      return isDefinitionAcrossSuspend(*Inst, U);
+
+    llvm_unreachable(
+        "Coroutine could only collect Argument and Instruction now.");
+  }
+};
+} // end anonymous namespace
 
 namespace {
 struct AllocaUseVisitor : PtrUseVisitor<AllocaUseVisitor> {
@@ -2804,6 +2955,110 @@ private:
 };
 } // namespace
 
+bool isMaterializable(Instruction *I) {
+  bool IsMaterializableInstruction =
+      (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
+       isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<SelectInst>(I));
+
+  if (IsMaterializableInstruction)
+    return true;
+
+  CallBase *Call = dyn_cast<CallBase>(I);
+  if (!Call)
+    return false;
+
+  if (Call->getCalledFunction()->getName().starts_with(
+          "llvm.nvvm.read.ptx.sreg"))
+    return false;
+
+  MemoryEffects ME = Call->getMemoryEffects();
+  if (ME.doesNotAccessMemory())
+    return true;
+
+  // if (Call->hasFnAttr(Attribute::AttrKind::Speculatable))
+  //   return true;
+
+  return isSafeToSpeculativelyExecute(I);
+
+  return false;
+}
+
+void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
+                           FlowNetworkBuilder &FNBuilder) {
+  for (BasicBlock *B : breadth_first(SplitBlock)) {
+    for (Instruction &I : *B) {
+      for (Use &U : I.operands()) {
+        Instruction *UI = dyn_cast<Instruction>(U.get());
+        if (!UI)
+          continue;
+
+        // Type *Ty = UI->getType();
+        // if (Ty->isPointerTy() &&
+        //     Ty->getPointerAddressSpace() !=
+        //         static_cast<unsigned>(AddressSpace::Global))
+        //   continue;
+
+        constexpr int64_t InfEdgeWeight = 10000;
+        SetVector<std::pair<Value *, Instruction *>> Worklist;
+        Worklist.insert({UI, nullptr});
+
+        while (!Worklist.empty()) {
+          auto &&[Todo, Parent] = Worklist.pop_back_val();
+
+          Argument *Arg = dyn_cast<Argument>(Todo);
+          if (Arg && Parent) {
+            FNBuilder.addArgumentNode(Arg);
+            FNBuilder.addArgumentEdge(Arg, Parent, InfEdgeWeight);
+            FNBuilder.addSourceEdge(Arg, 1);
+            continue;
+          }
+
+          if (isa<Constant>(Todo))
+            continue;
+
+          Instruction *TodoInst = dyn_cast<Instruction>(Todo);
+          if (!TodoInst) {
+            llvm_unreachable("Unexpected llvm::Value subclass in worklist.");
+            continue;
+          }
+
+          if (!SCI.isDefinitionAcrossSuspend(*TodoInst, U.getUser()))
+            continue;
+
+          if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Todo)) {
+            if (Parent) {
+              FNBuilder.addAllocaNode(Alloca);
+              FNBuilder.addAllocaEdge(Alloca, Parent, InfEdgeWeight);
+              FNBuilder.addSourceEdge(Alloca, 1);
+            }
+            continue;
+          }
+
+          bool Added = FNBuilder.addInstructionNode(TodoInst, 1);
+
+          if (Parent) {
+            FNBuilder.addInstructionEdge(TodoInst, Parent, InfEdgeWeight);
+          } else {
+            FNBuilder.addSinkEdge(TodoInst, InfEdgeWeight);
+          }
+
+          if (!Added)
+            continue;
+
+          if (!isMaterializable(TodoInst)) {
+            FNBuilder.addSourceEdge(TodoInst, InfEdgeWeight);
+            continue;
+          }
+
+          for (Use &Op : TodoInst->operands()) {
+            Worklist.insert({Op, TodoInst});
+          }
+        }
+      }
+    }
+  }
+}
+
 Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
                                   unsigned NumSplits) {
   Function *Kernel = SplitInst->getFunction();
@@ -2871,7 +3126,11 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
   auto &Src = FNBuilder.createSource();
   auto &Sink = FNBuilder.createSink();
 
-  determineValuesAcross(AfterSplitBB, DT, FNBuilder);
+  SmallPtrSet<Instruction *, 4> Splits;
+  Splits.insert(SplitInst);
+  SuspendCrossingInfo SCI(*Kernel, Splits);
+
+  determineValuesAcross(AfterSplitBB, SCI, FNBuilder);
 
   auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
 
