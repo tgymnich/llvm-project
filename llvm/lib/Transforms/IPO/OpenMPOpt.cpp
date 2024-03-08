@@ -2596,7 +2596,7 @@ public:
     return Result;
   }
 
-  bool isDefinitionAcrossSuspend(BasicBlock *DefBB, User *U) const {
+  bool isDefinitionAcrossSplit(BasicBlock *DefBB, User *U) const {
     Instruction *I = cast<Instruction>(U);
 
     // We rewrote PHINodes, so that only the ones with exactly one incoming
@@ -2610,21 +2610,21 @@ public:
     return hasPathCrossingSuspendPoint(DefBB, UseBB);
   }
 
-  bool isDefinitionAcrossSuspend(Argument &A, User *U) const {
-    return isDefinitionAcrossSuspend(&A.getParent()->getEntryBlock(), U);
+  bool isDefinitionAcrossSplit(Argument &A, User *U) const {
+    return isDefinitionAcrossSplit(&A.getParent()->getEntryBlock(), U);
   }
 
-  bool isDefinitionAcrossSuspend(Instruction &I, User *U) const {
+  bool isDefinitionAcrossSplit(Instruction &I, User *U) const {
     BasicBlock *DefBB = I.getParent();
 
-    return isDefinitionAcrossSuspend(DefBB, U);
+    return isDefinitionAcrossSplit(DefBB, U);
   }
 
-  bool isDefinitionAcrossSuspend(Value &V, User *U) const {
+  bool isDefinitionAcrossSplit(Value &V, User *U) const {
     if (auto *Arg = dyn_cast<Argument>(&V))
-      return isDefinitionAcrossSuspend(*Arg, U);
+      return isDefinitionAcrossSplit(*Arg, U);
     if (auto *Inst = dyn_cast<Instruction>(&V))
-      return isDefinitionAcrossSuspend(*Inst, U);
+      return isDefinitionAcrossSplit(*Inst, U);
 
     llvm_unreachable(
         "Coroutine could only collect Argument and Instruction now.");
@@ -2637,6 +2637,7 @@ struct AllocaUseVisitor : PtrUseVisitor<AllocaUseVisitor> {
 
 private:
   const DominatorTree &DT;
+  const SuspendCrossingInfo &SCI;
   const Instruction &SplitInstruction;
   // All alias to the original AllocaInst, created before SplitInst and used
   // after SplitInst. Each entry contains the instruction and the offset in the
@@ -2655,8 +2656,9 @@ private:
 
 public:
   AllocaUseVisitor(const DataLayout &DL, const DominatorTree &DT,
-                   const Instruction &Split, bool ShouldUseLifetimeStartInfo)
-      : PtrUseVisitor(DL), DT(DT), SplitInstruction(Split),
+                   const SuspendCrossingInfo &SCI, const Instruction &Split,
+                   bool ShouldUseLifetimeStartInfo)
+      : PtrUseVisitor(DL), DT(DT), SCI(SCI), SplitInstruction(Split),
         ShouldUseLifetimeStartInfo(ShouldUseLifetimeStartInfo) {}
 
   void visit(Instruction &I) {
@@ -2810,21 +2812,21 @@ private:
     if (ShouldUseLifetimeStartInfo && !LifetimeStarts.empty()) {
       for (auto *I : Users)
         for (auto *S : LifetimeStarts)
-          if (isDefinitionAcrossSplit(*S, I))
+          if (SCI.isDefinitionAcrossSplit(*S, I))
             return true;
       // Addresses are guaranteed to be identical after every lifetime.start so
       // we cannot use the local stack if the address escaped and there is a
       // suspend point between lifetime markers. This should also cover the
       // case of a single lifetime.start intrinsic in a loop with suspend point.
-      // if (PI.isEscaped()) {
-      //   for (auto *A : LifetimeStarts) {
-      //     for (auto *B : LifetimeStarts) {
-      //       if (hasPathOrLoopCrossingSuspendPoint(A->getParent(),
-      //                                             B->getParent()))
-      //         return true;
-      //     }
-      //   }
-      // }
+      if (PI.isEscaped()) {
+        for (auto *A : LifetimeStarts) {
+          for (auto *B : LifetimeStarts) {
+            if (SCI.hasPathOrLoopCrossingSuspendPoint(A->getParent(),
+                                                  B->getParent()))
+              return true;
+          }
+        }
+      }
       return false;
     }
     // FIXME: Ideally the isEscaped check should come at the beginning.
@@ -2842,7 +2844,7 @@ private:
 
     for (auto *U1 : Users)
       for (auto *U2 : Users)
-        if (isDefinitionAcrossSplit(*U1, U2))
+        if (SCI.isDefinitionAcrossSplit(*U1, U2))
           return true;
 
     return false;
@@ -2879,46 +2881,6 @@ private:
         AliasOffetMap[&I].reset();
       }
     }
-  }
-
-  bool hasPathCrossingSplitPoint(BasicBlock *From, BasicBlock *To) const {
-    // Check if there is a path from From over Split to To.
-    // FIXME: Cache results / use better algorithm
-    const BasicBlock *SplitBB = SplitInstruction.getParent();
-
-    bool FromReachesSplit = is_contained(depth_first(From), SplitBB);
-
-    if (!FromReachesSplit)
-      return false;
-
-    bool SplitReachesTo = is_contained(depth_first(SplitBB), To);
-
-    return SplitReachesTo;
-  }
-
-  bool isDefinitionAcrossSplit(BasicBlock *DefBB, User *U) const {
-    auto *I = cast<Instruction>(U);
-    BasicBlock *UseBB = I->getParent();
-    return hasPathCrossingSplitPoint(DefBB, UseBB);
-  }
-
-  bool isDefinitionAcrossSplit(Argument &A, User *U) const {
-    return isDefinitionAcrossSplit(&A.getParent()->getEntryBlock(), U);
-  }
-
-  bool isDefinitionAcrossSplit(Instruction &I, User *U) const {
-    auto *DefBB = I.getParent();
-    return isDefinitionAcrossSplit(DefBB, U);
-  }
-
-  bool isDefinitionAcrossSplit(Value &V, User *U) const {
-    if (auto *Arg = dyn_cast<Argument>(&V))
-      return isDefinitionAcrossSplit(*Arg, U);
-    if (auto *Inst = dyn_cast<Instruction>(&V))
-      return isDefinitionAcrossSplit(*Inst, U);
-
-    llvm_unreachable("Only definitions of Type Argument or Instruction are "
-                     "supported for now.");
   }
 };
 } // namespace
@@ -3035,7 +2997,7 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
           if (isa<Constant>(Todo))
             continue;
 
-          if (!SCI.isDefinitionAcrossSuspend(*Todo, U.getUser()))
+          if (!SCI.isDefinitionAcrossSplit(*Todo, U.getUser()))
             continue;
 
           Argument *Arg = dyn_cast<Argument>(Todo);
@@ -3131,6 +3093,14 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
 
   rewritePHIs(*Kernel, &DT);
 
+  BasicBlock *AfterSplitBB = SplitInst->getParent();
+  BasicBlock *BeforeSplitBB = SplitBlock(AfterSplitBB, SplitInst->getNextNode(),
+                                         &DT, nullptr, nullptr, "", true);
+
+  SmallPtrSet<Instruction *, 4> Splits;
+  Splits.insert(SplitInst);
+  SuspendCrossingInfo SCI(*Kernel, Splits);
+
   // Find Instructions that require caching
   SetVector<AllocaInst *> RequiredAllocas;
   for (Instruction &I : instructions(Kernel)) {
@@ -3138,26 +3108,18 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
     if (!Alloca)
       continue;
 
-    AllocaUseVisitor Visitor(DL, DT, *SplitInst, true);
+    AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, true);
     Visitor.visitPtr(*Alloca);
 
     if (Visitor.getShouldRestoreAlloca() && Visitor.getMayWriteBeforeSplit())
       RequiredAllocas.insert(Alloca);
   }
 
-  BasicBlock *AfterSplitBB = SplitInst->getParent();
-  BasicBlock *BeforeSplitBB = SplitBlock(AfterSplitBB, SplitInst->getNextNode(),
-                                         &DT, nullptr, nullptr, "", true);
-
   FlowNetwork RematGraph;
   FlowNetworkBuilder FNBuilder(RematGraph);
 
   auto &Src = FNBuilder.createSource();
   auto &Sink = FNBuilder.createSink();
-
-  SmallPtrSet<Instruction *, 4> Splits;
-  Splits.insert(SplitInst);
-  SuspendCrossingInfo SCI(*Kernel, Splits);
 
   determineValuesAcross(AfterSplitBB, SCI, FNBuilder);
 
