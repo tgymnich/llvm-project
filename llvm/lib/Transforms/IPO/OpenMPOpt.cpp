@@ -3019,10 +3019,11 @@ static void cleanupSinglePredPHIs(Function &F) {
   }
 }
 
-static void rewritePHIs(BasicBlock &BB) {
+static void rewritePHIs(BasicBlock &BB, DominatorTree *DT = nullptr,
+                        LoopInfo *LI = nullptr) {
   SmallVector<BasicBlock *, 8> Preds(predecessors(&BB));
   for (BasicBlock *Pred : Preds) {
-    auto *IncomingBB = SplitEdge(Pred, &BB);
+    auto *IncomingBB = SplitEdge(Pred, &BB, DT, LI);
     IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
 
     // Stop the moving of values at ReplPHI, as this is either null or the PHI
@@ -3031,16 +3032,16 @@ static void rewritePHIs(BasicBlock &BB) {
   }
 }
 
-static void rewritePHIs(Function &F) {
+static void rewritePHIs(Function &F, DominatorTree *DT = nullptr,
+                        LoopInfo *LI = nullptr) {
   SmallVector<BasicBlock *, 8> WorkList;
-
   for (BasicBlock &BB : F)
     if (auto *PN = dyn_cast<PHINode>(&BB.front()))
       if (PN->getNumIncomingValues() > 1)
         WorkList.push_back(&BB);
 
   for (BasicBlock *BB : WorkList)
-    rewritePHIs(*BB);
+    rewritePHIs(*BB, DT, LI);
 }
 
 void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
@@ -3161,13 +3162,11 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
     }
   }
 
-  rewritePHIs(*Kernel);
-  assert(!verifyFunction(*Kernel, &errs()));
-
-  LoopInfo &LI = LIGetter(Kernel);
   DominatorTree &DT = DTGetter(Kernel);
-  DT.recalculate(*Kernel);
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Eager);
+
+  cleanupSinglePredPHIs(*Kernel);
+
+  rewritePHIs(*Kernel, &DT);
 
   // Find Instructions that require caching
   SetVector<AllocaInst *> RequiredAllocas;
@@ -3183,11 +3182,9 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
       RequiredAllocas.insert(Alloca);
   }
 
-  assert(DT.verify());
-  DTU.flush();
   BasicBlock *AfterSplitBB = SplitInst->getParent();
   BasicBlock *BeforeSplitBB = SplitBlock(AfterSplitBB, SplitInst->getNextNode(),
-                                         &DTU, &LI, nullptr, "", true);
+                                         &DT, nullptr, nullptr, "", true);
 
   FlowNetwork RematGraph;
   FlowNetworkBuilder FNBuilder(RematGraph);
@@ -3559,7 +3556,6 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
 
     remapInstructionsInBlocks({CacheRematBB}, RematVMap);
 
-    assert(DT.verify());
     SSAUpdate.RewriteAllUses(&DT);
   }
 
