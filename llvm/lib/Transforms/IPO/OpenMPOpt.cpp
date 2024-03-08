@@ -3019,9 +3019,6 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
         if (!UI)
           continue;
 
-        // if (UI->getNameOrAsOperand() == "%160")
-        //   __builtin_debugtrap();
-
         // Type *Ty = UI->getType();
         // if (Ty->isPointerTy() &&
         //     Ty->getPointerAddressSpace() !=
