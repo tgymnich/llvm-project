@@ -19,16 +19,13 @@
 #include "JIT.h"
 #include "Utils/ELF.h"
 #include "omptarget.h"
-#include "llvm/ADT/SmallVector.h"
-#include <iterator>
-#include <type_traits>
-#include <vector>
 
 #ifdef OMPT_SUPPORT
 #include "OpenMP/OMPT/Callback.h"
 #include "omp-tools.h"
 #endif
 
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/JSON.h"
@@ -522,10 +519,22 @@ GenericKernelTy::getKernelLaunchEnvironment(
   auto &LocalKLE = (*AsyncInfoWrapper).KernelLaunchEnvironment;
   LocalKLE = KernelLaunchEnvironment;
 
-  std::vector<void *> Caches(NumContinuations + 1);
-  for (unsigned i = 0; i < NumContinuations + 1; ++i) {
-    unsigned ContinuationCacheLength =
-        KernelEnvironment.Configuration.ContinuationCacheLength;
+  llvm::SmallVector<uint32_t, 8> CacheLengths(NumContinuations);
+
+  GlobalTy CacheLengthsGVs((getName() + "_cache_lengths").str(),
+                           sizeof(uint32_t) * NumContinuations,
+                           CacheLengths.data());
+
+  GenericGlobalHandlerTy &GHandler = Plugin::get().getGlobalHandler();
+  if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, *ImagePtr,
+                                               CacheLengthsGVs)) {
+    report_fatal_error("Error retrieving data for target pointer");
+  }
+
+  SmallVector<void *, 16> Caches(NumContinuations * 2);
+
+  for (unsigned i = 0; i < NumContinuations * 2; ++i) {
+    unsigned ContinuationCacheLength = CacheLengths[i % NumContinuations];
 
     // FIXME: This could be one large allocation.
     auto CacheAllocOrErr = GenericDevice.dataAlloc(
@@ -540,8 +549,10 @@ GenericKernelTy::getKernelLaunchEnvironment(
   }
 
   if (hasContinuations) {
+
+    // Caches
     auto CacheAllocOrErr = GenericDevice.dataAlloc(
-        sizeof(void *) * (NumContinuations + 1),
+        sizeof(void *) * (NumContinuations * 2),
         /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
     if (!CacheAllocOrErr)
       return CacheAllocOrErr.takeError();
@@ -554,20 +565,21 @@ GenericKernelTy::getKernelLaunchEnvironment(
          "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
          ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCaches\n",
          DPxPTR(Caches.data()), DPxPTR(*CacheAllocOrErr),
-         sizeof(void*) * (NumContinuations + 1));
+         sizeof(void *) * (NumContinuations * 2));
 
     if (auto Err = GenericDevice.dataSubmit(
             *CacheAllocOrErr, Caches.data(),
-            sizeof(void *) * (NumContinuations + 1), AsyncInfoWrapper))
+            sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
       return Err;
 
+    // Counters
     auto CounterAllocOrErr = GenericDevice.dataAlloc(
         sizeof(uint32_t) * (NumContinuations + 1),
         /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
     if (!CounterAllocOrErr)
       return CounterAllocOrErr.takeError();
 
-    std::vector<uint32_t> Zeros(NumContinuations + 1, 0);
+    llvm::SmallVector<uint32_t, 9> Zeros(NumContinuations + 1, 0);
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
          "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
@@ -672,8 +684,9 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
   if (!NumContinuations)
     return Plugin::success();
 
-  std::vector<uint32_t> ContinuationCntBuffer(NumContinuations + 1);
-  std::vector<void *> ContinuationCachePtrBuffer(NumContinuations + 1);
+  llvm::SmallVector<uint32_t, 9> ContinuationCntBuffer(NumContinuations + 1);
+  llvm::SmallVector<void *, 16> ContinuationCachePtrBuffer(NumContinuations *
+                                                           2);
   KernelLaunchEnvironmentTy KernelLaunchEnv;
 
   while (true) {
@@ -710,13 +723,13 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
     if (auto Err = GenericDevice.dataRetrieve(
             ContinuationCachePtrBuffer.data(),
             KernelLaunchEnv.ContinuationCacheBuffer,
-            sizeof(void *) * (NumContinuations + 1), AsyncInfoWrapper))
+            sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
       return Err;
 
     ContinuationCntBuffer[NumContinuations] = ContinuationCntBuffer[Idx];
     ContinuationCntBuffer[Idx] = 0;
 
-    std::swap(ContinuationCachePtrBuffer[NumContinuations],
+    std::swap(ContinuationCachePtrBuffer[NumContinuations + Idx],
               ContinuationCachePtrBuffer[Idx]);
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
@@ -724,12 +737,12 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
          ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCaches\n",
          DPxPTR(ContinuationCachePtrBuffer.data()),
          DPxPTR(KernelLaunchEnv.ContinuationCacheBuffer),
-         sizeof(void *) * (NumContinuations + 1));
+         sizeof(void *) * (NumContinuations * 2));
 
     if (auto Err = GenericDevice.dataSubmit(
             KernelLaunchEnv.ContinuationCacheBuffer,
             ContinuationCachePtrBuffer.data(),
-            sizeof(void *) * (NumContinuations + 1), AsyncInfoWrapper))
+            sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
       return Err;
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
