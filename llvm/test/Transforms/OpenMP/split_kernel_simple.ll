@@ -5,9 +5,9 @@ target datalayout = "e-i64:64-i128:128-v16:16-v32:32-n16:32:64"
 target triple = "nvptx64-nvidia-cuda"
 
 %struct.KernelEnvironmentTy = type { %struct.ConfigurationEnvironmentTy, ptr, ptr }
-%struct.ConfigurationEnvironmentTy = type { i8, i8, i8, i32, i32, i32, i32, i32, i32, i32, i32 }
+%struct.ConfigurationEnvironmentTy = type { i8, i8, i8, i32, i32, i32, i32, i32, i32, i32, ptr }
 
-@__omp_offloading_test_kernel_environment = weak_odr protected local_unnamed_addr constant %struct.KernelEnvironmentTy { %struct.ConfigurationEnvironmentTy { i8 0, i8 0, i8 2, i32 1, i32 512, i32 1, i32 1, i32 0, i32 0, i32 0, i32 0 }, ptr null, ptr null }
+@__omp_offloading_test_kernel_environment = weak_odr protected local_unnamed_addr constant %struct.KernelEnvironmentTy { %struct.ConfigurationEnvironmentTy { i8 0, i8 0, i8 2, i32 1, i32 512, i32 1, i32 1, i32 0, i32 0, i32 1, ptr null }, ptr null, ptr null }
 
 declare noundef i32 @llvm.nvvm.read.ptx.sreg.tid.x() #0
 
@@ -104,7 +104,7 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:    [[I7:%.*]] = add nsw i32 [[I6]], [[I]]
 ; CHECK-NEXT:    [[I8:%.*]] = srem i32 [[I7]], 6
 ; CHECK-NEXT:    [[I9:%.*]] = icmp eq i32 [[I8]], 0
-; CHECK-NEXT:    br i1 [[I9]], label [[CACHESTORE:%.*]], label [[BB1:%.*]]
+; CHECK-NEXT:    br i1 [[I9]], label [[CACHESTORE0:%.*]], label [[BB1:%.*]]
 ; CHECK:       bb1:
 ; CHECK-NEXT:    [[I11:%.*]] = sext i32 [[I7]] to i64
 ; CHECK-NEXT:    [[I12:%.*]] = getelementptr inbounds double, ptr [[ARG1]], i64 [[I11]]
@@ -112,7 +112,7 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:    [[I14:%.*]] = tail call double @llvm.fmuladd.f64(double [[I13]], double [[I13]], double 2.000000e+00)
 ; CHECK-NEXT:    store double [[I14]], ptr [[I12]], align 8
 ; CHECK-NEXT:    ret void
-; CHECK:       CacheStore:
+; CHECK:       CacheStore0:
 ; CHECK-NEXT:    [[TMP0:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[ARG]], i32 0, i32 3
 ; CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[TMP0]], align 8
 ; CHECK-NEXT:    [[CONTCOUNT_PTR:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i32 0
@@ -121,8 +121,8 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[TMP2]], align 8
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds ptr, ptr [[TMP3]], i32 0
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
-; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
-; CHECK-NEXT:    [[I7_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL]], i32 0, i32 0
+; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
+; CHECK-NEXT:    [[I7_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
 ; CHECK-NEXT:    store i32 [[I7]], ptr [[I7_CACHEIDX]], align 4
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
@@ -141,14 +141,14 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:    [[CONTCOUNT_IN_PTR:%.*]] = getelementptr inbounds i32, ptr [[TMP5]], i32 1
 ; CHECK-NEXT:    [[CONTCOUNT_IN:%.*]] = load i32, ptr [[CONTCOUNT_IN_PTR]], align 4
 ; CHECK-NEXT:    [[MASKTHREAD:%.*]] = icmp ult i32 [[GTID]], [[CONTCOUNT_IN]]
-; CHECK-NEXT:    br i1 [[MASKTHREAD]], label [[CACHEREMAT:%.*]], label [[THREADEXIT:%.*]]
-; CHECK:       CacheRemat:
+; CHECK-NEXT:    br i1 [[MASKTHREAD]], label [[CACHEREMAT0:%.*]], label [[THREADEXIT:%.*]]
+; CHECK:       CacheRemat0:
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ARG]], i32 0, i32 4
 ; CHECK-NEXT:    [[TMP7:%.*]] = load ptr, ptr [[TMP6]], align 8
 ; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds ptr, ptr [[TMP7]], i32 1
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
-; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[I7_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL1]], i32 0, i32 0
+; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
+; CHECK-NEXT:    [[I7_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
 ; CHECK-NEXT:    [[I7_CACHE:%.*]] = load i32, ptr [[I7_CACHEIDX2]], align 4
 ; CHECK-NEXT:    [[I16:%.*]] = sext i32 [[I7_CACHE]] to i64
 ; CHECK-NEXT:    [[I17:%.*]] = getelementptr inbounds double, ptr [[ARG1]], i64 [[I16]]

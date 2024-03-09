@@ -286,7 +286,8 @@ struct GenericKernelTy {
   /// Return a device pointer to a new kernel launch environment.
   Expected<KernelLaunchEnvironmentTy *>
   getKernelLaunchEnvironment(GenericDeviceTy &GenericDevice, uint32_t Version,
-                             AsyncInfoWrapperTy &AsyncInfo, uint32_t NumThreads, uint64_t NumBlocks) const;
+                             AsyncInfoWrapperTy &AsyncInfo, uint32_t NumThreads,
+                             uint64_t NumBlocks) const;
 
   /// Indicate whether an execution mode is valid.
   static bool isValidExecutionMode(OMPTgtExecModeFlags ExecutionMode) {
@@ -378,7 +379,7 @@ protected:
   /// The prototype kernel launch environment.
   KernelLaunchEnvironmentTy KernelLaunchEnvironment;
 
-  llvm::SmallVector<GenericKernelTy*> Continuations;
+  llvm::SmallVector<GenericKernelTy *> Continuations;
 
   llvm::SmallVector<std::string> ContinuationNames;
 
@@ -865,8 +866,7 @@ struct GenericDeviceTy : public DeviceAllocatorTy {
   virtual bool useAutoZeroCopyImpl() { return false; }
 
   /// Allocate and construct a kernel object.
-  virtual Expected<GenericKernelTy &>
-  constructKernel(llvm::StringRef Name) = 0;
+  virtual Expected<GenericKernelTy &> constructKernel(llvm::StringRef Name) = 0;
 
   /// Reference to the underlying plugin that created this device.
   GenericPluginTy &Plugin;

@@ -5,10 +5,10 @@ target triple = "nvptx64"
 
 %struct.ident_t = type { i32, i32, i32, i32, ptr }
 %struct.KernelEnvironmentTy = type { %struct.ConfigurationEnvironmentTy, ptr, ptr }
-%struct.ConfigurationEnvironmentTy = type { i8, i8, i8, i32, i32, i32, i32, i32, i32, i32, i32 }
+%struct.ConfigurationEnvironmentTy = type { i8, i8, i8, i32, i32, i32, i32, i32, i32, i32, ptr }
 %struct.KernelLaunchEnvironmentTy = type { i32, i32, ptr, i32 }
 
-@test_kernel_environment = weak_odr protected local_unnamed_addr constant %struct.KernelEnvironmentTy { %struct.ConfigurationEnvironmentTy { i8 0, i8 0, i8 2, i32 1, i32 512, i32 1, i32 1, i32 1, i32 0, i32 0, i32 0 }, ptr null, ptr null }
+@test_kernel_environment = weak_odr protected local_unnamed_addr constant %struct.KernelEnvironmentTy { %struct.ConfigurationEnvironmentTy { i8 0, i8 0, i8 2, i32 1, i32 512, i32 1, i32 1, i32 0, i32 0, i32 1, ptr null }, ptr null, ptr null }
 
 declare i1 @__ompx_split()
 
@@ -49,8 +49,8 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[TID:%.*]] = load i64, ptr [[TID_ADDR]], align 8
 ; CHECK-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds double, ptr [[PTR]], i64 [[TID]]
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i64 0, [[TID]]
-; CHECK-NEXT:    br i1 [[CMP]], label [[CACHESTORE:%.*]], label [[END:%.*]]
-; CHECK:       CacheStore:
+; CHECK-NEXT:    br i1 [[CMP]], label [[CACHESTORE0:%.*]], label [[END:%.*]]
+; CHECK:       CacheStore0:
 ; CHECK-NEXT:    [[TMP0:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
 ; CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[TMP0]], align 8
 ; CHECK-NEXT:    [[CONTCOUNT_PTR:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i32 0
@@ -59,8 +59,8 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[TMP2]], align 8
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds ptr, ptr [[TMP3]], i32 0
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
-; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
-; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL]], i32 0, i32 0
+; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
+; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
 ; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[ARRAYIDX_CACHEIDX]], align 8
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
@@ -85,14 +85,14 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[CONTCOUNT_IN_PTR:%.*]] = getelementptr inbounds i32, ptr [[TMP5]], i32 1
 ; CHECK-NEXT:    [[CONTCOUNT_IN:%.*]] = load i32, ptr [[CONTCOUNT_IN_PTR]], align 4
 ; CHECK-NEXT:    [[MASKTHREAD:%.*]] = icmp ult i32 [[GTID]], [[CONTCOUNT_IN]]
-; CHECK-NEXT:    br i1 [[MASKTHREAD]], label [[CACHEREMAT:%.*]], label [[THREADEXIT:%.*]]
-; CHECK:       CacheRemat:
+; CHECK-NEXT:    br i1 [[MASKTHREAD]], label [[CACHEREMAT0:%.*]], label [[THREADEXIT:%.*]]
+; CHECK:       CacheRemat0:
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 4
 ; CHECK-NEXT:    [[TMP7:%.*]] = load ptr, ptr [[TMP6]], align 8
 ; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds ptr, ptr [[TMP7]], i32 1
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
-; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL]], ptr [[CACHECELL1]], i32 0, i32 0
+; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
+; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
 ; CHECK-NEXT:    [[ARRAYIDX_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX_CACHEIDX2]], align 8
 ; CHECK-NEXT:    [[VAL1:%.*]] = load double, ptr [[ARRAYIDX_CACHE]], align 8
 ; CHECK-NEXT:    [[ADD:%.*]] = fadd double [[VAL1]], 2.000000e+00

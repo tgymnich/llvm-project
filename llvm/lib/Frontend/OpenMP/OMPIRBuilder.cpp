@@ -3901,16 +3901,16 @@ static int32_t computeHeuristicUnrollFactor(CanonicalLoopInfo *CLI) {
   Loop *L = LI.getLoopFor(CLI->getHeader());
   assert(L && "Expecting CanonicalLoopInfo to be recognized as a loop");
 
-  TargetTransformInfo::UnrollingPreferences UP =
-      gatherUnrollingPreferences(L, SE, TTI,
-                                 /*BlockFrequencyInfo=*/nullptr,
-                                 /*ProfileSummaryInfo=*/nullptr, ORE, static_cast<int>(OptLevel),
-                                 /*UserThreshold=*/std::nullopt,
-                                 /*UserCount=*/std::nullopt,
-                                 /*UserAllowPartial=*/true,
-                                 /*UserAllowRuntime=*/true,
-                                 /*UserUpperBound=*/std::nullopt,
-                                 /*UserFullUnrollMaxCount=*/std::nullopt);
+  TargetTransformInfo::UnrollingPreferences UP = gatherUnrollingPreferences(
+      L, SE, TTI,
+      /*BlockFrequencyInfo=*/nullptr,
+      /*ProfileSummaryInfo=*/nullptr, ORE, static_cast<int>(OptLevel),
+      /*UserThreshold=*/std::nullopt,
+      /*UserCount=*/std::nullopt,
+      /*UserAllowPartial=*/true,
+      /*UserAllowRuntime=*/true,
+      /*UserUpperBound=*/std::nullopt,
+      /*UserFullUnrollMaxCount=*/std::nullopt);
 
   UP.Force = true;
 
@@ -4593,10 +4593,10 @@ OpenMPIRBuilder::createTargetInit(const LocationDescription &Loc, bool IsSPMD,
   Constant *MaxThreads = ConstantInt::getSigned(Int32, MaxThreadsVal);
   Constant *MinTeams = ConstantInt::getSigned(Int32, MinTeamsVal);
   Constant *MaxTeams = ConstantInt::getSigned(Int32, MaxTeamsVal);
-  Constant *NumContinuations = ConstantInt::get(Int32, 0);
-  Constant *ContinuationCacheLength = ConstantInt::get(Int32, 0);
   Constant *ReductionDataSize = ConstantInt::getSigned(Int32, 0);
   Constant *ReductionBufferLength = ConstantInt::getSigned(Int32, 0);
+  Constant *NumContinuations = ConstantInt::get(Int32, 0);
+  Constant *ContinuationCacheLengths = Constant::getNullValue(Int32Ptr);
 
   // We need to strip the debug prefix to get the correct kernel name.
   StringRef KernelName = Kernel->getName();
@@ -4633,10 +4633,10 @@ OpenMPIRBuilder::createTargetInit(const LocationDescription &Loc, bool IsSPMD,
                                     MaxThreads,
                                     MinTeams,
                                     MaxTeams,
-                                    NumContinuations,
-                                    ContinuationCacheLength,
                                     ReductionDataSize,
                                     ReductionBufferLength,
+                                    NumContinuations,
+                                    ContinuationCacheLengths,
                                 });
   Constant *KernelEnvironmentInitializer = ConstantStruct::get(
       KernelEnvironment, {
