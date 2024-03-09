@@ -2086,7 +2086,7 @@ struct AMDGPUDeviceTy : public GenericDeviceTy, AMDGenericDeviceTy {
   uint64_t getClockFrequency() const override { return ClockFrequency; }
 
   /// Allocate and construct an AMDGPU kernel.
-  Expected<GenericKernelTy &> constructKernel(llvm::StringRef Name) override {
+  Expected<GenericKernelTy &> constructKernel(StringRef Name) override {
     // Allocate and construct the AMDGPU kernel.
     AMDGPUKernelTy *AMDGPUKernel = Plugin::get().allocate<AMDGPUKernelTy>();
     if (!AMDGPUKernel)

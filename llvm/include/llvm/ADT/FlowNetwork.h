@@ -446,6 +446,28 @@ public:
     EdgeType *Edge = new EdgeType(*DstNode, Capacity);
     FN.connect(*SrcNode, *DstNode, *Edge);
   }
+
+  void addSinkEdge(Argument *Src, WeightType Capacity) {
+    auto *SrcIt = find_if(FN.Nodes, [Src](NodeType *N) {
+      return N->isArgument() && N->getArgument() == Src;
+    });
+    auto *DstIt = find_if(FN.Nodes, [](NodeType *N) { return N->isSink(); });
+
+    NodeType *SrcNode = SrcIt != FN.Nodes.end() ? *SrcIt : new NodeType(Src);
+    NodeType *DstNode = DstIt != FN.Nodes.end() ? *DstIt : new NodeType(NodeType::Sink());
+
+    if (SrcIt == FN.Nodes.end())
+      FN.Nodes.push_back(SrcNode);
+
+    if (DstIt == FN.Nodes.end())
+      FN.Nodes.push_back(DstNode);
+
+    if (SrcNode->hasEdgeTo(*DstNode))
+      return;
+
+    EdgeType *Edge = new EdgeType(*DstNode, Capacity);
+    FN.connect(*SrcNode, *DstNode, *Edge);
+  }
 };
 
 inline raw_ostream &operator<<(raw_ostream &OS, const FlowNetwork &G) {
