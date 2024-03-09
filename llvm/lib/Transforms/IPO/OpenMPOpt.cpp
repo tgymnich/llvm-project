@@ -18,10 +18,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/DinicMaxFlow.h"
 #include "llvm/ADT/EnumeratedArray.h"
 #include "llvm/ADT/FlowNetwork.h"
@@ -37,7 +37,6 @@
 #include "llvm/ADT/iterator.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
-#include "llvm/Analysis/DomTreeUpdater.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/MemorySSAUpdater.h"
@@ -77,6 +76,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Type.h"
+#include "llvm/IR/Use.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
@@ -1055,8 +1055,6 @@ struct OpenMPOpt {
 
     LLVM_DEBUG(dbgs() << TAG << "Run on SCC with " << SCC.size()
                       << " functions\n");
-
-    // maybe split here
 
     if (IsModulePass) {
       Changed |= runAttributor(IsModulePass);
@@ -2096,11 +2094,11 @@ private:
 
   bool splitKernels();
 
-  Function *splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
-                         unsigned NumSplits);
+  Function *rematerializeValuesAcrossSplit(Instruction *SplitInst,
+                                           unsigned SplitIndex,
+                                           unsigned NumSplits);
 
-  Function *splitKernel2(Instruction *SplitInst, unsigned SplitIndex,
-                         unsigned NumSplits);
+  void splitKernel(Function *Kernel, ArrayRef<Use *> Splits);
   ///
   ///}}
 
@@ -2376,34 +2374,118 @@ bool OpenMPOpt::rewriteDeviceCodeStateMachine() {
   return Changed;
 }
 
+// Moves the values in the PHIs in SuccBB that correspong to PredBB into a new
+// PHI in InsertedBB.
+static void movePHIValuesToInsertedBlock(BasicBlock *SuccBB,
+                                         BasicBlock *InsertedBB,
+                                         BasicBlock *PredBB,
+                                         PHINode *UntilPHI = nullptr) {
+  auto *PN = cast<PHINode>(&SuccBB->front());
+  do {
+    int Index = PN->getBasicBlockIndex(InsertedBB);
+    Value *V = PN->getIncomingValue(Index);
+    PHINode *InputV = PHINode::Create(
+        V->getType(), 1, V->getName() + Twine(".") + SuccBB->getName());
+    InputV->insertBefore(InsertedBB->begin());
+    InputV->addIncoming(V, PredBB);
+    PN->setIncomingValue(Index, InputV);
+    PN = dyn_cast<PHINode>(PN->getNextNode());
+  } while (PN != UntilPHI);
+}
+
+static void cleanupSinglePredPHIs(Function &F) {
+  SmallVector<PHINode *, 32> Worklist;
+  for (auto &BB : F) {
+    for (auto &Phi : BB.phis()) {
+      if (Phi.getNumIncomingValues() == 1) {
+        Worklist.push_back(&Phi);
+      } else
+        break;
+    }
+  }
+  while (!Worklist.empty()) {
+    auto *Phi = Worklist.pop_back_val();
+    auto *OriginalValue = Phi->getIncomingValue(0);
+    Phi->replaceAllUsesWith(OriginalValue);
+  }
+}
+
+static void rewritePHIs(BasicBlock &BB, DominatorTree *DT = nullptr,
+                        LoopInfo *LI = nullptr) {
+  SmallVector<BasicBlock *, 8> Preds(predecessors(&BB));
+  for (BasicBlock *Pred : Preds) {
+    auto *IncomingBB = SplitEdge(Pred, &BB, DT, LI);
+    IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
+
+    movePHIValuesToInsertedBlock(&BB, IncomingBB, Pred);
+  }
+}
+
+static void rewritePHIs(Function &F, DominatorTree *DT = nullptr,
+                        LoopInfo *LI = nullptr) {
+  SmallVector<BasicBlock *, 8> WorkList;
+  for (BasicBlock &BB : F)
+    if (auto *PN = dyn_cast<PHINode>(&BB.front()))
+      if (PN->getNumIncomingValues() > 1)
+        WorkList.push_back(&BB);
+
+  for (BasicBlock *BB : WorkList)
+    rewritePHIs(*BB, DT, LI);
+}
+
+static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
+  // Move all ptx register reads to the beginning of the Kernel, so that they
+  // will be cached
+  DenseMap<Function *, CallInst *> MovedCalls;
+
+  for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
+    CallInst *Call = dyn_cast<CallInst>(&I);
+    if (!Call)
+      continue;
+
+    Function *Callee = Call->getCalledFunction();
+
+    if (!Callee)
+      continue;
+
+    if (!Callee->getName().starts_with("llvm.nvvm.read.ptx.sreg."))
+      continue;
+
+    auto It = MovedCalls.find(Callee);
+    if (It != MovedCalls.end()) {
+      Call->replaceAllUsesWith(It->getSecond());
+      Call->eraseFromParent();
+    } else {
+      Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+      MovedCalls[Callee] = Call;
+    }
+  }
+}
+
 bool OpenMPOpt::splitKernels() {
   bool Changed = false;
-  OMPInformationCache::RuntimeFunctionInfo &RFI =
-      OMPInfoCache.RFIs[OMPRTL___ompx_split];
+  auto &RFI = OMPInfoCache.RFIs[OMPRTL___ompx_split];
 
   for (auto &&[Kernel, UseVec] : RFI) {
 
     if (!isOpenMPKernel(*Kernel))
       continue;
 
-    for (auto &&[Idx, Use] : enumerate(*UseVec)) {
-      CallInst *SplitInst = dyn_cast<CallInst>(Use->getUser());
-      if (!SplitInst)
-        continue;
+    DominatorTree &DT = DTGetter(Kernel);
 
-      splitKernel1(SplitInst, Idx, UseVec->size());
+    movePTXRegisterReadsIntoEntry(Kernel);
+
+    cleanupSinglePredPHIs(*Kernel);
+
+    rewritePHIs(*Kernel, &DT);
+
+    for (auto &&[Idx, Use] : enumerate(*UseVec)) {
+      CallInst *SplitInst = cast<CallInst>(Use->getUser());
+      rematerializeValuesAcrossSplit(SplitInst, Idx, UseVec->size());
     }
 
-    for (auto &&[Idx, Use] : enumerate(*UseVec)) {
-      CallInst *SplitInst = dyn_cast<CallInst>(Use->getUser());
-      if (!SplitInst)
-        continue;
-
-      Function *SplitKernel = splitKernel2(SplitInst, Idx, UseVec->size());
-
-      if (SplitKernel)
-        Changed = true;
-    }
+    splitKernel(Kernel, *UseVec);
+    Changed = true;
   }
 
   return Changed;
@@ -2448,8 +2530,7 @@ class SuspendCrossingInfo {
   SmallVector<BlockData> Block;
 
 public:
-  SuspendCrossingInfo(Function &F, SmallPtrSetImpl<Instruction *> &SplitPoints)
-      : Mapping(F) {
+  SuspendCrossingInfo(Function &F, Instruction *SI) : Mapping(F) {
     size_t N = Mapping.size();
     Block.resize(N);
 
@@ -2464,12 +2545,10 @@ public:
 
     // Mark all suspend blocks and indicate that they kill everything they
     // consume.
-    for (auto *SI : SplitPoints) {
-      BasicBlock *SuspendBlock = SI->getParent();
-      auto &B = getBlockData(SuspendBlock);
-      B.Suspend = true;
-      B.Kills |= B.Consumes;
-    }
+    BasicBlock *SuspendBlock = SI->getParent();
+    auto &B = getBlockData(SuspendBlock);
+    B.Suspend = true;
+    B.Kills |= B.Consumes;
 
     // It is considered to be faster to use RPO traversal for forward-edges
     // dataflow analysis.
@@ -2822,7 +2901,7 @@ private:
         for (auto *A : LifetimeStarts) {
           for (auto *B : LifetimeStarts) {
             if (SCI.hasPathOrLoopCrossingSuspendPoint(A->getParent(),
-                                                  B->getParent()))
+                                                      B->getParent()))
               return true;
           }
         }
@@ -2913,65 +2992,6 @@ bool isMaterializable(Instruction *I) {
   return false;
 }
 
-// Moves the values in the PHIs in SuccBB that correspong to PredBB into a new
-// PHI in InsertedBB.
-static void movePHIValuesToInsertedBlock(BasicBlock *SuccBB,
-                                         BasicBlock *InsertedBB,
-                                         BasicBlock *PredBB,
-                                         PHINode *UntilPHI = nullptr) {
-  auto *PN = cast<PHINode>(&SuccBB->front());
-  do {
-    int Index = PN->getBasicBlockIndex(InsertedBB);
-    Value *V = PN->getIncomingValue(Index);
-    PHINode *InputV = PHINode::Create(
-        V->getType(), 1, V->getName() + Twine(".") + SuccBB->getName());
-    InputV->insertBefore(InsertedBB->begin());
-    InputV->addIncoming(V, PredBB);
-    PN->setIncomingValue(Index, InputV);
-    PN = dyn_cast<PHINode>(PN->getNextNode());
-  } while (PN != UntilPHI);
-}
-
-static void cleanupSinglePredPHIs(Function &F) {
-  SmallVector<PHINode *, 32> Worklist;
-  for (auto &BB : F) {
-    for (auto &Phi : BB.phis()) {
-      if (Phi.getNumIncomingValues() == 1) {
-        Worklist.push_back(&Phi);
-      } else
-        break;
-    }
-  }
-  while (!Worklist.empty()) {
-    auto *Phi = Worklist.pop_back_val();
-    auto *OriginalValue = Phi->getIncomingValue(0);
-    Phi->replaceAllUsesWith(OriginalValue);
-  }
-}
-
-static void rewritePHIs(BasicBlock &BB, DominatorTree *DT = nullptr,
-                        LoopInfo *LI = nullptr) {
-  SmallVector<BasicBlock *, 8> Preds(predecessors(&BB));
-  for (BasicBlock *Pred : Preds) {
-    auto *IncomingBB = SplitEdge(Pred, &BB, DT, LI);
-    IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
-
-    movePHIValuesToInsertedBlock(&BB, IncomingBB, Pred);
-  }
-}
-
-static void rewritePHIs(Function &F, DominatorTree *DT = nullptr,
-                        LoopInfo *LI = nullptr) {
-  SmallVector<BasicBlock *, 8> WorkList;
-  for (BasicBlock &BB : F)
-    if (auto *PN = dyn_cast<PHINode>(&BB.front()))
-      if (PN->getNumIncomingValues() > 1)
-        WorkList.push_back(&BB);
-
-  for (BasicBlock *BB : WorkList)
-    rewritePHIs(*BB, DT, LI);
-}
-
 void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
                            FlowNetworkBuilder &FNBuilder) {
   for (BasicBlock *B : breadth_first(SplitBlock)) {
@@ -3048,58 +3068,23 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
   }
 }
 
-Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
-                                  unsigned NumSplits) {
+Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
+                                                    unsigned SplitIndex,
+                                                    unsigned NumSplits) {
   Function *Kernel = SplitInst->getFunction();
   LLVMContext &C = M.getContext();
   IRBuilder<> Builder(Kernel->getEntryBlock().getTerminator());
   const DataLayout &DL = M.getDataLayout();
 
-  ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
-
-  // TODO: verify that this kernel is actually splitable at the given Split
-  // instruction
-
-  // Move all ptx register reads to the beginning of the Kernel, so that they
-  // will be cached
-  DenseMap<Function *, CallInst *> MovedCalls;
-
-  for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
-    CallInst *Call = dyn_cast<CallInst>(&I);
-    if (!Call)
-      continue;
-
-    Function *Callee = Call->getCalledFunction();
-
-    if (!Callee)
-      continue;
-
-    if (Callee->getName().starts_with("llvm.nvvm.read.ptx.sreg.")) {
-      auto It = MovedCalls.find(Callee);
-      if (It != MovedCalls.end()) {
-        Call->replaceAllUsesWith(It->getSecond());
-        Call->eraseFromParent();
-      } else {
-        Call->moveBefore(
-            &*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
-        MovedCalls[Callee] = Call;
-      }
-    }
-  }
-
   DominatorTree &DT = DTGetter(Kernel);
 
-  cleanupSinglePredPHIs(*Kernel);
-
-  rewritePHIs(*Kernel, &DT);
+  ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
 
   BasicBlock *AfterSplitBB = SplitInst->getParent();
   BasicBlock *BeforeSplitBB = SplitBlock(AfterSplitBB, SplitInst->getNextNode(),
                                          &DT, nullptr, nullptr, "", true);
 
-  SmallPtrSet<Instruction *, 4> Splits;
-  Splits.insert(SplitInst);
-  SuspendCrossingInfo SCI(*Kernel, Splits);
+  SuspendCrossingInfo SCI(*Kernel, SplitInst);
 
   // Find Instructions that require caching
   SetVector<AllocaInst *> RequiredAllocas;
@@ -3492,65 +3477,69 @@ Function *OpenMPOpt::splitKernel1(Instruction *SplitInst, unsigned SplitIndex,
   return Kernel;
 }
 
-Function *OpenMPOpt::splitKernel2(Instruction *SplitInst, unsigned SplitIndex,
-                                  unsigned NumSplits) {
+void OpenMPOpt::splitKernel(Function *Kernel, ArrayRef<Use *> Splits) {
   LLVMContext &C = M.getContext();
-  Function *Kernel = SplitInst->getFunction();
-  BasicBlock *SplitBB = SplitInst->getParent();
-  Instruction *Term = SplitBB->getTerminator();
-  BasicBlock *CacheEntryBB = Term->getSuccessor(0);
-
   ConstantInt *False = ConstantInt::getFalse(C);
 
-  SplitInst->replaceAllUsesWith(False);
-  SplitInst->eraseFromParent();
-
-  ConstantFoldTerminator(SplitBB);
-
-  ValueToValueMapTy VMap;
-  Function *SplitKernel = CloneFunction(Kernel, VMap);
-  SplitKernel->setName(Kernel->getName() + "_contd_" + Twine(SplitIndex));
-
-  BasicBlock *SplitCacheEntryBB = cast<BasicBlock>(VMap[CacheEntryBB]);
-  BasicBlock &OldEntry = SplitKernel->getEntryBlock();
-  SplitCacheEntryBB->moveBefore(&OldEntry);
-  SplitCacheEntryBB->takeName(&OldEntry);
-
-  // Get "nvvm.annotations" metadata node.
   NamedMDNode *MD = M.getOrInsertNamedMetadata("nvvm.annotations");
-  Metadata *MDVals[] = {
-      ConstantAsMetadata::get(SplitKernel), MDString::get(C, "kernel"),
-      ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(C), 1))};
-
-  // Append metadata to nvvm.annotations.
-  MD->addOperand(MDNode::get(C, MDVals));
-
-  // Clone omp globals
   GlobalVariable *ExecMode =
       M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
-
-  if (ExecMode)
-    new GlobalVariable(M, ExecMode->getValueType(), ExecMode->isConstant(),
-                       ExecMode->getLinkage(), ExecMode->getInitializer(),
-                       SplitKernel->getName() + "_exec_mode", nullptr,
-                       ExecMode->getThreadLocalMode(),
-                       ExecMode->getAddressSpace());
-
   GlobalVariable *NestedParallelism =
       M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());
 
-  if (NestedParallelism)
-    new GlobalVariable(
-        M, NestedParallelism->getValueType(), NestedParallelism->isConstant(),
-        NestedParallelism->getLinkage(), NestedParallelism->getInitializer(),
-        SplitKernel->getName() + "_nested_parallelism", nullptr,
-        NestedParallelism->getThreadLocalMode(),
-        NestedParallelism->getAddressSpace());
+  SmallVector<BasicBlock *, 4> CacheEntryBBs;
+
+  for (Use *U : Splits) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+    BasicBlock *SplitBB = SplitInst->getParent();
+    Instruction *Term = SplitBB->getTerminator();
+    BasicBlock *CacheEntryBB = Term->getSuccessor(0);
+
+    SplitInst->replaceAllUsesWith(False);
+    SplitInst->eraseFromParent();
+    ConstantFoldTerminator(SplitBB);
+
+    CacheEntryBBs.push_back(CacheEntryBB);
+  }
+
+  for (auto &&[Idx, CacheEntryBB] : enumerate(CacheEntryBBs)) {
+    ValueToValueMapTy VMap;
+    Function *SplitKernel = CloneFunction(Kernel, VMap);
+    SplitKernel->setName(Kernel->getName() + "_contd_" + Twine(Idx));
+
+    BasicBlock *SplitCacheEntryBB = cast<BasicBlock>(VMap[CacheEntryBB]);
+    BasicBlock &OldEntry = SplitKernel->getEntryBlock();
+    SplitCacheEntryBB->moveBefore(&OldEntry);
+    SplitCacheEntryBB->takeName(&OldEntry);
+
+    // Get "nvvm.annotations" metadata node.
+    Metadata *MDVals[] = {
+        ConstantAsMetadata::get(SplitKernel), MDString::get(C, "kernel"),
+        ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(C), 1))};
+
+    // Append metadata to nvvm.annotations.
+    MD->addOperand(MDNode::get(C, MDVals));
+
+    // Clone omp globals
+    if (ExecMode)
+      new GlobalVariable(M, ExecMode->getValueType(), ExecMode->isConstant(),
+                         ExecMode->getLinkage(), ExecMode->getInitializer(),
+                         SplitKernel->getName() + "_exec_mode", nullptr,
+                         ExecMode->getThreadLocalMode(),
+                         ExecMode->getAddressSpace());
+
+    if (NestedParallelism)
+      new GlobalVariable(
+          M, NestedParallelism->getValueType(), NestedParallelism->isConstant(),
+          NestedParallelism->getLinkage(), NestedParallelism->getInitializer(),
+          SplitKernel->getName() + "_nested_parallelism", nullptr,
+          NestedParallelism->getThreadLocalMode(),
+          NestedParallelism->getAddressSpace());
+
+    assert(!verifyFunction(*SplitKernel, &errs()));
+  }
 
   assert(!verifyFunction(*Kernel, &errs()));
-  assert(!verifyFunction(*SplitKernel, &errs()));
-
-  return SplitKernel;
 }
 
 /// Abstract Attribute for tracking ICV values.
