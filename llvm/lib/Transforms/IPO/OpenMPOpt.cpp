@@ -284,7 +284,6 @@ KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxTeams, 6)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(NumContinuations, 9)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(ContinuationCacheLengths, 10)
 
-
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_IDX
 
 #define KERNEL_LAUNCH_ENVIRONMENT_IDX(MEMBER, IDX)                             \
@@ -3522,8 +3521,6 @@ void OpenMPOpt::splitKernel(Function *Kernel, ArrayRef<Use *> Splits) {
     CacheEntryBBs.push_back(CacheEntryBB);
   }
 
-  assert(!verifyFunction(*Kernel, &errs()));
-
   for (auto &&[Idx, CacheEntryBB] : enumerate(CacheEntryBBs)) {
     ValueToValueMapTy VMap;
     Function *SplitKernel = CloneFunction(Kernel, VMap);
@@ -3533,6 +3530,8 @@ void OpenMPOpt::splitKernel(Function *Kernel, ArrayRef<Use *> Splits) {
     BasicBlock &OldEntry = SplitKernel->getEntryBlock();
     SplitCacheEntryBB->moveBefore(&OldEntry);
     SplitCacheEntryBB->takeName(&OldEntry);
+
+    removeUnreachableBlocks(*SplitKernel);
 
     // Get "nvvm.annotations" metadata node.
     Metadata *MDVals[] = {
@@ -3560,6 +3559,9 @@ void OpenMPOpt::splitKernel(Function *Kernel, ArrayRef<Use *> Splits) {
 
     assert(!verifyFunction(*SplitKernel, &errs()));
   }
+
+  removeUnreachableBlocks(*Kernel);
+  assert(!verifyFunction(*Kernel, &errs()));
 }
 
 /// Abstract Attribute for tracking ICV values.
