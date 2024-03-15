@@ -519,36 +519,36 @@ GenericKernelTy::getKernelLaunchEnvironment(
   auto &LocalKLE = (*AsyncInfoWrapper).KernelLaunchEnvironment;
   LocalKLE = KernelLaunchEnvironment;
 
-  llvm::SmallVector<uint32_t, 8> CacheLengths(NumContinuations);
-
-  GlobalTy CacheLengthsGVs((getName() + "_cache_lengths").str(),
-                           sizeof(uint32_t) * NumContinuations,
-                           CacheLengths.data());
-
-  GenericGlobalHandlerTy &GHandler = Plugin::get().getGlobalHandler();
-  if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, *ImagePtr,
-                                               CacheLengthsGVs)) {
-    report_fatal_error("Error retrieving data for target pointer");
-  }
-
-  SmallVector<void *, 16> Caches(NumContinuations * 2);
-
-  for (unsigned i = 0; i < NumContinuations * 2; ++i) {
-    unsigned ContinuationCacheLength = CacheLengths[i % NumContinuations];
-
-    // FIXME: This could be one large allocation.
-    auto CacheAllocOrErr = GenericDevice.dataAlloc(
-        TotalThreads * ContinuationCacheLength,
-        /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
-    if (!CacheAllocOrErr)
-      return CacheAllocOrErr.takeError();
-
-    Caches[i] = *CacheAllocOrErr;
-    // Remember to free the memory later.
-    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
-  }
-
   if (hasContinuations) {
+
+    llvm::SmallVector<uint32_t, 8> CacheLengths(NumContinuations);
+
+    GlobalTy CacheLengthsGVs((getName() + "_cache_lengths").str(),
+                             sizeof(uint32_t) * NumContinuations,
+                             CacheLengths.data());
+
+    GenericGlobalHandlerTy &GHandler = Plugin::get().getGlobalHandler();
+    if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, *ImagePtr,
+                                                 CacheLengthsGVs)) {
+      report_fatal_error("Error retrieving data for target pointer");
+    }
+
+    SmallVector<void *, 16> Caches(NumContinuations * 2);
+
+    for (unsigned i = 0; i < NumContinuations * 2; ++i) {
+      unsigned ContinuationCacheLength = CacheLengths[i % NumContinuations];
+
+      // FIXME: This could be one large allocation.
+      auto CacheAllocOrErr = GenericDevice.dataAlloc(
+          TotalThreads * ContinuationCacheLength,
+          /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
+      if (!CacheAllocOrErr)
+        return CacheAllocOrErr.takeError();
+
+      Caches[i] = *CacheAllocOrErr;
+      // Remember to free the memory later.
+      AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
+    }
 
     // Caches
     auto CacheAllocOrErr = GenericDevice.dataAlloc(
