@@ -3024,6 +3024,12 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
           continue;
         }
 
+        if (all_of(I.operands(),
+                   [](Use &Op) { return isa<Constant>(Op.get()); })) {
+          FNBuilder.addSourceEdge(&I, InfEdgeWeight);
+          continue;
+        }
+
         for (Use &Op : I.operands()) {
           Worklist.push_back({Op.get(), &I});
         }
@@ -3065,6 +3071,12 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
       continue;
 
     if (!isMaterializable(TodoI)) {
+      FNBuilder.addSourceEdge(TodoI, InfEdgeWeight);
+      continue;
+    }
+
+    if (all_of(TodoI->operands(),
+               [](Use &Op) { return isa<Constant>(Op.get()); })) {
       FNBuilder.addSourceEdge(TodoI, InfEdgeWeight);
       continue;
     }
