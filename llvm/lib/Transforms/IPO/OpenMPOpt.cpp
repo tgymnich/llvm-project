@@ -3209,9 +3209,6 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   SmallVector<Type *> RequiredTypes(ValueTys);
   append_range(RequiredTypes, AllocaTys);
 
-  Type *CacheCellTy = StructType::create(
-      RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
-
   std::string KernelEnvironmentGVName =
       (Kernel->getName() + "_kernel_environment").str();
   auto *KernelEnvironmentGV = M.getNamedGlobal(KernelEnvironmentGVName);
@@ -3233,9 +3230,52 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
             Constant::getNullValue(CacheLengthsTy), CacheLengthsGVName);
       }));
 
+  Constant *CacheLengthInitializer = CacheLengthsGV->getInitializer();
+
+  BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
+
+  // Terminate Block
+  {
+    Builder.SetInsertPoint(ExitBB);
+
+    // Terminate thread once a split off BB is reached.
+    // FIXME: This only works for NVPTX!
+    assert(Triple(M.getTargetTriple()).isNVPTX());
+    FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
+    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+
+    Builder.CreateCall(ExitFTy, Exit);
+    Builder.CreateUnreachable();
+  }
+
+  if (CachedValues.empty() && RecomputedValues.empty()) {
+    BranchInst *Branch = BranchInst::Create(AfterSplitBB, ExitBB, SplitInst);
+    Instruction *Term = BeforeSplitBB->getTerminator();
+    ReplaceInstWithInst(Term, Branch);
+
+    DT.insertEdge(BeforeSplitBB, ExitBB);
+
+    Constant *ContinuationCacheLength = Builder.getInt32(0);
+    Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
+        CacheLengthInitializer, ContinuationCacheLength, {SplitIndex});
+    CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
+
+    constexpr int ContinuationCacheLengthsIdx =
+        KernelInfo::ContinuationCacheLengthsIdx;
+    NewInitializer = ConstantFoldInsertValueInstruction(
+        NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
+    KernelEnvironmentGV->setInitializer(NewInitializer);
+
+    assert(!verifyFunction(*Kernel, &errs()));
+
+    return Kernel;
+  }
+
+  Type *CacheCellTy = StructType::create(
+      RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
+
   Constant *ContinuationCacheLength =
       Builder.getInt32(DL.getTypeAllocSize(CacheCellTy));
-  Constant *CacheLengthInitializer = CacheLengthsGV->getInitializer();
   Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
       CacheLengthInitializer, ContinuationCacheLength, {SplitIndex});
   CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
@@ -3253,21 +3293,6 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   BasicBlock *CacheStoreBB = BasicBlock::Create(
       C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
-  BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
-
-  // Terminate Block
-  {
-    Builder.SetInsertPoint(ExitBB);
-
-    // Terminate thread once a split off BB is reached.
-    // FIXME: This only works for NVPTX!
-    assert(Triple(M.getTargetTriple()).isNVPTX());
-    FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
-    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
-
-    Builder.CreateCall(ExitFTy, Exit);
-    Builder.CreateUnreachable();
-  }
 
   // Store Block
   {
