@@ -538,6 +538,11 @@ GenericKernelTy::getKernelLaunchEnvironment(
     for (unsigned i = 0; i < NumContinuations * 2; ++i) {
       unsigned ContinuationCacheLength = CacheLengths[i % NumContinuations];
 
+      if (ContinuationCacheLength == 0) {
+        Caches[i] = nullptr;
+        continue;
+      }
+
       // FIXME: This could be one large allocation.
       auto CacheAllocOrErr = GenericDevice.dataAlloc(
           TotalThreads * ContinuationCacheLength,
