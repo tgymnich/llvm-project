@@ -3101,8 +3101,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
 
-  BasicBlock *SplitBB = SplitInst->getParent();
-  SplitBlock(SplitBB, SplitInst, &DT, nullptr, nullptr, "", true);
+  BasicBlock *BeforeSplitBB = SplitInst->getParent();
+  BasicBlock *SplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DT);
   BasicBlock *AfterSplitBB = SplitBlock(SplitBB, SplitInst->getNextNode(), &DT);
 
   SuspendCrossingInfo SCI(*Kernel, SplitInst);
@@ -3235,6 +3235,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   Constant *CacheLengthInitializer = CacheLengthsGV->getInitializer();
 
+  StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
+  Type *ContCountTy = Builder.getInt32Ty();
+
+  Argument *KernelLaunchEnvironment = Kernel->getArg(0);
+
   BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
 
   // Terminate Block
@@ -3252,11 +3257,33 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   }
 
   if (CachedValues.empty() && RecomputedValues.empty()) {
-    BranchInst *Branch = BranchInst::Create(AfterSplitBB, ExitBB, SplitInst);
+    BasicBlock *IncBB = BasicBlock::Create(C, "", Kernel);
+    Builder.SetInsertPoint(IncBB);
+
+    // Keep track of the number of continuation kernels to spawn.
+    Value *ContCountPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCntBufferIdx);
+    ContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), ContCountPtr);
+    ContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, ContCountPtr,
+                                             {SplitIdx}, "contcount.ptr");
+
+    Value *CacheIdx = Builder.CreateAtomicRMW(
+        AtomicRMWInst::Add, ContCountPtr, ConstantInt::get(ContCountTy, 1),
+        std::nullopt, AtomicOrdering::Monotonic);
+    CacheIdx->setName("cacheidx");
+
+    Builder.CreateBr(ExitBB);
+
+    BranchInst *Branch = BranchInst::Create(AfterSplitBB, IncBB, SplitInst);
     Instruction *Term = SplitBB->getTerminator();
     ReplaceInstWithInst(Term, Branch);
 
-    DT.insertEdge(SplitBB, ExitBB);
+    CFGUpdate Updates[] = {
+        {DT.Insert, SplitBB, IncBB},
+        {DT.Insert, IncBB, ExitBB},
+    };
+    DT.applyUpdates(Updates);
 
     Constant *ContinuationCacheLength = Builder.getInt32(0);
     Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
@@ -3288,11 +3315,6 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   NewInitializer = ConstantFoldInsertValueInstruction(
       NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
   KernelEnvironmentGV->setInitializer(NewInitializer);
-
-  StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
-  Type *ContCountTy = Builder.getInt32Ty();
-
-  Argument *KernelLaunchEnvironment = Kernel->getArg(0);
 
   BasicBlock *CacheStoreBB = BasicBlock::Create(
       C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
@@ -3398,12 +3420,13 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
     // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
     // Get the pointer to the cache for this split point at the right offset
     // for the current thread
+    ConstantInt *InputSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
     Value *CachePtr =
         Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
                                 KernelInfo::ContinuationCacheBufferIdx);
     CachePtr = Builder.CreateLoad(Builder.getPtrTy(), CachePtr);
     CachePtr = Builder.CreateInBoundsGEP(Builder.getPtrTy(), CachePtr,
-                                         {NumContinuations});
+                                         {InputSplitIdx});
     CachePtr = Builder.CreateLoad(Builder.getPtrTy(), CachePtr, "cache.in.ptr");
 
     Value *CacheCell = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr,

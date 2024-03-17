@@ -154,10 +154,10 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[I9:%.*]] = icmp slt i32 [[I]], 1
 ; CHECK-NEXT:    br i1 [[I9]], label [[BB11:%.*]], label [[BB46:%.*]]
 ; CHECK:       bb11:
-; CHECK-NEXT:    [[I724:%.*]] = phi i32 [ [[I7]], [[ENTRY:%.*]] ], [ [[I724]], [[BB41:%.*]] ]
-; CHECK-NEXT:    [[I2522:%.*]] = phi i32 [ [[I25]], [[ENTRY]] ], [ [[I2522]], [[BB41]] ]
-; CHECK-NEXT:    [[I2319:%.*]] = phi i32 [ [[I23]], [[ENTRY]] ], [ [[I2319]], [[BB41]] ]
-; CHECK-NEXT:    [[I412:%.*]] = phi i32 [ [[I4]], [[ENTRY]] ], [ [[I412]], [[BB41]] ]
+; CHECK-NEXT:    [[I723:%.*]] = phi i32 [ [[I7]], [[ENTRY:%.*]] ], [ [[I723]], [[BB41:%.*]] ]
+; CHECK-NEXT:    [[I2521:%.*]] = phi i32 [ [[I25]], [[ENTRY]] ], [ [[I2521]], [[BB41]] ]
+; CHECK-NEXT:    [[I2318:%.*]] = phi i32 [ [[I23]], [[ENTRY]] ], [ [[I2318]], [[BB41]] ]
+; CHECK-NEXT:    [[I411:%.*]] = phi i32 [ [[I4]], [[ENTRY]] ], [ [[I411]], [[BB41]] ]
 ; CHECK-NEXT:    [[I12:%.*]] = phi i32 [ [[I8]], [[ENTRY]] ], [ [[I44:%.*]], [[BB41]] ]
 ; CHECK-NEXT:    [[I13:%.*]] = phi i32 [ [[I5]], [[ENTRY]] ], [ [[I42:%.*]], [[BB41]] ]
 ; CHECK-NEXT:    [[I14:%.*]] = zext i32 [[I13]] to i64
@@ -167,7 +167,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[I20:%.*]] = ptrtoint ptr [[I16]] to i64
 ; CHECK-NEXT:    [[I21:%.*]] = ptrtoint ptr [[I17]] to i64
 ; CHECK-NEXT:    [[I22:%.*]] = trunc i64 [[I20]] to i32
-; CHECK-NEXT:    [[I24:%.*]] = add nsw i32 [[I2319]], [[I22]]
+; CHECK-NEXT:    [[I24:%.*]] = add nsw i32 [[I2318]], [[I22]]
 ; CHECK-NEXT:    [[I26:%.*]] = sext i32 [[I24]] to i64
 ; CHECK-NEXT:    [[I27:%.*]] = icmp ugt i64 [[I26]], [[I21]]
 ; CHECK-NEXT:    br i1 [[I27]], label [[BB41]], label [[BB28:%.*]]
@@ -183,7 +183,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[I4_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I412]], ptr [[I4_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I411]], ptr [[I4_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I32_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
 ; CHECK-NEXT:    store i32 [[I24]], ptr [[I32_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I31_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
@@ -193,15 +193,15 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[I12_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 4
 ; CHECK-NEXT:    store i32 [[I12]], ptr [[I12_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I23_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 5
-; CHECK-NEXT:    store i32 [[I2319]], ptr [[I23_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I2318]], ptr [[I23_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I25_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 6
-; CHECK-NEXT:    store i32 [[I2522]], ptr [[I25_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I2521]], ptr [[I25_CACHEIDX]], align 4
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
 ; CHECK:       bb41:
 ; CHECK-NEXT:    tail call void @llvm.nvvm.barrier0() #[[ATTR6:[0-9]+]]
-; CHECK-NEXT:    [[I42]] = add nsw i32 [[I13]], [[I724]]
-; CHECK-NEXT:    [[I43:%.*]] = add nsw i32 [[I12]], [[I724]]
+; CHECK-NEXT:    [[I42]] = add nsw i32 [[I13]], [[I723]]
+; CHECK-NEXT:    [[I43:%.*]] = add nsw i32 [[I12]], [[I723]]
 ; CHECK-NEXT:    [[I44]] = tail call i32 @llvm.smin.i32(i32 [[I43]], i32 1023)
 ; CHECK-NEXT:    [[I45:%.*]] = icmp slt i32 [[I42]], 1024
 ; CHECK-NEXT:    br i1 [[I45]], label [[BB11]], label [[BB46]]
@@ -227,11 +227,11 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[I29:%.*]] = bitcast i64 [[ARG2]] to double
 ; CHECK-NEXT:    br label [[CACHESTORE0:%.*]]
 ; CHECK:       CacheStore0:
-; CHECK-NEXT:    [[I2521:%.*]] = phi i32 [ [[I2520:%.*]], [[BB28:%.*]] ], [ [[I25_CACHE:%.*]], [[CACHEREMAT0]] ]
-; CHECK-NEXT:    [[I2318:%.*]] = phi i32 [ [[I2317:%.*]], [[BB28]] ], [ [[I23_CACHE:%.*]], [[CACHEREMAT0]] ]
-; CHECK-NEXT:    [[I1216:%.*]] = phi i32 [ [[I44_BB11:%.*]], [[BB28]] ], [ [[I12_CACHE:%.*]], [[CACHEREMAT0]] ]
-; CHECK-NEXT:    [[I1314:%.*]] = phi i32 [ [[I42_BB11:%.*]], [[BB28]] ], [ [[I13_CACHE:%.*]], [[CACHEREMAT0]] ]
-; CHECK-NEXT:    [[I411:%.*]] = phi i32 [ [[I410:%.*]], [[BB28]] ], [ [[I4_CACHE:%.*]], [[CACHEREMAT0]] ]
+; CHECK-NEXT:    [[I2520:%.*]] = phi i32 [ [[I2519:%.*]], [[BB28:%.*]] ], [ [[I25_CACHE:%.*]], [[CACHEREMAT0]] ]
+; CHECK-NEXT:    [[I2317:%.*]] = phi i32 [ [[I2316:%.*]], [[BB28]] ], [ [[I23_CACHE:%.*]], [[CACHEREMAT0]] ]
+; CHECK-NEXT:    [[I1215:%.*]] = phi i32 [ [[I44_BB11:%.*]], [[BB28]] ], [ [[I12_CACHE:%.*]], [[CACHEREMAT0]] ]
+; CHECK-NEXT:    [[I1313:%.*]] = phi i32 [ [[I42_BB11:%.*]], [[BB28]] ], [ [[I13_CACHE:%.*]], [[CACHEREMAT0]] ]
+; CHECK-NEXT:    [[I410:%.*]] = phi i32 [ [[I49:%.*]], [[BB28]] ], [ [[I4_CACHE:%.*]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[I31:%.*]] = phi i64 [ [[I26:%.*]], [[BB28]] ], [ [[I39:%.*]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[I32:%.*]] = phi i32 [ [[I24:%.*]], [[BB28]] ], [ [[I38:%.*]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ARG]], i32 0, i32 3
@@ -244,40 +244,40 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP10]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[I4_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I411]], ptr [[I4_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I410]], ptr [[I4_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I32_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
 ; CHECK-NEXT:    store i32 [[I32]], ptr [[I32_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I31_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
 ; CHECK-NEXT:    store i64 [[I31]], ptr [[I31_CACHEIDX]], align 8
 ; CHECK-NEXT:    [[I13_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I1314]], ptr [[I13_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I1313]], ptr [[I13_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I12_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 4
-; CHECK-NEXT:    store i32 [[I1216]], ptr [[I12_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I1215]], ptr [[I12_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I23_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 5
-; CHECK-NEXT:    store i32 [[I2318]], ptr [[I23_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I2317]], ptr [[I23_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I25_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 6
-; CHECK-NEXT:    store i32 [[I2521]], ptr [[I25_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I2520]], ptr [[I25_CACHEIDX]], align 4
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       CacheRemat0:
 ; CHECK-NEXT:    [[TMP11:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ARG]], i32 0, i32 4
 ; CHECK-NEXT:    [[TMP12:%.*]] = load ptr, ptr [[TMP11]], align 8
 ; CHECK-NEXT:    [[TMP13:%.*]] = getelementptr inbounds ptr, ptr [[TMP12]], i32 1
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP13]], align 8
-; CHECK-NEXT:    [[CACHECELL2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[I4_CACHEIDX3:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL2]], i32 0, i32 0
-; CHECK-NEXT:    [[I4_CACHE]] = load i32, ptr [[I4_CACHEIDX3]], align 4
-; CHECK-NEXT:    [[I32_CACHEIDX4:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL2]], i32 0, i32 1
-; CHECK-NEXT:    [[I32_CACHE:%.*]] = load i32, ptr [[I32_CACHEIDX4]], align 4
-; CHECK-NEXT:    [[I31_CACHEIDX5:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL2]], i32 0, i32 2
-; CHECK-NEXT:    [[I31_CACHE:%.*]] = load i64, ptr [[I31_CACHEIDX5]], align 8
-; CHECK-NEXT:    [[I13_CACHEIDX6:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL2]], i32 0, i32 3
-; CHECK-NEXT:    [[I13_CACHE]] = load i32, ptr [[I13_CACHEIDX6]], align 4
-; CHECK-NEXT:    [[I12_CACHEIDX7:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL2]], i32 0, i32 4
-; CHECK-NEXT:    [[I12_CACHE]] = load i32, ptr [[I12_CACHEIDX7]], align 4
-; CHECK-NEXT:    [[I23_CACHEIDX8:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL2]], i32 0, i32 5
-; CHECK-NEXT:    [[I23_CACHE]] = load i32, ptr [[I23_CACHEIDX8]], align 4
-; CHECK-NEXT:    [[I25_CACHEIDX9:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL2]], i32 0, i32 6
-; CHECK-NEXT:    [[I25_CACHE]] = load i32, ptr [[I25_CACHEIDX9]], align 4
+; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
+; CHECK-NEXT:    [[I4_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
+; CHECK-NEXT:    [[I4_CACHE]] = load i32, ptr [[I4_CACHEIDX2]], align 4
+; CHECK-NEXT:    [[I32_CACHEIDX3:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 1
+; CHECK-NEXT:    [[I32_CACHE:%.*]] = load i32, ptr [[I32_CACHEIDX3]], align 4
+; CHECK-NEXT:    [[I31_CACHEIDX4:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 2
+; CHECK-NEXT:    [[I31_CACHE:%.*]] = load i64, ptr [[I31_CACHEIDX4]], align 8
+; CHECK-NEXT:    [[I13_CACHEIDX5:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 3
+; CHECK-NEXT:    [[I13_CACHE]] = load i32, ptr [[I13_CACHEIDX5]], align 4
+; CHECK-NEXT:    [[I12_CACHEIDX6:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 4
+; CHECK-NEXT:    [[I12_CACHE]] = load i32, ptr [[I12_CACHEIDX6]], align 4
+; CHECK-NEXT:    [[I23_CACHEIDX7:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 5
+; CHECK-NEXT:    [[I23_CACHE]] = load i32, ptr [[I23_CACHEIDX7]], align 4
+; CHECK-NEXT:    [[I25_CACHEIDX8:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 6
+; CHECK-NEXT:    [[I25_CACHE]] = load i32, ptr [[I25_CACHEIDX8]], align 4
 ; CHECK-NEXT:    [[I7_RECOMPUTE:%.*]] = shl nsw i32 [[I4_CACHE]], 10
 ; CHECK-NEXT:    [[I15_RECOMPUTE:%.*]] = zext i32 [[I12_CACHE]] to i64
 ; CHECK-NEXT:    [[I17_RECOMPUTE:%.*]] = inttoptr i64 [[I15_RECOMPUTE]] to ptr
@@ -294,15 +294,15 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[I40:%.*]] = icmp ugt i64 [[I39]], [[I21_RECOMPUTE]]
 ; CHECK-NEXT:    br i1 [[I40]], label [[BB41:%.*]], label [[CACHESTORE0]]
 ; CHECK:       bb41:
-; CHECK-NEXT:    [[I723:%.*]] = phi i32 [ [[I7_RECOMPUTE]], [[CACHEREMAT0]] ], [ [[I723]], [[BB11_FROM_BB41:%.*]] ]
-; CHECK-NEXT:    [[I2520]] = phi i32 [ [[I25_CACHE]], [[CACHEREMAT0]] ], [ [[I2520]], [[BB11_FROM_BB41]] ]
-; CHECK-NEXT:    [[I2317]] = phi i32 [ [[I23_CACHE]], [[CACHEREMAT0]] ], [ [[I2317]], [[BB11_FROM_BB41]] ]
-; CHECK-NEXT:    [[I1215:%.*]] = phi i32 [ [[I12_CACHE]], [[CACHEREMAT0]] ], [ [[I44_BB11]], [[BB11_FROM_BB41]] ]
-; CHECK-NEXT:    [[I1313:%.*]] = phi i32 [ [[I13_CACHE]], [[CACHEREMAT0]] ], [ [[I42_BB11]], [[BB11_FROM_BB41]] ]
-; CHECK-NEXT:    [[I410]] = phi i32 [ [[I4_CACHE]], [[CACHEREMAT0]] ], [ [[I410]], [[BB11_FROM_BB41]] ]
+; CHECK-NEXT:    [[I722:%.*]] = phi i32 [ [[I7_RECOMPUTE]], [[CACHEREMAT0]] ], [ [[I722]], [[BB11_FROM_BB41:%.*]] ]
+; CHECK-NEXT:    [[I2519]] = phi i32 [ [[I25_CACHE]], [[CACHEREMAT0]] ], [ [[I2519]], [[BB11_FROM_BB41]] ]
+; CHECK-NEXT:    [[I2316]] = phi i32 [ [[I23_CACHE]], [[CACHEREMAT0]] ], [ [[I2316]], [[BB11_FROM_BB41]] ]
+; CHECK-NEXT:    [[I1214:%.*]] = phi i32 [ [[I12_CACHE]], [[CACHEREMAT0]] ], [ [[I44_BB11]], [[BB11_FROM_BB41]] ]
+; CHECK-NEXT:    [[I1312:%.*]] = phi i32 [ [[I13_CACHE]], [[CACHEREMAT0]] ], [ [[I42_BB11]], [[BB11_FROM_BB41]] ]
+; CHECK-NEXT:    [[I49]] = phi i32 [ [[I4_CACHE]], [[CACHEREMAT0]] ], [ [[I49]], [[BB11_FROM_BB41]] ]
 ; CHECK-NEXT:    tail call void @llvm.nvvm.barrier0() #[[ATTR6]]
-; CHECK-NEXT:    [[I42:%.*]] = add nsw i32 [[I1313]], [[I723]]
-; CHECK-NEXT:    [[I43:%.*]] = add nsw i32 [[I1215]], [[I723]]
+; CHECK-NEXT:    [[I42:%.*]] = add nsw i32 [[I1312]], [[I722]]
+; CHECK-NEXT:    [[I43:%.*]] = add nsw i32 [[I1214]], [[I722]]
 ; CHECK-NEXT:    [[I44:%.*]] = tail call i32 @llvm.smin.i32(i32 [[I43]], i32 1023)
 ; CHECK-NEXT:    [[I45:%.*]] = icmp slt i32 [[I42]], 1024
 ; CHECK-NEXT:    br i1 [[I45]], label [[BB11_FROM_BB41]], label [[BB46:%.*]]
@@ -316,7 +316,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[I20:%.*]] = ptrtoint ptr [[I16]] to i64
 ; CHECK-NEXT:    [[I21:%.*]] = ptrtoint ptr [[I17]] to i64
 ; CHECK-NEXT:    [[I22:%.*]] = trunc i64 [[I20]] to i32
-; CHECK-NEXT:    [[I24]] = add nsw i32 [[I2317]], [[I22]]
+; CHECK-NEXT:    [[I24]] = add nsw i32 [[I2316]], [[I22]]
 ; CHECK-NEXT:    [[I26]] = sext i32 [[I24]] to i64
 ; CHECK-NEXT:    [[I27:%.*]] = icmp ugt i64 [[I26]], [[I21]]
 ; CHECK-NEXT:    br i1 [[I27]], label [[BB41]], label [[BB28]]
