@@ -3243,33 +3243,31 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
 
   // Terminate Block
-  {
-    Builder.SetInsertPoint(ExitBB);
+  Builder.SetInsertPoint(ExitBB);
 
-    // Terminate thread once a split off BB is reached.
-    // FIXME: This only works for NVPTX!
-    assert(Triple(M.getTargetTriple()).isNVPTX());
-    FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
-    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+  // Terminate thread once a split off BB is reached.
+  // FIXME: This only works for NVPTX!
+  assert(Triple(M.getTargetTriple()).isNVPTX());
+  FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
+  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
 
-    Builder.CreateCall(ExitFTy, Exit);
-    Builder.CreateUnreachable();
-  }
+  Builder.CreateCall(ExitFTy, Exit);
+  Builder.CreateUnreachable();
 
   if (CachedValues.empty() && RecomputedValues.empty()) {
     BasicBlock *IncBB = BasicBlock::Create(C, "", Kernel);
     Builder.SetInsertPoint(IncBB);
 
     // Keep track of the number of continuation kernels to spawn.
-    Value *ContCountPtr =
+    Value *OutContCountPtr =
         Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
                                 KernelInfo::ContinuationCntBufferIdx);
-    ContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), ContCountPtr);
-    ContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, ContCountPtr,
-                                             {SplitIdx}, "contcount.ptr");
+    OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
+    OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
+                                                {SplitIdx}, "contcount.ptr");
 
     Value *CacheIdx = Builder.CreateAtomicRMW(
-        AtomicRMWInst::Add, ContCountPtr, ConstantInt::get(ContCountTy, 1),
+        AtomicRMWInst::Add, OutContCountPtr, ConstantInt::get(ContCountTy, 1),
         std::nullopt, AtomicOrdering::Monotonic);
     CacheIdx->setName("cacheidx");
 
@@ -3320,56 +3318,54 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
       C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
 
   // Store Block
-  {
-    Builder.SetInsertPoint(CacheStoreBB);
+  Builder.SetInsertPoint(CacheStoreBB);
 
-    // Keep track of the number of continuation kernels to spawn.
-    Value *ContCountPtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                                KernelInfo::ContinuationCntBufferIdx);
-    ContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), ContCountPtr);
-    ContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, ContCountPtr,
-                                             {SplitIdx}, "contcount.ptr");
+  // Keep track of the number of continuation kernels to spawn.
+  Value *OutContCountPtr =
+      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                              KernelInfo::ContinuationCntBufferIdx);
+  OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
+  OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
+                                              {SplitIdx}, "contcount.ptr");
 
-    Value *CacheIdx = Builder.CreateAtomicRMW(
-        AtomicRMWInst::Add, ContCountPtr, ConstantInt::get(ContCountTy, 1),
-        std::nullopt, AtomicOrdering::Monotonic);
-    CacheIdx->setName("cacheidx");
+  Value *CacheIdx = Builder.CreateAtomicRMW(
+      AtomicRMWInst::Add, OutContCountPtr, ConstantInt::get(ContCountTy, 1),
+      std::nullopt, AtomicOrdering::Monotonic);
+  CacheIdx->setName("cacheidx");
 
-    // Get buffer containing pointers to the caches for each split point.
-    // Get the pointer to the cache for this split point at the right offset for
-    // the current thread
-    Value *CachePtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                                KernelInfo::ContinuationCacheBufferIdx);
-    CachePtr = Builder.CreateLoad(Builder.getPtrTy(), CachePtr);
-    CachePtr =
-        Builder.CreateInBoundsGEP(Builder.getPtrTy(), CachePtr, {SplitIdx});
-    CachePtr =
-        Builder.CreateLoad(Builder.getPtrTy(), CachePtr, "cache.out.ptr");
+  // Get buffer containing pointers to the caches for each split point.
+  // Get the pointer to the cache for this split point at the right offset for
+  // the current thread
+  Value *OutCachePtr =
+      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                              KernelInfo::ContinuationCacheBufferIdx);
+  OutCachePtr = Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr);
+  OutCachePtr =
+      Builder.CreateInBoundsGEP(Builder.getPtrTy(), OutCachePtr, {SplitIdx});
+  OutCachePtr =
+      Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr, "cache.out.ptr");
 
-    Value *CacheCell = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr,
-                                                 {CacheIdx}, "cachecell");
+  Value *OutCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, OutCachePtr,
+                                                  {CacheIdx}, "cachecell");
 
-    // Cache Values
-    for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, Idx,
-                                           Inst->getName() + ".cacheidx");
+  // Cache Values
+  for (auto [Idx, Inst] : enumerate(CachedValues)) {
+    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
+                                         Inst->getName() + ".cacheidx");
 
-      Builder.CreateStore(Inst, Ptr);
-    }
-
-    // Cache allocas
-    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, Idx,
-                                           Alloca->getName() + ".cacheidx");
-
-      Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
-      Builder.CreateStore(ToCache, Ptr);
-    }
-
-    Builder.CreateBr(ExitBB);
+    Builder.CreateStore(Inst, Ptr);
   }
+
+  // Cache allocas
+  for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
+                                         Alloca->getName() + ".cacheidx");
+
+    Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
+    Builder.CreateStore(ToCache, Ptr);
+  }
+
+  Builder.CreateBr(ExitBB);
 
   BasicBlock *CacheRematBB = BasicBlock::Create(
       C, "CacheRemat" + Twine(SplitIndex), Kernel, AfterSplitBB);
@@ -3382,162 +3378,159 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   ReplaceInstWithInst(Term, Branch);
 
   // New Entry Block + Load Block
-  {
-    Builder.SetInsertPoint(CacheEntryBB);
+  Builder.SetInsertPoint(CacheEntryBB);
 
-    // TODO: Use OMP runtime instead of ptx intrinsics.
-    FunctionCallee ThreadIdFn = M.getOrInsertFunction(
-        "llvm.nvvm.read.ptx.sreg.tid.x", Builder.getInt32Ty());
-    FunctionCallee NumThreadsFn = M.getOrInsertFunction(
-        "llvm.nvvm.read.ptx.sreg.ntid.x", Builder.getInt32Ty());
-    FunctionCallee BlockIdFn = M.getOrInsertFunction(
-        "llvm.nvvm.read.ptx.sreg.ctaid.x", Builder.getInt32Ty());
+  // TODO: Use OMP runtime instead of ptx intrinsics.
+  FunctionCallee ThreadIdFn = M.getOrInsertFunction(
+      "llvm.nvvm.read.ptx.sreg.tid.x", Builder.getInt32Ty());
+  FunctionCallee NumThreadsFn = M.getOrInsertFunction(
+      "llvm.nvvm.read.ptx.sreg.ntid.x", Builder.getInt32Ty());
+  FunctionCallee BlockIdFn = M.getOrInsertFunction(
+      "llvm.nvvm.read.ptx.sreg.ctaid.x", Builder.getInt32Ty());
 
-    CallInst *Tid = Builder.CreateCall(ThreadIdFn);
-    CallInst *BlockId = Builder.CreateCall(BlockIdFn);
-    CallInst *NumThreads = Builder.CreateCall(NumThreadsFn);
+  CallInst *Tid = Builder.CreateCall(ThreadIdFn);
+  CallInst *BlockId = Builder.CreateCall(BlockIdFn);
+  CallInst *NumThreads = Builder.CreateCall(NumThreadsFn);
 
-    Value *GlobalTid =
-        Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
+  Value *GlobalTid =
+      Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
 
-    Value *ContCountPtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                                KernelInfo::ContinuationCntBufferIdx);
-    ContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), ContCountPtr);
-    ContCountPtr = Builder.CreateInBoundsGEP(
-        ContCountTy, ContCountPtr, {NumContinuations}, "contcount.in.ptr");
+  Value *InContCountPtr =
+      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                              KernelInfo::ContinuationCntBufferIdx);
+  InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
+  InContCountPtr = Builder.CreateInBoundsGEP(
+      ContCountTy, InContCountPtr, {NumContinuations}, "contcount.in.ptr");
 
-    Value *ContCount =
-        Builder.CreateLoad(ContCountTy, ContCountPtr, "contcount.in");
-    Value *ShouldMask =
-        Builder.CreateICmpULT(GlobalTid, ContCount, "maskthread");
+  Value *ContCount =
+      Builder.CreateLoad(ContCountTy, InContCountPtr, "contcount.in");
+  Value *ShouldMask = Builder.CreateICmpULT(GlobalTid, ContCount, "maskthread");
 
-    Builder.CreateCondBr(ShouldMask, CacheRematBB, ExitBB);
+  Builder.CreateCondBr(ShouldMask, CacheRematBB, ExitBB);
 
-    Builder.SetInsertPoint(CacheRematBB);
+  Builder.SetInsertPoint(CacheRematBB);
 
-    // Get buffer containing pointers to the caches for each split point.
-    // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
-    // Get the pointer to the cache for this split point at the right offset
-    // for the current thread
-    ConstantInt *InputSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
-    Value *CachePtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                                KernelInfo::ContinuationCacheBufferIdx);
-    CachePtr = Builder.CreateLoad(Builder.getPtrTy(), CachePtr);
-    CachePtr = Builder.CreateInBoundsGEP(Builder.getPtrTy(), CachePtr,
-                                         {InputSplitIdx});
-    CachePtr = Builder.CreateLoad(Builder.getPtrTy(), CachePtr, "cache.in.ptr");
+  // Get buffer containing pointers to the caches for each split point.
+  // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
+  // Get the pointer to the cache for this split point at the right offset
+  // for the current thread
+  ConstantInt *InSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
+  Value *InCachePtr =
+      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                              KernelInfo::ContinuationCacheBufferIdx);
+  InCachePtr = Builder.CreateLoad(Builder.getPtrTy(), InCachePtr);
+  InCachePtr =
+      Builder.CreateInBoundsGEP(Builder.getPtrTy(), InCachePtr, {InSplitIdx});
+  InCachePtr =
+      Builder.CreateLoad(Builder.getPtrTy(), InCachePtr, "cache.in.ptr");
 
-    Value *CacheCell = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr,
+  Value *InCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, InCachePtr,
                                                  {GlobalTid}, "cachecell");
 
-    CFGUpdate Updates[] = {
-        {DT.Delete, SplitBB, AfterSplitBB},
-        {DT.Insert, SplitBB, CacheEntryBB},
-        {DT.Insert, SplitBB, CacheStoreBB},
-        {DT.Insert, CacheEntryBB, CacheRematBB},
-        {DT.Insert, CacheEntryBB, ExitBB},
-        {DT.Insert, CacheStoreBB, ExitBB},
-    };
-    DT.applyUpdates(Updates);
+  CFGUpdate Updates[] = {
+      {DT.Delete, SplitBB, AfterSplitBB},
+      {DT.Insert, SplitBB, CacheEntryBB},
+      {DT.Insert, SplitBB, CacheStoreBB},
+      {DT.Insert, CacheEntryBB, CacheRematBB},
+      {DT.Insert, CacheEntryBB, ExitBB},
+      {DT.Insert, CacheStoreBB, ExitBB},
+  };
+  DT.applyUpdates(Updates);
 
-    SSAUpdaterBulk SSAUpdate;
-    ValueToValueMapTy RematVMap;
+  SSAUpdaterBulk SSAUpdate;
+  ValueToValueMapTy RematVMap;
 
-    // Rematerialize values
-    for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, Idx,
-                                           Inst->getName() + ".cacheidx");
+  // Rematerialize values
+  for (auto [Idx, Inst] : enumerate(CachedValues)) {
+    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
+                                         Inst->getName() + ".cacheidx");
 
-      Value *Load =
-          Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
-      RematVMap[Inst] = Load;
+    Value *Load =
+        Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
+    RematVMap[Inst] = Load;
 
-      unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
-      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Load);
-      SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+    unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+    SSAUpdate.AddAvailableValue(Var, CacheRematBB, Load);
+    SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
 
-      for (Use &U : Inst->uses()) {
-        Instruction *User = cast<Instruction>(U.getUser());
-        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
-          if (UserPN->getIncomingBlock(U) == Inst->getParent())
-            continue;
-        } else if (User->getParent() == Inst->getParent()) {
+    for (Use &U : Inst->uses()) {
+      Instruction *User = cast<Instruction>(U.getUser());
+      if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+        if (UserPN->getIncomingBlock(U) == Inst->getParent())
           continue;
-        }
-
-        SSAUpdate.AddUse(Var, &U);
+      } else if (User->getParent() == Inst->getParent()) {
+        continue;
       }
+
+      SSAUpdate.AddUse(Var, &U);
     }
-
-    // Rematerialize allocas
-    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      // NOTE: can we just read / write from the cache directly?
-      Instruction *NewAlloca = Alloca->clone();
-      Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
-      RematVMap[Alloca] = NewAlloca;
-
-      unsigned CacheIdx = CachedValues.size() + Idx;
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, CacheCell, CacheIdx,
-                                           Alloca->getName() + ".cacheidx");
-
-      Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
-      Builder.CreateStore(CachedVal, NewAlloca);
-
-      // FIXME: What about aliases / geps ?
-
-      // TODO: What about
-      // derived values from the pointer? What about read only values? What
-      // about read write values?
-
-      unsigned Var =
-          SSAUpdate.AddVariable(Alloca->getName(), Alloca->getType());
-      SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
-      SSAUpdate.AddAvailableValue(Var, Alloca->getParent(), Alloca);
-
-      for (Use &U : Alloca->uses()) {
-        Instruction *User = cast<Instruction>(U.getUser());
-        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
-          if (UserPN->getIncomingBlock(U) == Alloca->getParent())
-            continue;
-        } else if (User->getParent() == Alloca->getParent()) {
-          continue;
-        }
-
-        SSAUpdate.AddUse(Var, &U);
-      }
-    }
-
-    for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
-      Instruction *Remat = Inst->clone();
-      Builder.Insert(Remat, Inst->getName() + ".recompute");
-      RematVMap[Inst] = Remat;
-
-      unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
-      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
-      SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
-
-      for (Use &U : Inst->uses()) {
-        Instruction *User = cast<Instruction>(U.getUser());
-        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
-          if (UserPN->getIncomingBlock(U) == Inst->getParent())
-            continue;
-        } else if (User->getParent() == Inst->getParent()) {
-          continue;
-        }
-
-        SSAUpdate.AddUse(Var, &U);
-      }
-    }
-
-    Builder.CreateBr(AfterSplitBB);
-    DT.insertEdge(CacheRematBB, AfterSplitBB);
-
-    remapInstructionsInBlocks({CacheRematBB}, RematVMap);
-
-    SSAUpdate.RewriteAllUses(&DT);
   }
+
+  // Rematerialize allocas
+  for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+    // NOTE: can we just read / write from the cache directly?
+    Instruction *NewAlloca = Alloca->clone();
+    Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
+    RematVMap[Alloca] = NewAlloca;
+
+    unsigned CacheIdx = CachedValues.size() + Idx;
+    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, CacheIdx,
+                                         Alloca->getName() + ".cacheidx");
+
+    Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+    Builder.CreateStore(CachedVal, NewAlloca);
+
+    // FIXME: What about aliases / geps ?
+
+    // TODO: What about
+    // derived values from the pointer? What about read only values? What
+    // about read write values?
+
+    unsigned Var = SSAUpdate.AddVariable(Alloca->getName(), Alloca->getType());
+    SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
+    SSAUpdate.AddAvailableValue(Var, Alloca->getParent(), Alloca);
+
+    for (Use &U : Alloca->uses()) {
+      Instruction *User = cast<Instruction>(U.getUser());
+      if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+        if (UserPN->getIncomingBlock(U) == Alloca->getParent())
+          continue;
+      } else if (User->getParent() == Alloca->getParent()) {
+        continue;
+      }
+
+      SSAUpdate.AddUse(Var, &U);
+    }
+  }
+
+  for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
+    Instruction *Remat = Inst->clone();
+    Builder.Insert(Remat, Inst->getName() + ".recompute");
+    RematVMap[Inst] = Remat;
+
+    unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+    SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
+    SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+
+    for (Use &U : Inst->uses()) {
+      Instruction *User = cast<Instruction>(U.getUser());
+      if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+        if (UserPN->getIncomingBlock(U) == Inst->getParent())
+          continue;
+      } else if (User->getParent() == Inst->getParent()) {
+        continue;
+      }
+
+      SSAUpdate.AddUse(Var, &U);
+    }
+  }
+
+  Builder.CreateBr(AfterSplitBB);
+  DT.insertEdge(CacheRematBB, AfterSplitBB);
+
+  remapInstructionsInBlocks({CacheRematBB}, RematVMap);
+
+  SSAUpdate.RewriteAllUses(&DT);
 
   NumCachedValues += CachedValues.size();
   NumRecomputedValues += RecomputedValues.size();
