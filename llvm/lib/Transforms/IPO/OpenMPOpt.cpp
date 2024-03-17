@@ -2991,9 +2991,8 @@ bool isMaterializable(Instruction *I) {
   return false;
 }
 
-void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
+void determineValuesAcross(Function *Kernel, SuspendCrossingInfo &SCI,
                            FlowNetworkBuilder &FNBuilder) {
-  Function *Kernel = SplitBlock->getParent();
   constexpr int64_t InfEdgeWeight = 10000;
 
   // Args
@@ -3014,25 +3013,29 @@ void determineValuesAcross(BasicBlock *SplitBlock, SuspendCrossingInfo &SCI,
       continue;
 
     for (User *U : I.users()) {
-      if (SCI.isDefinitionAcrossSplit(I, U)) {
+      if (!SCI.isDefinitionAcrossSplit(I, U)) {
+        continue;
+      }
+
         FNBuilder.addInstructionNode(&I, 1);
         FNBuilder.addSinkEdge(&I, 1);
 
         if (!isMaterializable(&I)) {
           FNBuilder.addSourceEdge(&I, InfEdgeWeight);
-          continue;
+        break;
         }
 
         if (all_of(I.operands(),
                    [](Use &Op) { return isa<Constant>(Op.get()); })) {
           FNBuilder.addSourceEdge(&I, InfEdgeWeight);
-          continue;
+        break;
         }
 
         for (Use &Op : I.operands()) {
           Worklist.push_back({Op.get(), &I});
         }
-      }
+
+      break;
     }
   }
 
@@ -3124,7 +3127,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   auto &Src = FNBuilder.createSource();
   auto &Sink = FNBuilder.createSink();
 
-  determineValuesAcross(AfterSplitBB, SCI, FNBuilder);
+  determineValuesAcross(Kernel, SCI, FNBuilder);
 
   auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
 
