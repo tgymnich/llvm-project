@@ -2634,14 +2634,14 @@ public:
     dbgs() << Label << ":";
     for (size_t I = 0, N = BV.size(); I < N; ++I)
       if (BV[I])
-        dbgs() << " " << Mapping[I]->getName();
+        dbgs() << " " << Mapping[I]->getNameOrAsOperand();
     dbgs() << "\n";
   }
 
   LLVM_DUMP_METHOD void dump() const {
     for (size_t I = 0, N = Block.size(); I < N; ++I) {
       BasicBlock *const B = Mapping[I];
-      dbgs() << B->getName() << ":\n";
+      dbgs() << B->getNameOrAsOperand() << ":\n";
       dump("   Consumes", Block[I].Consumes);
       dump("      Kills", Block[I].Kills);
     }
