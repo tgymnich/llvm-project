@@ -3017,23 +3017,23 @@ void determineValuesAcross(Function *Kernel, SuspendCrossingInfo &SCI,
         continue;
       }
 
-        FNBuilder.addInstructionNode(&I, 1);
-        FNBuilder.addSinkEdge(&I, 1);
+      FNBuilder.addInstructionNode(&I, 1);
+      FNBuilder.addSinkEdge(&I, 1);
 
-        if (!isMaterializable(&I)) {
-          FNBuilder.addSourceEdge(&I, InfEdgeWeight);
+      if (!isMaterializable(&I)) {
+        FNBuilder.addSourceEdge(&I, InfEdgeWeight);
         break;
-        }
+      }
 
-        if (all_of(I.operands(),
-                   [](Use &Op) { return isa<Constant>(Op.get()); })) {
-          FNBuilder.addSourceEdge(&I, InfEdgeWeight);
+      if (all_of(I.operands(),
+                 [](Use &Op) { return isa<Constant>(Op.get()); })) {
+        FNBuilder.addSourceEdge(&I, InfEdgeWeight);
         break;
-        }
+      }
 
-        for (Use &Op : I.operands()) {
-          Worklist.push_back({Op.get(), &I});
-        }
+      for (Use &Op : I.operands()) {
+        Worklist.push_back({Op.get(), &I});
+      }
 
       break;
     }
@@ -3101,9 +3101,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
 
-  BasicBlock *AfterSplitBB = SplitInst->getParent();
-  BasicBlock *BeforeSplitBB = SplitBlock(AfterSplitBB, SplitInst->getNextNode(),
-                                         &DT, nullptr, nullptr, "", true);
+  BasicBlock *SplitBB = SplitInst->getParent();
+  SplitBlock(SplitBB, SplitInst, &DT, nullptr, nullptr, "", true);
+  BasicBlock *AfterSplitBB = SplitBlock(SplitBB, SplitInst->getNextNode(), &DT);
 
   SuspendCrossingInfo SCI(*Kernel, SplitInst);
 
@@ -3253,10 +3253,10 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   if (CachedValues.empty() && RecomputedValues.empty()) {
     BranchInst *Branch = BranchInst::Create(AfterSplitBB, ExitBB, SplitInst);
-    Instruction *Term = BeforeSplitBB->getTerminator();
+    Instruction *Term = SplitBB->getTerminator();
     ReplaceInstWithInst(Term, Branch);
 
-    DT.insertEdge(BeforeSplitBB, ExitBB);
+    DT.insertEdge(SplitBB, ExitBB);
 
     Constant *ContinuationCacheLength = Builder.getInt32(0);
     Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
@@ -3356,7 +3356,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   BranchInst *Branch =
       BranchInst::Create(CacheEntryBB, CacheStoreBB, SplitInst);
-  Instruction *Term = BeforeSplitBB->getTerminator();
+  Instruction *Term = SplitBB->getTerminator();
   ReplaceInstWithInst(Term, Branch);
 
   // New Entry Block + Load Block
@@ -3410,9 +3410,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
                                                  {GlobalTid}, "cachecell");
 
     CFGUpdate Updates[] = {
-        {DT.Delete, BeforeSplitBB, AfterSplitBB},
-        {DT.Insert, BeforeSplitBB, CacheEntryBB},
-        {DT.Insert, BeforeSplitBB, CacheStoreBB},
+        {DT.Delete, SplitBB, AfterSplitBB},
+        {DT.Insert, SplitBB, CacheEntryBB},
+        {DT.Insert, SplitBB, CacheStoreBB},
         {DT.Insert, CacheEntryBB, CacheRematBB},
         {DT.Insert, CacheEntryBB, ExitBB},
         {DT.Insert, CacheStoreBB, ExitBB},
