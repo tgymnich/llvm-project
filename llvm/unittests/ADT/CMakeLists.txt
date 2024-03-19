@@ -24,6 +24,7 @@ add_llvm_unittest(ADTTests
   DenseMapTest.cpp
   DenseSetTest.cpp
   DepthFirstIteratorTest.cpp
+  DinicMaxFlowTest.cpp
   DirectedGraphTest.cpp
   DynamicAPIntTest.cpp
   EditDistanceTest.cpp
@@ -62,6 +63,7 @@ add_llvm_unittest(ADTTests
   PointerUnionTest.cpp
   PostOrderIteratorTest.cpp
   PriorityWorklistTest.cpp
+  PushRelabelMaxFlowTest.cpp
   RangeAdapterTest.cpp
   SCCIteratorTest.cpp
   STLExtrasTest.cpp
