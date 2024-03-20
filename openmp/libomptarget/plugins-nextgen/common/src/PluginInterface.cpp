@@ -1042,6 +1042,25 @@ Error GenericDeviceTy::deinit(GenericPluginTy &Plugin) {
            DeviceMemoryPoolTracking.AllocationMax);
   }
 
+  for (auto *Image : LoadedImages) {
+    GenericGlobalHandlerTy &Handler = Plugin.getGlobalHandler();
+    if (!Handler.hasProfilingGlobals(*this, *Image))
+      continue;
+
+    GPUProfGlobals profdata;
+    auto ProfOrErr = Handler.readProfilingGlobals(*this, *Image);
+    if (!ProfOrErr)
+      return ProfOrErr.takeError();
+
+    // Dump out profdata
+    ProfOrErr->dump();
+
+    // Write data to profiling file
+    if (auto Err = ProfOrErr->write()) {
+      consumeError(std::move(Err));
+    }
+  }
+
   // Delete the memory manager before deinitializing the device. Otherwise,
   // we may delete device allocations after the device is deinitialized.
   if (MemoryManager)
