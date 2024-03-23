@@ -16,19 +16,19 @@ declare i32 @__kmpc_target_init(ptr, ptr)
 declare void @__kmpc_target_deinit()
 
 define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread_limit"="32" "omp_target_num_teams"="1" {
-  entry:
+entry:
   %i = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr %dyn)
   %tid = load i64, ptr %tid_addr
   %arrayidx = getelementptr inbounds double, ptr %ptr, i64 %tid
   %cmp = icmp ult i64 0, %tid
   br i1 %cmp, label %if, label %end
-  if:
+if:
   call void @__ompx_split()
   %val1 = load double, ptr %arrayidx
   %add = fadd double %val1, 2.0
   store double %add, ptr %arrayidx
   br label %end
-  end:
+end:
   call void @__ompx_split()
   %val2 = load double, ptr %arrayidx
   %mul = fmul double %val2, %val2
