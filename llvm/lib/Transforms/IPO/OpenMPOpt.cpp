@@ -2098,10 +2098,11 @@ private:
   bool splitKernels();
 
   Function *rematerializeValuesAcrossSplit(Instruction *SplitInst,
+                                           SwitchInst *ContDispatch,
                                            unsigned SplitIndex,
                                            unsigned NumSplits);
 
-  void splitKernel(Function *Kernel, ArrayRef<Use *> Splits);
+  void splitKernel(Function *Kernel, SwitchInst *ContDispatch, unsigned NumSplits);
   ///
   ///}}
 
@@ -2453,9 +2454,12 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
     if (TT.isNVPTX() && !FuncName.starts_with("llvm.nvvm.read.ptx.sreg."))
       continue;
 
-    std::string AMDIntrinsicPrefix[] = {"amdgcn_workitem_id", "amdgcn_workgroup_id", "amdgcn_implicitarg_ptr"};
+    std::string AMDIntrinsicPrefix[] = {
+        "amdgcn_workitem_id", "amdgcn_workgroup_id", "amdgcn_implicitarg_ptr"};
 
-    if (TT.isAMDGCN() && none_of(AMDIntrinsicPrefix, [FuncName](StringRef Str) { return FuncName.starts_with(Str); }))
+    if (TT.isAMDGCN() && none_of(AMDIntrinsicPrefix, [FuncName](StringRef Str) {
+          return FuncName.starts_with(Str);
+        }))
       continue;
 
     auto It = MovedCalls.find(Callee);
@@ -2467,6 +2471,31 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
       MovedCalls[Callee] = Call;
     }
   }
+}
+
+static SwitchInst *createContDispatchBlock(Function *Kernel, DominatorTree &DT) {
+  Module *M = Kernel->getParent();
+  LLVMContext &C = Kernel->getContext();
+  BasicBlock &OldEntry = Kernel->getEntryBlock();
+  BasicBlock *ContDispatchBB =
+      BasicBlock::Create(C, "ContDispatchBB", Kernel, &OldEntry);
+
+  DT.setNewRoot(ContDispatchBB);
+
+  IRBuilder<> Builder(ContDispatchBB);
+
+  FunctionType *ContIdGetterFTy =
+      FunctionType::get(Builder.getInt32Ty(), false);
+  Function *ContIdGetter = Function::Create(
+      ContIdGetterFTy, GlobalValue::ExternalLinkage, "__ompx_get_cont_id", M);
+
+  Value *ContId = Builder.CreateCall(ContIdGetter, {}, "cont_id");
+
+  SwitchInst *Switch = Builder.CreateSwitch(ContId, &OldEntry);
+
+  DT.insertEdge(ContDispatchBB, &OldEntry);
+
+  return Switch;
 }
 
 bool OpenMPOpt::splitKernels() {
@@ -2482,6 +2511,8 @@ bool OpenMPOpt::splitKernels() {
 
     movePTXRegisterReadsIntoEntry(Kernel);
 
+    SwitchInst *ContDispatch = createContDispatchBlock(Kernel, DT);
+
     for (auto &&[Idx, Use] : enumerate(*UseVec)) {
       CallInst *SplitInst = cast<CallInst>(Use->getUser());
 
@@ -2489,10 +2520,13 @@ bool OpenMPOpt::splitKernels() {
 
       rewritePHIs(*Kernel, &DT);
 
-      rematerializeValuesAcrossSplit(SplitInst, Idx, UseVec->size());
+      rematerializeValuesAcrossSplit(SplitInst, ContDispatch, Idx,
+                                     UseVec->size());
+
+      SplitInst->eraseFromParent();
     }
 
-    splitKernel(Kernel, *UseVec);
+    splitKernel(Kernel, ContDispatch, UseVec->size());
     Changed = true;
   }
 
@@ -3099,6 +3133,7 @@ void determineValuesAcross(Function *Kernel, SuspendCrossingInfo &SCI,
 }
 
 Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
+                                                    SwitchInst *ContDispatch,
                                                     unsigned SplitIndex,
                                                     unsigned NumSplits) {
   Function *Kernel = SplitInst->getFunction();
@@ -3289,12 +3324,16 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
     Builder.CreateBr(ExitBB);
 
-    BranchInst *Branch = BranchInst::Create(AfterSplitBB, IncBB, SplitInst);
+    BranchInst *Branch = BranchInst::Create(IncBB);
     Instruction *Term = SplitBB->getTerminator();
     ReplaceInstWithInst(Term, Branch);
 
+    ContDispatch->addCase(SplitIdx, AfterSplitBB);
+
     CFGUpdate Updates[] = {
+        {DT.Delete, SplitBB, AfterSplitBB},
         {DT.Insert, SplitBB, IncBB},
+        {DT.Insert, ContDispatch->getParent(), AfterSplitBB},
         {DT.Insert, IncBB, ExitBB},
     };
     DT.applyUpdates(Updates);
@@ -3388,10 +3427,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   BasicBlock *CacheEntryBB = BasicBlock::Create(
       C, "CacheEntry" + Twine(SplitIndex), Kernel, CacheRematBB);
 
-  BranchInst *Branch =
-      BranchInst::Create(CacheEntryBB, CacheStoreBB, SplitInst);
+  BranchInst *Branch = BranchInst::Create(CacheStoreBB);
   Instruction *Term = SplitBB->getTerminator();
   ReplaceInstWithInst(Term, Branch);
+
+  ContDispatch->addCase(SplitIdx, CacheEntryBB);
 
   // New Entry Block + Load Block
   Builder.SetInsertPoint(CacheEntryBB);
@@ -3459,7 +3499,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   CFGUpdate Updates[] = {
       {DT.Delete, SplitBB, AfterSplitBB},
-      {DT.Insert, SplitBB, CacheEntryBB},
+      {DT.Insert, ContDispatch->getParent(), CacheEntryBB},
       {DT.Insert, SplitBB, CacheStoreBB},
       {DT.Insert, CacheEntryBB, CacheRematBB},
       {DT.Insert, CacheEntryBB, ExitBB},
@@ -3570,41 +3610,27 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   return Kernel;
 }
 
-void OpenMPOpt::splitKernel(Function *Kernel, ArrayRef<Use *> Splits) {
+void OpenMPOpt::splitKernel(Function *Kernel, SwitchInst *ContDispatch, unsigned NumSplits) {
   LLVMContext &C = M.getContext();
-  ConstantInt *False = ConstantInt::getFalse(C);
+  Instruction *ContId = cast<Instruction>(ContDispatch->getCondition());
+  Type *ContIdTy = ContId->getType();
 
   NamedMDNode *MD = M.getOrInsertNamedMetadata("nvvm.annotations");
   GlobalVariable *ExecMode =
       M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
   GlobalVariable *NestedParallelism =
-      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());
+      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());  
 
-  SmallVector<BasicBlock *, 4> CacheEntryBBs;
-
-  for (Use *U : Splits) {
-    Instruction *SplitInst = cast<Instruction>(U->getUser());
-    BasicBlock *SplitBB = SplitInst->getParent();
-    Instruction *Term = SplitBB->getTerminator();
-    BasicBlock *CacheEntryBB = Term->getSuccessor(0);
-
-    SplitInst->replaceAllUsesWith(False);
-    SplitInst->eraseFromParent();
-    ConstantFoldTerminator(SplitBB);
-
-    CacheEntryBBs.push_back(CacheEntryBB);
-  }
-
-  for (auto &&[Idx, CacheEntryBB] : enumerate(CacheEntryBBs)) {
+  for (unsigned Idx = 0; Idx < NumSplits; ++Idx) {
     ValueToValueMapTy VMap;
     Function *SplitKernel = CloneFunction(Kernel, VMap);
     SplitKernel->setName(Kernel->getName() + "_contd_" + Twine(Idx));
 
-    BasicBlock *SplitCacheEntryBB = cast<BasicBlock>(VMap[CacheEntryBB]);
-    BasicBlock &OldEntry = SplitKernel->getEntryBlock();
-    SplitCacheEntryBB->moveBefore(&OldEntry);
-    SplitCacheEntryBB->takeName(&OldEntry);
+    Instruction *SplitContId = cast<Instruction>(VMap[ContId]);
+    SplitContId->replaceAllUsesWith(ConstantInt::get(ContIdTy, Idx));
+    SplitContId->eraseFromParent();
 
+    ConstantFoldTerminator(&SplitKernel->getEntryBlock());
     removeUnreachableBlocks(*SplitKernel);
 
     // Get "nvvm.annotations" metadata node.
@@ -3634,7 +3660,12 @@ void OpenMPOpt::splitKernel(Function *Kernel, ArrayRef<Use *> Splits) {
     assert(!verifyFunction(*SplitKernel, &errs()));
   }
 
+  ContId->replaceAllUsesWith(ConstantInt::get(ContIdTy, -1));
+  ContId->eraseFromParent();
+
+  ConstantFoldTerminator(&Kernel->getEntryBlock());
   removeUnreachableBlocks(*Kernel);
+
   assert(!verifyFunction(*Kernel, &errs()));
 }
 

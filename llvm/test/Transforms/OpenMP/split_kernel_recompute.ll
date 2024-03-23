@@ -12,7 +12,7 @@ target triple = "nvptx64"
 
 @test_kernel_environment = weak_odr protected local_unnamed_addr constant %struct.KernelEnvironmentTy { %struct.ConfigurationEnvironmentTy { i8 0, i8 0, i8 2, i32 1, i32 512, i32 1, i32 1, i32 0, i32 0, i32 1, ptr null }, ptr null, ptr null }
 
-declare i1 @__ompx_split()
+declare void @__ompx_split()
 
 declare i32 @__kmpc_target_init(ptr, ptr)
 declare void @__kmpc_target_deinit()
@@ -30,7 +30,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
     %cmp = icmp ult i64 0, %tid
     br i1 %cmp, label %if, label %end
   if:
-    call i1 @__ompx_split()
+    call void @__ompx_split()
     %res1 = fmul double %sub, %add
     %res2 = fmul double %res1, %mul
     %res3 = fmul double %res2, %div
@@ -86,7 +86,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT: }
 ; CHECK-CACHE-LABEL: define void @test(
 ; CHECK-CACHE-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0:[0-9]+]] {
-; CHECK-CACHE-NEXT:  entry:
+; CHECK-CACHE-NEXT:  ContDispatchBB:
 ; CHECK-CACHE-NEXT:    [[I:%.*]] = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr [[DYN]])
 ; CHECK-CACHE-NEXT:    [[TID:%.*]] = load i64, ptr [[TID_ADDR]], align 8
 ; CHECK-CACHE-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds double, ptr [[PTR]], i64 [[TID]]
@@ -130,10 +130,10 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ;
 ; CHECK-CACHE-LABEL: define void @test_contd_0(
 ; CHECK-CACHE-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0]] {
-; CHECK-CACHE-NEXT:  entry:
+; CHECK-CACHE-NEXT:  ContDispatchBB:
 ; CHECK-CACHE-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-CACHE-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-CACHE-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-CACHE-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-CACHE-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-CACHE-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-CACHE-NEXT:    [[GTID:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-CACHE-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
@@ -175,7 +175,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ;
 ; CHECK-RECOMPUTE-LABEL: define void @test(
 ; CHECK-RECOMPUTE-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0:[0-9]+]] {
-; CHECK-RECOMPUTE-NEXT:  entry:
+; CHECK-RECOMPUTE-NEXT:  ContDispatchBB:
 ; CHECK-RECOMPUTE-NEXT:    [[I:%.*]] = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr [[DYN]])
 ; CHECK-RECOMPUTE-NEXT:    [[TID:%.*]] = load i64, ptr [[TID_ADDR]], align 8
 ; CHECK-RECOMPUTE-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds double, ptr [[PTR]], i64 [[TID]]
@@ -211,10 +211,10 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ;
 ; CHECK-RECOMPUTE-LABEL: define void @test_contd_0(
 ; CHECK-RECOMPUTE-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0]] {
-; CHECK-RECOMPUTE-NEXT:  entry:
+; CHECK-RECOMPUTE-NEXT:  ContDispatchBB:
 ; CHECK-RECOMPUTE-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-RECOMPUTE-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-RECOMPUTE-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-RECOMPUTE-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-RECOMPUTE-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-RECOMPUTE-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-RECOMPUTE-NEXT:    [[GTID:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-RECOMPUTE-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
@@ -253,7 +253,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ;
 ; CHECK-MINCUT-LABEL: define void @test(
 ; CHECK-MINCUT-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0:[0-9]+]] {
-; CHECK-MINCUT-NEXT:  entry:
+; CHECK-MINCUT-NEXT:  ContDispatchBB:
 ; CHECK-MINCUT-NEXT:    [[I:%.*]] = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr [[DYN]])
 ; CHECK-MINCUT-NEXT:    [[TID:%.*]] = load i64, ptr [[TID_ADDR]], align 8
 ; CHECK-MINCUT-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds double, ptr [[PTR]], i64 [[TID]]
@@ -289,10 +289,10 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ;
 ; CHECK-MINCUT-LABEL: define void @test_contd_0(
 ; CHECK-MINCUT-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0]] {
-; CHECK-MINCUT-NEXT:  entry:
+; CHECK-MINCUT-NEXT:  ContDispatchBB:
 ; CHECK-MINCUT-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-MINCUT-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-MINCUT-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-MINCUT-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-MINCUT-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-MINCUT-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-MINCUT-NEXT:    [[GTID:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-MINCUT-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3

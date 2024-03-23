@@ -13,7 +13,7 @@ target triple = "nvptx64"
 declare i32 @__kmpc_target_init(ptr, ptr)
 declare void @__kmpc_target_deinit()
 
-declare i1 @__ompx_split()
+declare void @__ompx_split()
 
 define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "omp_target_thread_limit"="32" "omp_target_num_teams"="1" {
   entry:
@@ -28,7 +28,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
     %cmp = icmp ult i64 0, %tid
     br i1 %cmp, label %if, label %end
   if:
-    call i1 @__ompx_split()
+    call void @__ompx_split()
     %val1 = load double, ptr %arrayidx
     %y = load double, ptr %ptry
     %add = fadd double %val1, %y
@@ -50,7 +50,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 
 ; CHECK-LABEL: define void @test(
 ; CHECK-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0:[0-9]+]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[I:%.*]] = call i32 @__kmpc_target_init(ptr @test_kernel_environment, ptr [[DYN]])
 ; CHECK-NEXT:    [[TID:%.*]] = load i64, ptr [[TID_ADDR]], align 8
 ; CHECK-NEXT:    [[PTRY:%.*]] = alloca double, align 8
@@ -87,10 +87,10 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ;
 ; CHECK-LABEL: define void @test_contd_0(
 ; CHECK-SAME: ptr [[LAUNCH_ENV:%.*]], ptr [[TID_ADDR:%.*]], ptr [[PTR:%.*]], ptr [[DYN:%.*]]) #[[ATTR0]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-NEXT:    [[GTID:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
