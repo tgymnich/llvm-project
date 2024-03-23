@@ -33,6 +33,7 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/iterator.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
@@ -2435,6 +2436,7 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
   // Move all ptx register reads to the beginning of the Kernel, so that they
   // will be cached
   DenseMap<Function *, CallInst *> MovedCalls;
+  auto TT = Triple(Kernel->getParent()->getTargetTriple());
 
   for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
     CallInst *Call = dyn_cast<CallInst>(&I);
@@ -2446,7 +2448,14 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
     if (!Callee)
       continue;
 
-    if (!Callee->getName().starts_with("llvm.nvvm.read.ptx.sreg."))
+    StringRef FuncName = Callee->getName();
+
+    if (TT.isNVPTX() && !FuncName.starts_with("llvm.nvvm.read.ptx.sreg."))
+      continue;
+
+    std::string AMDIntrinsicPrefix[] = {"amdgcn_workitem_id", "amdgcn_workgroup_id", "amdgcn_implicitarg_ptr"};
+
+    if (TT.isAMDGCN() && none_of(AMDIntrinsicPrefix, [FuncName](StringRef Str) { return FuncName.starts_with(Str); }))
       continue;
 
     auto It = MovedCalls.find(Callee);
@@ -3096,6 +3105,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   LLVMContext &C = M.getContext();
   IRBuilder<> Builder(Kernel->getEntryBlock().getTerminator());
   const DataLayout &DL = M.getDataLayout();
+  auto TT = Triple(M.getTargetTriple());
 
   DominatorTree &DT = DTGetter(Kernel);
 
@@ -3247,12 +3257,18 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   // Terminate thread once a split off BB is reached.
   // FIXME: This only works for NVPTX!
-  assert(Triple(M.getTargetTriple()).isNVPTX());
-  FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
-  InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+  if (TT.isNVPTX()) {
+    FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
+    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
 
-  Builder.CreateCall(ExitFTy, Exit);
-  Builder.CreateUnreachable();
+    Builder.CreateCall(ExitFTy, Exit);
+    Builder.CreateUnreachable();
+  } else if (TT.isAMDGCN()) {
+    Builder.CreateUnaryIntrinsic(Intrinsic::amdgcn_kill, Builder.getTrue());
+    Builder.CreateUnreachable();
+  } else {
+    llvm_unreachable("unsupported");
+  }
 
   if (CachedValues.empty() && RecomputedValues.empty()) {
     BasicBlock *IncBB = BasicBlock::Create(C, "", Kernel);
@@ -3380,20 +3396,34 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
   // New Entry Block + Load Block
   Builder.SetInsertPoint(CacheEntryBB);
 
-  // TODO: Use OMP runtime instead of ptx intrinsics.
-  FunctionCallee ThreadIdFn = M.getOrInsertFunction(
-      "llvm.nvvm.read.ptx.sreg.tid.x", Builder.getInt32Ty());
-  FunctionCallee NumThreadsFn = M.getOrInsertFunction(
-      "llvm.nvvm.read.ptx.sreg.ntid.x", Builder.getInt32Ty());
-  FunctionCallee BlockIdFn = M.getOrInsertFunction(
-      "llvm.nvvm.read.ptx.sreg.ctaid.x", Builder.getInt32Ty());
-
-  CallInst *Tid = Builder.CreateCall(ThreadIdFn);
-  CallInst *BlockId = Builder.CreateCall(BlockIdFn);
-  CallInst *NumThreads = Builder.CreateCall(NumThreadsFn);
-
-  Value *GlobalTid =
-      Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
+  Value *GlobalTid;
+  if (TT.isNVPTX()) {
+    // TODO: Use OMP runtime instead of ptx intrinsics.
+    Value *Tid = Builder.CreateIntrinsic(
+        Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_tid_x, {});
+    Value *BlockId = Builder.CreateIntrinsic(
+        Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ntid_x, {});
+    Value *NumThreads = Builder.CreateIntrinsic(
+        Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ctaid_x, {});
+    GlobalTid =
+        Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
+  } else if (TT.isAMDGCN()) {
+    Value *Tid = Builder.CreateIntrinsic(Builder.getInt32Ty(),
+                                         Intrinsic::amdgcn_workitem_id_x, {});
+    Value *BlockId = Builder.CreateIntrinsic(
+        Builder.getInt32Ty(), Intrinsic::amdgcn_workgroup_id_x, {});
+    Value *ArgPtr = Builder.CreateIntrinsic(
+        Builder.getPtrTy(), Intrinsic::amdgcn_implicitarg_ptr, {});
+    Value *NumThreadsPtr = Builder.CreateInBoundsGEP(
+        Builder.getInt16Ty(), ArgPtr, Builder.getInt64(6));
+    Value *NumThreads = Builder.CreateLoad(Builder.getInt16Ty(), NumThreadsPtr);
+    Value *NumThreadsZext =
+        Builder.CreateZExt(NumThreads, Builder.getInt32Ty());
+    GlobalTid = Builder.CreateAdd(
+        Tid, Builder.CreateMul(BlockId, NumThreadsZext), "gtid");
+  } else {
+    llvm_unreachable("unsupported");
+  }
 
   Value *InContCountPtr =
       Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
