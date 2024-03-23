@@ -69,7 +69,7 @@ bb28:                                             ; preds = %bb11
 bb30:                                             ; preds = %bb30, %bb28
   %i31 = phi i64 [ %i26, %bb28 ], [ %i39, %bb30 ]
   %i32 = phi i32 [ %i24, %bb28 ], [ %i38, %bb30 ]
-  tail call i1 @__ompx_split() #7
+  call void @__ompx_split() #7
   %i33 = getelementptr inbounds double, ptr %arg3, i64 %i31
   %i34 = load double, ptr %i33, align 8, !tbaa !19
   %i35 = getelementptr inbounds double, ptr %arg1, i64 %i31
@@ -94,7 +94,7 @@ bb46:                                             ; preds = %bb41, %entry
 }
 
 ; Function Attrs: convergent
-declare i1 @__ompx_split() local_unnamed_addr #3
+declare void @__ompx_split() local_unnamed_addr #3
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare double @llvm.fmuladd.f64(double, double, double) #0
@@ -142,7 +142,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 
 ; CHECK-LABEL: define weak_odr protected void @__omp_offloading_daxpy(
 ; CHECK-SAME: ptr noalias noundef [[ARG:%.*]], ptr noundef [[ARG1:%.*]], i64 noundef [[ARG2:%.*]], ptr noundef [[ARG3:%.*]]) local_unnamed_addr #[[ATTR2:[0-9]+]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[I25:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.ntid.x() #[[ATTR4:[0-9]+]]
 ; CHECK-NEXT:    [[I23:%.*]] = tail call noundef i32 @llvm.nvvm.read.ptx.sreg.tid.x() #[[ATTR5:[0-9]+]]
 ; CHECK-NEXT:    [[I4:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.nctaid.x() #[[ATTR4]], !range [[RNG17:![0-9]+]]
@@ -154,12 +154,12 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[I9:%.*]] = icmp slt i32 [[I]], 1
 ; CHECK-NEXT:    br i1 [[I9]], label [[BB11:%.*]], label [[BB46:%.*]]
 ; CHECK:       bb11:
-; CHECK-NEXT:    [[I723:%.*]] = phi i32 [ [[I7]], [[ENTRY:%.*]] ], [ [[I723]], [[BB41:%.*]] ]
-; CHECK-NEXT:    [[I2521:%.*]] = phi i32 [ [[I25]], [[ENTRY]] ], [ [[I2521]], [[BB41]] ]
-; CHECK-NEXT:    [[I2318:%.*]] = phi i32 [ [[I23]], [[ENTRY]] ], [ [[I2318]], [[BB41]] ]
-; CHECK-NEXT:    [[I411:%.*]] = phi i32 [ [[I4]], [[ENTRY]] ], [ [[I411]], [[BB41]] ]
-; CHECK-NEXT:    [[I12:%.*]] = phi i32 [ [[I8]], [[ENTRY]] ], [ [[I44:%.*]], [[BB41]] ]
-; CHECK-NEXT:    [[I13:%.*]] = phi i32 [ [[I5]], [[ENTRY]] ], [ [[I42:%.*]], [[BB41]] ]
+; CHECK-NEXT:    [[I723:%.*]] = phi i32 [ [[I7]], [[CONTDISPATCHBB:%.*]] ], [ [[I723]], [[BB41:%.*]] ]
+; CHECK-NEXT:    [[I2521:%.*]] = phi i32 [ [[I25]], [[CONTDISPATCHBB]] ], [ [[I2521]], [[BB41]] ]
+; CHECK-NEXT:    [[I2318:%.*]] = phi i32 [ [[I23]], [[CONTDISPATCHBB]] ], [ [[I2318]], [[BB41]] ]
+; CHECK-NEXT:    [[I411:%.*]] = phi i32 [ [[I4]], [[CONTDISPATCHBB]] ], [ [[I411]], [[BB41]] ]
+; CHECK-NEXT:    [[I12:%.*]] = phi i32 [ [[I8]], [[CONTDISPATCHBB]] ], [ [[I44:%.*]], [[BB41]] ]
+; CHECK-NEXT:    [[I13:%.*]] = phi i32 [ [[I5]], [[CONTDISPATCHBB]] ], [ [[I42:%.*]], [[BB41]] ]
 ; CHECK-NEXT:    [[I14:%.*]] = zext i32 [[I13]] to i64
 ; CHECK-NEXT:    [[I15:%.*]] = zext i32 [[I12]] to i64
 ; CHECK-NEXT:    [[I16:%.*]] = inttoptr i64 [[I14]] to ptr
@@ -211,10 +211,10 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ;
 ; CHECK-LABEL: define weak_odr protected void @__omp_offloading_daxpy_contd_0(
 ; CHECK-SAME: ptr noalias noundef [[ARG:%.*]], ptr noundef [[ARG1:%.*]], i64 noundef [[ARG2:%.*]], ptr noundef [[ARG3:%.*]]) local_unnamed_addr #[[ATTR2]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-NEXT:    [[GTID:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[ARG]], i32 0, i32 3

@@ -502,7 +502,7 @@ __OMP_RTL(__kmpc_barrier_simple_generic, false, Void, IdentPtr, Int32)
 
 __OMP_RTL(__kmpc_warp_active_thread_mask, false, Int64,)
 __OMP_RTL(__kmpc_syncwarp, false, Void, Int64)
-__OMP_RTL(__ompx_split, false, Int1,)
+__OMP_RTL(__ompx_split, false, Void,)
 __OMP_RTL(__last, false, Void, )
 
 #undef __OMP_RTL

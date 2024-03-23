@@ -21,7 +21,7 @@ declare noundef i32 @llvm.nvvm.read.ptx.sreg.nctaid.x() #0
 
 declare double @llvm.fmuladd.f64(double, double, double) #0
 
-declare i1 @__ompx_split() local_unnamed_addr #1
+declare void @__ompx_split() local_unnamed_addr #1
 
 define weak_odr protected void @__omp_offloading_test(ptr noalias noundef %arg, ptr noundef %arg1) local_unnamed_addr #3 {
 entry:
@@ -46,7 +46,7 @@ bb1:                                              ; preds = %entry
   br label %exit
 
 bb2:                                              ; preds = %entry
-  tail call i1 @__ompx_split() #7
+  call void @__ompx_split() #7
   %i16 = sext i32 %i7 to i64
   %i17 = getelementptr inbounds double, ptr %arg1, i64 %i16
   %i18 = load double, ptr %i17
@@ -93,7 +93,7 @@ attributes #7 = { convergent nounwind }
 
 ; CHECK-LABEL: define weak_odr protected void @__omp_offloading_test(
 ; CHECK-SAME: ptr noalias noundef [[ARG:%.*]], ptr noundef [[ARG1:%.*]]) local_unnamed_addr #[[ATTR3:[0-9]+]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[I5:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.ntid.x() #[[ATTR4:[0-9]+]]
 ; CHECK-NEXT:    [[I3:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.nctaid.x() #[[ATTR4]]
 ; CHECK-NEXT:    [[I2:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x() #[[ATTR5:[0-9]+]]
@@ -130,10 +130,10 @@ attributes #7 = { convergent nounwind }
 ;
 ; CHECK-LABEL: define weak_odr protected void @__omp_offloading_test_contd_0(
 ; CHECK-SAME: ptr noalias noundef [[ARG:%.*]], ptr noundef [[ARG1:%.*]]) local_unnamed_addr #[[ATTR3]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-NEXT:    [[GTID:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[ARG]], i32 0, i32 3

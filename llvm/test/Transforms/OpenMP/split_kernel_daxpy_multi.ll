@@ -78,14 +78,14 @@ loop.cond:                                             ; preds = %bb38, %bb14
   br i1 %cond, label %if, label %else
 
 if:                                             ; preds = %loop.cond
-  %if_split = tail call zeroext i1 @__ompx_split() #7
+  call void @__ompx_split() #7
   %x_i = load double, ptr %x_i_ptr, align 8, !tbaa !19
   %y_i1 = load double, ptr %y_i_ptr, align 8, !tbaa !19
   %add = fadd double %x_i, %y_i1
   br label %bb38
 
 else:                                             ; preds = %loop.cond
-  %else_split = tail call zeroext i1 @__ompx_split() #7
+  call void @__ompx_split() #7
   %x_i1 = load double, ptr %x_i_ptr, align 8, !tbaa !19
   %y_i2 = load double, ptr %y_i_ptr, align 8, !tbaa !19
   %fma = tail call double @llvm.fmuladd.f64(double %a_double, double %x_i1, double %y_i2)
@@ -112,7 +112,7 @@ end:                                             ; preds = %bb43, %entry
 }
 
 ; Function Attrs: convergent
-declare zeroext i1 @__ompx_split(...) local_unnamed_addr #3
+declare void @__ompx_split() local_unnamed_addr #3
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare double @llvm.fmuladd.f64(double, double, double) #0
@@ -159,7 +159,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 
 ; CHECK-LABEL: define weak_odr protected void @__omp_offloading_fd01_2a0317_daxpy_l22(
 ; CHECK-SAME: ptr noalias noundef [[LAUNCH_ENV:%.*]], ptr noundef [[Y_BUF:%.*]], ptr noundef [[X_BUF:%.*]], i64 noundef [[A:%.*]]) local_unnamed_addr #[[ATTR2:[0-9]+]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[NTID:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.ntid.x() #[[ATTR4:[0-9]+]]
 ; CHECK-NEXT:    [[NCTAID:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.nctaid.x() #[[ATTR4]], !range [[RNG18:![0-9]+]]
 ; CHECK-NEXT:    [[CTAID:%.*]] = tail call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x() #[[ATTR5:[0-9]+]], !range [[RNG19:![0-9]+]]
@@ -174,7 +174,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[A_DOUBLE:%.*]] = bitcast i64 [[A]] to double
 ; CHECK-NEXT:    br label [[BB14:%.*]]
 ; CHECK:       bb14:
-; CHECK-NEXT:    [[A_DOUBLE33:%.*]] = phi double [ [[A_DOUBLE]], [[BB8]] ], [ [[A_DOUBLE33_BB43:%.*]], [[BB43:%.*]] ]
+; CHECK-NEXT:    [[A_DOUBLE31:%.*]] = phi double [ [[A_DOUBLE]], [[BB8]] ], [ [[A_DOUBLE31_BB43:%.*]], [[BB43:%.*]] ]
 ; CHECK-NEXT:    [[I629:%.*]] = phi i32 [ [[I6]], [[BB8]] ], [ [[I629_BB43:%.*]], [[BB43]] ]
 ; CHECK-NEXT:    [[NTID25:%.*]] = phi i32 [ [[NTID]], [[BB8]] ], [ [[NTID25_BB43:%.*]], [[BB43]] ]
 ; CHECK-NEXT:    [[TID21:%.*]] = phi i32 [ [[TID]], [[BB8]] ], [ [[TID21_BB43:%.*]], [[BB43]] ]
@@ -194,7 +194,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[TID21_LOOP_COND:%.*]] = phi i32 [ [[TID21]], [[BB14]] ]
 ; CHECK-NEXT:    [[NTID25_LOOP_COND:%.*]] = phi i32 [ [[NTID25]], [[BB14]] ]
 ; CHECK-NEXT:    [[I629_LOOP_COND:%.*]] = phi i32 [ [[I629]], [[BB14]] ]
-; CHECK-NEXT:    [[A_DOUBLE33_LOOP_COND:%.*]] = phi double [ [[A_DOUBLE33]], [[BB14]] ]
+; CHECK-NEXT:    [[A_DOUBLE31_LOOP_COND:%.*]] = phi double [ [[A_DOUBLE31]], [[BB14]] ]
 ; CHECK-NEXT:    [[I17_LOOP_COND:%.*]] = phi i64 [ [[I17]], [[BB14]] ]
 ; CHECK-NEXT:    [[I_TRUNC:%.*]] = trunc i64 [[I19_LOOP_COND42]] to i32
 ; CHECK-NEXT:    [[Y_I_PTR:%.*]] = getelementptr inbounds double, ptr [[Y_BUF]], i64 [[I19_LOOP_COND42]]
@@ -250,8 +250,8 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    store i32 [[NTID25_LOOP_COND]], ptr [[NTID24_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I628_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 6
 ; CHECK-NEXT:    store i32 [[I629_LOOP_COND]], ptr [[I628_CACHEIDX]], align 4
-; CHECK-NEXT:    [[A_DOUBLE32_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
-; CHECK-NEXT:    store double [[A_DOUBLE33_LOOP_COND]], ptr [[A_DOUBLE32_CACHEIDX]], align 8
+; CHECK-NEXT:    [[A_DOUBLE33_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
+; CHECK-NEXT:    store double [[A_DOUBLE31_LOOP_COND]], ptr [[A_DOUBLE33_CACHEIDX]], align 8
 ; CHECK-NEXT:    [[I1736_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 8
 ; CHECK-NEXT:    store i64 [[I17_LOOP_COND]], ptr [[I1736_CACHEIDX]], align 8
 ; CHECK-NEXT:    call void asm sideeffect "exit
@@ -263,7 +263,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[TID21_BB43]] = phi i32 [ [[TID21]], [[BB14]] ]
 ; CHECK-NEXT:    [[NTID25_BB43]] = phi i32 [ [[NTID25]], [[BB14]] ]
 ; CHECK-NEXT:    [[I629_BB43]] = phi i32 [ [[I629]], [[BB14]] ]
-; CHECK-NEXT:    [[A_DOUBLE33_BB43]] = phi double [ [[A_DOUBLE33]], [[BB14]] ]
+; CHECK-NEXT:    [[A_DOUBLE31_BB43]] = phi double [ [[A_DOUBLE31]], [[BB14]] ]
 ; CHECK-NEXT:    tail call void @llvm.nvvm.barrier0() #[[ATTR7:[0-9]+]]
 ; CHECK-NEXT:    [[I44]] = add nsw i32 [[I16_BB43]], [[I629_BB43]]
 ; CHECK-NEXT:    [[I45:%.*]] = add nsw i32 [[I15_BB43]], [[I629_BB43]]
@@ -276,10 +276,10 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ;
 ; CHECK-LABEL: define weak_odr protected void @__omp_offloading_fd01_2a0317_daxpy_l22_contd_0(
 ; CHECK-SAME: ptr noalias noundef [[LAUNCH_ENV:%.*]], ptr noundef [[Y_BUF:%.*]], ptr noundef [[X_BUF:%.*]], i64 noundef [[A:%.*]]) local_unnamed_addr #[[ATTR2]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-NEXT:    [[GTID:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
@@ -290,7 +290,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    br i1 [[MASKTHREAD]], label [[CACHEREMAT0:%.*]], label [[THREADEXIT:%.*]]
 ; CHECK:       loop.cond:
 ; CHECK-NEXT:    [[I1736:%.*]] = phi i64 [ [[I17:%.*]], [[BB14_FROM_BB14_FROM_BB43:%.*]] ], [ [[I17_RECOMPUTE:%.*]], [[CACHEREMAT0]] ]
-; CHECK-NEXT:    [[A_DOUBLE32:%.*]] = phi double [ [[A_DOUBLE31_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE_RECOMPUTE:%.*]], [[CACHEREMAT0]] ]
+; CHECK-NEXT:    [[A_DOUBLE33:%.*]] = phi double [ [[A_DOUBLE32_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE_RECOMPUTE:%.*]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[I628:%.*]] = phi i32 [ [[I627_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[I6_RECOMPUTE:%.*]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[NTID24:%.*]] = phi i32 [ [[NTID23_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[NTID_CACHE:%.*]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[TID20:%.*]] = phi i32 [ [[TID19_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[TID_CACHE:%.*]], [[CACHEREMAT0]] ]
@@ -383,14 +383,14 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    store i32 [[NTID24]], ptr [[NTID24_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I628_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 6
 ; CHECK-NEXT:    store i32 [[I628]], ptr [[I628_CACHEIDX]], align 4
-; CHECK-NEXT:    [[A_DOUBLE32_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
-; CHECK-NEXT:    store double [[A_DOUBLE32]], ptr [[A_DOUBLE32_CACHEIDX]], align 8
+; CHECK-NEXT:    [[A_DOUBLE33_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
+; CHECK-NEXT:    store double [[A_DOUBLE33]], ptr [[A_DOUBLE33_CACHEIDX]], align 8
 ; CHECK-NEXT:    [[I1736_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 8
 ; CHECK-NEXT:    store i64 [[I1736]], ptr [[I1736_CACHEIDX]], align 8
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
 ; CHECK:       bb43:
-; CHECK-NEXT:    [[A_DOUBLE31:%.*]] = phi double [ [[A_DOUBLE31_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE_RECOMPUTE]], [[CACHEREMAT0]] ]
+; CHECK-NEXT:    [[A_DOUBLE32:%.*]] = phi double [ [[A_DOUBLE32_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE_RECOMPUTE]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[I627:%.*]] = phi i32 [ [[I627_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[I6_RECOMPUTE]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[NTID23:%.*]] = phi i32 [ [[NTID23_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[NTID_CACHE]], [[CACHEREMAT0]] ]
 ; CHECK-NEXT:    [[TID19:%.*]] = phi i32 [ [[TID19_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[TID_CACHE]], [[CACHEREMAT0]] ]
@@ -410,7 +410,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[TID19_BB14]] = phi i32 [ [[TID19]], [[BB43]] ]
 ; CHECK-NEXT:    [[NTID23_BB14]] = phi i32 [ [[NTID23]], [[BB43]] ]
 ; CHECK-NEXT:    [[I627_BB14]] = phi i32 [ [[I627]], [[BB43]] ]
-; CHECK-NEXT:    [[A_DOUBLE31_BB14]] = phi double [ [[A_DOUBLE31]], [[BB43]] ]
+; CHECK-NEXT:    [[A_DOUBLE32_BB14]] = phi double [ [[A_DOUBLE32]], [[BB43]] ]
 ; CHECK-NEXT:    [[I17]] = zext i32 [[I46_BB1438]] to i64
 ; CHECK-NEXT:    [[I18:%.*]] = add nsw i32 [[TID19_BB14]], [[I44_BB1439]]
 ; CHECK-NEXT:    [[I19]] = sext i32 [[I18]] to i64
@@ -425,10 +425,10 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ;
 ; CHECK-LABEL: define weak_odr protected void @__omp_offloading_fd01_2a0317_daxpy_l22_contd_1(
 ; CHECK-SAME: ptr noalias noundef [[LAUNCH_ENV:%.*]], ptr noundef [[Y_BUF:%.*]], ptr noundef [[X_BUF:%.*]], i64 noundef [[A:%.*]]) local_unnamed_addr #[[ATTR2]] {
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  ContDispatchBB:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
+; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
 ; CHECK-NEXT:    [[GTID52:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_1:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
@@ -439,7 +439,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    br i1 [[MASKTHREAD55]], label [[CACHEREMAT1:%.*]], label [[THREADEXIT46:%.*]]
 ; CHECK:       loop.cond:
 ; CHECK-NEXT:    [[I1736:%.*]] = phi i64 [ [[I17:%.*]], [[BB14_FROM_BB14_FROM_BB43:%.*]] ], [ [[I1736_CACHE:%.*]], [[CACHEREMAT1]] ]
-; CHECK-NEXT:    [[A_DOUBLE32:%.*]] = phi double [ [[A_DOUBLE31_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE32_CACHE:%.*]], [[CACHEREMAT1]] ]
+; CHECK-NEXT:    [[A_DOUBLE33:%.*]] = phi double [ [[A_DOUBLE32_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE33_CACHE:%.*]], [[CACHEREMAT1]] ]
 ; CHECK-NEXT:    [[I628:%.*]] = phi i32 [ [[I627_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[I628_CACHE:%.*]], [[CACHEREMAT1]] ]
 ; CHECK-NEXT:    [[NTID24:%.*]] = phi i32 [ [[NTID23_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[NTID24_CACHE:%.*]], [[CACHEREMAT1]] ]
 ; CHECK-NEXT:    [[TID20:%.*]] = phi i32 [ [[TID19_BB14:%.*]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[TID20_CACHE:%.*]], [[CACHEREMAT1]] ]
@@ -501,8 +501,8 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    store i32 [[NTID24]], ptr [[NTID24_CACHEIDX]], align 4
 ; CHECK-NEXT:    [[I628_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 6
 ; CHECK-NEXT:    store i32 [[I628]], ptr [[I628_CACHEIDX]], align 4
-; CHECK-NEXT:    [[A_DOUBLE32_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
-; CHECK-NEXT:    store double [[A_DOUBLE32]], ptr [[A_DOUBLE32_CACHEIDX]], align 8
+; CHECK-NEXT:    [[A_DOUBLE33_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
+; CHECK-NEXT:    store double [[A_DOUBLE33]], ptr [[A_DOUBLE33_CACHEIDX]], align 8
 ; CHECK-NEXT:    [[I1736_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 8
 ; CHECK-NEXT:    store i64 [[I1736]], ptr [[I1736_CACHEIDX]], align 8
 ; CHECK-NEXT:    br label [[THREADEXIT46]]
@@ -526,8 +526,8 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[NTID24_CACHE]] = load i32, ptr [[NTID24_CACHEIDX64]], align 4
 ; CHECK-NEXT:    [[I628_CACHEIDX65:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL57]], i32 0, i32 6
 ; CHECK-NEXT:    [[I628_CACHE]] = load i32, ptr [[I628_CACHEIDX65]], align 4
-; CHECK-NEXT:    [[A_DOUBLE32_CACHEIDX66:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL57]], i32 0, i32 7
-; CHECK-NEXT:    [[A_DOUBLE32_CACHE]] = load double, ptr [[A_DOUBLE32_CACHEIDX66]], align 8
+; CHECK-NEXT:    [[A_DOUBLE33_CACHEIDX66:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL57]], i32 0, i32 7
+; CHECK-NEXT:    [[A_DOUBLE33_CACHE]] = load double, ptr [[A_DOUBLE33_CACHEIDX66]], align 8
 ; CHECK-NEXT:    [[I1736_CACHEIDX67:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL57]], i32 0, i32 8
 ; CHECK-NEXT:    [[I1736_CACHE]] = load i64, ptr [[I1736_CACHEIDX67]], align 8
 ; CHECK-NEXT:    [[I_TRUNC_RECOMPUTE68:%.*]] = trunc i64 [[I_CACHE59]] to i32
@@ -535,14 +535,14 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[Y_I_PTR_RECOMPUTE70:%.*]] = getelementptr inbounds double, ptr [[Y_BUF]], i64 [[I_CACHE59]]
 ; CHECK-NEXT:    [[X_I1:%.*]] = load double, ptr [[X_I_PTR_RECOMPUTE69]], align 8, !tbaa [[TBAA21]]
 ; CHECK-NEXT:    [[Y_I2:%.*]] = load double, ptr [[Y_I_PTR_RECOMPUTE70]], align 8, !tbaa [[TBAA21]]
-; CHECK-NEXT:    [[FMA:%.*]] = tail call double @llvm.fmuladd.f64(double [[A_DOUBLE32_CACHE]], double [[X_I1]], double [[Y_I2]])
+; CHECK-NEXT:    [[FMA:%.*]] = tail call double @llvm.fmuladd.f64(double [[A_DOUBLE33_CACHE]], double [[X_I1]], double [[Y_I2]])
 ; CHECK-NEXT:    store double [[FMA]], ptr [[Y_I_PTR_RECOMPUTE70]], align 8, !tbaa [[TBAA21]]
 ; CHECK-NEXT:    [[I40:%.*]] = add nsw i32 [[NTID24_CACHE]], [[I_TRUNC_RECOMPUTE68]]
 ; CHECK-NEXT:    [[I41]] = sext i32 [[I40]] to i64
 ; CHECK-NEXT:    [[I42:%.*]] = icmp ugt i64 [[I41]], [[I1736_CACHE]]
 ; CHECK-NEXT:    br i1 [[I42]], label [[BB43:%.*]], label [[LOOP_COND:%.*]]
 ; CHECK:       bb43:
-; CHECK-NEXT:    [[A_DOUBLE31:%.*]] = phi double [ [[A_DOUBLE31_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE32_CACHE]], [[CACHEREMAT1]] ]
+; CHECK-NEXT:    [[A_DOUBLE32:%.*]] = phi double [ [[A_DOUBLE32_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[A_DOUBLE33_CACHE]], [[CACHEREMAT1]] ]
 ; CHECK-NEXT:    [[I627:%.*]] = phi i32 [ [[I627_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[I628_CACHE]], [[CACHEREMAT1]] ]
 ; CHECK-NEXT:    [[NTID23:%.*]] = phi i32 [ [[NTID23_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[NTID24_CACHE]], [[CACHEREMAT1]] ]
 ; CHECK-NEXT:    [[TID19:%.*]] = phi i32 [ [[TID19_BB14]], [[BB14_FROM_BB14_FROM_BB43]] ], [ [[TID20_CACHE]], [[CACHEREMAT1]] ]
@@ -562,7 +562,7 @@ attributes #8 = { "llvm.assume"="ompx_no_call_asm,ompx_aligned_barrier" }
 ; CHECK-NEXT:    [[TID19_BB14]] = phi i32 [ [[TID19]], [[BB43]] ]
 ; CHECK-NEXT:    [[NTID23_BB14]] = phi i32 [ [[NTID23]], [[BB43]] ]
 ; CHECK-NEXT:    [[I627_BB14]] = phi i32 [ [[I627]], [[BB43]] ]
-; CHECK-NEXT:    [[A_DOUBLE31_BB14]] = phi double [ [[A_DOUBLE31]], [[BB43]] ]
+; CHECK-NEXT:    [[A_DOUBLE32_BB14]] = phi double [ [[A_DOUBLE32]], [[BB43]] ]
 ; CHECK-NEXT:    [[I17]] = zext i32 [[I46_BB1438]] to i64
 ; CHECK-NEXT:    [[I18:%.*]] = add nsw i32 [[TID19_BB14]], [[I44_BB1439]]
 ; CHECK-NEXT:    [[I19]] = sext i32 [[I18]] to i64
