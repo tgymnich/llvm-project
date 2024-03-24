@@ -2097,12 +2097,12 @@ private:
 
   bool splitKernels();
 
-  Function *rematerializeValuesAcrossSplit(Instruction *SplitInst,
-                                           SwitchInst *ContDispatch,
-                                           unsigned SplitIndex,
-                                           unsigned NumSplits);
+  Function *rematerializeValuesAcrossSplit(Function *Kernel,
+                                           ArrayRef<Use *> Splits,
+                                           SwitchInst *ContDispatch);
 
-  void splitKernel(Function *Kernel, SwitchInst *ContDispatch, unsigned NumSplits);
+  void splitKernel(Function *Kernel, SwitchInst *ContDispatch,
+                   unsigned NumSplits);
   ///
   ///}}
 
@@ -2473,7 +2473,8 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
   }
 }
 
-static SwitchInst *createContDispatchBlock(Function *Kernel, DominatorTree &DT) {
+static SwitchInst *createContDispatchBlock(Function *Kernel,
+                                           DominatorTree &DT) {
   Module *M = Kernel->getParent();
   LLVMContext &C = Kernel->getContext();
   BasicBlock &OldEntry = Kernel->getEntryBlock();
@@ -2513,16 +2514,14 @@ bool OpenMPOpt::splitKernels() {
 
     SwitchInst *ContDispatch = createContDispatchBlock(Kernel, DT);
 
-    for (auto &&[Idx, Use] : enumerate(*UseVec)) {
-      CallInst *SplitInst = cast<CallInst>(Use->getUser());
+    cleanupSinglePredPHIs(*Kernel);
 
-      cleanupSinglePredPHIs(*Kernel);
+    rewritePHIs(*Kernel, &DT);
 
-      rewritePHIs(*Kernel, &DT);
+    rematerializeValuesAcrossSplit(Kernel, *UseVec, ContDispatch);
 
-      rematerializeValuesAcrossSplit(SplitInst, ContDispatch, Idx,
-                                     UseVec->size());
-
+    for (Use *U : *UseVec) {
+      CallInst *SplitInst = cast<CallInst>(U->getUser());
       SplitInst->eraseFromParent();
     }
 
@@ -2601,6 +2600,8 @@ public:
 
     LLVM_DEBUG(dump());
   }
+
+  ~SuspendCrossingInfo() = default;
 
   iterator_range<pred_iterator> predecessors(BlockData const &BD) const {
     BasicBlock *BB = Mapping[&BD - &Block[0]];
@@ -3132,130 +3133,62 @@ void determineValuesAcross(Function *Kernel, SuspendCrossingInfo &SCI,
   }
 }
 
-Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
-                                                    SwitchInst *ContDispatch,
-                                                    unsigned SplitIndex,
-                                                    unsigned NumSplits) {
-  Function *Kernel = SplitInst->getFunction();
+Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
+                                                    ArrayRef<Use *> Splits,
+                                                    SwitchInst *ContDispatch) {
   LLVMContext &C = M.getContext();
   IRBuilder<> Builder(Kernel->getEntryBlock().getTerminator());
   const DataLayout &DL = M.getDataLayout();
   auto TT = Triple(M.getTargetTriple());
+  unsigned NumSplits = Splits.size();
 
   DominatorTree &DT = DTGetter(Kernel);
+  SSAUpdaterBulk SSAUpdate;
+  ValueToValueMapTy RematVMap;
 
-  ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
+  SmallVector<BasicBlock *, 4> SplitBBs(NumSplits);
+  SmallVector<BasicBlock *, 4> AfterSplitBBs(NumSplits);
+  SmallVector<BasicBlock *, 4> CacheRematBBs(NumSplits);
 
-  BasicBlock *BeforeSplitBB = SplitInst->getParent();
-  BasicBlock *SplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DT);
-  BasicBlock *AfterSplitBB = SplitBlock(SplitBB, SplitInst->getNextNode(), &DT);
+  DenseMap<Value *, unsigned> SSAVars;
 
-  SuspendCrossingInfo SCI(*Kernel, SplitInst);
+  for (auto &&[SplitIdx, U] : enumerate(Splits)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+    BasicBlock *BeforeSplitBB = SplitInst->getParent();
+    BasicBlock *SplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DT);
+    BasicBlock *AfterSplitBB =
+        SplitBlock(SplitBB, SplitInst->getNextNode(), &DT);
 
-  // Find Instructions that require caching
-  SetVector<AllocaInst *> RequiredAllocas;
-  for (Instruction &I : instructions(Kernel)) {
-    AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
-    if (!Alloca)
-      continue;
-
-    AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, true);
-    Visitor.visitPtr(*Alloca);
-
-    if (Visitor.getShouldRestoreAlloca() && Visitor.getMayWriteBeforeSplit())
-      RequiredAllocas.insert(Alloca);
+    SplitBBs[SplitIdx] = SplitBB;
+    AfterSplitBBs[SplitIdx] = AfterSplitBB;
   }
 
-  FlowNetwork RematGraph;
-  FlowNetworkBuilder FNBuilder(RematGraph);
+  BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
 
-  auto &Src = FNBuilder.createSource();
-  auto &Sink = FNBuilder.createSink();
+  // Terminate Block
+  Builder.SetInsertPoint(ExitBB);
 
-  determineValuesAcross(Kernel, SCI, FNBuilder);
+  // Terminate thread once a split off BB is reached.
+  // FIXME: This only works for NVPTX!
+  if (TT.isNVPTX()) {
+    FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
+    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
 
-  auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
-
-  auto IsIncomingInst = [](FlowNetworkNode *N) {
-    return N->isInstruction() && N->getIncoming();
-  };
-
-  auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
-
-  SmallVector<Instruction *, 64> CachedValues;
-  SmallVector<Instruction *, 64> RecomputedValues;
-
-  switch (SplitKernelRematMode) {
-  case RematModeKind::Cache: {
-    auto HasEdgeToSink = [&Sink](FlowNetworkNode *N) {
-      return N->isInstruction() && !N->getIncoming() && N->hasEdgeTo(Sink);
-    };
-
-    auto CachedValuesRange =
-        map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
-
-    append_range(CachedValues, CachedValuesRange);
-
-    break;
-  }
-  case RematModeKind::Recompute: {
-    auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
-    auto SrcHasNoEdgeToNode = [&Src](FlowNetworkNode *N) {
-      return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
-    };
-
-    auto CachedValuesRange = map_range(
-        make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
-    auto RecomputedValuesRange =
-        map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
-
-    append_range(CachedValues, CachedValuesRange);
-    append_range(RecomputedValues, RecomputedValuesRange);
-
-    break;
-  }
-  case RematModeKind::MinCut: {
-    SmallPtrSet<FlowNetworkNode *, 32> Cut;
-
-    switch (MaxFlowAlogrithm) {
-    case MaxFlowAlgorithmKind::PushRelabel: {
-      PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
-      MaxFlow.computeMaxFlow();
-      MaxFlow.getSinkSideMinCut(Cut);
-      break;
-    }
-    case MaxFlowAlgorithmKind::Dinic: {
-      DinicMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
-      MaxFlow.computeMaxFlow();
-      MaxFlow.getSinkSideMinCut(Cut);
-      break;
-    }
-    }
-
-    RecomputedValues.reserve(Cut.size());
-    CachedValues.reserve(RematGraph.size() - Cut.size());
-
-    for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
-      if (Cut.contains(N)) {
-        RecomputedValues.push_back(N->getInstruction());
-      } else if (!Cut.contains(N) && !N->getEdges().empty()) {
-        FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
-        if (Cut.contains(Target))
-          CachedValues.push_back(N->getInstruction());
-      }
-    }
-
-    break;
-  }
+    Builder.CreateCall(ExitFTy, Exit);
+    Builder.CreateUnreachable();
+  } else if (TT.isAMDGCN()) {
+    Builder.CreateUnaryIntrinsic(Intrinsic::amdgcn_kill, Builder.getTrue());
+    Builder.CreateUnreachable();
+  } else {
+    llvm_unreachable("unsupported");
   }
 
-  // Cache values shared between the original kernel and the split kernel.
-  auto ValueTys =
-      map_range(CachedValues, [](Instruction *I) { return I->getType(); });
-  auto AllocaTys = map_range(
-      RequiredAllocas, [](AllocaInst *I) { return I->getAllocatedType(); });
-  SmallVector<Type *> RequiredTypes(ValueTys);
-  append_range(RequiredTypes, AllocaTys);
+  SmallVector<std::unique_ptr<SuspendCrossingInfo>, 4> SCIs(NumSplits);
+
+  for (auto &&[SplitIdx, U] : enumerate(Splits)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+    SCIs[SplitIdx] = std::make_unique<SuspendCrossingInfo>(*Kernel, SplitInst);
+  }
 
   std::string KernelEnvironmentGVName =
       (Kernel->getName() + "_kernel_environment").str();
@@ -3285,29 +3218,207 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
 
   Argument *KernelLaunchEnvironment = Kernel->getArg(0);
 
-  BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
+  SmallVector<SmallVector<Instruction *, 64>, 4> CachedValuesArray(NumSplits);
+  SmallVector<SmallVector<Instruction *, 64>, 4> RecomputedValuesArray(
+      NumSplits);
+  SmallVector<SetVector<AllocaInst *>, 4> RequiredAllocasArray(NumSplits);
 
-  // Terminate Block
-  Builder.SetInsertPoint(ExitBB);
+  for (auto &&[SplitIndex, U] : enumerate(Splits)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
 
-  // Terminate thread once a split off BB is reached.
-  // FIXME: This only works for NVPTX!
-  if (TT.isNVPTX()) {
-    FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
-    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+    SuspendCrossingInfo &SCI = *SCIs[SplitIndex].get();
 
-    Builder.CreateCall(ExitFTy, Exit);
-    Builder.CreateUnreachable();
-  } else if (TT.isAMDGCN()) {
-    Builder.CreateUnaryIntrinsic(Intrinsic::amdgcn_kill, Builder.getTrue());
-    Builder.CreateUnreachable();
-  } else {
-    llvm_unreachable("unsupported");
+    // Find Instructions that require caching
+    SetVector<AllocaInst *> &RequiredAllocas = RequiredAllocasArray[SplitIndex];
+    for (Instruction &I : instructions(Kernel)) {
+      AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
+      if (!Alloca)
+        continue;
+
+      AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, true);
+      Visitor.visitPtr(*Alloca);
+
+      if (Visitor.getShouldRestoreAlloca() && Visitor.getMayWriteBeforeSplit())
+        RequiredAllocas.insert(Alloca);
+    }
+
+    FlowNetwork RematGraph;
+    FlowNetworkBuilder FNBuilder(RematGraph);
+
+    auto &Src = FNBuilder.createSource();
+    auto &Sink = FNBuilder.createSink();
+
+    determineValuesAcross(Kernel, SCI, FNBuilder);
+
+    auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
+
+    auto IsIncomingInst = [](FlowNetworkNode *N) {
+      return N->isInstruction() && N->getIncoming();
+    };
+
+    auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
+
+    SmallVector<Instruction *, 64> &CachedValues =
+        CachedValuesArray[SplitIndex];
+    SmallVector<Instruction *, 64> &RecomputedValues =
+        RecomputedValuesArray[SplitIndex];
+
+    switch (SplitKernelRematMode) {
+    case RematModeKind::Cache: {
+      auto HasEdgeToSink = [&Sink](FlowNetworkNode *N) {
+        return N->isInstruction() && !N->getIncoming() && N->hasEdgeTo(Sink);
+      };
+
+      auto CachedValuesRange =
+          map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
+
+      append_range(CachedValues, CachedValuesRange);
+
+      break;
+    }
+    case RematModeKind::Recompute: {
+      auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
+      auto SrcHasNoEdgeToNode = [&Src](FlowNetworkNode *N) {
+        return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
+      };
+
+      auto CachedValuesRange = map_range(
+          make_filter_range(map_range(Src, GetTarget), IsIncomingInst),
+          GetInst);
+      auto RecomputedValuesRange =
+          map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
+
+      append_range(CachedValues, CachedValuesRange);
+      append_range(RecomputedValues, RecomputedValuesRange);
+
+      break;
+    }
+    case RematModeKind::MinCut: {
+      SmallPtrSet<FlowNetworkNode *, 32> Cut;
+
+      switch (MaxFlowAlogrithm) {
+      case MaxFlowAlgorithmKind::PushRelabel: {
+        PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src,
+                                                         &Sink);
+        MaxFlow.computeMaxFlow();
+        MaxFlow.getSinkSideMinCut(Cut);
+        break;
+      }
+      case MaxFlowAlgorithmKind::Dinic: {
+        DinicMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+        MaxFlow.computeMaxFlow();
+        MaxFlow.getSinkSideMinCut(Cut);
+        break;
+      }
+      }
+
+      RecomputedValues.reserve(Cut.size());
+      CachedValues.reserve(RematGraph.size() - Cut.size());
+
+      for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
+        if (Cut.contains(N)) {
+          RecomputedValues.push_back(N->getInstruction());
+        } else if (!Cut.contains(N) && !N->getEdges().empty()) {
+          FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
+          if (Cut.contains(Target))
+            CachedValues.push_back(N->getInstruction());
+        }
+      }
+
+      break;
+    }
+    }
   }
 
-  if (CachedValues.empty() && RecomputedValues.empty()) {
-    BasicBlock *IncBB = BasicBlock::Create(C, "", Kernel);
-    Builder.SetInsertPoint(IncBB);
+  for (auto &&[SplitIndex, U] : enumerate(Splits)) {
+    ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
+
+    BasicBlock *SplitBB = SplitBBs[SplitIndex];
+    BasicBlock *AfterSplitBB = AfterSplitBBs[SplitIndex];
+
+    SmallVector<Instruction *, 64> &CachedValues =
+        CachedValuesArray[SplitIndex];
+    SmallVector<Instruction *, 64> &RecomputedValues =
+        RecomputedValuesArray[SplitIndex];
+    SetVector<AllocaInst *> &RequiredAllocas = RequiredAllocasArray[SplitIndex];
+
+    // Cache values shared between the original kernel and the split kernel.
+    auto ValueTys =
+        map_range(CachedValues, [](Instruction *I) { return I->getType(); });
+    auto AllocaTys = map_range(
+        RequiredAllocas, [](AllocaInst *I) { return I->getAllocatedType(); });
+    SmallVector<Type *> RequiredTypes(ValueTys);
+    append_range(RequiredTypes, AllocaTys);
+
+    if (CachedValues.empty() && RecomputedValues.empty()) {
+      BasicBlock *IncBB = BasicBlock::Create(C, "", Kernel);
+      Builder.SetInsertPoint(IncBB);
+
+      // Keep track of the number of continuation kernels to spawn.
+      Value *OutContCountPtr =
+          Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                  KernelInfo::ContinuationCntBufferIdx);
+      OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
+      OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
+                                                  {SplitIdx}, "contcount.ptr");
+
+      Value *CacheIdx = Builder.CreateAtomicRMW(
+          AtomicRMWInst::Add, OutContCountPtr, ConstantInt::get(ContCountTy, 1),
+          std::nullopt, AtomicOrdering::Monotonic);
+      CacheIdx->setName("cacheidx");
+
+      Builder.CreateBr(ExitBB);
+
+      BranchInst *Branch = BranchInst::Create(IncBB);
+      Instruction *Term = SplitBB->getTerminator();
+      ReplaceInstWithInst(Term, Branch);
+
+      ContDispatch->addCase(SplitIdx, AfterSplitBB);
+
+      CFGUpdate Updates[] = {
+          {DT.Delete, SplitBB, AfterSplitBB},
+          {DT.Insert, SplitBB, IncBB},
+          {DT.Insert, ContDispatch->getParent(), AfterSplitBB},
+          {DT.Insert, IncBB, ExitBB},
+      };
+      DT.applyUpdates(Updates);
+
+      Constant *ContinuationCacheLength = Builder.getInt32(0);
+      Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
+          CacheLengthInitializer, ContinuationCacheLength, SplitIndex);
+      CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
+
+      constexpr int ContinuationCacheLengthsIdx =
+          KernelInfo::ContinuationCacheLengthsIdx;
+      NewInitializer = ConstantFoldInsertValueInstruction(
+          NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
+      KernelEnvironmentGV->setInitializer(NewInitializer);
+
+      assert(!verifyFunction(*Kernel, &errs()));
+
+      return Kernel;
+    }
+
+    Type *CacheCellTy = StructType::create(
+        RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
+
+    Constant *ContinuationCacheLength =
+        Builder.getInt32(DL.getTypeAllocSize(CacheCellTy));
+    Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
+        CacheLengthInitializer, ContinuationCacheLength, SplitIndex);
+    CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
+
+    constexpr int ContinuationCacheLengthsIdx =
+        KernelInfo::ContinuationCacheLengthsIdx;
+    NewInitializer = ConstantFoldInsertValueInstruction(
+        NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
+    KernelEnvironmentGV->setInitializer(NewInitializer);
+
+    BasicBlock *CacheStoreBB = BasicBlock::Create(
+        C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
+
+    // Store Block
+    Builder.SetInsertPoint(CacheStoreBB);
 
     // Keep track of the number of continuation kernels to spawn.
     Value *OutContCountPtr =
@@ -3322,295 +3433,252 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Instruction *SplitInst,
         std::nullopt, AtomicOrdering::Monotonic);
     CacheIdx->setName("cacheidx");
 
+    // Get buffer containing pointers to the caches for each split point.
+    // Get the pointer to the cache for this split point at the right offset for
+    // the current thread
+    Value *OutCachePtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCacheBufferIdx);
+    OutCachePtr = Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr);
+    OutCachePtr =
+        Builder.CreateInBoundsGEP(Builder.getPtrTy(), OutCachePtr, {SplitIdx});
+    OutCachePtr =
+        Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr, "cache.out.ptr");
+
+    Value *OutCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, OutCachePtr,
+                                                    {CacheIdx}, "cachecell");
+
+    // Cache Values
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
+                                           Inst->getName() + ".cacheidx");
+
+      Builder.CreateStore(Inst, Ptr);
+    }
+
+    // Cache allocas
+    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
+                                           Alloca->getName() + ".cacheidx");
+
+      Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
+      Builder.CreateStore(ToCache, Ptr);
+    }
+
     Builder.CreateBr(ExitBB);
 
-    BranchInst *Branch = BranchInst::Create(IncBB);
+    BasicBlock *CacheRematBB = BasicBlock::Create(
+        C, "CacheRemat" + Twine(SplitIndex), Kernel, AfterSplitBB);
+    BasicBlock *CacheEntryBB = BasicBlock::Create(
+        C, "CacheEntry" + Twine(SplitIndex), Kernel, CacheRematBB);
+
+    CacheRematBBs[SplitIndex] = CacheRematBB;
+
+    BranchInst *Branch = BranchInst::Create(CacheStoreBB);
     Instruction *Term = SplitBB->getTerminator();
     ReplaceInstWithInst(Term, Branch);
 
-    ContDispatch->addCase(SplitIdx, AfterSplitBB);
+    ContDispatch->addCase(SplitIdx, CacheEntryBB);
+
+    // New Entry Block + Load Block
+    Builder.SetInsertPoint(CacheEntryBB);
+
+    Value *GlobalTid;
+    if (TT.isNVPTX()) {
+      // TODO: Use OMP runtime instead of ptx intrinsics.
+      Value *Tid = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_tid_x, {});
+      Value *BlockId = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ntid_x, {});
+      Value *NumThreads = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ctaid_x, {});
+      GlobalTid = Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads),
+                                    "gtid");
+    } else if (TT.isAMDGCN()) {
+      Value *Tid = Builder.CreateIntrinsic(Builder.getInt32Ty(),
+                                           Intrinsic::amdgcn_workitem_id_x, {});
+      Value *BlockId = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::amdgcn_workgroup_id_x, {});
+      Value *ArgPtr = Builder.CreateIntrinsic(
+          Builder.getPtrTy(), Intrinsic::amdgcn_implicitarg_ptr, {});
+      Value *NumThreadsPtr = Builder.CreateInBoundsGEP(
+          Builder.getInt16Ty(), ArgPtr, Builder.getInt64(6));
+      Value *NumThreads =
+          Builder.CreateLoad(Builder.getInt16Ty(), NumThreadsPtr);
+      Value *NumThreadsZext =
+          Builder.CreateZExt(NumThreads, Builder.getInt32Ty());
+      GlobalTid = Builder.CreateAdd(
+          Tid, Builder.CreateMul(BlockId, NumThreadsZext), "gtid");
+    } else {
+      llvm_unreachable("unsupported");
+    }
+
+    Value *InContCountPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCntBufferIdx);
+    InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
+    InContCountPtr = Builder.CreateInBoundsGEP(
+        ContCountTy, InContCountPtr, {NumContinuations}, "contcount.in.ptr");
+
+    Value *ContCount =
+        Builder.CreateLoad(ContCountTy, InContCountPtr, "contcount.in");
+    Value *ShouldMask =
+        Builder.CreateICmpULT(GlobalTid, ContCount, "maskthread");
+
+    Builder.CreateCondBr(ShouldMask, CacheRematBB, ExitBB);
+
+    Builder.SetInsertPoint(CacheRematBB);
+
+    // Get buffer containing pointers to the caches for each split point.
+    // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
+    // Get the pointer to the cache for this split point at the right offset
+    // for the current thread
+    ConstantInt *InSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
+    Value *InCachePtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCacheBufferIdx);
+    InCachePtr = Builder.CreateLoad(Builder.getPtrTy(), InCachePtr);
+    InCachePtr =
+        Builder.CreateInBoundsGEP(Builder.getPtrTy(), InCachePtr, {InSplitIdx});
+    InCachePtr =
+        Builder.CreateLoad(Builder.getPtrTy(), InCachePtr, "cache.in.ptr");
+
+    Value *InCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, InCachePtr,
+                                                   {GlobalTid}, "cachecell");
 
     CFGUpdate Updates[] = {
         {DT.Delete, SplitBB, AfterSplitBB},
-        {DT.Insert, SplitBB, IncBB},
-        {DT.Insert, ContDispatch->getParent(), AfterSplitBB},
-        {DT.Insert, IncBB, ExitBB},
+        {DT.Insert, ContDispatch->getParent(), CacheEntryBB},
+        {DT.Insert, SplitBB, CacheStoreBB},
+        {DT.Insert, CacheEntryBB, CacheRematBB},
+        {DT.Insert, CacheEntryBB, ExitBB},
+        {DT.Insert, CacheStoreBB, ExitBB},
     };
     DT.applyUpdates(Updates);
 
-    Constant *ContinuationCacheLength = Builder.getInt32(0);
-    Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
-        CacheLengthInitializer, ContinuationCacheLength, {SplitIndex});
-    CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
+    // Rematerialize values
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
+                                           Inst->getName() + ".cacheidx");
 
-    constexpr int ContinuationCacheLengthsIdx =
-        KernelInfo::ContinuationCacheLengthsIdx;
-    NewInitializer = ConstantFoldInsertValueInstruction(
-        NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
-    KernelEnvironmentGV->setInitializer(NewInitializer);
+      Value *Load =
+          Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
+      RematVMap[Inst] = Load;
 
-    assert(!verifyFunction(*Kernel, &errs()));
-
-    return Kernel;
-  }
-
-  Type *CacheCellTy = StructType::create(
-      RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
-
-  Constant *ContinuationCacheLength =
-      Builder.getInt32(DL.getTypeAllocSize(CacheCellTy));
-  Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
-      CacheLengthInitializer, ContinuationCacheLength, {SplitIndex});
-  CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
-
-  constexpr int ContinuationCacheLengthsIdx =
-      KernelInfo::ContinuationCacheLengthsIdx;
-  NewInitializer = ConstantFoldInsertValueInstruction(
-      NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
-  KernelEnvironmentGV->setInitializer(NewInitializer);
-
-  BasicBlock *CacheStoreBB = BasicBlock::Create(
-      C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
-
-  // Store Block
-  Builder.SetInsertPoint(CacheStoreBB);
-
-  // Keep track of the number of continuation kernels to spawn.
-  Value *OutContCountPtr =
-      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                              KernelInfo::ContinuationCntBufferIdx);
-  OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
-  OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
-                                              {SplitIdx}, "contcount.ptr");
-
-  Value *CacheIdx = Builder.CreateAtomicRMW(
-      AtomicRMWInst::Add, OutContCountPtr, ConstantInt::get(ContCountTy, 1),
-      std::nullopt, AtomicOrdering::Monotonic);
-  CacheIdx->setName("cacheidx");
-
-  // Get buffer containing pointers to the caches for each split point.
-  // Get the pointer to the cache for this split point at the right offset for
-  // the current thread
-  Value *OutCachePtr =
-      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                              KernelInfo::ContinuationCacheBufferIdx);
-  OutCachePtr = Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr);
-  OutCachePtr =
-      Builder.CreateInBoundsGEP(Builder.getPtrTy(), OutCachePtr, {SplitIdx});
-  OutCachePtr =
-      Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr, "cache.out.ptr");
-
-  Value *OutCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, OutCachePtr,
-                                                  {CacheIdx}, "cachecell");
-
-  // Cache Values
-  for (auto [Idx, Inst] : enumerate(CachedValues)) {
-    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
-                                         Inst->getName() + ".cacheidx");
-
-    Builder.CreateStore(Inst, Ptr);
-  }
-
-  // Cache allocas
-  for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
-                                         Alloca->getName() + ".cacheidx");
-
-    Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
-    Builder.CreateStore(ToCache, Ptr);
-  }
-
-  Builder.CreateBr(ExitBB);
-
-  BasicBlock *CacheRematBB = BasicBlock::Create(
-      C, "CacheRemat" + Twine(SplitIndex), Kernel, AfterSplitBB);
-  BasicBlock *CacheEntryBB = BasicBlock::Create(
-      C, "CacheEntry" + Twine(SplitIndex), Kernel, CacheRematBB);
-
-  BranchInst *Branch = BranchInst::Create(CacheStoreBB);
-  Instruction *Term = SplitBB->getTerminator();
-  ReplaceInstWithInst(Term, Branch);
-
-  ContDispatch->addCase(SplitIdx, CacheEntryBB);
-
-  // New Entry Block + Load Block
-  Builder.SetInsertPoint(CacheEntryBB);
-
-  Value *GlobalTid;
-  if (TT.isNVPTX()) {
-    // TODO: Use OMP runtime instead of ptx intrinsics.
-    Value *Tid = Builder.CreateIntrinsic(
-        Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_tid_x, {});
-    Value *BlockId = Builder.CreateIntrinsic(
-        Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ntid_x, {});
-    Value *NumThreads = Builder.CreateIntrinsic(
-        Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ctaid_x, {});
-    GlobalTid =
-        Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads), "gtid");
-  } else if (TT.isAMDGCN()) {
-    Value *Tid = Builder.CreateIntrinsic(Builder.getInt32Ty(),
-                                         Intrinsic::amdgcn_workitem_id_x, {});
-    Value *BlockId = Builder.CreateIntrinsic(
-        Builder.getInt32Ty(), Intrinsic::amdgcn_workgroup_id_x, {});
-    Value *ArgPtr = Builder.CreateIntrinsic(
-        Builder.getPtrTy(), Intrinsic::amdgcn_implicitarg_ptr, {});
-    Value *NumThreadsPtr = Builder.CreateInBoundsGEP(
-        Builder.getInt16Ty(), ArgPtr, Builder.getInt64(6));
-    Value *NumThreads = Builder.CreateLoad(Builder.getInt16Ty(), NumThreadsPtr);
-    Value *NumThreadsZext =
-        Builder.CreateZExt(NumThreads, Builder.getInt32Ty());
-    GlobalTid = Builder.CreateAdd(
-        Tid, Builder.CreateMul(BlockId, NumThreadsZext), "gtid");
-  } else {
-    llvm_unreachable("unsupported");
-  }
-
-  Value *InContCountPtr =
-      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                              KernelInfo::ContinuationCntBufferIdx);
-  InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
-  InContCountPtr = Builder.CreateInBoundsGEP(
-      ContCountTy, InContCountPtr, {NumContinuations}, "contcount.in.ptr");
-
-  Value *ContCount =
-      Builder.CreateLoad(ContCountTy, InContCountPtr, "contcount.in");
-  Value *ShouldMask = Builder.CreateICmpULT(GlobalTid, ContCount, "maskthread");
-
-  Builder.CreateCondBr(ShouldMask, CacheRematBB, ExitBB);
-
-  Builder.SetInsertPoint(CacheRematBB);
-
-  // Get buffer containing pointers to the caches for each split point.
-  // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
-  // Get the pointer to the cache for this split point at the right offset
-  // for the current thread
-  ConstantInt *InSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
-  Value *InCachePtr =
-      Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                              KernelInfo::ContinuationCacheBufferIdx);
-  InCachePtr = Builder.CreateLoad(Builder.getPtrTy(), InCachePtr);
-  InCachePtr =
-      Builder.CreateInBoundsGEP(Builder.getPtrTy(), InCachePtr, {InSplitIdx});
-  InCachePtr =
-      Builder.CreateLoad(Builder.getPtrTy(), InCachePtr, "cache.in.ptr");
-
-  Value *InCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, InCachePtr,
-                                                 {GlobalTid}, "cachecell");
-
-  CFGUpdate Updates[] = {
-      {DT.Delete, SplitBB, AfterSplitBB},
-      {DT.Insert, ContDispatch->getParent(), CacheEntryBB},
-      {DT.Insert, SplitBB, CacheStoreBB},
-      {DT.Insert, CacheEntryBB, CacheRematBB},
-      {DT.Insert, CacheEntryBB, ExitBB},
-      {DT.Insert, CacheStoreBB, ExitBB},
-  };
-  DT.applyUpdates(Updates);
-
-  SSAUpdaterBulk SSAUpdate;
-  ValueToValueMapTy RematVMap;
-
-  // Rematerialize values
-  for (auto [Idx, Inst] : enumerate(CachedValues)) {
-    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
-                                         Inst->getName() + ".cacheidx");
-
-    Value *Load =
-        Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
-    RematVMap[Inst] = Load;
-
-    unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
-    SSAUpdate.AddAvailableValue(Var, CacheRematBB, Load);
-    SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
-
-    for (Use &U : Inst->uses()) {
-      Instruction *User = cast<Instruction>(U.getUser());
-      if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
-        if (UserPN->getIncomingBlock(U) == Inst->getParent())
-          continue;
-      } else if (User->getParent() == Inst->getParent()) {
-        continue;
+      unsigned Var;
+      if (SSAVars.contains(Inst)) {
+        Var = SSAVars[Inst];
+      } else {
+        Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+        SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+        SSAVars[Inst] = Var;
       }
 
-      SSAUpdate.AddUse(Var, &U);
-    }
-  }
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Load);
 
-  // Rematerialize allocas
-  for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-    // NOTE: can we just read / write from the cache directly?
-    Instruction *NewAlloca = Alloca->clone();
-    Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
-    RematVMap[Alloca] = NewAlloca;
-
-    unsigned CacheIdx = CachedValues.size() + Idx;
-    Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, CacheIdx,
-                                         Alloca->getName() + ".cacheidx");
-
-    Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
-    Builder.CreateStore(CachedVal, NewAlloca);
-
-    // FIXME: What about aliases / geps ?
-
-    // TODO: What about
-    // derived values from the pointer? What about read only values? What
-    // about read write values?
-
-    unsigned Var = SSAUpdate.AddVariable(Alloca->getName(), Alloca->getType());
-    SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
-    SSAUpdate.AddAvailableValue(Var, Alloca->getParent(), Alloca);
-
-    for (Use &U : Alloca->uses()) {
-      Instruction *User = cast<Instruction>(U.getUser());
-      if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
-        if (UserPN->getIncomingBlock(U) == Alloca->getParent())
+      for (Use &U : Inst->uses()) {
+        Instruction *User = cast<Instruction>(U.getUser());
+        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+          if (UserPN->getIncomingBlock(U) == Inst->getParent())
+            continue;
+        } else if (User->getParent() == Inst->getParent()) {
           continue;
-      } else if (User->getParent() == Alloca->getParent()) {
-        continue;
+        }
+
+        SSAUpdate.AddUse(Var, &U);
+      }
+    }
+
+    // Rematerialize allocas
+    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
+      // NOTE: can we just read / write from the cache directly?
+      Instruction *NewAlloca = Alloca->clone();
+      Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
+      RematVMap[Alloca] = NewAlloca;
+
+      unsigned CacheIdx = CachedValues.size() + Idx;
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, CacheIdx,
+                                           Alloca->getName() + ".cacheidx");
+
+      Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+      Builder.CreateStore(CachedVal, NewAlloca);
+
+      // FIXME: What about aliases / geps ?
+
+      // TODO: What about
+      // derived values from the pointer? What about read only values? What
+      // about read write values?
+
+      unsigned Var;
+      if (SSAVars.contains(Alloca)) {
+        Var = SSAVars[Alloca];
+      } else {
+        Var = SSAUpdate.AddVariable(Alloca->getName(), Alloca->getType());
+        SSAUpdate.AddAvailableValue(Var, Alloca->getParent(), Alloca);
+        SSAVars[Alloca] = Var;
       }
 
-      SSAUpdate.AddUse(Var, &U);
-    }
-  }
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
 
-  for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
-    Instruction *Remat = Inst->clone();
-    Builder.Insert(Remat, Inst->getName() + ".recompute");
-    RematVMap[Inst] = Remat;
-
-    unsigned Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
-    SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
-    SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
-
-    for (Use &U : Inst->uses()) {
-      Instruction *User = cast<Instruction>(U.getUser());
-      if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
-        if (UserPN->getIncomingBlock(U) == Inst->getParent())
+      for (Use &U : Alloca->uses()) {
+        Instruction *User = cast<Instruction>(U.getUser());
+        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+          if (UserPN->getIncomingBlock(U) == Alloca->getParent())
+            continue;
+        } else if (User->getParent() == Alloca->getParent()) {
           continue;
-      } else if (User->getParent() == Inst->getParent()) {
-        continue;
+        }
+
+        SSAUpdate.AddUse(Var, &U);
+      }
+    }
+
+    for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
+      Instruction *Remat = Inst->clone();
+      Builder.Insert(Remat, Inst->getName() + ".recompute");
+      RematVMap[Inst] = Remat;
+
+      unsigned Var;
+      if (SSAVars.contains(Inst)) {
+        Var = SSAVars[Inst];
+      } else {
+        Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+        SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+        SSAVars[Inst] = Var;
       }
 
-      SSAUpdate.AddUse(Var, &U);
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
+
+      for (Use &U : Inst->uses()) {
+        Instruction *User = cast<Instruction>(U.getUser());
+        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+          if (UserPN->getIncomingBlock(U) == Inst->getParent())
+            continue;
+        } else if (User->getParent() == Inst->getParent()) {
+          continue;
+        }
+
+        SSAUpdate.AddUse(Var, &U);
+      }
     }
+
+    Builder.CreateBr(AfterSplitBB);
+    DT.insertEdge(CacheRematBB, AfterSplitBB);
+
+    NumCachedValues += CachedValues.size();
+    NumRecomputedValues += RecomputedValues.size();
   }
 
-  Builder.CreateBr(AfterSplitBB);
-  DT.insertEdge(CacheRematBB, AfterSplitBB);
-
-  remapInstructionsInBlocks({CacheRematBB}, RematVMap);
-
+  remapInstructionsInBlocks(CacheRematBBs, RematVMap);
   SSAUpdate.RewriteAllUses(&DT);
-
-  NumCachedValues += CachedValues.size();
-  NumRecomputedValues += RecomputedValues.size();
 
   assert(!verifyFunction(*Kernel, &errs()));
 
   return Kernel;
 }
 
-void OpenMPOpt::splitKernel(Function *Kernel, SwitchInst *ContDispatch, unsigned NumSplits) {
+void OpenMPOpt::splitKernel(Function *Kernel, SwitchInst *ContDispatch,
+                            unsigned NumSplits) {
   LLVMContext &C = M.getContext();
   Instruction *ContId = cast<Instruction>(ContDispatch->getCondition());
   Type *ContIdTy = ContId->getType();
@@ -3619,7 +3687,7 @@ void OpenMPOpt::splitKernel(Function *Kernel, SwitchInst *ContDispatch, unsigned
   GlobalVariable *ExecMode =
       M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
   GlobalVariable *NestedParallelism =
-      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());  
+      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());
 
   for (unsigned Idx = 0; Idx < NumSplits; ++Idx) {
     ValueToValueMapTy VMap;
