@@ -3458,7 +3458,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
     // Cache allocas
     for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
+      unsigned CacheIdx = CachedValues.size() + Idx;
+
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, CacheIdx,
                                            Alloca->getName() + ".cacheidx");
 
       Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
