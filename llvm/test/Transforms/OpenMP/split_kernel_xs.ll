@@ -761,49 +761,49 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[I10_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4, !invariant.group [[META41:![0-9]+]]
 ; CHECK-NEXT:    [[I70_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8, !invariant.group [[META42:![0-9]+]]
 ; CHECK-NEXT:    [[I115_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
-; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4, !invariant.group [[META43:![0-9]+]]
 ; CHECK-NEXT:    [[I114_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4, !invariant.group [[META44:![0-9]+]]
 ; CHECK-NEXT:    [[I113_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 4
-; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4, !invariant.group [[META45:![0-9]+]]
 ; CHECK-NEXT:    [[I112_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8, !invariant.group [[META46:![0-9]+]]
 ; CHECK-NEXT:    [[I111_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8, !invariant.group [[META47:![0-9]+]]
 ; CHECK-NEXT:    [[I110_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 7
-; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8, !invariant.group [[META48:![0-9]+]]
 ; CHECK-NEXT:    [[I108_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 8
-; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8, !invariant.group [[META49:![0-9]+]]
 ; CHECK-NEXT:    [[I107_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 9
-; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8, !invariant.group [[META50:![0-9]+]]
 ; CHECK-NEXT:    [[I106_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 10
-; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8, !invariant.group [[META51:![0-9]+]]
 ; CHECK-NEXT:    [[I105_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 11
-; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8, !invariant.group [[META52:![0-9]+]]
 ; CHECK-NEXT:    [[I104_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 12
-; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4, !invariant.group [[META53:![0-9]+]]
 ; CHECK-NEXT:    [[I40_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 13
-; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8, !invariant.group [[META54:![0-9]+]]
 ; CHECK-NEXT:    [[I31_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 14
-; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4, !invariant.group [[META55:![0-9]+]]
 ; CHECK-NEXT:    [[I30_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4, !invariant.group [[META56:![0-9]+]]
 ; CHECK-NEXT:    [[I5_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 16
-; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4, !invariant.group [[META57:![0-9]+]]
 ; CHECK-NEXT:    [[I_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 17
-; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4, !invariant.group [[META58:![0-9]+]]
 ; CHECK-NEXT:    [[I18_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 18
-; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4, !invariant.group [[META59:![0-9]+]]
 ; CHECK-NEXT:    br label [[THREADEXIT:%.*]]
 ; CHECK:       bb139:
 ; CHECK-NEXT:    [[I140:%.*]] = phi i64 [ -1, [[BB103]] ], [ 0, [[BB116]] ], [ [[I131]], [[BB121]] ]
 ; CHECK-NEXT:    [[I141:%.*]] = zext nneg i32 [[I104]] to i64
 ; CHECK-NEXT:    [[I142:%.*]] = getelementptr inbounds i32, ptr [[I107]], i64 [[I141]]
-; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA41:![0-9]+]]
+; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA60:![0-9]+]]
 ; CHECK-NEXT:    [[I144:%.*]] = icmp sgt i32 [[I143]], 0
 ; CHECK-NEXT:    br i1 [[I144]], label [[BB145:%.*]], label [[BB302]]
 ; CHECK:       bb145:
@@ -866,7 +866,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I166:%.*]] = add nsw i32 [[I165]], [[I146448]]
 ; CHECK-NEXT:    [[I167:%.*]] = sext i32 [[I166]] to i64
 ; CHECK-NEXT:    [[I168:%.*]] = getelementptr inbounds i32, ptr [[I112258]], i64 [[I167]]
-; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I170:%.*]] = getelementptr inbounds double, ptr [[I108265]], i64 [[I167]]
 ; CHECK-NEXT:    [[I171:%.*]] = load double, ptr [[I170]], align 8, !tbaa [[TBAA39]]
 ; CHECK-NEXT:    switch i32 [[I113255]], label [[CACHESTORE2:%.*]] [
@@ -884,62 +884,62 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR49:%.*]] = load ptr, ptr [[TMP9]], align 8
 ; CHECK-NEXT:    [[CACHECELL50:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_OUT_PTR49]], i32 [[CACHEIDX48]]
 ; CHECK-NEXT:    [[I10_CACHEIDX51:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4, !invariant.group [[META61:![0-9]+]]
 ; CHECK-NEXT:    [[I70_CACHEIDX52:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8, !invariant.group [[META62:![0-9]+]]
 ; CHECK-NEXT:    [[I142_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8, !invariant.group [[META63:![0-9]+]]
 ; CHECK-NEXT:    [[I146_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4, !invariant.group [[META64:![0-9]+]]
 ; CHECK-NEXT:    [[I153_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1, !invariant.group [[META65:![0-9]+]]
 ; CHECK-NEXT:    [[I148_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8, !invariant.group [[META66:![0-9]+]]
 ; CHECK-NEXT:    [[I156_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8, !invariant.group [[META67:![0-9]+]]
 ; CHECK-NEXT:    [[I171_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8, !invariant.group [[META68:![0-9]+]]
 ; CHECK-NEXT:    [[I169_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4, !invariant.group [[META69:![0-9]+]]
 ; CHECK-NEXT:    [[I165_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4, !invariant.group [[META70:![0-9]+]]
 ; CHECK-NEXT:    [[I164_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8, !invariant.group [[META71:![0-9]+]]
 ; CHECK-NEXT:    [[I163_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8, !invariant.group [[META72:![0-9]+]]
 ; CHECK-NEXT:    [[I162_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8, !invariant.group [[META73:![0-9]+]]
 ; CHECK-NEXT:    [[I161_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8, !invariant.group [[META74:![0-9]+]]
 ; CHECK-NEXT:    [[I160_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8, !invariant.group [[META75:![0-9]+]]
 ; CHECK-NEXT:    [[I113_CACHEIDX53:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 15
-; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4
+; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4, !invariant.group [[META76:![0-9]+]]
 ; CHECK-NEXT:    [[I112_CACHEIDX54:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8, !invariant.group [[META77:![0-9]+]]
 ; CHECK-NEXT:    [[I111_CACHEIDX55:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8, !invariant.group [[META78:![0-9]+]]
 ; CHECK-NEXT:    [[I108_CACHEIDX56:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8, !invariant.group [[META79:![0-9]+]]
 ; CHECK-NEXT:    [[I106_CACHEIDX57:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8, !invariant.group [[META80:![0-9]+]]
 ; CHECK-NEXT:    [[I40_CACHEIDX58:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8, !invariant.group [[META81:![0-9]+]]
 ; CHECK-NEXT:    [[I31_CACHEIDX59:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4, !invariant.group [[META82:![0-9]+]]
 ; CHECK-NEXT:    [[I30_CACHEIDX60:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4, !invariant.group [[META83:![0-9]+]]
 ; CHECK-NEXT:    [[I5_CACHEIDX61:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4, !invariant.group [[META84:![0-9]+]]
 ; CHECK-NEXT:    [[I_CACHEIDX62:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4, !invariant.group [[META85:![0-9]+]]
 ; CHECK-NEXT:    [[I18_CACHEIDX63:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4, !invariant.group [[META86:![0-9]+]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb197:
 ; CHECK-NEXT:    [[I198:%.*]] = sext i32 [[I169]] to i64
 ; CHECK-NEXT:    [[I199:%.*]] = getelementptr i32, ptr [[I148452]], i64 [[I198]]
-; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I201:%.*]] = sext i32 [[I200]] to i64
 ; CHECK-NEXT:    [[I202:%.*]] = icmp eq i64 [[I149463]], [[I201]]
 ; CHECK-NEXT:    [[I203:%.*]] = mul nsw i64 [[I106269]], [[I198]]
@@ -948,40 +948,40 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I206:%.*]] = select i1 [[I202]], i64 -48, i64 0
 ; CHECK-NEXT:    [[I207:%.*]] = getelementptr i8, ptr [[I205]], i64 [[I206]]
 ; CHECK-NEXT:    [[I257:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 48
-; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA42:![0-9]+]]
+; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA87:![0-9]+]]
 ; CHECK-NEXT:    [[I259:%.*]] = fsub double [[I258]], [[I75386]]
-; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I207]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I207]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I261:%.*]] = fsub double [[I258]], [[I260]]
 ; CHECK-NEXT:    [[I262:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 56
-; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA44:![0-9]+]]
+; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA89:![0-9]+]]
 ; CHECK-NEXT:    [[I264:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 8
-; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA44]]
+; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA89]]
 ; CHECK-NEXT:    [[I266:%.*]] = fsub double [[I263]], [[I265]]
 ; CHECK-NEXT:    [[I267:%.*]] = fneg double [[I259]]
 ; CHECK-NEXT:    [[I268:%.*]] = fdiv double [[I267]], [[I261]]
 ; CHECK-NEXT:    [[I269:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I266]], double [[I263]])
 ; CHECK-NEXT:    [[I270:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 64
-; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA45:![0-9]+]]
+; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA90:![0-9]+]]
 ; CHECK-NEXT:    [[I272:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 16
-; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA45]]
+; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA90]]
 ; CHECK-NEXT:    [[I274:%.*]] = fsub double [[I271]], [[I273]]
 ; CHECK-NEXT:    [[I275:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I274]], double [[I271]])
 ; CHECK-NEXT:    [[I276:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 72
-; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA46:![0-9]+]]
+; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA91:![0-9]+]]
 ; CHECK-NEXT:    [[I278:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 24
-; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA46]]
+; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA91]]
 ; CHECK-NEXT:    [[I280:%.*]] = fsub double [[I277]], [[I279]]
 ; CHECK-NEXT:    [[I281:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I280]], double [[I277]])
 ; CHECK-NEXT:    [[I282:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 80
-; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA47:![0-9]+]]
+; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA92:![0-9]+]]
 ; CHECK-NEXT:    [[I284:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 32
-; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA47]]
+; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA92]]
 ; CHECK-NEXT:    [[I286:%.*]] = fsub double [[I283]], [[I285]]
 ; CHECK-NEXT:    [[I287:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I286]], double [[I283]])
 ; CHECK-NEXT:    [[I288:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 88
-; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA48:![0-9]+]]
+; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA93:![0-9]+]]
 ; CHECK-NEXT:    [[I290:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 40
-; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA48]]
+; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA93]]
 ; CHECK-NEXT:    [[I292:%.*]] = fsub double [[I289]], [[I291]]
 ; CHECK-NEXT:    [[I293:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I292]], double [[I289]])
 ; CHECK-NEXT:    [[I294]] = tail call double @llvm.fmuladd.f64(double [[I269]], double [[I171]], double [[I164]])
@@ -990,7 +990,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I297]] = tail call double @llvm.fmuladd.f64(double [[I287]], double [[I171]], double [[I161]])
 ; CHECK-NEXT:    [[I298]] = tail call double @llvm.fmuladd.f64(double [[I293]], double [[I171]], double [[I160]])
 ; CHECK-NEXT:    [[I299]] = add nuw nsw i32 [[I165]], 1
-; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142446]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142446]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I301:%.*]] = icmp slt i32 [[I299]], [[I300]]
 ; CHECK-NEXT:    br i1 [[I301]], label [[BB159]], label [[BB302]]
 ; CHECK:       CacheStore2:
@@ -1004,57 +1004,57 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR131:%.*]] = load ptr, ptr [[TMP14]], align 8
 ; CHECK-NEXT:    [[CACHECELL132:%.*]] = getelementptr inbounds [[CACHE_CELL2:%.*]], ptr [[CACHE_OUT_PTR131]], i32 [[CACHEIDX130]]
 ; CHECK-NEXT:    [[I10_CACHEIDX133:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4, !invariant.group [[META94:![0-9]+]]
 ; CHECK-NEXT:    [[I70_CACHEIDX134:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8, !invariant.group [[META95:![0-9]+]]
 ; CHECK-NEXT:    [[I142_CACHEIDX135:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8, !invariant.group [[META96:![0-9]+]]
 ; CHECK-NEXT:    [[I146_CACHEIDX136:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4, !invariant.group [[META97:![0-9]+]]
 ; CHECK-NEXT:    [[I153_CACHEIDX137:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1, !invariant.group [[META98:![0-9]+]]
 ; CHECK-NEXT:    [[I148_CACHEIDX138:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8, !invariant.group [[META99:![0-9]+]]
 ; CHECK-NEXT:    [[I156_CACHEIDX139:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8, !invariant.group [[META100:![0-9]+]]
 ; CHECK-NEXT:    [[I171_CACHEIDX140:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8, !invariant.group [[META101:![0-9]+]]
 ; CHECK-NEXT:    [[I169_CACHEIDX141:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4, !invariant.group [[META102:![0-9]+]]
 ; CHECK-NEXT:    [[I165_CACHEIDX142:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4, !invariant.group [[META103:![0-9]+]]
 ; CHECK-NEXT:    [[I164_CACHEIDX143:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8, !invariant.group [[META104:![0-9]+]]
 ; CHECK-NEXT:    [[I163_CACHEIDX144:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8, !invariant.group [[META105:![0-9]+]]
 ; CHECK-NEXT:    [[I162_CACHEIDX145:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8, !invariant.group [[META106:![0-9]+]]
 ; CHECK-NEXT:    [[I161_CACHEIDX146:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8, !invariant.group [[META107:![0-9]+]]
 ; CHECK-NEXT:    [[I160_CACHEIDX147:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8, !invariant.group [[META108:![0-9]+]]
 ; CHECK-NEXT:    [[I113_CACHEIDX148:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4
+; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4, !invariant.group [[META109:![0-9]+]]
 ; CHECK-NEXT:    [[I112_CACHEIDX149:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8, !invariant.group [[META110:![0-9]+]]
 ; CHECK-NEXT:    [[I111_CACHEIDX150:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8, !invariant.group [[META111:![0-9]+]]
 ; CHECK-NEXT:    [[I108_CACHEIDX151:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8, !invariant.group [[META112:![0-9]+]]
 ; CHECK-NEXT:    [[I106_CACHEIDX152:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8, !invariant.group [[META113:![0-9]+]]
 ; CHECK-NEXT:    [[I40_CACHEIDX153:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8, !invariant.group [[META114:![0-9]+]]
 ; CHECK-NEXT:    [[I31_CACHEIDX154:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4, !invariant.group [[META115:![0-9]+]]
 ; CHECK-NEXT:    [[I30_CACHEIDX155:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4, !invariant.group [[META116:![0-9]+]]
 ; CHECK-NEXT:    [[I5_CACHEIDX156:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4, !invariant.group [[META117:![0-9]+]]
 ; CHECK-NEXT:    [[I_CACHEIDX157:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4, !invariant.group [[META118:![0-9]+]]
 ; CHECK-NEXT:    [[I18_CACHEIDX158:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4, !invariant.group [[META119:![0-9]+]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb302:
 ; CHECK-NEXT:    [[I28441]] = phi ptr [ [[I28444]], [[BB139]] ], [ [[I28442]], [[BB197]] ]
@@ -1098,7 +1098,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I319:%.*]] = select i1 [[I314]], i64 4, i64 [[I318]]
 ; CHECK-NEXT:    [[I320:%.*]] = select i1 [[I317]], i64 5, i64 [[I319]]
 ; CHECK-NEXT:    [[I321:%.*]] = getelementptr inbounds i64, ptr [[ARG3]], i64 [[I40274]]
-; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA49:![0-9]+]]
+; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA120:![0-9]+]]
 ; CHECK-NEXT:    [[I322:%.*]] = add nsw i32 [[I18337]], [[I41389]]
 ; CHECK-NEXT:    [[I323]] = sext i32 [[I322]] to i64
 ; CHECK-NEXT:    [[I324:%.*]] = icmp ugt i64 [[I323]], [[I32393]]
@@ -1301,43 +1301,43 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP10]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[I10_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4, !invariant.group [[META41]]
 ; CHECK-NEXT:    [[I70_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8, !invariant.group [[META42]]
 ; CHECK-NEXT:    [[I115_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
-; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4, !invariant.group [[META43]]
 ; CHECK-NEXT:    [[I114_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4, !invariant.group [[META44]]
 ; CHECK-NEXT:    [[I113_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 4
-; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4, !invariant.group [[META45]]
 ; CHECK-NEXT:    [[I112_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8, !invariant.group [[META46]]
 ; CHECK-NEXT:    [[I111_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8, !invariant.group [[META47]]
 ; CHECK-NEXT:    [[I110_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 7
-; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8, !invariant.group [[META48]]
 ; CHECK-NEXT:    [[I108_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 8
-; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8, !invariant.group [[META49]]
 ; CHECK-NEXT:    [[I107_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 9
-; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8, !invariant.group [[META50]]
 ; CHECK-NEXT:    [[I106_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 10
-; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8, !invariant.group [[META51]]
 ; CHECK-NEXT:    [[I105_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 11
-; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8, !invariant.group [[META52]]
 ; CHECK-NEXT:    [[I104_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 12
-; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4, !invariant.group [[META53]]
 ; CHECK-NEXT:    [[I40_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 13
-; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8, !invariant.group [[META54]]
 ; CHECK-NEXT:    [[I31_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 14
-; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4, !invariant.group [[META55]]
 ; CHECK-NEXT:    [[I30_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4, !invariant.group [[META56]]
 ; CHECK-NEXT:    [[I5_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 16
-; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4, !invariant.group [[META57]]
 ; CHECK-NEXT:    [[I_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 17
-; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4, !invariant.group [[META58]]
 ; CHECK-NEXT:    [[I18_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 18
-; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4, !invariant.group [[META59]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       CacheRemat0:
 ; CHECK-NEXT:    [[TMP11:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ARG]], i32 0, i32 4
@@ -1346,43 +1346,43 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP13]], align 8
 ; CHECK-NEXT:    [[CACHECELL27:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
 ; CHECK-NEXT:    [[I10_CACHEIDX28:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 0
-; CHECK-NEXT:    [[I10_CACHE:%.*]] = load i32, ptr [[I10_CACHEIDX28]], align 4
+; CHECK-NEXT:    [[I10_CACHE:%.*]] = load i32, ptr [[I10_CACHEIDX28]], align 4, !invariant.group [[META41]]
 ; CHECK-NEXT:    [[I70_CACHEIDX29:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 1
-; CHECK-NEXT:    [[I70_CACHE:%.*]] = load i64, ptr [[I70_CACHEIDX29]], align 8
+; CHECK-NEXT:    [[I70_CACHE:%.*]] = load i64, ptr [[I70_CACHEIDX29]], align 8, !invariant.group [[META42]]
 ; CHECK-NEXT:    [[I115_CACHEIDX30:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 2
-; CHECK-NEXT:    [[I115_CACHE:%.*]] = load i32, ptr [[I115_CACHEIDX30]], align 4
+; CHECK-NEXT:    [[I115_CACHE:%.*]] = load i32, ptr [[I115_CACHEIDX30]], align 4, !invariant.group [[META43]]
 ; CHECK-NEXT:    [[I114_CACHEIDX31:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 3
-; CHECK-NEXT:    [[I114_CACHE:%.*]] = load i32, ptr [[I114_CACHEIDX31]], align 4
+; CHECK-NEXT:    [[I114_CACHE:%.*]] = load i32, ptr [[I114_CACHEIDX31]], align 4, !invariant.group [[META44]]
 ; CHECK-NEXT:    [[I113_CACHEIDX32:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 4
-; CHECK-NEXT:    [[I113_CACHE:%.*]] = load i32, ptr [[I113_CACHEIDX32]], align 4
+; CHECK-NEXT:    [[I113_CACHE:%.*]] = load i32, ptr [[I113_CACHEIDX32]], align 4, !invariant.group [[META45]]
 ; CHECK-NEXT:    [[I112_CACHEIDX33:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 5
-; CHECK-NEXT:    [[I112_CACHE:%.*]] = load ptr, ptr [[I112_CACHEIDX33]], align 8
+; CHECK-NEXT:    [[I112_CACHE:%.*]] = load ptr, ptr [[I112_CACHEIDX33]], align 8, !invariant.group [[META46]]
 ; CHECK-NEXT:    [[I111_CACHEIDX34:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 6
-; CHECK-NEXT:    [[I111_CACHE:%.*]] = load ptr, ptr [[I111_CACHEIDX34]], align 8
+; CHECK-NEXT:    [[I111_CACHE:%.*]] = load ptr, ptr [[I111_CACHEIDX34]], align 8, !invariant.group [[META47]]
 ; CHECK-NEXT:    [[I110_CACHEIDX35:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 7
-; CHECK-NEXT:    [[I110_CACHE:%.*]] = load ptr, ptr [[I110_CACHEIDX35]], align 8
+; CHECK-NEXT:    [[I110_CACHE:%.*]] = load ptr, ptr [[I110_CACHEIDX35]], align 8, !invariant.group [[META48]]
 ; CHECK-NEXT:    [[I108_CACHEIDX36:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 8
-; CHECK-NEXT:    [[I108_CACHE:%.*]] = load ptr, ptr [[I108_CACHEIDX36]], align 8
+; CHECK-NEXT:    [[I108_CACHE:%.*]] = load ptr, ptr [[I108_CACHEIDX36]], align 8, !invariant.group [[META49]]
 ; CHECK-NEXT:    [[I107_CACHEIDX37:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 9
-; CHECK-NEXT:    [[I107_CACHE:%.*]] = load ptr, ptr [[I107_CACHEIDX37]], align 8
+; CHECK-NEXT:    [[I107_CACHE:%.*]] = load ptr, ptr [[I107_CACHEIDX37]], align 8, !invariant.group [[META50]]
 ; CHECK-NEXT:    [[I106_CACHEIDX38:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 10
-; CHECK-NEXT:    [[I106_CACHE:%.*]] = load i64, ptr [[I106_CACHEIDX38]], align 8
+; CHECK-NEXT:    [[I106_CACHE:%.*]] = load i64, ptr [[I106_CACHEIDX38]], align 8, !invariant.group [[META51]]
 ; CHECK-NEXT:    [[I105_CACHEIDX39:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 11
-; CHECK-NEXT:    [[I105_CACHE:%.*]] = load i64, ptr [[I105_CACHEIDX39]], align 8
+; CHECK-NEXT:    [[I105_CACHE:%.*]] = load i64, ptr [[I105_CACHEIDX39]], align 8, !invariant.group [[META52]]
 ; CHECK-NEXT:    [[I104_CACHEIDX40:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 12
-; CHECK-NEXT:    [[I104_CACHE:%.*]] = load i32, ptr [[I104_CACHEIDX40]], align 4
+; CHECK-NEXT:    [[I104_CACHE:%.*]] = load i32, ptr [[I104_CACHEIDX40]], align 4, !invariant.group [[META53]]
 ; CHECK-NEXT:    [[I40_CACHEIDX41:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 13
-; CHECK-NEXT:    [[I40_CACHE:%.*]] = load i64, ptr [[I40_CACHEIDX41]], align 8
+; CHECK-NEXT:    [[I40_CACHE:%.*]] = load i64, ptr [[I40_CACHEIDX41]], align 8, !invariant.group [[META54]]
 ; CHECK-NEXT:    [[I31_CACHEIDX42:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 14
-; CHECK-NEXT:    [[I31_CACHE:%.*]] = load i32, ptr [[I31_CACHEIDX42]], align 4
+; CHECK-NEXT:    [[I31_CACHE:%.*]] = load i32, ptr [[I31_CACHEIDX42]], align 4, !invariant.group [[META55]]
 ; CHECK-NEXT:    [[I30_CACHEIDX43:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 15
-; CHECK-NEXT:    [[I30_CACHE:%.*]] = load i32, ptr [[I30_CACHEIDX43]], align 4
+; CHECK-NEXT:    [[I30_CACHE:%.*]] = load i32, ptr [[I30_CACHEIDX43]], align 4, !invariant.group [[META56]]
 ; CHECK-NEXT:    [[I5_CACHEIDX44:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 16
-; CHECK-NEXT:    [[I5_CACHE:%.*]] = load i32, ptr [[I5_CACHEIDX44]], align 4
+; CHECK-NEXT:    [[I5_CACHE:%.*]] = load i32, ptr [[I5_CACHEIDX44]], align 4, !invariant.group [[META57]]
 ; CHECK-NEXT:    [[I_CACHEIDX45:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 17
-; CHECK-NEXT:    [[I_CACHE:%.*]] = load i32, ptr [[I_CACHEIDX45]], align 4
+; CHECK-NEXT:    [[I_CACHE:%.*]] = load i32, ptr [[I_CACHEIDX45]], align 4, !invariant.group [[META58]]
 ; CHECK-NEXT:    [[I18_CACHEIDX46:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL27]], i32 0, i32 18
-; CHECK-NEXT:    [[I18_CACHE:%.*]] = load i32, ptr [[I18_CACHEIDX46]], align 4
+; CHECK-NEXT:    [[I18_CACHE:%.*]] = load i32, ptr [[I18_CACHEIDX46]], align 4, !invariant.group [[META59]]
 ; CHECK-NEXT:    [[I13_RECOMPUTE:%.*]] = shl nsw i32 [[I10_CACHE]], 7
 ; CHECK-NEXT:    [[I4_RECOMPUTE:%.*]] = getelementptr inbounds i8, ptr [[ARG1]], i64 24
 ; CHECK-NEXT:    [[I19_RECOMPUTE:%.*]] = getelementptr inbounds i8, ptr [[ARG1]], i64 8
@@ -1447,7 +1447,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I140:%.*]] = phi i64 [ [[I138]], [[CACHEREMAT0]] ], [ -1, [[BB103]] ], [ 0, [[BB116]] ], [ [[I131]], [[BB121]] ]
 ; CHECK-NEXT:    [[I141:%.*]] = zext nneg i32 [[I104271]] to i64
 ; CHECK-NEXT:    [[I142:%.*]] = getelementptr inbounds i32, ptr [[I107266]], i64 [[I141]]
-; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I144:%.*]] = icmp sgt i32 [[I143]], 0
 ; CHECK-NEXT:    br i1 [[I144]], label [[BB145:%.*]], label [[BB302]]
 ; CHECK:       bb145:
@@ -1510,7 +1510,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I166:%.*]] = add nsw i32 [[I165]], [[I146448]]
 ; CHECK-NEXT:    [[I167:%.*]] = sext i32 [[I166]] to i64
 ; CHECK-NEXT:    [[I168:%.*]] = getelementptr inbounds i32, ptr [[I112258]], i64 [[I167]]
-; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I170:%.*]] = getelementptr inbounds double, ptr [[I108265]], i64 [[I167]]
 ; CHECK-NEXT:    [[I171:%.*]] = load double, ptr [[I170]], align 8, !tbaa [[TBAA39]]
 ; CHECK-NEXT:    switch i32 [[I113255]], label [[CACHESTORE2:%.*]] [
@@ -1528,62 +1528,62 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR49:%.*]] = load ptr, ptr [[TMP18]], align 8
 ; CHECK-NEXT:    [[CACHECELL50:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_OUT_PTR49]], i32 [[CACHEIDX48]]
 ; CHECK-NEXT:    [[I10_CACHEIDX51:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4, !invariant.group [[META61]]
 ; CHECK-NEXT:    [[I70_CACHEIDX52:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8, !invariant.group [[META62]]
 ; CHECK-NEXT:    [[I142_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8, !invariant.group [[META63]]
 ; CHECK-NEXT:    [[I146_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4, !invariant.group [[META64]]
 ; CHECK-NEXT:    [[I153_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1, !invariant.group [[META65]]
 ; CHECK-NEXT:    [[I148_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8, !invariant.group [[META66]]
 ; CHECK-NEXT:    [[I156_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8, !invariant.group [[META67]]
 ; CHECK-NEXT:    [[I171_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8, !invariant.group [[META68]]
 ; CHECK-NEXT:    [[I169_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4, !invariant.group [[META69]]
 ; CHECK-NEXT:    [[I165_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4, !invariant.group [[META70]]
 ; CHECK-NEXT:    [[I164_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8, !invariant.group [[META71]]
 ; CHECK-NEXT:    [[I163_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8, !invariant.group [[META72]]
 ; CHECK-NEXT:    [[I162_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8, !invariant.group [[META73]]
 ; CHECK-NEXT:    [[I161_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8, !invariant.group [[META74]]
 ; CHECK-NEXT:    [[I160_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8, !invariant.group [[META75]]
 ; CHECK-NEXT:    [[I113_CACHEIDX53:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 15
-; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4
+; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4, !invariant.group [[META76]]
 ; CHECK-NEXT:    [[I112_CACHEIDX54:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8, !invariant.group [[META77]]
 ; CHECK-NEXT:    [[I111_CACHEIDX55:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8, !invariant.group [[META78]]
 ; CHECK-NEXT:    [[I108_CACHEIDX56:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8, !invariant.group [[META79]]
 ; CHECK-NEXT:    [[I106_CACHEIDX57:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8, !invariant.group [[META80]]
 ; CHECK-NEXT:    [[I40_CACHEIDX58:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8, !invariant.group [[META81]]
 ; CHECK-NEXT:    [[I31_CACHEIDX59:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4, !invariant.group [[META82]]
 ; CHECK-NEXT:    [[I30_CACHEIDX60:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4, !invariant.group [[META83]]
 ; CHECK-NEXT:    [[I5_CACHEIDX61:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4, !invariant.group [[META84]]
 ; CHECK-NEXT:    [[I_CACHEIDX62:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4, !invariant.group [[META85]]
 ; CHECK-NEXT:    [[I18_CACHEIDX63:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4, !invariant.group [[META86]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb197:
 ; CHECK-NEXT:    [[I198:%.*]] = sext i32 [[I169]] to i64
 ; CHECK-NEXT:    [[I199:%.*]] = getelementptr i32, ptr [[I148452]], i64 [[I198]]
-; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I201:%.*]] = sext i32 [[I200]] to i64
 ; CHECK-NEXT:    [[I202:%.*]] = icmp eq i64 [[I149463]], [[I201]]
 ; CHECK-NEXT:    [[I203:%.*]] = mul nsw i64 [[I106269]], [[I198]]
@@ -1592,40 +1592,40 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I206:%.*]] = select i1 [[I202]], i64 -48, i64 0
 ; CHECK-NEXT:    [[I207:%.*]] = getelementptr i8, ptr [[I205]], i64 [[I206]]
 ; CHECK-NEXT:    [[I257:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 48
-; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I259:%.*]] = fsub double [[I258]], [[I75386]]
-; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I207]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I207]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I261:%.*]] = fsub double [[I258]], [[I260]]
 ; CHECK-NEXT:    [[I262:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 56
-; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA44]]
+; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA89]]
 ; CHECK-NEXT:    [[I264:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 8
-; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA44]]
+; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA89]]
 ; CHECK-NEXT:    [[I266:%.*]] = fsub double [[I263]], [[I265]]
 ; CHECK-NEXT:    [[I267:%.*]] = fneg double [[I259]]
 ; CHECK-NEXT:    [[I268:%.*]] = fdiv double [[I267]], [[I261]]
 ; CHECK-NEXT:    [[I269:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I266]], double [[I263]])
 ; CHECK-NEXT:    [[I270:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 64
-; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA45]]
+; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA90]]
 ; CHECK-NEXT:    [[I272:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 16
-; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA45]]
+; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA90]]
 ; CHECK-NEXT:    [[I274:%.*]] = fsub double [[I271]], [[I273]]
 ; CHECK-NEXT:    [[I275:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I274]], double [[I271]])
 ; CHECK-NEXT:    [[I276:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 72
-; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA46]]
+; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA91]]
 ; CHECK-NEXT:    [[I278:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 24
-; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA46]]
+; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA91]]
 ; CHECK-NEXT:    [[I280:%.*]] = fsub double [[I277]], [[I279]]
 ; CHECK-NEXT:    [[I281:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I280]], double [[I277]])
 ; CHECK-NEXT:    [[I282:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 80
-; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA47]]
+; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA92]]
 ; CHECK-NEXT:    [[I284:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 32
-; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA47]]
+; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA92]]
 ; CHECK-NEXT:    [[I286:%.*]] = fsub double [[I283]], [[I285]]
 ; CHECK-NEXT:    [[I287:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I286]], double [[I283]])
 ; CHECK-NEXT:    [[I288:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 88
-; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA48]]
+; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA93]]
 ; CHECK-NEXT:    [[I290:%.*]] = getelementptr inbounds i8, ptr [[I207]], i64 40
-; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA48]]
+; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA93]]
 ; CHECK-NEXT:    [[I292:%.*]] = fsub double [[I289]], [[I291]]
 ; CHECK-NEXT:    [[I293:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I292]], double [[I289]])
 ; CHECK-NEXT:    [[I294]] = tail call double @llvm.fmuladd.f64(double [[I269]], double [[I171]], double [[I164]])
@@ -1634,7 +1634,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I297]] = tail call double @llvm.fmuladd.f64(double [[I287]], double [[I171]], double [[I161]])
 ; CHECK-NEXT:    [[I298]] = tail call double @llvm.fmuladd.f64(double [[I293]], double [[I171]], double [[I160]])
 ; CHECK-NEXT:    [[I299]] = add nuw nsw i32 [[I165]], 1
-; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142446]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142446]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I301:%.*]] = icmp slt i32 [[I299]], [[I300]]
 ; CHECK-NEXT:    br i1 [[I301]], label [[BB159]], label [[BB302]]
 ; CHECK:       CacheStore2:
@@ -1648,57 +1648,57 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR131:%.*]] = load ptr, ptr [[TMP23]], align 8
 ; CHECK-NEXT:    [[CACHECELL132:%.*]] = getelementptr inbounds [[CACHE_CELL2:%.*]], ptr [[CACHE_OUT_PTR131]], i32 [[CACHEIDX130]]
 ; CHECK-NEXT:    [[I10_CACHEIDX133:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4, !invariant.group [[META94]]
 ; CHECK-NEXT:    [[I70_CACHEIDX134:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8, !invariant.group [[META95]]
 ; CHECK-NEXT:    [[I142_CACHEIDX135:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8, !invariant.group [[META96]]
 ; CHECK-NEXT:    [[I146_CACHEIDX136:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4, !invariant.group [[META97]]
 ; CHECK-NEXT:    [[I153_CACHEIDX137:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1, !invariant.group [[META98]]
 ; CHECK-NEXT:    [[I148_CACHEIDX138:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8, !invariant.group [[META99]]
 ; CHECK-NEXT:    [[I156_CACHEIDX139:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8, !invariant.group [[META100]]
 ; CHECK-NEXT:    [[I171_CACHEIDX140:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8, !invariant.group [[META101]]
 ; CHECK-NEXT:    [[I169_CACHEIDX141:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4, !invariant.group [[META102]]
 ; CHECK-NEXT:    [[I165_CACHEIDX142:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4, !invariant.group [[META103]]
 ; CHECK-NEXT:    [[I164_CACHEIDX143:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8, !invariant.group [[META104]]
 ; CHECK-NEXT:    [[I163_CACHEIDX144:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8, !invariant.group [[META105]]
 ; CHECK-NEXT:    [[I162_CACHEIDX145:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8, !invariant.group [[META106]]
 ; CHECK-NEXT:    [[I161_CACHEIDX146:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8, !invariant.group [[META107]]
 ; CHECK-NEXT:    [[I160_CACHEIDX147:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8, !invariant.group [[META108]]
 ; CHECK-NEXT:    [[I113_CACHEIDX148:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4
+; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4, !invariant.group [[META109]]
 ; CHECK-NEXT:    [[I112_CACHEIDX149:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8, !invariant.group [[META110]]
 ; CHECK-NEXT:    [[I111_CACHEIDX150:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8, !invariant.group [[META111]]
 ; CHECK-NEXT:    [[I108_CACHEIDX151:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8, !invariant.group [[META112]]
 ; CHECK-NEXT:    [[I106_CACHEIDX152:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8, !invariant.group [[META113]]
 ; CHECK-NEXT:    [[I40_CACHEIDX153:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8, !invariant.group [[META114]]
 ; CHECK-NEXT:    [[I31_CACHEIDX154:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4, !invariant.group [[META115]]
 ; CHECK-NEXT:    [[I30_CACHEIDX155:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4, !invariant.group [[META116]]
 ; CHECK-NEXT:    [[I5_CACHEIDX156:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4, !invariant.group [[META117]]
 ; CHECK-NEXT:    [[I_CACHEIDX157:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4, !invariant.group [[META118]]
 ; CHECK-NEXT:    [[I18_CACHEIDX158:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4, !invariant.group [[META119]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb302:
 ; CHECK-NEXT:    [[I28441]] = phi ptr [ [[I28440]], [[BB139]] ], [ [[I28442]], [[BB197]] ]
@@ -1742,7 +1742,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I319:%.*]] = select i1 [[I314]], i64 4, i64 [[I318]]
 ; CHECK-NEXT:    [[I320:%.*]] = select i1 [[I317]], i64 5, i64 [[I319]]
 ; CHECK-NEXT:    [[I321:%.*]] = getelementptr inbounds i64, ptr [[ARG3]], i64 [[I40274]]
-; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA49]]
+; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA120]]
 ; CHECK-NEXT:    [[I322:%.*]] = add nsw i32 [[I18337]], [[I41389]]
 ; CHECK-NEXT:    [[I323]] = sext i32 [[I322]] to i64
 ; CHECK-NEXT:    [[I324:%.*]] = icmp ugt i64 [[I323]], [[I32393]]
@@ -1953,49 +1953,49 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP10]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[I10_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4, !invariant.group [[META41]]
 ; CHECK-NEXT:    [[I70_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8, !invariant.group [[META42]]
 ; CHECK-NEXT:    [[I115_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
-; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4, !invariant.group [[META43]]
 ; CHECK-NEXT:    [[I114_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4, !invariant.group [[META44]]
 ; CHECK-NEXT:    [[I113_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 4
-; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4, !invariant.group [[META45]]
 ; CHECK-NEXT:    [[I112_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8, !invariant.group [[META46]]
 ; CHECK-NEXT:    [[I111_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8, !invariant.group [[META47]]
 ; CHECK-NEXT:    [[I110_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 7
-; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8, !invariant.group [[META48]]
 ; CHECK-NEXT:    [[I108_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 8
-; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8, !invariant.group [[META49]]
 ; CHECK-NEXT:    [[I107_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 9
-; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8, !invariant.group [[META50]]
 ; CHECK-NEXT:    [[I106_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 10
-; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8, !invariant.group [[META51]]
 ; CHECK-NEXT:    [[I105_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 11
-; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8, !invariant.group [[META52]]
 ; CHECK-NEXT:    [[I104_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 12
-; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4, !invariant.group [[META53]]
 ; CHECK-NEXT:    [[I40_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 13
-; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8, !invariant.group [[META54]]
 ; CHECK-NEXT:    [[I31_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 14
-; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4, !invariant.group [[META55]]
 ; CHECK-NEXT:    [[I30_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4, !invariant.group [[META56]]
 ; CHECK-NEXT:    [[I5_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 16
-; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4, !invariant.group [[META57]]
 ; CHECK-NEXT:    [[I_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 17
-; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4, !invariant.group [[META58]]
 ; CHECK-NEXT:    [[I18_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 18
-; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4, !invariant.group [[META59]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb139:
 ; CHECK-NEXT:    [[I140:%.*]] = phi i64 [ -1, [[BB103]] ], [ 0, [[BB116]] ], [ [[I131]], [[BB121]] ]
 ; CHECK-NEXT:    [[I141:%.*]] = zext nneg i32 [[I104]] to i64
 ; CHECK-NEXT:    [[I142:%.*]] = getelementptr inbounds i32, ptr [[I107]], i64 [[I141]]
-; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I144:%.*]] = icmp sgt i32 [[I143]], 0
 ; CHECK-NEXT:    br i1 [[I144]], label [[BB145:%.*]], label [[BB302]]
 ; CHECK:       bb145:
@@ -2058,7 +2058,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I166:%.*]] = add nsw i32 [[I165]], [[I146448]]
 ; CHECK-NEXT:    [[I167:%.*]] = sext i32 [[I166]] to i64
 ; CHECK-NEXT:    [[I168:%.*]] = getelementptr inbounds i32, ptr [[I112258]], i64 [[I167]]
-; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I170:%.*]] = getelementptr inbounds double, ptr [[I108265]], i64 [[I167]]
 ; CHECK-NEXT:    [[I171:%.*]] = load double, ptr [[I170]], align 8, !tbaa [[TBAA39]]
 ; CHECK-NEXT:    switch i32 [[I113255]], label [[CACHESTORE2:%.*]] [
@@ -2076,57 +2076,57 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR49:%.*]] = load ptr, ptr [[TMP15]], align 8
 ; CHECK-NEXT:    [[CACHECELL50:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_OUT_PTR49]], i32 [[CACHEIDX48]]
 ; CHECK-NEXT:    [[I10_CACHEIDX51:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4, !invariant.group [[META61]]
 ; CHECK-NEXT:    [[I70_CACHEIDX52:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8, !invariant.group [[META62]]
 ; CHECK-NEXT:    [[I142_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8, !invariant.group [[META63]]
 ; CHECK-NEXT:    [[I146_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4, !invariant.group [[META64]]
 ; CHECK-NEXT:    [[I153_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1, !invariant.group [[META65]]
 ; CHECK-NEXT:    [[I148_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8, !invariant.group [[META66]]
 ; CHECK-NEXT:    [[I156_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8, !invariant.group [[META67]]
 ; CHECK-NEXT:    [[I171_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8, !invariant.group [[META68]]
 ; CHECK-NEXT:    [[I169_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4, !invariant.group [[META69]]
 ; CHECK-NEXT:    [[I165_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4, !invariant.group [[META70]]
 ; CHECK-NEXT:    [[I164_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8, !invariant.group [[META71]]
 ; CHECK-NEXT:    [[I163_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8, !invariant.group [[META72]]
 ; CHECK-NEXT:    [[I162_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8, !invariant.group [[META73]]
 ; CHECK-NEXT:    [[I161_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8, !invariant.group [[META74]]
 ; CHECK-NEXT:    [[I160_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8, !invariant.group [[META75]]
 ; CHECK-NEXT:    [[I113_CACHEIDX53:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 15
-; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4
+; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4, !invariant.group [[META76]]
 ; CHECK-NEXT:    [[I112_CACHEIDX54:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8, !invariant.group [[META77]]
 ; CHECK-NEXT:    [[I111_CACHEIDX55:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8, !invariant.group [[META78]]
 ; CHECK-NEXT:    [[I108_CACHEIDX56:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8, !invariant.group [[META79]]
 ; CHECK-NEXT:    [[I106_CACHEIDX57:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8, !invariant.group [[META80]]
 ; CHECK-NEXT:    [[I40_CACHEIDX58:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8, !invariant.group [[META81]]
 ; CHECK-NEXT:    [[I31_CACHEIDX59:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4, !invariant.group [[META82]]
 ; CHECK-NEXT:    [[I30_CACHEIDX60:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4, !invariant.group [[META83]]
 ; CHECK-NEXT:    [[I5_CACHEIDX61:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4, !invariant.group [[META84]]
 ; CHECK-NEXT:    [[I_CACHEIDX62:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4, !invariant.group [[META85]]
 ; CHECK-NEXT:    [[I18_CACHEIDX63:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4, !invariant.group [[META86]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       CacheRemat1:
 ; CHECK-NEXT:    [[TMP16:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ARG]], i32 0, i32 4
@@ -2135,57 +2135,57 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_IN_PTR68:%.*]] = load ptr, ptr [[TMP18]], align 8
 ; CHECK-NEXT:    [[CACHECELL69:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHE_IN_PTR68]], i32 [[GTID64]]
 ; CHECK-NEXT:    [[I10_CACHEIDX70:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 0
-; CHECK-NEXT:    [[I10_CACHE71:%.*]] = load i32, ptr [[I10_CACHEIDX70]], align 4
+; CHECK-NEXT:    [[I10_CACHE71:%.*]] = load i32, ptr [[I10_CACHEIDX70]], align 4, !invariant.group [[META61]]
 ; CHECK-NEXT:    [[I70_CACHEIDX72:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 1
-; CHECK-NEXT:    [[I70_CACHE73:%.*]] = load i64, ptr [[I70_CACHEIDX72]], align 8
+; CHECK-NEXT:    [[I70_CACHE73:%.*]] = load i64, ptr [[I70_CACHEIDX72]], align 8, !invariant.group [[META62]]
 ; CHECK-NEXT:    [[I142_CACHEIDX74:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 2
-; CHECK-NEXT:    [[I142_CACHE:%.*]] = load ptr, ptr [[I142_CACHEIDX74]], align 8
+; CHECK-NEXT:    [[I142_CACHE:%.*]] = load ptr, ptr [[I142_CACHEIDX74]], align 8, !invariant.group [[META63]]
 ; CHECK-NEXT:    [[I146_CACHEIDX75:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 3
-; CHECK-NEXT:    [[I146_CACHE:%.*]] = load i32, ptr [[I146_CACHEIDX75]], align 4
+; CHECK-NEXT:    [[I146_CACHE:%.*]] = load i32, ptr [[I146_CACHEIDX75]], align 4, !invariant.group [[META64]]
 ; CHECK-NEXT:    [[I153_CACHEIDX76:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 4
-; CHECK-NEXT:    [[I153_CACHE:%.*]] = load i1, ptr [[I153_CACHEIDX76]], align 1
+; CHECK-NEXT:    [[I153_CACHE:%.*]] = load i1, ptr [[I153_CACHEIDX76]], align 1, !invariant.group [[META65]]
 ; CHECK-NEXT:    [[I148_CACHEIDX77:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 5
-; CHECK-NEXT:    [[I148_CACHE:%.*]] = load ptr, ptr [[I148_CACHEIDX77]], align 8
+; CHECK-NEXT:    [[I148_CACHE:%.*]] = load ptr, ptr [[I148_CACHEIDX77]], align 8, !invariant.group [[META66]]
 ; CHECK-NEXT:    [[I156_CACHEIDX78:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 6
-; CHECK-NEXT:    [[I156_CACHE:%.*]] = load ptr, ptr [[I156_CACHEIDX78]], align 8
+; CHECK-NEXT:    [[I156_CACHE:%.*]] = load ptr, ptr [[I156_CACHEIDX78]], align 8, !invariant.group [[META67]]
 ; CHECK-NEXT:    [[I171_CACHEIDX79:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 7
-; CHECK-NEXT:    [[I171_CACHE:%.*]] = load double, ptr [[I171_CACHEIDX79]], align 8
+; CHECK-NEXT:    [[I171_CACHE:%.*]] = load double, ptr [[I171_CACHEIDX79]], align 8, !invariant.group [[META68]]
 ; CHECK-NEXT:    [[I169_CACHEIDX80:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 8
-; CHECK-NEXT:    [[I169_CACHE:%.*]] = load i32, ptr [[I169_CACHEIDX80]], align 4
+; CHECK-NEXT:    [[I169_CACHE:%.*]] = load i32, ptr [[I169_CACHEIDX80]], align 4, !invariant.group [[META69]]
 ; CHECK-NEXT:    [[I165_CACHEIDX81:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 9
-; CHECK-NEXT:    [[I165_CACHE:%.*]] = load i32, ptr [[I165_CACHEIDX81]], align 4
+; CHECK-NEXT:    [[I165_CACHE:%.*]] = load i32, ptr [[I165_CACHEIDX81]], align 4, !invariant.group [[META70]]
 ; CHECK-NEXT:    [[I164_CACHEIDX82:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 10
-; CHECK-NEXT:    [[I164_CACHE:%.*]] = load double, ptr [[I164_CACHEIDX82]], align 8
+; CHECK-NEXT:    [[I164_CACHE:%.*]] = load double, ptr [[I164_CACHEIDX82]], align 8, !invariant.group [[META71]]
 ; CHECK-NEXT:    [[I163_CACHEIDX83:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 11
-; CHECK-NEXT:    [[I163_CACHE:%.*]] = load double, ptr [[I163_CACHEIDX83]], align 8
+; CHECK-NEXT:    [[I163_CACHE:%.*]] = load double, ptr [[I163_CACHEIDX83]], align 8, !invariant.group [[META72]]
 ; CHECK-NEXT:    [[I162_CACHEIDX84:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 12
-; CHECK-NEXT:    [[I162_CACHE:%.*]] = load double, ptr [[I162_CACHEIDX84]], align 8
+; CHECK-NEXT:    [[I162_CACHE:%.*]] = load double, ptr [[I162_CACHEIDX84]], align 8, !invariant.group [[META73]]
 ; CHECK-NEXT:    [[I161_CACHEIDX85:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 13
-; CHECK-NEXT:    [[I161_CACHE:%.*]] = load double, ptr [[I161_CACHEIDX85]], align 8
+; CHECK-NEXT:    [[I161_CACHE:%.*]] = load double, ptr [[I161_CACHEIDX85]], align 8, !invariant.group [[META74]]
 ; CHECK-NEXT:    [[I160_CACHEIDX86:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 14
-; CHECK-NEXT:    [[I160_CACHE:%.*]] = load double, ptr [[I160_CACHEIDX86]], align 8
+; CHECK-NEXT:    [[I160_CACHE:%.*]] = load double, ptr [[I160_CACHEIDX86]], align 8, !invariant.group [[META75]]
 ; CHECK-NEXT:    [[I113_CACHEIDX87:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 15
-; CHECK-NEXT:    [[I113_CACHE88:%.*]] = load i32, ptr [[I113_CACHEIDX87]], align 4
+; CHECK-NEXT:    [[I113_CACHE88:%.*]] = load i32, ptr [[I113_CACHEIDX87]], align 4, !invariant.group [[META76]]
 ; CHECK-NEXT:    [[I112_CACHEIDX89:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 16
-; CHECK-NEXT:    [[I112_CACHE90:%.*]] = load ptr, ptr [[I112_CACHEIDX89]], align 8
+; CHECK-NEXT:    [[I112_CACHE90:%.*]] = load ptr, ptr [[I112_CACHEIDX89]], align 8, !invariant.group [[META77]]
 ; CHECK-NEXT:    [[I111_CACHEIDX91:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 17
-; CHECK-NEXT:    [[I111_CACHE92:%.*]] = load ptr, ptr [[I111_CACHEIDX91]], align 8
+; CHECK-NEXT:    [[I111_CACHE92:%.*]] = load ptr, ptr [[I111_CACHEIDX91]], align 8, !invariant.group [[META78]]
 ; CHECK-NEXT:    [[I108_CACHEIDX93:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 18
-; CHECK-NEXT:    [[I108_CACHE94:%.*]] = load ptr, ptr [[I108_CACHEIDX93]], align 8
+; CHECK-NEXT:    [[I108_CACHE94:%.*]] = load ptr, ptr [[I108_CACHEIDX93]], align 8, !invariant.group [[META79]]
 ; CHECK-NEXT:    [[I106_CACHEIDX95:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 19
-; CHECK-NEXT:    [[I106_CACHE96:%.*]] = load i64, ptr [[I106_CACHEIDX95]], align 8
+; CHECK-NEXT:    [[I106_CACHE96:%.*]] = load i64, ptr [[I106_CACHEIDX95]], align 8, !invariant.group [[META80]]
 ; CHECK-NEXT:    [[I40_CACHEIDX97:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 20
-; CHECK-NEXT:    [[I40_CACHE98:%.*]] = load i64, ptr [[I40_CACHEIDX97]], align 8
+; CHECK-NEXT:    [[I40_CACHE98:%.*]] = load i64, ptr [[I40_CACHEIDX97]], align 8, !invariant.group [[META81]]
 ; CHECK-NEXT:    [[I31_CACHEIDX99:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 21
-; CHECK-NEXT:    [[I31_CACHE100:%.*]] = load i32, ptr [[I31_CACHEIDX99]], align 4
+; CHECK-NEXT:    [[I31_CACHE100:%.*]] = load i32, ptr [[I31_CACHEIDX99]], align 4, !invariant.group [[META82]]
 ; CHECK-NEXT:    [[I30_CACHEIDX101:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 22
-; CHECK-NEXT:    [[I30_CACHE102:%.*]] = load i32, ptr [[I30_CACHEIDX101]], align 4
+; CHECK-NEXT:    [[I30_CACHE102:%.*]] = load i32, ptr [[I30_CACHEIDX101]], align 4, !invariant.group [[META83]]
 ; CHECK-NEXT:    [[I5_CACHEIDX103:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 23
-; CHECK-NEXT:    [[I5_CACHE104:%.*]] = load i32, ptr [[I5_CACHEIDX103]], align 4
+; CHECK-NEXT:    [[I5_CACHE104:%.*]] = load i32, ptr [[I5_CACHEIDX103]], align 4, !invariant.group [[META84]]
 ; CHECK-NEXT:    [[I_CACHEIDX105:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 24
-; CHECK-NEXT:    [[I_CACHE106:%.*]] = load i32, ptr [[I_CACHEIDX105]], align 4
+; CHECK-NEXT:    [[I_CACHE106:%.*]] = load i32, ptr [[I_CACHEIDX105]], align 4, !invariant.group [[META85]]
 ; CHECK-NEXT:    [[I18_CACHEIDX107:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL69]], i32 0, i32 25
-; CHECK-NEXT:    [[I18_CACHE108:%.*]] = load i32, ptr [[I18_CACHEIDX107]], align 4
+; CHECK-NEXT:    [[I18_CACHE108:%.*]] = load i32, ptr [[I18_CACHEIDX107]], align 4, !invariant.group [[META86]]
 ; CHECK-NEXT:    [[I13_RECOMPUTE109:%.*]] = shl nsw i32 [[I10_CACHE71]], 7
 ; CHECK-NEXT:    [[I4_RECOMPUTE110:%.*]] = getelementptr inbounds i8, ptr [[ARG1]], i64 24
 ; CHECK-NEXT:    [[I19_RECOMPUTE111:%.*]] = getelementptr inbounds i8, ptr [[ARG1]], i64 8
@@ -2221,7 +2221,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I180:%.*]] = lshr i64 [[I177]], 1
 ; CHECK-NEXT:    [[I181:%.*]] = add nuw nsw i64 [[I180]], [[I178]]
 ; CHECK-NEXT:    [[I182:%.*]] = getelementptr inbounds [[STRUCT_NUCLIDEGRIDPOINT]], ptr [[I175]], i64 [[I181]]
-; CHECK-NEXT:    [[I183:%.*]] = load double, ptr [[I182]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I183:%.*]] = load double, ptr [[I182]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I184:%.*]] = fcmp ogt double [[I183]], [[I75_RECOMPUTE119]]
 ; CHECK-NEXT:    [[I185]] = select i1 [[I184]], i64 [[I181]], i64 [[I179]]
 ; CHECK-NEXT:    [[I186]] = select i1 [[I184]], i64 [[I178]], i64 [[I181]]
@@ -2242,7 +2242,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK:       bb197:
 ; CHECK-NEXT:    [[I198:%.*]] = sext i32 [[I169]] to i64
 ; CHECK-NEXT:    [[I199:%.*]] = getelementptr i32, ptr [[I148452]], i64 [[I198]]
-; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I201:%.*]] = sext i32 [[I200]] to i64
 ; CHECK-NEXT:    [[I202:%.*]] = icmp eq i64 [[I149463]], [[I201]]
 ; CHECK-NEXT:    [[I203:%.*]] = mul nsw i64 [[I106269]], [[I198]]
@@ -2262,57 +2262,57 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR131:%.*]] = load ptr, ptr [[TMP23]], align 8
 ; CHECK-NEXT:    [[CACHECELL132:%.*]] = getelementptr inbounds [[CACHE_CELL2:%.*]], ptr [[CACHE_OUT_PTR131]], i32 [[CACHEIDX130]]
 ; CHECK-NEXT:    [[I10_CACHEIDX133:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4, !invariant.group [[META94]]
 ; CHECK-NEXT:    [[I70_CACHEIDX134:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8, !invariant.group [[META95]]
 ; CHECK-NEXT:    [[I142_CACHEIDX135:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8, !invariant.group [[META96]]
 ; CHECK-NEXT:    [[I146_CACHEIDX136:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4, !invariant.group [[META97]]
 ; CHECK-NEXT:    [[I153_CACHEIDX137:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1, !invariant.group [[META98]]
 ; CHECK-NEXT:    [[I148_CACHEIDX138:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8, !invariant.group [[META99]]
 ; CHECK-NEXT:    [[I156_CACHEIDX139:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8, !invariant.group [[META100]]
 ; CHECK-NEXT:    [[I171_CACHEIDX140:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8, !invariant.group [[META101]]
 ; CHECK-NEXT:    [[I169_CACHEIDX141:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4, !invariant.group [[META102]]
 ; CHECK-NEXT:    [[I165_CACHEIDX142:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4, !invariant.group [[META103]]
 ; CHECK-NEXT:    [[I164_CACHEIDX143:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8, !invariant.group [[META104]]
 ; CHECK-NEXT:    [[I163_CACHEIDX144:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8, !invariant.group [[META105]]
 ; CHECK-NEXT:    [[I162_CACHEIDX145:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8, !invariant.group [[META106]]
 ; CHECK-NEXT:    [[I161_CACHEIDX146:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8, !invariant.group [[META107]]
 ; CHECK-NEXT:    [[I160_CACHEIDX147:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8, !invariant.group [[META108]]
 ; CHECK-NEXT:    [[I113_CACHEIDX148:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4
+; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4, !invariant.group [[META109]]
 ; CHECK-NEXT:    [[I112_CACHEIDX149:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8, !invariant.group [[META110]]
 ; CHECK-NEXT:    [[I111_CACHEIDX150:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8, !invariant.group [[META111]]
 ; CHECK-NEXT:    [[I108_CACHEIDX151:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8, !invariant.group [[META112]]
 ; CHECK-NEXT:    [[I106_CACHEIDX152:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8, !invariant.group [[META113]]
 ; CHECK-NEXT:    [[I40_CACHEIDX153:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8, !invariant.group [[META114]]
 ; CHECK-NEXT:    [[I31_CACHEIDX154:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4, !invariant.group [[META115]]
 ; CHECK-NEXT:    [[I30_CACHEIDX155:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4, !invariant.group [[META116]]
 ; CHECK-NEXT:    [[I5_CACHEIDX156:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4, !invariant.group [[META117]]
 ; CHECK-NEXT:    [[I_CACHEIDX157:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4, !invariant.group [[META118]]
 ; CHECK-NEXT:    [[I18_CACHEIDX158:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4, !invariant.group [[META119]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb255:
 ; CHECK-NEXT:    [[I149462]] = phi i64 [ [[I149463]], [[BB197]] ], [ [[I149_RECOMPUTE]], [[BB195]] ], [ [[I149_RECOMPUTE]], [[BB192]] ]
@@ -2359,40 +2359,40 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I10241]] = phi i32 [ [[I10244]], [[BB197]] ], [ [[I10_CACHE71]], [[BB195]] ], [ [[I10_CACHE71]], [[BB192]] ]
 ; CHECK-NEXT:    [[I256:%.*]] = phi ptr [ [[I194]], [[BB192]] ], [ [[I196]], [[BB195]] ], [ [[I207]], [[BB197]] ]
 ; CHECK-NEXT:    [[I257:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 48
-; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I259:%.*]] = fsub double [[I258]], [[I75384]]
-; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I256]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I256]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I261:%.*]] = fsub double [[I258]], [[I260]]
 ; CHECK-NEXT:    [[I262:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 56
-; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA44]]
+; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA89]]
 ; CHECK-NEXT:    [[I264:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 8
-; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA44]]
+; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA89]]
 ; CHECK-NEXT:    [[I266:%.*]] = fsub double [[I263]], [[I265]]
 ; CHECK-NEXT:    [[I267:%.*]] = fneg double [[I259]]
 ; CHECK-NEXT:    [[I268:%.*]] = fdiv double [[I267]], [[I261]]
 ; CHECK-NEXT:    [[I269:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I266]], double [[I263]])
 ; CHECK-NEXT:    [[I270:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 64
-; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA45]]
+; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA90]]
 ; CHECK-NEXT:    [[I272:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 16
-; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA45]]
+; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA90]]
 ; CHECK-NEXT:    [[I274:%.*]] = fsub double [[I271]], [[I273]]
 ; CHECK-NEXT:    [[I275:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I274]], double [[I271]])
 ; CHECK-NEXT:    [[I276:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 72
-; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA46]]
+; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA91]]
 ; CHECK-NEXT:    [[I278:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 24
-; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA46]]
+; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA91]]
 ; CHECK-NEXT:    [[I280:%.*]] = fsub double [[I277]], [[I279]]
 ; CHECK-NEXT:    [[I281:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I280]], double [[I277]])
 ; CHECK-NEXT:    [[I282:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 80
-; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA47]]
+; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA92]]
 ; CHECK-NEXT:    [[I284:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 32
-; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA47]]
+; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA92]]
 ; CHECK-NEXT:    [[I286:%.*]] = fsub double [[I283]], [[I285]]
 ; CHECK-NEXT:    [[I287:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I286]], double [[I283]])
 ; CHECK-NEXT:    [[I288:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 88
-; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA48]]
+; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA93]]
 ; CHECK-NEXT:    [[I290:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 40
-; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA48]]
+; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA93]]
 ; CHECK-NEXT:    [[I292:%.*]] = fsub double [[I289]], [[I291]]
 ; CHECK-NEXT:    [[I293:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I292]], double [[I289]])
 ; CHECK-NEXT:    [[I294]] = tail call double @llvm.fmuladd.f64(double [[I269]], double [[I171455]], double [[I164457]])
@@ -2401,7 +2401,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I297]] = tail call double @llvm.fmuladd.f64(double [[I287]], double [[I171455]], double [[I161460]])
 ; CHECK-NEXT:    [[I298]] = tail call double @llvm.fmuladd.f64(double [[I293]], double [[I171455]], double [[I160461]])
 ; CHECK-NEXT:    [[I299]] = add nuw nsw i32 [[I165456]], 1
-; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142445]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142445]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I301:%.*]] = icmp slt i32 [[I299]], [[I300]]
 ; CHECK-NEXT:    br i1 [[I301]], label [[BB159]], label [[BB302]]
 ; CHECK:       bb302:
@@ -2446,7 +2446,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I319:%.*]] = select i1 [[I314]], i64 4, i64 [[I318]]
 ; CHECK-NEXT:    [[I320:%.*]] = select i1 [[I317]], i64 5, i64 [[I319]]
 ; CHECK-NEXT:    [[I321:%.*]] = getelementptr inbounds i64, ptr [[ARG3]], i64 [[I40274]]
-; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA49]]
+; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA120]]
 ; CHECK-NEXT:    [[I322:%.*]] = add nsw i32 [[I18337]], [[I41389]]
 ; CHECK-NEXT:    [[I323]] = sext i32 [[I322]] to i64
 ; CHECK-NEXT:    [[I324:%.*]] = icmp ugt i64 [[I323]], [[I32393]]
@@ -2657,49 +2657,49 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP10]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[I10_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I10246]], ptr [[I10_CACHEIDX]], align 4, !invariant.group [[META41]]
 ; CHECK-NEXT:    [[I70_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I70]], ptr [[I70_CACHEIDX]], align 8, !invariant.group [[META42]]
 ; CHECK-NEXT:    [[I115_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
-; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I115]], ptr [[I115_CACHEIDX]], align 4, !invariant.group [[META43]]
 ; CHECK-NEXT:    [[I114_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I114]], ptr [[I114_CACHEIDX]], align 4, !invariant.group [[META44]]
 ; CHECK-NEXT:    [[I113_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 4
-; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 2, ptr [[I113_CACHEIDX]], align 4, !invariant.group [[META45]]
 ; CHECK-NEXT:    [[I112_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I112]], ptr [[I112_CACHEIDX]], align 8, !invariant.group [[META46]]
 ; CHECK-NEXT:    [[I111_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I111]], ptr [[I111_CACHEIDX]], align 8, !invariant.group [[META47]]
 ; CHECK-NEXT:    [[I110_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 7
-; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I110]], ptr [[I110_CACHEIDX]], align 8, !invariant.group [[META48]]
 ; CHECK-NEXT:    [[I108_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 8
-; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I108]], ptr [[I108_CACHEIDX]], align 8, !invariant.group [[META49]]
 ; CHECK-NEXT:    [[I107_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 9
-; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I107]], ptr [[I107_CACHEIDX]], align 8, !invariant.group [[META50]]
 ; CHECK-NEXT:    [[I106_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 10
-; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I106]], ptr [[I106_CACHEIDX]], align 8, !invariant.group [[META51]]
 ; CHECK-NEXT:    [[I105_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 11
-; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I105]], ptr [[I105_CACHEIDX]], align 8, !invariant.group [[META52]]
 ; CHECK-NEXT:    [[I104_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 12
-; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I104]], ptr [[I104_CACHEIDX]], align 4, !invariant.group [[META53]]
 ; CHECK-NEXT:    [[I40_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 13
-; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8
+; CHECK-NEXT:    store i64 [[I40]], ptr [[I40_CACHEIDX]], align 8, !invariant.group [[META54]]
 ; CHECK-NEXT:    [[I31_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 14
-; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I31281]], ptr [[I31_CACHEIDX]], align 4, !invariant.group [[META55]]
 ; CHECK-NEXT:    [[I30_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I30287]], ptr [[I30_CACHEIDX]], align 4, !invariant.group [[META56]]
 ; CHECK-NEXT:    [[I5_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 16
-; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I5293]], ptr [[I5_CACHEIDX]], align 4, !invariant.group [[META57]]
 ; CHECK-NEXT:    [[I_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 17
-; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I333]], ptr [[I_CACHEIDX]], align 4, !invariant.group [[META58]]
 ; CHECK-NEXT:    [[I18_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 18
-; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I18340]], ptr [[I18_CACHEIDX]], align 4, !invariant.group [[META59]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb139:
 ; CHECK-NEXT:    [[I140:%.*]] = phi i64 [ -1, [[BB103]] ], [ 0, [[BB116]] ], [ [[I131]], [[BB121]] ]
 ; CHECK-NEXT:    [[I141:%.*]] = zext nneg i32 [[I104]] to i64
 ; CHECK-NEXT:    [[I142:%.*]] = getelementptr inbounds i32, ptr [[I107]], i64 [[I141]]
-; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I143:%.*]] = load i32, ptr [[I142]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I144:%.*]] = icmp sgt i32 [[I143]], 0
 ; CHECK-NEXT:    br i1 [[I144]], label [[BB145:%.*]], label [[BB302]]
 ; CHECK:       bb145:
@@ -2762,7 +2762,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I166:%.*]] = add nsw i32 [[I165]], [[I146448]]
 ; CHECK-NEXT:    [[I167:%.*]] = sext i32 [[I166]] to i64
 ; CHECK-NEXT:    [[I168:%.*]] = getelementptr inbounds i32, ptr [[I112258]], i64 [[I167]]
-; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I169:%.*]] = load i32, ptr [[I168]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I170:%.*]] = getelementptr inbounds double, ptr [[I108265]], i64 [[I167]]
 ; CHECK-NEXT:    [[I171:%.*]] = load double, ptr [[I170]], align 8, !tbaa [[TBAA39]]
 ; CHECK-NEXT:    switch i32 [[I113255]], label [[CACHESTORE2:%.*]] [
@@ -2780,62 +2780,62 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR49:%.*]] = load ptr, ptr [[TMP15]], align 8
 ; CHECK-NEXT:    [[CACHECELL50:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_OUT_PTR49]], i32 [[CACHEIDX48]]
 ; CHECK-NEXT:    [[I10_CACHEIDX51:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX51]], align 4, !invariant.group [[META61]]
 ; CHECK-NEXT:    [[I70_CACHEIDX52:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX52]], align 8, !invariant.group [[META62]]
 ; CHECK-NEXT:    [[I142_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX]], align 8, !invariant.group [[META63]]
 ; CHECK-NEXT:    [[I146_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX]], align 4, !invariant.group [[META64]]
 ; CHECK-NEXT:    [[I153_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX]], align 1, !invariant.group [[META65]]
 ; CHECK-NEXT:    [[I148_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX]], align 8, !invariant.group [[META66]]
 ; CHECK-NEXT:    [[I156_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX]], align 8, !invariant.group [[META67]]
 ; CHECK-NEXT:    [[I171_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX]], align 8, !invariant.group [[META68]]
 ; CHECK-NEXT:    [[I169_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX]], align 4, !invariant.group [[META69]]
 ; CHECK-NEXT:    [[I165_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX]], align 4, !invariant.group [[META70]]
 ; CHECK-NEXT:    [[I164_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX]], align 8, !invariant.group [[META71]]
 ; CHECK-NEXT:    [[I163_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX]], align 8, !invariant.group [[META72]]
 ; CHECK-NEXT:    [[I162_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX]], align 8, !invariant.group [[META73]]
 ; CHECK-NEXT:    [[I161_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX]], align 8, !invariant.group [[META74]]
 ; CHECK-NEXT:    [[I160_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX]], align 8, !invariant.group [[META75]]
 ; CHECK-NEXT:    [[I113_CACHEIDX53:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 15
-; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4
+; CHECK-NEXT:    store i32 1, ptr [[I113_CACHEIDX53]], align 4, !invariant.group [[META76]]
 ; CHECK-NEXT:    [[I112_CACHEIDX54:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX54]], align 8, !invariant.group [[META77]]
 ; CHECK-NEXT:    [[I111_CACHEIDX55:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX55]], align 8, !invariant.group [[META78]]
 ; CHECK-NEXT:    [[I108_CACHEIDX56:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX56]], align 8, !invariant.group [[META79]]
 ; CHECK-NEXT:    [[I106_CACHEIDX57:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX57]], align 8, !invariant.group [[META80]]
 ; CHECK-NEXT:    [[I40_CACHEIDX58:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX58]], align 8, !invariant.group [[META81]]
 ; CHECK-NEXT:    [[I31_CACHEIDX59:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX59]], align 4, !invariant.group [[META82]]
 ; CHECK-NEXT:    [[I30_CACHEIDX60:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX60]], align 4, !invariant.group [[META83]]
 ; CHECK-NEXT:    [[I5_CACHEIDX61:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX61]], align 4, !invariant.group [[META84]]
 ; CHECK-NEXT:    [[I_CACHEIDX62:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX62]], align 4, !invariant.group [[META85]]
 ; CHECK-NEXT:    [[I18_CACHEIDX63:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL50]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX63]], align 4, !invariant.group [[META86]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       bb197:
 ; CHECK-NEXT:    [[I198:%.*]] = sext i32 [[I169]] to i64
 ; CHECK-NEXT:    [[I199:%.*]] = getelementptr i32, ptr [[I148452]], i64 [[I198]]
-; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I200:%.*]] = load i32, ptr [[I199]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I201:%.*]] = sext i32 [[I200]] to i64
 ; CHECK-NEXT:    [[I202:%.*]] = icmp eq i64 [[I149463]], [[I201]]
 ; CHECK-NEXT:    [[I203:%.*]] = mul nsw i64 [[I106269]], [[I198]]
@@ -2855,57 +2855,57 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR131:%.*]] = load ptr, ptr [[TMP20]], align 8
 ; CHECK-NEXT:    [[CACHECELL132:%.*]] = getelementptr inbounds [[CACHE_CELL2:%.*]], ptr [[CACHE_OUT_PTR131]], i32 [[CACHEIDX130]]
 ; CHECK-NEXT:    [[I10_CACHEIDX133:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4
+; CHECK-NEXT:    store i32 [[I10244]], ptr [[I10_CACHEIDX133]], align 4, !invariant.group [[META94]]
 ; CHECK-NEXT:    [[I70_CACHEIDX134:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 1
-; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8
+; CHECK-NEXT:    store i64 [[I70250]], ptr [[I70_CACHEIDX134]], align 8, !invariant.group [[META95]]
 ; CHECK-NEXT:    [[I142_CACHEIDX135:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 2
-; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8
+; CHECK-NEXT:    store ptr [[I142446]], ptr [[I142_CACHEIDX135]], align 8, !invariant.group [[META96]]
 ; CHECK-NEXT:    [[I146_CACHEIDX136:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 3
-; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4
+; CHECK-NEXT:    store i32 [[I146448]], ptr [[I146_CACHEIDX136]], align 4, !invariant.group [[META97]]
 ; CHECK-NEXT:    [[I153_CACHEIDX137:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 4
-; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1
+; CHECK-NEXT:    store i1 [[I153450]], ptr [[I153_CACHEIDX137]], align 1, !invariant.group [[META98]]
 ; CHECK-NEXT:    [[I148_CACHEIDX138:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 5
-; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8
+; CHECK-NEXT:    store ptr [[I148452]], ptr [[I148_CACHEIDX138]], align 8, !invariant.group [[META99]]
 ; CHECK-NEXT:    [[I156_CACHEIDX139:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 6
-; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8
+; CHECK-NEXT:    store ptr [[I156454]], ptr [[I156_CACHEIDX139]], align 8, !invariant.group [[META100]]
 ; CHECK-NEXT:    [[I171_CACHEIDX140:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 7
-; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8
+; CHECK-NEXT:    store double [[I171]], ptr [[I171_CACHEIDX140]], align 8, !invariant.group [[META101]]
 ; CHECK-NEXT:    [[I169_CACHEIDX141:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 8
-; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4
+; CHECK-NEXT:    store i32 [[I169]], ptr [[I169_CACHEIDX141]], align 4, !invariant.group [[META102]]
 ; CHECK-NEXT:    [[I165_CACHEIDX142:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 9
-; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4
+; CHECK-NEXT:    store i32 [[I165]], ptr [[I165_CACHEIDX142]], align 4, !invariant.group [[META103]]
 ; CHECK-NEXT:    [[I164_CACHEIDX143:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 10
-; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8
+; CHECK-NEXT:    store double [[I164]], ptr [[I164_CACHEIDX143]], align 8, !invariant.group [[META104]]
 ; CHECK-NEXT:    [[I163_CACHEIDX144:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 11
-; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8
+; CHECK-NEXT:    store double [[I163]], ptr [[I163_CACHEIDX144]], align 8, !invariant.group [[META105]]
 ; CHECK-NEXT:    [[I162_CACHEIDX145:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 12
-; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8
+; CHECK-NEXT:    store double [[I162]], ptr [[I162_CACHEIDX145]], align 8, !invariant.group [[META106]]
 ; CHECK-NEXT:    [[I161_CACHEIDX146:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 13
-; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8
+; CHECK-NEXT:    store double [[I161]], ptr [[I161_CACHEIDX146]], align 8, !invariant.group [[META107]]
 ; CHECK-NEXT:    [[I160_CACHEIDX147:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 14
-; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8
+; CHECK-NEXT:    store double [[I160]], ptr [[I160_CACHEIDX147]], align 8, !invariant.group [[META108]]
 ; CHECK-NEXT:    [[I113_CACHEIDX148:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 15
-; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4
+; CHECK-NEXT:    store i32 [[I113255]], ptr [[I113_CACHEIDX148]], align 4, !invariant.group [[META109]]
 ; CHECK-NEXT:    [[I112_CACHEIDX149:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 16
-; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8
+; CHECK-NEXT:    store ptr [[I112258]], ptr [[I112_CACHEIDX149]], align 8, !invariant.group [[META110]]
 ; CHECK-NEXT:    [[I111_CACHEIDX150:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 17
-; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8
+; CHECK-NEXT:    store ptr [[I111261]], ptr [[I111_CACHEIDX150]], align 8, !invariant.group [[META111]]
 ; CHECK-NEXT:    [[I108_CACHEIDX151:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 18
-; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8
+; CHECK-NEXT:    store ptr [[I108265]], ptr [[I108_CACHEIDX151]], align 8, !invariant.group [[META112]]
 ; CHECK-NEXT:    [[I106_CACHEIDX152:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 19
-; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8
+; CHECK-NEXT:    store i64 [[I106269]], ptr [[I106_CACHEIDX152]], align 8, !invariant.group [[META113]]
 ; CHECK-NEXT:    [[I40_CACHEIDX153:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 20
-; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8
+; CHECK-NEXT:    store i64 [[I40275]], ptr [[I40_CACHEIDX153]], align 8, !invariant.group [[META114]]
 ; CHECK-NEXT:    [[I31_CACHEIDX154:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 21
-; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4
+; CHECK-NEXT:    store i32 [[I31279]], ptr [[I31_CACHEIDX154]], align 4, !invariant.group [[META115]]
 ; CHECK-NEXT:    [[I30_CACHEIDX155:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 22
-; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4
+; CHECK-NEXT:    store i32 [[I30285]], ptr [[I30_CACHEIDX155]], align 4, !invariant.group [[META116]]
 ; CHECK-NEXT:    [[I5_CACHEIDX156:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 23
-; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4
+; CHECK-NEXT:    store i32 [[I5291]], ptr [[I5_CACHEIDX156]], align 4, !invariant.group [[META117]]
 ; CHECK-NEXT:    [[I_CACHEIDX157:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 24
-; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4
+; CHECK-NEXT:    store i32 [[I331]], ptr [[I_CACHEIDX157]], align 4, !invariant.group [[META118]]
 ; CHECK-NEXT:    [[I18_CACHEIDX158:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL132]], i32 0, i32 25
-; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4
+; CHECK-NEXT:    store i32 [[I18338]], ptr [[I18_CACHEIDX158]], align 4, !invariant.group [[META119]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       CacheRemat2:
 ; CHECK-NEXT:    [[TMP21:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ARG]], i32 0, i32 4
@@ -2914,57 +2914,57 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_IN_PTR163:%.*]] = load ptr, ptr [[TMP23]], align 8
 ; CHECK-NEXT:    [[CACHECELL164:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHE_IN_PTR163]], i32 [[GTID159]]
 ; CHECK-NEXT:    [[I10_CACHEIDX165:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 0
-; CHECK-NEXT:    [[I10_CACHE166:%.*]] = load i32, ptr [[I10_CACHEIDX165]], align 4
+; CHECK-NEXT:    [[I10_CACHE166:%.*]] = load i32, ptr [[I10_CACHEIDX165]], align 4, !invariant.group [[META94]]
 ; CHECK-NEXT:    [[I70_CACHEIDX167:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 1
-; CHECK-NEXT:    [[I70_CACHE168:%.*]] = load i64, ptr [[I70_CACHEIDX167]], align 8
+; CHECK-NEXT:    [[I70_CACHE168:%.*]] = load i64, ptr [[I70_CACHEIDX167]], align 8, !invariant.group [[META95]]
 ; CHECK-NEXT:    [[I142_CACHEIDX169:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 2
-; CHECK-NEXT:    [[I142_CACHE170:%.*]] = load ptr, ptr [[I142_CACHEIDX169]], align 8
+; CHECK-NEXT:    [[I142_CACHE170:%.*]] = load ptr, ptr [[I142_CACHEIDX169]], align 8, !invariant.group [[META96]]
 ; CHECK-NEXT:    [[I146_CACHEIDX171:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 3
-; CHECK-NEXT:    [[I146_CACHE172:%.*]] = load i32, ptr [[I146_CACHEIDX171]], align 4
+; CHECK-NEXT:    [[I146_CACHE172:%.*]] = load i32, ptr [[I146_CACHEIDX171]], align 4, !invariant.group [[META97]]
 ; CHECK-NEXT:    [[I153_CACHEIDX173:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 4
-; CHECK-NEXT:    [[I153_CACHE174:%.*]] = load i1, ptr [[I153_CACHEIDX173]], align 1
+; CHECK-NEXT:    [[I153_CACHE174:%.*]] = load i1, ptr [[I153_CACHEIDX173]], align 1, !invariant.group [[META98]]
 ; CHECK-NEXT:    [[I148_CACHEIDX175:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 5
-; CHECK-NEXT:    [[I148_CACHE176:%.*]] = load ptr, ptr [[I148_CACHEIDX175]], align 8
+; CHECK-NEXT:    [[I148_CACHE176:%.*]] = load ptr, ptr [[I148_CACHEIDX175]], align 8, !invariant.group [[META99]]
 ; CHECK-NEXT:    [[I156_CACHEIDX177:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 6
-; CHECK-NEXT:    [[I156_CACHE178:%.*]] = load ptr, ptr [[I156_CACHEIDX177]], align 8
+; CHECK-NEXT:    [[I156_CACHE178:%.*]] = load ptr, ptr [[I156_CACHEIDX177]], align 8, !invariant.group [[META100]]
 ; CHECK-NEXT:    [[I171_CACHEIDX179:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 7
-; CHECK-NEXT:    [[I171_CACHE180:%.*]] = load double, ptr [[I171_CACHEIDX179]], align 8
+; CHECK-NEXT:    [[I171_CACHE180:%.*]] = load double, ptr [[I171_CACHEIDX179]], align 8, !invariant.group [[META101]]
 ; CHECK-NEXT:    [[I169_CACHEIDX181:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 8
-; CHECK-NEXT:    [[I169_CACHE182:%.*]] = load i32, ptr [[I169_CACHEIDX181]], align 4
+; CHECK-NEXT:    [[I169_CACHE182:%.*]] = load i32, ptr [[I169_CACHEIDX181]], align 4, !invariant.group [[META102]]
 ; CHECK-NEXT:    [[I165_CACHEIDX183:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 9
-; CHECK-NEXT:    [[I165_CACHE184:%.*]] = load i32, ptr [[I165_CACHEIDX183]], align 4
+; CHECK-NEXT:    [[I165_CACHE184:%.*]] = load i32, ptr [[I165_CACHEIDX183]], align 4, !invariant.group [[META103]]
 ; CHECK-NEXT:    [[I164_CACHEIDX185:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 10
-; CHECK-NEXT:    [[I164_CACHE186:%.*]] = load double, ptr [[I164_CACHEIDX185]], align 8
+; CHECK-NEXT:    [[I164_CACHE186:%.*]] = load double, ptr [[I164_CACHEIDX185]], align 8, !invariant.group [[META104]]
 ; CHECK-NEXT:    [[I163_CACHEIDX187:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 11
-; CHECK-NEXT:    [[I163_CACHE188:%.*]] = load double, ptr [[I163_CACHEIDX187]], align 8
+; CHECK-NEXT:    [[I163_CACHE188:%.*]] = load double, ptr [[I163_CACHEIDX187]], align 8, !invariant.group [[META105]]
 ; CHECK-NEXT:    [[I162_CACHEIDX189:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 12
-; CHECK-NEXT:    [[I162_CACHE190:%.*]] = load double, ptr [[I162_CACHEIDX189]], align 8
+; CHECK-NEXT:    [[I162_CACHE190:%.*]] = load double, ptr [[I162_CACHEIDX189]], align 8, !invariant.group [[META106]]
 ; CHECK-NEXT:    [[I161_CACHEIDX191:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 13
-; CHECK-NEXT:    [[I161_CACHE192:%.*]] = load double, ptr [[I161_CACHEIDX191]], align 8
+; CHECK-NEXT:    [[I161_CACHE192:%.*]] = load double, ptr [[I161_CACHEIDX191]], align 8, !invariant.group [[META107]]
 ; CHECK-NEXT:    [[I160_CACHEIDX193:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 14
-; CHECK-NEXT:    [[I160_CACHE194:%.*]] = load double, ptr [[I160_CACHEIDX193]], align 8
+; CHECK-NEXT:    [[I160_CACHE194:%.*]] = load double, ptr [[I160_CACHEIDX193]], align 8, !invariant.group [[META108]]
 ; CHECK-NEXT:    [[I113_CACHEIDX195:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 15
-; CHECK-NEXT:    [[I113_CACHE196:%.*]] = load i32, ptr [[I113_CACHEIDX195]], align 4
+; CHECK-NEXT:    [[I113_CACHE196:%.*]] = load i32, ptr [[I113_CACHEIDX195]], align 4, !invariant.group [[META109]]
 ; CHECK-NEXT:    [[I112_CACHEIDX197:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 16
-; CHECK-NEXT:    [[I112_CACHE198:%.*]] = load ptr, ptr [[I112_CACHEIDX197]], align 8
+; CHECK-NEXT:    [[I112_CACHE198:%.*]] = load ptr, ptr [[I112_CACHEIDX197]], align 8, !invariant.group [[META110]]
 ; CHECK-NEXT:    [[I111_CACHEIDX199:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 17
-; CHECK-NEXT:    [[I111_CACHE200:%.*]] = load ptr, ptr [[I111_CACHEIDX199]], align 8
+; CHECK-NEXT:    [[I111_CACHE200:%.*]] = load ptr, ptr [[I111_CACHEIDX199]], align 8, !invariant.group [[META111]]
 ; CHECK-NEXT:    [[I108_CACHEIDX201:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 18
-; CHECK-NEXT:    [[I108_CACHE202:%.*]] = load ptr, ptr [[I108_CACHEIDX201]], align 8
+; CHECK-NEXT:    [[I108_CACHE202:%.*]] = load ptr, ptr [[I108_CACHEIDX201]], align 8, !invariant.group [[META112]]
 ; CHECK-NEXT:    [[I106_CACHEIDX203:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 19
-; CHECK-NEXT:    [[I106_CACHE204:%.*]] = load i64, ptr [[I106_CACHEIDX203]], align 8
+; CHECK-NEXT:    [[I106_CACHE204:%.*]] = load i64, ptr [[I106_CACHEIDX203]], align 8, !invariant.group [[META113]]
 ; CHECK-NEXT:    [[I40_CACHEIDX205:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 20
-; CHECK-NEXT:    [[I40_CACHE206:%.*]] = load i64, ptr [[I40_CACHEIDX205]], align 8
+; CHECK-NEXT:    [[I40_CACHE206:%.*]] = load i64, ptr [[I40_CACHEIDX205]], align 8, !invariant.group [[META114]]
 ; CHECK-NEXT:    [[I31_CACHEIDX207:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 21
-; CHECK-NEXT:    [[I31_CACHE208:%.*]] = load i32, ptr [[I31_CACHEIDX207]], align 4
+; CHECK-NEXT:    [[I31_CACHE208:%.*]] = load i32, ptr [[I31_CACHEIDX207]], align 4, !invariant.group [[META115]]
 ; CHECK-NEXT:    [[I30_CACHEIDX209:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 22
-; CHECK-NEXT:    [[I30_CACHE210:%.*]] = load i32, ptr [[I30_CACHEIDX209]], align 4
+; CHECK-NEXT:    [[I30_CACHE210:%.*]] = load i32, ptr [[I30_CACHEIDX209]], align 4, !invariant.group [[META116]]
 ; CHECK-NEXT:    [[I5_CACHEIDX211:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 23
-; CHECK-NEXT:    [[I5_CACHE212:%.*]] = load i32, ptr [[I5_CACHEIDX211]], align 4
+; CHECK-NEXT:    [[I5_CACHE212:%.*]] = load i32, ptr [[I5_CACHEIDX211]], align 4, !invariant.group [[META117]]
 ; CHECK-NEXT:    [[I_CACHEIDX213:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 24
-; CHECK-NEXT:    [[I_CACHE214:%.*]] = load i32, ptr [[I_CACHEIDX213]], align 4
+; CHECK-NEXT:    [[I_CACHE214:%.*]] = load i32, ptr [[I_CACHEIDX213]], align 4, !invariant.group [[META118]]
 ; CHECK-NEXT:    [[I18_CACHEIDX215:%.*]] = getelementptr inbounds [[CACHE_CELL2]], ptr [[CACHECELL164]], i32 0, i32 25
-; CHECK-NEXT:    [[I18_CACHE216:%.*]] = load i32, ptr [[I18_CACHEIDX215]], align 4
+; CHECK-NEXT:    [[I18_CACHE216:%.*]] = load i32, ptr [[I18_CACHEIDX215]], align 4, !invariant.group [[META119]]
 ; CHECK-NEXT:    [[I13_RECOMPUTE217:%.*]] = shl nsw i32 [[I10_CACHE166]], 7
 ; CHECK-NEXT:    [[I4_RECOMPUTE218:%.*]] = getelementptr inbounds i8, ptr [[ARG1]], i64 24
 ; CHECK-NEXT:    [[I19_RECOMPUTE219:%.*]] = getelementptr inbounds i8, ptr [[ARG1]], i64 8
@@ -2991,11 +2991,11 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I28_RECOMPUTE240:%.*]] = getelementptr inbounds i8, ptr [[ARG2]], i64 76
 ; CHECK-NEXT:    [[I209:%.*]] = sext i32 [[I169_CACHE182]] to i64
 ; CHECK-NEXT:    [[I210:%.*]] = getelementptr i32, ptr [[I148_CACHE176]], i64 [[I209]]
-; CHECK-NEXT:    [[I211:%.*]] = load i32, ptr [[I210]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I211:%.*]] = load i32, ptr [[I210]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    br i1 [[I153_CACHE174]], label [[BB216:%.*]], label [[BB212:%.*]]
 ; CHECK:       bb212:
 ; CHECK-NEXT:    [[I213:%.*]] = getelementptr i32, ptr [[I156_CACHE178]], i64 [[I209]]
-; CHECK-NEXT:    [[I214:%.*]] = load i32, ptr [[I213]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I214:%.*]] = load i32, ptr [[I213]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I215:%.*]] = add nsw i32 [[I214]], 1
 ; CHECK-NEXT:    br label [[BB216]]
 ; CHECK:       bb216:
@@ -3004,13 +3004,13 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I219:%.*]] = sext i32 [[I211]] to i64
 ; CHECK-NEXT:    [[I220:%.*]] = getelementptr [[STRUCT_NUCLIDEGRIDPOINT]], ptr [[I111_CACHE200]], i64 [[I218]]
 ; CHECK-NEXT:    [[I221:%.*]] = getelementptr [[STRUCT_NUCLIDEGRIDPOINT]], ptr [[I220]], i64 [[I219]]
-; CHECK-NEXT:    [[I222:%.*]] = load double, ptr [[I221]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I222:%.*]] = load double, ptr [[I221]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I223:%.*]] = sext i32 [[I217]] to i64
 ; CHECK-NEXT:    [[I224:%.*]] = fcmp ult double [[I222]], [[I75_RECOMPUTE227]]
 ; CHECK-NEXT:    br i1 [[I224]], label [[BB225:%.*]], label [[BB245:%.*]]
 ; CHECK:       bb225:
 ; CHECK-NEXT:    [[I226:%.*]] = getelementptr [[STRUCT_NUCLIDEGRIDPOINT]], ptr [[I220]], i64 [[I223]]
-; CHECK-NEXT:    [[I227:%.*]] = load double, ptr [[I226]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I227:%.*]] = load double, ptr [[I226]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I228:%.*]] = fcmp ugt double [[I227]], [[I75_RECOMPUTE227]]
 ; CHECK-NEXT:    br i1 [[I228]], label [[BB229:%.*]], label [[BB245]]
 ; CHECK:       bb229:
@@ -3024,7 +3024,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I236:%.*]] = lshr i64 [[I233]], 1
 ; CHECK-NEXT:    [[I237:%.*]] = add nsw i64 [[I236]], [[I234]]
 ; CHECK-NEXT:    [[I238:%.*]] = getelementptr inbounds [[STRUCT_NUCLIDEGRIDPOINT]], ptr [[I220]], i64 [[I237]]
-; CHECK-NEXT:    [[I239:%.*]] = load double, ptr [[I238]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I239:%.*]] = load double, ptr [[I238]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I240:%.*]] = fcmp ogt double [[I239]], [[I75_RECOMPUTE227]]
 ; CHECK-NEXT:    [[I241]] = select i1 [[I240]], i64 [[I237]], i64 [[I235]]
 ; CHECK-NEXT:    [[I242]] = select i1 [[I240]], i64 [[I234]], i64 [[I237]]
@@ -3089,40 +3089,40 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I10241]] = phi i32 [ [[I10_CACHE166]], [[BB253]] ], [ [[I10_CACHE166]], [[BB250]] ], [ [[I10244]], [[BB197]] ]
 ; CHECK-NEXT:    [[I256:%.*]] = phi ptr [ [[I252]], [[BB250]] ], [ [[I254]], [[BB253]] ], [ [[I207]], [[BB197]] ]
 ; CHECK-NEXT:    [[I257:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 48
-; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I258:%.*]] = load double, ptr [[I257]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I259:%.*]] = fsub double [[I258]], [[I75384]]
-; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I256]], align 8, !tbaa [[TBAA42]]
+; CHECK-NEXT:    [[I260:%.*]] = load double, ptr [[I256]], align 8, !tbaa [[TBAA87]]
 ; CHECK-NEXT:    [[I261:%.*]] = fsub double [[I258]], [[I260]]
 ; CHECK-NEXT:    [[I262:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 56
-; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA44]]
+; CHECK-NEXT:    [[I263:%.*]] = load double, ptr [[I262]], align 8, !tbaa [[TBAA89]]
 ; CHECK-NEXT:    [[I264:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 8
-; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA44]]
+; CHECK-NEXT:    [[I265:%.*]] = load double, ptr [[I264]], align 8, !tbaa [[TBAA89]]
 ; CHECK-NEXT:    [[I266:%.*]] = fsub double [[I263]], [[I265]]
 ; CHECK-NEXT:    [[I267:%.*]] = fneg double [[I259]]
 ; CHECK-NEXT:    [[I268:%.*]] = fdiv double [[I267]], [[I261]]
 ; CHECK-NEXT:    [[I269:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I266]], double [[I263]])
 ; CHECK-NEXT:    [[I270:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 64
-; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA45]]
+; CHECK-NEXT:    [[I271:%.*]] = load double, ptr [[I270]], align 8, !tbaa [[TBAA90]]
 ; CHECK-NEXT:    [[I272:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 16
-; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA45]]
+; CHECK-NEXT:    [[I273:%.*]] = load double, ptr [[I272]], align 8, !tbaa [[TBAA90]]
 ; CHECK-NEXT:    [[I274:%.*]] = fsub double [[I271]], [[I273]]
 ; CHECK-NEXT:    [[I275:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I274]], double [[I271]])
 ; CHECK-NEXT:    [[I276:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 72
-; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA46]]
+; CHECK-NEXT:    [[I277:%.*]] = load double, ptr [[I276]], align 8, !tbaa [[TBAA91]]
 ; CHECK-NEXT:    [[I278:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 24
-; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA46]]
+; CHECK-NEXT:    [[I279:%.*]] = load double, ptr [[I278]], align 8, !tbaa [[TBAA91]]
 ; CHECK-NEXT:    [[I280:%.*]] = fsub double [[I277]], [[I279]]
 ; CHECK-NEXT:    [[I281:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I280]], double [[I277]])
 ; CHECK-NEXT:    [[I282:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 80
-; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA47]]
+; CHECK-NEXT:    [[I283:%.*]] = load double, ptr [[I282]], align 8, !tbaa [[TBAA92]]
 ; CHECK-NEXT:    [[I284:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 32
-; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA47]]
+; CHECK-NEXT:    [[I285:%.*]] = load double, ptr [[I284]], align 8, !tbaa [[TBAA92]]
 ; CHECK-NEXT:    [[I286:%.*]] = fsub double [[I283]], [[I285]]
 ; CHECK-NEXT:    [[I287:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I286]], double [[I283]])
 ; CHECK-NEXT:    [[I288:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 88
-; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA48]]
+; CHECK-NEXT:    [[I289:%.*]] = load double, ptr [[I288]], align 8, !tbaa [[TBAA93]]
 ; CHECK-NEXT:    [[I290:%.*]] = getelementptr inbounds i8, ptr [[I256]], i64 40
-; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA48]]
+; CHECK-NEXT:    [[I291:%.*]] = load double, ptr [[I290]], align 8, !tbaa [[TBAA93]]
 ; CHECK-NEXT:    [[I292:%.*]] = fsub double [[I289]], [[I291]]
 ; CHECK-NEXT:    [[I293:%.*]] = tail call double @llvm.fmuladd.f64(double [[I268]], double [[I292]], double [[I289]])
 ; CHECK-NEXT:    [[I294]] = tail call double @llvm.fmuladd.f64(double [[I269]], double [[I171455]], double [[I164457]])
@@ -3131,7 +3131,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I297]] = tail call double @llvm.fmuladd.f64(double [[I287]], double [[I171455]], double [[I161460]])
 ; CHECK-NEXT:    [[I298]] = tail call double @llvm.fmuladd.f64(double [[I293]], double [[I171455]], double [[I160461]])
 ; CHECK-NEXT:    [[I299]] = add nuw nsw i32 [[I165456]], 1
-; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142445]], align 4, !tbaa [[TBAA41]]
+; CHECK-NEXT:    [[I300:%.*]] = load i32, ptr [[I142445]], align 4, !tbaa [[TBAA60]]
 ; CHECK-NEXT:    [[I301:%.*]] = icmp slt i32 [[I299]], [[I300]]
 ; CHECK-NEXT:    br i1 [[I301]], label [[BB159]], label [[BB302]]
 ; CHECK:       bb302:
@@ -3176,7 +3176,7 @@ attributes #10 = { convergent nounwind }
 ; CHECK-NEXT:    [[I319:%.*]] = select i1 [[I314]], i64 4, i64 [[I318]]
 ; CHECK-NEXT:    [[I320:%.*]] = select i1 [[I317]], i64 5, i64 [[I319]]
 ; CHECK-NEXT:    [[I321:%.*]] = getelementptr inbounds i64, ptr [[ARG3]], i64 [[I40274]]
-; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA49]]
+; CHECK-NEXT:    store i64 [[I320]], ptr [[I321]], align 8, !tbaa [[TBAA120]]
 ; CHECK-NEXT:    [[I322:%.*]] = add nsw i32 [[I18337]], [[I41389]]
 ; CHECK-NEXT:    [[I323]] = sext i32 [[I322]] to i64
 ; CHECK-NEXT:    [[I324:%.*]] = icmp ugt i64 [[I323]], [[I32393]]
@@ -3246,14 +3246,85 @@ attributes #10 = { convergent nounwind }
 ; CHECK: [[TBAA38]] = !{[[META30]], [[META21]], i64 76}
 ; CHECK: [[TBAA39]] = !{[[META40:![0-9]+]], [[META40]], i64 0}
 ; CHECK: [[META40]] = !{!"double", [[META22]], i64 0}
-; CHECK: [[TBAA41]] = !{[[META21]], [[META21]], i64 0}
-; CHECK: [[TBAA42]] = !{[[META43:![0-9]+]], [[META40]], i64 0}
-; CHECK: [[META43]] = !{!"", [[META40]], i64 0, [[META40]], i64 8, [[META40]], i64 16, [[META40]], i64 24, [[META40]], i64 32, [[META40]], i64 40}
-; CHECK: [[TBAA44]] = !{[[META43]], [[META40]], i64 8}
-; CHECK: [[TBAA45]] = !{[[META43]], [[META40]], i64 16}
-; CHECK: [[TBAA46]] = !{[[META43]], [[META40]], i64 24}
-; CHECK: [[TBAA47]] = !{[[META43]], [[META40]], i64 32}
-; CHECK: [[TBAA48]] = !{[[META43]], [[META40]], i64 40}
-; CHECK: [[TBAA49]] = !{[[META50:![0-9]+]], [[META50]], i64 0}
-; CHECK: [[META50]] = !{!"long long", [[META22]], i64 0}
+; CHECK: [[META41]] = distinct !{}
+; CHECK: [[META42]] = distinct !{}
+; CHECK: [[META43]] = distinct !{}
+; CHECK: [[META44]] = distinct !{}
+; CHECK: [[META45]] = distinct !{}
+; CHECK: [[META46]] = distinct !{}
+; CHECK: [[META47]] = distinct !{}
+; CHECK: [[META48]] = distinct !{}
+; CHECK: [[META49]] = distinct !{}
+; CHECK: [[META50]] = distinct !{}
+; CHECK: [[META51]] = distinct !{}
+; CHECK: [[META52]] = distinct !{}
+; CHECK: [[META53]] = distinct !{}
+; CHECK: [[META54]] = distinct !{}
+; CHECK: [[META55]] = distinct !{}
+; CHECK: [[META56]] = distinct !{}
+; CHECK: [[META57]] = distinct !{}
+; CHECK: [[META58]] = distinct !{}
+; CHECK: [[META59]] = distinct !{}
+; CHECK: [[TBAA60]] = !{[[META21]], [[META21]], i64 0}
+; CHECK: [[META61]] = distinct !{}
+; CHECK: [[META62]] = distinct !{}
+; CHECK: [[META63]] = distinct !{}
+; CHECK: [[META64]] = distinct !{}
+; CHECK: [[META65]] = distinct !{}
+; CHECK: [[META66]] = distinct !{}
+; CHECK: [[META67]] = distinct !{}
+; CHECK: [[META68]] = distinct !{}
+; CHECK: [[META69]] = distinct !{}
+; CHECK: [[META70]] = distinct !{}
+; CHECK: [[META71]] = distinct !{}
+; CHECK: [[META72]] = distinct !{}
+; CHECK: [[META73]] = distinct !{}
+; CHECK: [[META74]] = distinct !{}
+; CHECK: [[META75]] = distinct !{}
+; CHECK: [[META76]] = distinct !{}
+; CHECK: [[META77]] = distinct !{}
+; CHECK: [[META78]] = distinct !{}
+; CHECK: [[META79]] = distinct !{}
+; CHECK: [[META80]] = distinct !{}
+; CHECK: [[META81]] = distinct !{}
+; CHECK: [[META82]] = distinct !{}
+; CHECK: [[META83]] = distinct !{}
+; CHECK: [[META84]] = distinct !{}
+; CHECK: [[META85]] = distinct !{}
+; CHECK: [[META86]] = distinct !{}
+; CHECK: [[TBAA87]] = !{[[META88:![0-9]+]], [[META40]], i64 0}
+; CHECK: [[META88]] = !{!"", [[META40]], i64 0, [[META40]], i64 8, [[META40]], i64 16, [[META40]], i64 24, [[META40]], i64 32, [[META40]], i64 40}
+; CHECK: [[TBAA89]] = !{[[META88]], [[META40]], i64 8}
+; CHECK: [[TBAA90]] = !{[[META88]], [[META40]], i64 16}
+; CHECK: [[TBAA91]] = !{[[META88]], [[META40]], i64 24}
+; CHECK: [[TBAA92]] = !{[[META88]], [[META40]], i64 32}
+; CHECK: [[TBAA93]] = !{[[META88]], [[META40]], i64 40}
+; CHECK: [[META94]] = distinct !{}
+; CHECK: [[META95]] = distinct !{}
+; CHECK: [[META96]] = distinct !{}
+; CHECK: [[META97]] = distinct !{}
+; CHECK: [[META98]] = distinct !{}
+; CHECK: [[META99]] = distinct !{}
+; CHECK: [[META100]] = distinct !{}
+; CHECK: [[META101]] = distinct !{}
+; CHECK: [[META102]] = distinct !{}
+; CHECK: [[META103]] = distinct !{}
+; CHECK: [[META104]] = distinct !{}
+; CHECK: [[META105]] = distinct !{}
+; CHECK: [[META106]] = distinct !{}
+; CHECK: [[META107]] = distinct !{}
+; CHECK: [[META108]] = distinct !{}
+; CHECK: [[META109]] = distinct !{}
+; CHECK: [[META110]] = distinct !{}
+; CHECK: [[META111]] = distinct !{}
+; CHECK: [[META112]] = distinct !{}
+; CHECK: [[META113]] = distinct !{}
+; CHECK: [[META114]] = distinct !{}
+; CHECK: [[META115]] = distinct !{}
+; CHECK: [[META116]] = distinct !{}
+; CHECK: [[META117]] = distinct !{}
+; CHECK: [[META118]] = distinct !{}
+; CHECK: [[META119]] = distinct !{}
+; CHECK: [[TBAA120]] = !{[[META121:![0-9]+]], [[META121]], i64 0}
+; CHECK: [[META121]] = !{!"long long", [[META22]], i64 0}
 ;.

@@ -33,7 +33,6 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/iterator.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
@@ -74,6 +73,7 @@
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Type.h"
@@ -3448,12 +3448,18 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     Value *OutCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, OutCachePtr,
                                                     {CacheIdx}, "cachecell");
 
+    SmallVector<MDNode *, 64> InvariantGroups(CachedValues.size() + RequiredAllocas.size());
+
     // Cache Values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
       Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
                                            Inst->getName() + ".cacheidx");
 
-      Builder.CreateStore(Inst, Ptr);
+      MDNode *InvGroup = MDNode::getDistinct(C, {});
+      InvariantGroups[Idx] = InvGroup;
+
+      StoreInst *Store = Builder.CreateStore(Inst, Ptr);
+      Store->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
     }
 
     // Cache allocas
@@ -3463,8 +3469,12 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, CacheIdx,
                                            Alloca->getName() + ".cacheidx");
 
+      MDNode *InvGroup = MDNode::getDistinct(C, {});
+      InvariantGroups[CacheIdx] = InvGroup;
+
       Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
-      Builder.CreateStore(ToCache, Ptr);
+      StoreInst *Store = Builder.CreateStore(ToCache, Ptr);
+      Store->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
     }
 
     Builder.CreateBr(ExitBB);
@@ -3563,8 +3573,12 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
                                            Inst->getName() + ".cacheidx");
 
-      Value *Load =
+      MDNode *InvGroup =  InvariantGroups[Idx];
+
+      LoadInst *Load =
           Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
+      Load->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
+
       RematVMap[Inst] = Load;
 
       unsigned Var;
@@ -3601,8 +3615,10 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       unsigned CacheIdx = CachedValues.size() + Idx;
       Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, CacheIdx,
                                            Alloca->getName() + ".cacheidx");
+      MDNode *InvGroup =  InvariantGroups[Idx];
 
-      Value *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+      LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+      CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
       Builder.CreateStore(CachedVal, NewAlloca);
 
       // FIXME: What about aliases / geps ?

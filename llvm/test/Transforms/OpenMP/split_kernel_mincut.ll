@@ -146,15 +146,15 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-CACHE-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
 ; CHECK-CACHE-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-CACHE-NEXT:    [[ARRAYIDX1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-CACHE-NEXT:    store ptr [[ARRAYIDX1]], ptr [[ARRAYIDX1_CACHEIDX]], align 8
+; CHECK-CACHE-NEXT:    store ptr [[ARRAYIDX1]], ptr [[ARRAYIDX1_CACHEIDX]], align 8, !invariant.group [[META3:![0-9]+]]
 ; CHECK-CACHE-NEXT:    [[ARRAYIDX2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
-; CHECK-CACHE-NEXT:    store ptr [[ARRAYIDX2]], ptr [[ARRAYIDX2_CACHEIDX]], align 8
+; CHECK-CACHE-NEXT:    store ptr [[ARRAYIDX2]], ptr [[ARRAYIDX2_CACHEIDX]], align 8, !invariant.group [[META4:![0-9]+]]
 ; CHECK-CACHE-NEXT:    [[VAL2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
-; CHECK-CACHE-NEXT:    store double [[VAL2]], ptr [[VAL2_CACHEIDX]], align 8
+; CHECK-CACHE-NEXT:    store double [[VAL2]], ptr [[VAL2_CACHEIDX]], align 8, !invariant.group [[META5:![0-9]+]]
 ; CHECK-CACHE-NEXT:    [[VAL1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 3
-; CHECK-CACHE-NEXT:    store double [[VAL1]], ptr [[VAL1_CACHEIDX]], align 8
+; CHECK-CACHE-NEXT:    store double [[VAL1]], ptr [[VAL1_CACHEIDX]], align 8, !invariant.group [[META6:![0-9]+]]
 ; CHECK-CACHE-NEXT:    [[MUL_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 4
-; CHECK-CACHE-NEXT:    store double [[MUL]], ptr [[MUL_CACHEIDX]], align 8
+; CHECK-CACHE-NEXT:    store double [[MUL]], ptr [[MUL_CACHEIDX]], align 8, !invariant.group [[META7:![0-9]+]]
 ; CHECK-CACHE-NEXT:    call void asm sideeffect "exit
 ; CHECK-CACHE-NEXT:    unreachable
 ; CHECK-CACHE:       end:
@@ -185,15 +185,15 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-CACHE-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
 ; CHECK-CACHE-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
 ; CHECK-CACHE-NEXT:    [[ARRAYIDX1_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
-; CHECK-CACHE-NEXT:    [[ARRAYIDX1_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX1_CACHEIDX2]], align 8
+; CHECK-CACHE-NEXT:    [[ARRAYIDX1_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX1_CACHEIDX2]], align 8, !invariant.group [[META3]]
 ; CHECK-CACHE-NEXT:    [[ARRAYIDX2_CACHEIDX3:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 1
-; CHECK-CACHE-NEXT:    [[ARRAYIDX2_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX2_CACHEIDX3]], align 8
+; CHECK-CACHE-NEXT:    [[ARRAYIDX2_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX2_CACHEIDX3]], align 8, !invariant.group [[META4]]
 ; CHECK-CACHE-NEXT:    [[VAL2_CACHEIDX4:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 2
-; CHECK-CACHE-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX4]], align 8
+; CHECK-CACHE-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX4]], align 8, !invariant.group [[META5]]
 ; CHECK-CACHE-NEXT:    [[VAL1_CACHEIDX5:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 3
-; CHECK-CACHE-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX5]], align 8
+; CHECK-CACHE-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX5]], align 8, !invariant.group [[META6]]
 ; CHECK-CACHE-NEXT:    [[MUL_CACHEIDX6:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 4
-; CHECK-CACHE-NEXT:    [[MUL_CACHE:%.*]] = load double, ptr [[MUL_CACHEIDX6]], align 8
+; CHECK-CACHE-NEXT:    [[MUL_CACHE:%.*]] = load double, ptr [[MUL_CACHEIDX6]], align 8, !invariant.group [[META7]]
 ; CHECK-CACHE-NEXT:    store double [[MUL_CACHE]], ptr [[ARRAYIDX1_CACHE]], align 8
 ; CHECK-CACHE-NEXT:    [[ADD:%.*]] = fmul double [[VAL1_CACHE]], [[VAL2_CACHE]]
 ; CHECK-CACHE-NEXT:    store double [[ADD]], ptr [[ARRAYIDX2_CACHE]], align 8
@@ -229,11 +229,11 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-RECOMPUTE-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
 ; CHECK-RECOMPUTE-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-RECOMPUTE-NEXT:    [[VAL1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-RECOMPUTE-NEXT:    store double [[VAL1]], ptr [[VAL1_CACHEIDX]], align 8
+; CHECK-RECOMPUTE-NEXT:    store double [[VAL1]], ptr [[VAL1_CACHEIDX]], align 8, !invariant.group [[META3:![0-9]+]]
 ; CHECK-RECOMPUTE-NEXT:    [[VAL2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
-; CHECK-RECOMPUTE-NEXT:    store double [[VAL2]], ptr [[VAL2_CACHEIDX]], align 8
+; CHECK-RECOMPUTE-NEXT:    store double [[VAL2]], ptr [[VAL2_CACHEIDX]], align 8, !invariant.group [[META4:![0-9]+]]
 ; CHECK-RECOMPUTE-NEXT:    [[TID_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
-; CHECK-RECOMPUTE-NEXT:    store i64 [[TID]], ptr [[TID_CACHEIDX]], align 8
+; CHECK-RECOMPUTE-NEXT:    store i64 [[TID]], ptr [[TID_CACHEIDX]], align 8, !invariant.group [[META5:![0-9]+]]
 ; CHECK-RECOMPUTE-NEXT:    call void asm sideeffect "exit
 ; CHECK-RECOMPUTE-NEXT:    unreachable
 ; CHECK-RECOMPUTE:       end:
@@ -264,11 +264,11 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-RECOMPUTE-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
 ; CHECK-RECOMPUTE-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
 ; CHECK-RECOMPUTE-NEXT:    [[VAL1_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
-; CHECK-RECOMPUTE-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX2]], align 8
+; CHECK-RECOMPUTE-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX2]], align 8, !invariant.group [[META3]]
 ; CHECK-RECOMPUTE-NEXT:    [[VAL2_CACHEIDX3:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 1
-; CHECK-RECOMPUTE-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX3]], align 8
+; CHECK-RECOMPUTE-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX3]], align 8, !invariant.group [[META4]]
 ; CHECK-RECOMPUTE-NEXT:    [[TID_CACHEIDX4:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 2
-; CHECK-RECOMPUTE-NEXT:    [[TID_CACHE:%.*]] = load i64, ptr [[TID_CACHEIDX4]], align 8
+; CHECK-RECOMPUTE-NEXT:    [[TID_CACHE:%.*]] = load i64, ptr [[TID_CACHEIDX4]], align 8, !invariant.group [[META5]]
 ; CHECK-RECOMPUTE-NEXT:    [[ARRAYIDX1_RECOMPUTE:%.*]] = getelementptr inbounds double, ptr [[PTR1]], i64 [[TID_CACHE]]
 ; CHECK-RECOMPUTE-NEXT:    [[ARRAYIDX2_RECOMPUTE:%.*]] = getelementptr inbounds double, ptr [[PTR2]], i64 [[TID_CACHE]]
 ; CHECK-RECOMPUTE-NEXT:    [[MUL_RECOMPUTE:%.*]] = fmul double [[VAL1_CACHE]], [[VAL2_CACHE]]
@@ -307,13 +307,13 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-MINCUT-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
 ; CHECK-MINCUT-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-MINCUT-NEXT:    [[ARRAYIDX1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-MINCUT-NEXT:    store ptr [[ARRAYIDX1]], ptr [[ARRAYIDX1_CACHEIDX]], align 8
+; CHECK-MINCUT-NEXT:    store ptr [[ARRAYIDX1]], ptr [[ARRAYIDX1_CACHEIDX]], align 8, !invariant.group [[META3:![0-9]+]]
 ; CHECK-MINCUT-NEXT:    [[ARRAYIDX2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 1
-; CHECK-MINCUT-NEXT:    store ptr [[ARRAYIDX2]], ptr [[ARRAYIDX2_CACHEIDX]], align 8
+; CHECK-MINCUT-NEXT:    store ptr [[ARRAYIDX2]], ptr [[ARRAYIDX2_CACHEIDX]], align 8, !invariant.group [[META4:![0-9]+]]
 ; CHECK-MINCUT-NEXT:    [[VAL2_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 2
-; CHECK-MINCUT-NEXT:    store double [[VAL2]], ptr [[VAL2_CACHEIDX]], align 8
+; CHECK-MINCUT-NEXT:    store double [[VAL2]], ptr [[VAL2_CACHEIDX]], align 8, !invariant.group [[META5:![0-9]+]]
 ; CHECK-MINCUT-NEXT:    [[VAL1_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 3
-; CHECK-MINCUT-NEXT:    store double [[VAL1]], ptr [[VAL1_CACHEIDX]], align 8
+; CHECK-MINCUT-NEXT:    store double [[VAL1]], ptr [[VAL1_CACHEIDX]], align 8, !invariant.group [[META6:![0-9]+]]
 ; CHECK-MINCUT-NEXT:    call void asm sideeffect "exit
 ; CHECK-MINCUT-NEXT:    unreachable
 ; CHECK-MINCUT:       end:
@@ -344,13 +344,13 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-MINCUT-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
 ; CHECK-MINCUT-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
 ; CHECK-MINCUT-NEXT:    [[ARRAYIDX1_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
-; CHECK-MINCUT-NEXT:    [[ARRAYIDX1_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX1_CACHEIDX2]], align 8
+; CHECK-MINCUT-NEXT:    [[ARRAYIDX1_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX1_CACHEIDX2]], align 8, !invariant.group [[META3]]
 ; CHECK-MINCUT-NEXT:    [[ARRAYIDX2_CACHEIDX3:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 1
-; CHECK-MINCUT-NEXT:    [[ARRAYIDX2_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX2_CACHEIDX3]], align 8
+; CHECK-MINCUT-NEXT:    [[ARRAYIDX2_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX2_CACHEIDX3]], align 8, !invariant.group [[META4]]
 ; CHECK-MINCUT-NEXT:    [[VAL2_CACHEIDX4:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 2
-; CHECK-MINCUT-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX4]], align 8
+; CHECK-MINCUT-NEXT:    [[VAL2_CACHE:%.*]] = load double, ptr [[VAL2_CACHEIDX4]], align 8, !invariant.group [[META5]]
 ; CHECK-MINCUT-NEXT:    [[VAL1_CACHEIDX5:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 3
-; CHECK-MINCUT-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX5]], align 8
+; CHECK-MINCUT-NEXT:    [[VAL1_CACHE:%.*]] = load double, ptr [[VAL1_CACHEIDX5]], align 8, !invariant.group [[META6]]
 ; CHECK-MINCUT-NEXT:    [[MUL_RECOMPUTE:%.*]] = fmul double [[VAL1_CACHE]], [[VAL2_CACHE]]
 ; CHECK-MINCUT-NEXT:    store double [[MUL_RECOMPUTE]], ptr [[ARRAYIDX1_CACHE]], align 8
 ; CHECK-MINCUT-NEXT:    [[ADD:%.*]] = fmul double [[VAL1_CACHE]], [[VAL2_CACHE]]
@@ -363,3 +363,19 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr1, ptr %ptr2, ptr %dyn
 ; CHECK-MINCUT-NEXT:    call void asm sideeffect "exit
 ; CHECK-MINCUT-NEXT:    unreachable
 ;
+;.
+; CHECK-CACHE: [[META3]] = distinct !{}
+; CHECK-CACHE: [[META4]] = distinct !{}
+; CHECK-CACHE: [[META5]] = distinct !{}
+; CHECK-CACHE: [[META6]] = distinct !{}
+; CHECK-CACHE: [[META7]] = distinct !{}
+;.
+; CHECK-RECOMPUTE: [[META3]] = distinct !{}
+; CHECK-RECOMPUTE: [[META4]] = distinct !{}
+; CHECK-RECOMPUTE: [[META5]] = distinct !{}
+;.
+; CHECK-MINCUT: [[META3]] = distinct !{}
+; CHECK-MINCUT: [[META4]] = distinct !{}
+; CHECK-MINCUT: [[META5]] = distinct !{}
+; CHECK-MINCUT: [[META6]] = distinct !{}
+;.

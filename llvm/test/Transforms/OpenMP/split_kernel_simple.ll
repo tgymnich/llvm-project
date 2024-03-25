@@ -123,7 +123,7 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[I7_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store i32 [[I7]], ptr [[I7_CACHEIDX]], align 4
+; CHECK-NEXT:    store i32 [[I7]], ptr [[I7_CACHEIDX]], align 4, !invariant.group [[META17:![0-9]+]]
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
 ;
@@ -149,7 +149,7 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
 ; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
 ; CHECK-NEXT:    [[I7_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
-; CHECK-NEXT:    [[I7_CACHE:%.*]] = load i32, ptr [[I7_CACHEIDX2]], align 4
+; CHECK-NEXT:    [[I7_CACHE:%.*]] = load i32, ptr [[I7_CACHEIDX2]], align 4, !invariant.group [[META17]]
 ; CHECK-NEXT:    [[I16:%.*]] = sext i32 [[I7_CACHE]] to i64
 ; CHECK-NEXT:    [[I17:%.*]] = getelementptr inbounds double, ptr [[ARG1]], i64 [[I16]]
 ; CHECK-NEXT:    [[I18:%.*]] = load double, ptr [[I17]], align 8
@@ -160,3 +160,6 @@ attributes #7 = { convergent nounwind }
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
 ;
+;.
+; CHECK: [[META17]] = distinct !{}
+;.

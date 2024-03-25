@@ -64,7 +64,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[CACHE_OUT_PTR5:%.*]] = load ptr, ptr [[TMP4]], align 8
 ; CHECK-NEXT:    [[CACHECELL6:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_OUT_PTR5]], i32 [[CACHEIDX4]]
 ; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX7:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL6]], i32 0, i32 0
-; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[ARRAYIDX_CACHEIDX7]], align 8
+; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[ARRAYIDX_CACHEIDX7]], align 8, !invariant.group [[META4:![0-9]+]]
 ; CHECK-NEXT:    br label [[THREADEXIT:%.*]]
 ; CHECK:       CacheStore0:
 ; CHECK-NEXT:    [[TMP5:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 3
@@ -77,7 +77,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP9]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[ARRAYIDX_CACHEIDX]], align 8
+; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[ARRAYIDX_CACHEIDX]], align 8, !invariant.group [[META5:![0-9]+]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       ThreadExit:
 ; CHECK-NEXT:    call void asm sideeffect "exit
@@ -105,7 +105,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
 ; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
 ; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
-; CHECK-NEXT:    [[ARRAYIDX_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX_CACHEIDX2]], align 8
+; CHECK-NEXT:    [[ARRAYIDX_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX_CACHEIDX2]], align 8, !invariant.group [[META5]]
 ; CHECK-NEXT:    [[VAL2:%.*]] = load double, ptr [[ARRAYIDX_CACHE]], align 8
 ; CHECK-NEXT:    [[MUL:%.*]] = fmul double [[VAL2]], [[VAL2]]
 ; CHECK-NEXT:    store double [[MUL]], ptr [[ARRAYIDX_CACHE]], align 8
@@ -137,7 +137,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[CACHE_IN_PTR12:%.*]] = load ptr, ptr [[TMP8]], align 8
 ; CHECK-NEXT:    [[CACHECELL13:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_IN_PTR12]], i32 [[GTID8]]
 ; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX14:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL13]], i32 0, i32 0
-; CHECK-NEXT:    [[ARRAYIDX_CACHE15:%.*]] = load ptr, ptr [[ARRAYIDX_CACHEIDX14]], align 8
+; CHECK-NEXT:    [[ARRAYIDX_CACHE15:%.*]] = load ptr, ptr [[ARRAYIDX_CACHEIDX14]], align 8, !invariant.group [[META4]]
 ; CHECK-NEXT:    [[VAL1:%.*]] = load double, ptr [[ARRAYIDX_CACHE15]], align 8
 ; CHECK-NEXT:    [[ADD:%.*]] = fadd double [[VAL1]], 2.000000e+00
 ; CHECK-NEXT:    store double [[ADD]], ptr [[ARRAYIDX_CACHE15]], align 8
@@ -147,3 +147,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
 ;
+;.
+; CHECK: [[META4]] = distinct !{}
+; CHECK: [[META5]] = distinct !{}
+;.
