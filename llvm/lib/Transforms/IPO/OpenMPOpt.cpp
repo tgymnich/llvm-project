@@ -2458,12 +2458,14 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
         GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(CallUser);
         if (!GEP)
           continue;
-        GEP->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+        GEP->moveBefore(
+            &*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
         for (User *GEPUser : GEP->users()) {
           LoadInst *Load = dyn_cast<LoadInst>(GEPUser);
           if (!Load)
             continue;
-          Load->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+          Load->moveBefore(
+              &*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
         }
       }
       continue;
@@ -2474,6 +2476,9 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
 
     auto AMDIntrinsicPrefix = {"amdgcn_workitem_id", "amdgcn_workgroup_id"};
             
+            
+
+
 
     if (TT.isAMDGCN() && none_of(AMDIntrinsicPrefix, [FuncName](StringRef Str) {
           return FuncName.starts_with(Str);
@@ -3151,6 +3156,41 @@ void determineValuesAcross(Function *Kernel, SuspendCrossingInfo &SCI,
   }
 }
 
+void setNumContinuations(GlobalVariable *KernelEnvGV, unsigned NumSplits) {
+  LLVMContext &C = KernelEnvGV->getContext();
+
+  Constant *KernelEnvInitializer = KernelEnvGV->getInitializer();
+  constexpr int NumContinuationsIdx = KernelInfo::NumContinuationsIdx;
+  Constant *NumContinuations = ConstantInt::get(Type::getInt32Ty(C), NumSplits);
+  Constant *NewInitializer = ConstantFoldInsertValueInstruction(
+      KernelEnvInitializer, NumContinuations, {0, NumContinuationsIdx});
+  KernelEnvGV->setInitializer(NewInitializer);
+}
+
+void setCacheLength(GlobalVariable *KernelEnvGV, GlobalVariable *CacheLengthsGV,
+                    size_t CacheLength, unsigned SplitIndex) {
+  LLVMContext &C = KernelEnvGV->getContext();
+
+  Type *ContCountTy = Type::getInt32Ty(C);
+
+  Constant *ContinuationCacheLength =
+      ConstantInt::get(ContCountTy, CacheLength);
+
+  Constant *CacheLengthInitializer = CacheLengthsGV->getInitializer();
+
+  Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
+      CacheLengthInitializer, ContinuationCacheLength, SplitIndex);
+  CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
+
+  constexpr int ContinuationCacheLengthsIdx =
+      KernelInfo::ContinuationCacheLengthsIdx;
+
+  Constant *NewKernelEnvInitalizer = ConstantFoldInsertValueInstruction(
+      KernelEnvGV->getInitializer(), CacheLengthsGV,
+      {0, ContinuationCacheLengthsIdx});
+  KernelEnvGV->setInitializer(NewKernelEnvInitalizer);
+}
+
 Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                                     ArrayRef<Use *> Splits,
                                                     SwitchInst *ContDispatch) {
@@ -3213,13 +3253,6 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
   auto *KernelEnvironmentGV = M.getNamedGlobal(KernelEnvironmentGVName);
   assert(KernelEnvironmentGV && "Expected kernel environment global\n");
 
-  Constant *KernelEnvironmentInitializer =
-      KernelEnvironmentGV->getInitializer();
-  constexpr int NumContinuationsIdx = KernelInfo::NumContinuationsIdx;
-  ConstantInt *NumContinuations = Builder.getInt32(NumSplits);
-  Constant *NewInitializer = ConstantFoldInsertValueInstruction(
-      KernelEnvironmentInitializer, NumContinuations, {0, NumContinuationsIdx});
-
   std::string CacheLengthsGVName = (Kernel->getName() + "_cache_lengths").str();
   Type *CacheLengthsTy = ArrayType::get(Builder.getInt32Ty(), NumSplits);
   auto *CacheLengthsGV = cast<GlobalVariable>(
@@ -3227,9 +3260,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
         return new GlobalVariable(
             M, CacheLengthsTy, true, GlobalValue::PrivateLinkage,
             Constant::getNullValue(CacheLengthsTy), CacheLengthsGVName);
-      }));
+  }));
 
-  Constant *CacheLengthInitializer = CacheLengthsGV->getInitializer();
+  setNumContinuations(KernelEnvironmentGV, NumSplits);
 
   StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
   Type *ContCountTy = Builder.getInt32Ty();
@@ -3401,16 +3434,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       };
       DT.applyUpdates(Updates);
 
-      Constant *ContinuationCacheLength = Builder.getInt32(0);
-      Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
-          CacheLengthInitializer, ContinuationCacheLength, SplitIndex);
-      CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
-
-      constexpr int ContinuationCacheLengthsIdx =
-          KernelInfo::ContinuationCacheLengthsIdx;
-      NewInitializer = ConstantFoldInsertValueInstruction(
-          NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
-      KernelEnvironmentGV->setInitializer(NewInitializer);
+      setCacheLength(KernelEnvironmentGV, CacheLengthsGV, 0, SplitIndex);
 
       assert(!verifyFunction(*Kernel, &errs()));
 
@@ -3420,17 +3444,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     Type *CacheCellTy = StructType::create(
         RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
 
-    Constant *ContinuationCacheLength =
-        Builder.getInt32(DL.getTypeAllocSize(CacheCellTy));
-    Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
-        CacheLengthInitializer, ContinuationCacheLength, SplitIndex);
-    CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
-
-    constexpr int ContinuationCacheLengthsIdx =
-        KernelInfo::ContinuationCacheLengthsIdx;
-    NewInitializer = ConstantFoldInsertValueInstruction(
-        NewInitializer, CacheLengthsGV, {0, ContinuationCacheLengthsIdx});
-    KernelEnvironmentGV->setInitializer(NewInitializer);
+    setCacheLength(KernelEnvironmentGV, CacheLengthsGV, DL.getTypeAllocSize(CacheCellTy), SplitIndex);
 
     BasicBlock *CacheStoreBB = BasicBlock::Create(
         C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
@@ -3548,7 +3562,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                 KernelInfo::ContinuationCntBufferIdx);
     InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
     InContCountPtr = Builder.CreateInBoundsGEP(
-        ContCountTy, InContCountPtr, {NumContinuations}, "contcount.in.ptr");
+        ContCountTy, InContCountPtr, {Builder.getInt32(NumSplits)}, "contcount.in.ptr");
 
     Value *ContCount =
         Builder.CreateLoad(ContCountTy, InContCountPtr, "contcount.in");
