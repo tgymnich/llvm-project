@@ -3187,6 +3187,108 @@ void setCacheLength(GlobalVariable *KernelEnvGV, GlobalVariable *CacheLengthsGV,
   KernelEnvGV->setInitializer(NewKernelEnvInitalizer);
 }
 
+void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
+                          SuspendCrossingInfo &SCI,
+                          SetVector<AllocaInst *> &RequiredAllocas,
+                          SmallVectorImpl<Instruction *> &CachedValues,
+                          SmallVectorImpl<Instruction *> &RecomputedValues) {
+  Function *Kernel = SplitInst->getFunction();
+  const DataLayout &DL = SplitInst->getModule()->getDataLayout();
+
+  // Find Instructions that require caching
+  for (Instruction &I : instructions(Kernel)) {
+    AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
+    if (!Alloca)
+      continue;
+
+    AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, true);
+    Visitor.visitPtr(*Alloca);
+
+    if (Visitor.getShouldRestoreAlloca() && Visitor.getMayWriteBeforeSplit())
+      RequiredAllocas.insert(Alloca);
+  }
+
+  FlowNetwork RematGraph;
+  FlowNetworkBuilder FNBuilder(RematGraph);
+
+  auto &Src = FNBuilder.createSource();
+  auto &Sink = FNBuilder.createSink();
+
+  determineValuesAcross(Kernel, SCI, FNBuilder);
+
+  auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
+
+  auto IsIncomingInst = [](FlowNetworkNode *N) {
+    return N->isInstruction() && N->getIncoming();
+  };
+
+  auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
+
+  switch (SplitKernelRematMode) {
+  case RematModeKind::Cache: {
+    auto HasEdgeToSink = [&Sink](FlowNetworkNode *N) {
+      return N->isInstruction() && !N->getIncoming() && N->hasEdgeTo(Sink);
+    };
+
+    auto CachedValuesRange =
+        map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
+
+    append_range(CachedValues, CachedValuesRange);
+
+    break;
+  }
+  case RematModeKind::Recompute: {
+    auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
+    auto SrcHasNoEdgeToNode = [&Src](FlowNetworkNode *N) {
+      return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
+    };
+
+    auto CachedValuesRange = map_range(
+        make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
+    auto RecomputedValuesRange =
+        map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
+
+    append_range(CachedValues, CachedValuesRange);
+    append_range(RecomputedValues, RecomputedValuesRange);
+
+    break;
+  }
+  case RematModeKind::MinCut: {
+    SmallPtrSet<FlowNetworkNode *, 32> Cut;
+
+    switch (MaxFlowAlogrithm) {
+    case MaxFlowAlgorithmKind::PushRelabel: {
+      PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+      MaxFlow.computeMaxFlow();
+      MaxFlow.getSinkSideMinCut(Cut);
+      break;
+    }
+    case MaxFlowAlgorithmKind::Dinic: {
+      DinicMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+      MaxFlow.computeMaxFlow();
+      MaxFlow.getSinkSideMinCut(Cut);
+      break;
+    }
+    }
+
+    RecomputedValues.reserve(Cut.size());
+    CachedValues.reserve(RematGraph.size() - Cut.size());
+
+    for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
+      if (Cut.contains(N)) {
+        RecomputedValues.push_back(N->getInstruction());
+      } else if (!Cut.contains(N) && !N->getEdges().empty()) {
+        FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
+        if (Cut.contains(Target))
+          CachedValues.push_back(N->getInstruction());
+      }
+    }
+
+    break;
+  }
+  }
+}
+
 Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                                     ArrayRef<Use *> Splits,
                                                     SwitchInst *ContDispatch) {
@@ -3270,111 +3372,13 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       NumSplits);
   SmallVector<SetVector<AllocaInst *>, 4> RequiredAllocasArray(NumSplits);
 
-  for (auto &&[SplitIndex, U] : enumerate(Splits)) {
+  for (auto &&[U, SCI, RequiredAllocas, CachedValues, RecomputedValues] :
+       zip(Splits, SCIs, RequiredAllocasArray, CachedValuesArray,
+           RecomputedValuesArray)) {
     Instruction *SplitInst = cast<Instruction>(U->getUser());
 
-    SuspendCrossingInfo &SCI = *SCIs[SplitIndex].get();
-
-    // Find Instructions that require caching
-    SetVector<AllocaInst *> &RequiredAllocas = RequiredAllocasArray[SplitIndex];
-    for (Instruction &I : instructions(Kernel)) {
-      AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
-      if (!Alloca)
-        continue;
-
-      AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, true);
-      Visitor.visitPtr(*Alloca);
-
-      if (Visitor.getShouldRestoreAlloca() && Visitor.getMayWriteBeforeSplit())
-        RequiredAllocas.insert(Alloca);
-    }
-
-    FlowNetwork RematGraph;
-    FlowNetworkBuilder FNBuilder(RematGraph);
-
-    auto &Src = FNBuilder.createSource();
-    auto &Sink = FNBuilder.createSink();
-
-    determineValuesAcross(Kernel, SCI, FNBuilder);
-
-    auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
-
-    auto IsIncomingInst = [](FlowNetworkNode *N) {
-      return N->isInstruction() && N->getIncoming();
-    };
-
-    auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
-
-    SmallVector<Instruction *, 64> &CachedValues =
-        CachedValuesArray[SplitIndex];
-    SmallVector<Instruction *, 64> &RecomputedValues =
-        RecomputedValuesArray[SplitIndex];
-
-    switch (SplitKernelRematMode) {
-    case RematModeKind::Cache: {
-      auto HasEdgeToSink = [&Sink](FlowNetworkNode *N) {
-        return N->isInstruction() && !N->getIncoming() && N->hasEdgeTo(Sink);
-      };
-
-      auto CachedValuesRange =
-          map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
-
-      append_range(CachedValues, CachedValuesRange);
-
-      break;
-    }
-    case RematModeKind::Recompute: {
-      auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
-      auto SrcHasNoEdgeToNode = [&Src](FlowNetworkNode *N) {
-        return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
-      };
-
-      auto CachedValuesRange = map_range(
-          make_filter_range(map_range(Src, GetTarget), IsIncomingInst),
-          GetInst);
-      auto RecomputedValuesRange =
-          map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
-
-      append_range(CachedValues, CachedValuesRange);
-      append_range(RecomputedValues, RecomputedValuesRange);
-
-      break;
-    }
-    case RematModeKind::MinCut: {
-      SmallPtrSet<FlowNetworkNode *, 32> Cut;
-
-      switch (MaxFlowAlogrithm) {
-      case MaxFlowAlgorithmKind::PushRelabel: {
-        PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src,
-                                                         &Sink);
-        MaxFlow.computeMaxFlow();
-        MaxFlow.getSinkSideMinCut(Cut);
-        break;
-      }
-      case MaxFlowAlgorithmKind::Dinic: {
-        DinicMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
-        MaxFlow.computeMaxFlow();
-        MaxFlow.getSinkSideMinCut(Cut);
-        break;
-      }
-      }
-
-      RecomputedValues.reserve(Cut.size());
-      CachedValues.reserve(RematGraph.size() - Cut.size());
-
-      for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
-        if (Cut.contains(N)) {
-          RecomputedValues.push_back(N->getInstruction());
-        } else if (!Cut.contains(N) && !N->getEdges().empty()) {
-          FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
-          if (Cut.contains(Target))
-            CachedValues.push_back(N->getInstruction());
-        }
-      }
-
-      break;
-    }
-    }
+    minimizeValuesAcross(SplitInst, DT, *SCI.get(), RequiredAllocas,
+                         CachedValues, RecomputedValues);
   }
 
   for (auto &&[SplitIndex, U] : enumerate(Splits)) {
