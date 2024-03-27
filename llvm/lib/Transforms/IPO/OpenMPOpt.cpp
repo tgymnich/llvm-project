@@ -2475,10 +2475,6 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
       continue;
 
     auto AMDIntrinsicPrefix = {"amdgcn_workitem_id", "amdgcn_workgroup_id"};
-            
-            
-
-
 
     if (TT.isAMDGCN() && none_of(AMDIntrinsicPrefix, [FuncName](StringRef Str) {
           return FuncName.starts_with(Str);
@@ -3260,7 +3256,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
         return new GlobalVariable(
             M, CacheLengthsTy, true, GlobalValue::PrivateLinkage,
             Constant::getNullValue(CacheLengthsTy), CacheLengthsGVName);
-  }));
+      }));
 
   setNumContinuations(KernelEnvironmentGV, NumSplits);
 
@@ -3444,7 +3440,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     Type *CacheCellTy = StructType::create(
         RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
 
-    setCacheLength(KernelEnvironmentGV, CacheLengthsGV, DL.getTypeAllocSize(CacheCellTy), SplitIndex);
+    setCacheLength(KernelEnvironmentGV, CacheLengthsGV,
+                   DL.getTypeAllocSize(CacheCellTy), SplitIndex);
 
     BasicBlock *CacheStoreBB = BasicBlock::Create(
         C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
@@ -3480,7 +3477,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     Value *OutCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, OutCachePtr,
                                                     {CacheIdx}, "cachecell");
 
-    SmallVector<MDNode *, 64> InvariantGroups(CachedValues.size() + RequiredAllocas.size());
+    SmallVector<MDNode *, 64> InvariantGroups(CachedValues.size() +
+                                              RequiredAllocas.size());
 
     // Cache Values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
@@ -3561,8 +3559,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
         Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
                                 KernelInfo::ContinuationCntBufferIdx);
     InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
-    InContCountPtr = Builder.CreateInBoundsGEP(
-        ContCountTy, InContCountPtr, {Builder.getInt32(NumSplits)}, "contcount.in.ptr");
+    InContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, InContCountPtr,
+                                               {Builder.getInt32(NumSplits)},
+                                               "contcount.in.ptr");
 
     Value *ContCount =
         Builder.CreateLoad(ContCountTy, InContCountPtr, "contcount.in");
@@ -3605,7 +3604,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
                                            Inst->getName() + ".cacheidx");
 
-      MDNode *InvGroup =  InvariantGroups[Idx];
+      MDNode *InvGroup = InvariantGroups[Idx];
 
       LoadInst *Load =
           Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
@@ -3647,7 +3646,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       unsigned CacheIdx = CachedValues.size() + Idx;
       Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, CacheIdx,
                                            Alloca->getName() + ".cacheidx");
-      MDNode *InvGroup =  InvariantGroups[Idx];
+      MDNode *InvGroup = InvariantGroups[Idx];
 
       LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
