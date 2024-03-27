@@ -527,7 +527,7 @@ GenericKernelTy::getKernelLaunchEnvironment(
                              sizeof(uint32_t) * NumContinuations,
                              CacheLengths.data());
 
-    GenericGlobalHandlerTy &GHandler = Plugin::get().getGlobalHandler();
+    GenericGlobalHandlerTy &GHandler = GenericDevice.Plugin.getGlobalHandler();
     if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, *ImagePtr,
                                                  CacheLengthsGVs)) {
       report_fatal_error("Error retrieving data for target pointer");
