@@ -91,6 +91,7 @@
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/CodeExtractor.h"
+#include "llvm/Transforms/Utils/CodeMoverUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
@@ -2451,11 +2452,28 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
 
     StringRef FuncName = Callee->getName();
 
+    if (FuncName.starts_with("amdgcn_implicitarg_ptr")) {
+      Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+      for (User *CallUser : Call->users()) {
+        GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(CallUser);
+        if (!GEP)
+          continue;
+        GEP->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+        for (User *GEPUser : GEP->users()) {
+          LoadInst *Load = dyn_cast<LoadInst>(GEPUser);
+          if (!Load)
+            continue;
+          Load->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+        }
+      }
+      continue;
+    }
+
     if (TT.isNVPTX() && !FuncName.starts_with("llvm.nvvm.read.ptx.sreg."))
       continue;
 
-    std::string AMDIntrinsicPrefix[] = {
-        "amdgcn_workitem_id", "amdgcn_workgroup_id", "amdgcn_implicitarg_ptr"};
+    auto AMDIntrinsicPrefix = {"amdgcn_workitem_id", "amdgcn_workgroup_id"};
+            
 
     if (TT.isAMDGCN() && none_of(AMDIntrinsicPrefix, [FuncName](StringRef Str) {
           return FuncName.starts_with(Str);
