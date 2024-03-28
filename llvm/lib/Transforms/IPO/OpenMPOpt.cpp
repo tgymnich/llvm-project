@@ -37,6 +37,7 @@
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/ConstantFolding.h"
+#include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/MemoryLocation.h"
 #include "llvm/Analysis/MemorySSAUpdater.h"
@@ -54,6 +55,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Constant.h"
+#include "llvm/IR/ConstantFold.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -3289,6 +3291,19 @@ void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
   }
 }
 
+Value *getCachePtr(IRBuilder<> &Builder, ArrayRef<Type*> RequiredTypes, Value *CachePtr, unsigned TypeIdx, Value* ThreadIdx, Value *NumThreads) {
+  Value *Result = CachePtr;
+
+  for (auto&& [Idx, Ty] : enumerate(RequiredTypes)) {
+    if (Idx == TypeIdx)
+      break;
+    
+    Result = Builder.CreateInBoundsGEP(Ty, Result, NumThreads);
+  }
+
+  return Builder.CreateInBoundsGEP(RequiredTypes[TypeIdx], Result, ThreadIdx);
+}
+
 Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                                     ArrayRef<Use *> Splits,
                                                     SwitchInst *ContDispatch) {
@@ -3466,6 +3481,19 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
         std::nullopt, AtomicOrdering::Monotonic);
     CacheIdx->setName("cacheidx");
 
+    Value *TotalNumThreads;
+    if (TT.isNVPTX()) {
+      // TODO: Use OMP runtime instead of ptx intrinsics.
+      Value *NumThreads = Builder.CreateIntrinsic(Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ntid_x, {});
+      Value *NumBlocks = Builder.CreateIntrinsic(Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_nctaid_x, {});
+
+      TotalNumThreads = Builder.CreateMul(NumThreads, NumBlocks, "totalthreads");
+    } else if (TT.isAMDGCN()) {
+      llvm_unreachable("unsupported");
+    } else {
+      llvm_unreachable("unsupported");
+    }
+
     // Get buffer containing pointers to the caches for each split point.
     // Get the pointer to the cache for this split point at the right offset for
     // the current thread
@@ -3486,8 +3514,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
     // Cache Values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
-                                           Inst->getName() + ".cacheidx");
+      // Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
+      //                                      Inst->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, OutCachePtr, Idx, CacheIdx, TotalNumThreads);
 
       MDNode *InvGroup = MDNode::getDistinct(C, {});
       InvariantGroups[Idx] = InvGroup;
@@ -3500,8 +3529,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
       unsigned OffsetIdx = CachedValues.size() + Idx;
 
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, OffsetIdx,
-                                           Alloca->getName() + ".cacheidx");
+      // Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, OffsetIdx,
+      //                                      Alloca->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, OutCachePtr, OffsetIdx, CacheIdx, TotalNumThreads);
 
       MDNode *InvGroup = MDNode::getDistinct(C, {});
       InvariantGroups[OffsetIdx] = InvGroup;
@@ -3603,10 +3633,25 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     };
     DT.applyUpdates(Updates);
 
+    Value *TotalNumThreadsIn;
+    if (TT.isNVPTX()) {
+      // TODO: Use OMP runtime instead of ptx intrinsics.
+      Value *NumThreads = Builder.CreateIntrinsic(Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ntid_x, {});
+      Value *NumBlocks = Builder.CreateIntrinsic(Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_nctaid_x, {});
+
+      TotalNumThreadsIn = Builder.CreateMul(NumThreads, NumBlocks, "totalthreads");
+    } else if (TT.isAMDGCN()) {
+      llvm_unreachable("unsupported");
+    } else {
+      llvm_unreachable("unsupported");
+    }
+
     // Rematerialize values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
-                                           Inst->getName() + ".cacheidx");
+      // Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
+      //                                      Inst->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, Idx, GlobalTid, TotalNumThreadsIn);
+
 
       MDNode *InvGroup = InvariantGroups[Idx];
 
@@ -3648,6 +3693,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       RematVMap[Alloca] = NewAlloca;
 
       unsigned OffsetIdx = CachedValues.size() + Idx;
+      // Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, OffsetIdx,
+      //                                      Alloca->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, OffsetIdx, GlobalTid, TotalNumThreadsIn);
+
+
       MDNode *InvGroup = InvariantGroups[OffsetIdx];
 
       LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
