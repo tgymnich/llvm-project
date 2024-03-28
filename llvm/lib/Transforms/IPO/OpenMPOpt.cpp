@@ -3504,7 +3504,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                            Alloca->getName() + ".cacheidx");
 
       MDNode *InvGroup = MDNode::getDistinct(C, {});
-      InvariantGroups[CacheIdx] = InvGroup;
+      InvariantGroups[OffsetIdx] = InvGroup;
 
       Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
       StoreInst *Store = Builder.CreateStore(ToCache, Ptr);
@@ -3648,9 +3648,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       RematVMap[Alloca] = NewAlloca;
 
       unsigned OffsetIdx = CachedValues.size() + Idx;
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, OffsetIdx,
-                                           Alloca->getName() + ".cacheidx");
-      MDNode *InvGroup = InvariantGroups[Idx];
+      MDNode *InvGroup = InvariantGroups[OffsetIdx];
 
       LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
