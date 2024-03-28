@@ -3498,9 +3498,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
     // Cache allocas
     for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      unsigned CacheIdx = CachedValues.size() + Idx;
+      unsigned OffsetIdx = CachedValues.size() + Idx;
 
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, CacheIdx,
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, OffsetIdx,
                                            Alloca->getName() + ".cacheidx");
 
       MDNode *InvGroup = MDNode::getDistinct(C, {});
@@ -3647,8 +3647,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
       RematVMap[Alloca] = NewAlloca;
 
-      unsigned CacheIdx = CachedValues.size() + Idx;
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, CacheIdx,
+      unsigned OffsetIdx = CachedValues.size() + Idx;
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, OffsetIdx,
                                            Alloca->getName() + ".cacheidx");
       MDNode *InvGroup = InvariantGroups[Idx];
 
