@@ -2492,8 +2492,8 @@ static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
   }
 }
 
-static SwitchInst *createContDispatchBlock(Function *Kernel,
-                                           DominatorTree &DT) {
+static SwitchInst *createContDispatchBlock(Function *Kernel, DominatorTree &DT,
+                                           unsigned NumSplits) {
   Module *M = Kernel->getParent();
   LLVMContext &C = Kernel->getContext();
   BasicBlock &OldEntry = Kernel->getEntryBlock();
@@ -2511,7 +2511,7 @@ static SwitchInst *createContDispatchBlock(Function *Kernel,
 
   Value *ContId = Builder.CreateCall(ContIdGetter, {}, "cont_id");
 
-  SwitchInst *Switch = Builder.CreateSwitch(ContId, &OldEntry);
+  SwitchInst *Switch = Builder.CreateSwitch(ContId, &OldEntry, NumSplits + 1);
 
   DT.insertEdge(ContDispatchBB, &OldEntry);
 
@@ -2523,15 +2523,15 @@ bool OpenMPOpt::splitKernels() {
   auto &RFI = OMPInfoCache.RFIs[OMPRTL___ompx_split];
 
   for (auto &&[Kernel, UseVec] : RFI) {
-
     if (!isOpenMPKernel(*Kernel))
       continue;
 
+    unsigned NumSplit = UseVec->size();
     DominatorTree &DT = DTGetter(Kernel);
 
     movePTXRegisterReadsIntoEntry(Kernel);
 
-    SwitchInst *ContDispatch = createContDispatchBlock(Kernel, DT);
+    SwitchInst *ContDispatch = createContDispatchBlock(Kernel, DT, NumSplit);
 
     cleanupSinglePredPHIs(*Kernel);
 
@@ -2544,7 +2544,7 @@ bool OpenMPOpt::splitKernels() {
       SplitInst->eraseFromParent();
     }
 
-    splitKernel(Kernel, ContDispatch, UseVec->size());
+    splitKernel(Kernel, ContDispatch, NumSplit);
     Changed = true;
   }
 
@@ -2774,7 +2774,11 @@ public:
 } // end anonymous namespace
 
 namespace {
-struct AllocaUseVisitor : PtrUseVisitor<AllocaUseVisitor> {
+class AllocaUseVisitor : public PtrUseVisitor<AllocaUseVisitor> {
+  friend class PtrUseVisitor<AllocaUseVisitor>;
+  friend class InstVisitor<AllocaUseVisitor>;
+
+  using Base = PtrUseVisitor<AllocaUseVisitor>;
 
 private:
   const DominatorTree &DT;
@@ -2793,14 +2797,34 @@ private:
 
   mutable std::optional<bool> ShouldRestoreAlloca;
 
-  using Base = PtrUseVisitor<AllocaUseVisitor>;
-
 public:
   AllocaUseVisitor(const DataLayout &DL, const DominatorTree &DT,
                    const SuspendCrossingInfo &SCI, const Instruction &Split,
                    bool ShouldUseLifetimeStartInfo)
       : PtrUseVisitor(DL), DT(DT), SCI(SCI), SplitInstruction(Split),
         ShouldUseLifetimeStartInfo(ShouldUseLifetimeStartInfo) {}
+
+  bool getShouldRestoreAlloca() const {
+    if (!ShouldRestoreAlloca)
+      ShouldRestoreAlloca = computeShouldRestoreAlloca();
+    return *ShouldRestoreAlloca;
+  }
+
+  bool getMayWriteBeforeSplit() const { return MayWriteBeforeSplit; }
+
+  DenseMap<Instruction *, std::optional<APInt>> getAliasesCopy() const {
+    assert(getShouldRestoreAlloca() &&
+           "This method should only be called if the "
+           "alloca needs to be restored after a split.");
+    for (const auto &P : AliasOffetMap)
+      if (!P.second)
+        report_fatal_error("Unable to handle an alias with unknown offset "
+                           "created before split.");
+    return AliasOffetMap;
+  }
+
+private:
+  void visit(Instruction *I) { return visit(*I); }
 
   void visit(Instruction &I) {
     Users.insert(&I);
@@ -2815,7 +2839,6 @@ public:
   }
   // We need to provide this overload as PtrUseVisitor uses a pointer based
   // visiting function.
-  void visit(Instruction *I) { return visit(*I); }
 
   void visitPHINode(PHINode &I) {
     enqueueUsers(I);
@@ -2925,25 +2948,6 @@ public:
     handleMayWrite(CB);
   }
 
-  bool getShouldRestoreAlloca() const {
-    if (!ShouldRestoreAlloca)
-      ShouldRestoreAlloca = computeShouldRestoreAlloca();
-    return *ShouldRestoreAlloca;
-  }
-
-  bool getMayWriteBeforeSplit() const { return MayWriteBeforeSplit; }
-
-  DenseMap<Instruction *, std::optional<APInt>> getAliasesCopy() const {
-    assert(getShouldRestoreAlloca() &&
-           "This method should only be called if the "
-           "alloca needs to be restored after a split.");
-    for (const auto &P : AliasOffetMap)
-      if (!P.second)
-        report_fatal_error("Unable to handle an alias with unknown offset "
-                           "created before CoroBegin.");
-    return AliasOffetMap;
-  }
-
 private:
   bool computeShouldRestoreAlloca() const {
     // If lifetime information is available, we check it first since it's
@@ -2998,14 +3002,14 @@ private:
 
   bool usedAfterSplit(Instruction &I) {
     for (auto &U : I.uses())
-      if (DT.dominates(&SplitInstruction, U))
+      if (SCI.isDefinitionAcrossSplit(I, U.getUser()))
         return true;
     return false;
   }
 
   void handleAlias(Instruction &I) {
-    // We track all aliases created prior to CoroBegin but used after.
-    // These aliases may need to be recreated after CoroBegin if the alloca
+    // We track all aliases created prior to ompx_split but used after.
+    // These aliases may need to be recreated after ompx_split if the alloca
     // need to live on the frame.
     if (DT.dominates(&SplitInstruction, &I) || !usedAfterSplit(I))
       return;
@@ -3025,6 +3029,93 @@ private:
   }
 };
 } // namespace
+
+struct AllocaInfo {
+  AllocaInst *Alloca;
+  DenseMap<Instruction *, std::optional<APInt>> Aliases;
+  bool MayWriteBeforeSplit;
+  AllocaInfo(AllocaInst *Alloca,
+             DenseMap<Instruction *, std::optional<APInt>> Aliases,
+             bool MayWriteBeforeSplit)
+      : Alloca(Alloca), Aliases(std::move(Aliases)),
+        MayWriteBeforeSplit(MayWriteBeforeSplit) {}
+};
+
+/// For each local variable that all of its user are only after a split, we sink
+/// their lifetime.start markers to after the split block. Doing so minimizes
+/// the lifetime of each variable, hence minimizing the amount of data we end up
+/// caching.
+static void sinkLifetimeStartMarkers(Function &Kernel, Instruction *SplitInst,
+                                     SuspendCrossingInfo &SCI,
+                                     DominatorTree &DT) {
+  // Collect all possible basic blocks which may dominate all uses of allocas.
+  SmallPtrSet<BasicBlock *, 4> DomSet;
+  DomSet.insert(&Kernel.getEntryBlock());
+
+  BasicBlock *SplitBB = SplitInst->getParent();
+  DomSet.insert(SplitBB->getSingleSuccessor());
+
+  for (Instruction &I : instructions(Kernel)) {
+    AllocaInst *AI = dyn_cast<AllocaInst>(&I);
+    if (!AI)
+      continue;
+
+    for (BasicBlock *DomBB : DomSet) {
+      bool Valid = true;
+      SmallVector<Instruction *, 1> Lifetimes;
+
+      auto IsLifetimeStart = [](Instruction *I) {
+        if (auto *II = dyn_cast<IntrinsicInst>(I))
+          return II->getIntrinsicID() == Intrinsic::lifetime_start;
+        return false;
+      };
+
+      auto CollectLifetimeStart = [&](Instruction *U, AllocaInst *AI) {
+        if (IsLifetimeStart(U)) {
+          Lifetimes.push_back(U);
+          return true;
+        }
+        if (!U->hasOneUse() || U->stripPointerCasts() != AI)
+          return false;
+        if (IsLifetimeStart(U->user_back())) {
+          Lifetimes.push_back(U->user_back());
+          return true;
+        }
+        return false;
+      };
+
+      for (User *U : AI->users()) {
+        Instruction *UI = cast<Instruction>(U);
+        // For all users except lifetime.start markers, if they are all
+        // dominated by one of the basic blocks and do not cross
+        // split points as well, then there is no need to cache the
+        // instruction.
+        if (!DT.dominates(DomBB, UI->getParent()) ||
+            SCI.isDefinitionAcrossSplit(DomBB, UI)) {
+          // Skip lifetime.start, GEP and bitcast used by lifetime.start
+          // markers.
+          if (CollectLifetimeStart(UI, AI))
+            continue;
+          Valid = false;
+          break;
+        }
+      }
+      // Sink lifetime.start markers to dominate block when they are
+      // only used outside the region.
+      if (Valid && Lifetimes.size() != 0) {
+        auto *NewLifetime = Lifetimes[0]->clone();
+        NewLifetime->replaceUsesOfWith(NewLifetime->getOperand(1), AI);
+        NewLifetime->insertBefore(DomBB->getTerminator());
+
+        // All the outsided lifetime.start markers are no longer necessary.
+        for (Instruction *S : Lifetimes)
+          S->eraseFromParent();
+
+        break;
+      }
+    }
+  }
+}
 
 bool isMaterializable(Instruction *I) {
   bool IsMaterializableInstruction =
@@ -3189,7 +3280,7 @@ void setCacheLength(GlobalVariable *KernelEnvGV, GlobalVariable *CacheLengthsGV,
 
 void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
                           SuspendCrossingInfo &SCI,
-                          SetVector<AllocaInst *> &RequiredAllocas,
+                          SmallVectorImpl<AllocaInfo> &RequiredAllocas,
                           SmallVectorImpl<Instruction *> &CachedValues,
                           SmallVectorImpl<Instruction *> &RecomputedValues) {
   Function *Kernel = SplitInst->getFunction();
@@ -3201,11 +3292,14 @@ void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
     if (!Alloca)
       continue;
 
-    AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, true);
+    AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, false);
     Visitor.visitPtr(*Alloca);
 
-    if (Visitor.getShouldRestoreAlloca() && Visitor.getMayWriteBeforeSplit())
-      RequiredAllocas.insert(Alloca);
+    if (!Visitor.getShouldRestoreAlloca())
+      continue;
+
+    RequiredAllocas.emplace_back(Alloca, Visitor.getAliasesCopy(),
+                                 Visitor.getMayWriteBeforeSplit());
   }
 
   FlowNetwork RematGraph;
@@ -3346,6 +3440,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     SCIs[SplitIdx] = std::make_unique<SuspendCrossingInfo>(*Kernel, SplitInst);
   }
 
+  for (auto &&[U, SCI] : zip(Splits, SCIs)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+    sinkLifetimeStartMarkers(*Kernel, SplitInst, *SCI.get(), DT);
+  }
+
   std::string KernelEnvironmentGVName =
       (Kernel->getName() + "_kernel_environment").str();
   auto *KernelEnvironmentGV = M.getNamedGlobal(KernelEnvironmentGVName);
@@ -3370,7 +3469,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
   SmallVector<SmallVector<Instruction *, 64>, 4> CachedValuesArray(NumSplits);
   SmallVector<SmallVector<Instruction *, 64>, 4> RecomputedValuesArray(
       NumSplits);
-  SmallVector<SetVector<AllocaInst *>, 4> RequiredAllocasArray(NumSplits);
+  SmallVector<SmallVector<AllocaInfo>, 4> RequiredAllocasArray(NumSplits);
 
   for (auto &&[U, SCI, RequiredAllocas, CachedValues, RecomputedValues] :
        zip(Splits, SCIs, RequiredAllocasArray, CachedValuesArray,
@@ -3391,15 +3490,19 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
         CachedValuesArray[SplitIndex];
     SmallVector<Instruction *, 64> &RecomputedValues =
         RecomputedValuesArray[SplitIndex];
-    SetVector<AllocaInst *> &RequiredAllocas = RequiredAllocasArray[SplitIndex];
+    SmallVector<AllocaInfo> &RequiredAllocas = RequiredAllocasArray[SplitIndex];
 
     // Cache values shared between the original kernel and the split kernel.
-    auto ValueTys =
-        map_range(CachedValues, [](Instruction *I) { return I->getType(); });
-    auto AllocaTys = map_range(
-        RequiredAllocas, [](AllocaInst *I) { return I->getAllocatedType(); });
-    SmallVector<Type *> RequiredTypes(ValueTys);
-    append_range(RequiredTypes, AllocaTys);
+    SmallVector<Type *> RequiredTypes(
+        map_range(CachedValues, [](Instruction *I) { return I->getType(); }));
+
+    RequiredTypes.reserve(RequiredAllocas.size());
+    for (AllocaInfo &Info : RequiredAllocas) {
+      if (!Info.MayWriteBeforeSplit)
+        continue;
+
+      RequiredTypes.push_back(Info.Alloca->getAllocatedType());
+    }
 
     if (CachedValues.empty() && RecomputedValues.empty()) {
       BasicBlock *IncBB = BasicBlock::Create(C, "", Kernel);
@@ -3497,14 +3600,18 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     }
 
     // Cache allocas
-    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      unsigned CacheIdx = CachedValues.size() + Idx;
+    for (auto [Idx, Info] : enumerate(RequiredAllocas)) {
+      if (Info.MayWriteBeforeSplit)
+        continue;
 
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, CacheIdx,
+      unsigned OffsetIdx = CachedValues.size() + Idx;
+      AllocaInst *Alloca = Info.Alloca;
+
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, OffsetIdx,
                                            Alloca->getName() + ".cacheidx");
 
       MDNode *InvGroup = MDNode::getDistinct(C, {});
-      InvariantGroups[CacheIdx] = InvGroup;
+      InvariantGroups[OffsetIdx] = InvGroup;
 
       Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
       StoreInst *Store = Builder.CreateStore(ToCache, Ptr);
@@ -3641,26 +3748,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     }
 
     // Rematerialize allocas
-    for (auto [Idx, Alloca] : enumerate(RequiredAllocas)) {
-      // NOTE: can we just read / write from the cache directly?
+    for (auto [Idx, Info] : enumerate(RequiredAllocas)) {
+      AllocaInst *Alloca = Info.Alloca;
       Instruction *NewAlloca = Alloca->clone();
       Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
       RematVMap[Alloca] = NewAlloca;
-
-      unsigned CacheIdx = CachedValues.size() + Idx;
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, CacheIdx,
-                                           Alloca->getName() + ".cacheidx");
-      MDNode *InvGroup = InvariantGroups[Idx];
-
-      LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
-      CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
-      Builder.CreateStore(CachedVal, NewAlloca);
-
-      // FIXME: What about aliases / geps ?
-
-      // TODO: What about
-      // derived values from the pointer? What about read only values? What
-      // about read write values?
 
       unsigned Var;
       if (SSAVars.contains(Alloca)) {
@@ -3684,6 +3776,48 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
         SSAUpdate.AddUse(Var, &U);
       }
+
+      for (auto &&[Inst, Offset] : Info.Aliases) {
+        Instruction *NewInst = Inst->clone();
+        Builder.Insert(NewInst, Inst->getName() + ".remat");
+        RematVMap[Inst] = NewInst;
+
+        unsigned Var;
+        if (SSAVars.contains(Inst)) {
+          Var = SSAVars[Inst];
+        } else {
+          Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+          SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+          SSAVars[Inst] = Var;
+        }
+
+        SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewInst);
+
+        for (Use &U : Inst->uses()) {
+          Instruction *User = cast<Instruction>(U.getUser());
+          if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+            if (UserPN->getIncomingBlock(U) == Inst->getParent())
+              continue;
+          } else if (User->getParent() == Inst->getParent()) {
+            continue;
+          }
+
+          SSAUpdate.AddUse(Var, &U);
+        }
+      }
+
+      if (!Info.MayWriteBeforeSplit)
+        continue;
+
+      unsigned OffsetIdx = CachedValues.size() + Idx;
+      MDNode *InvGroup = InvariantGroups[OffsetIdx];
+
+      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, OffsetIdx,
+                                           Alloca->getName() + ".cacheidx");
+
+      LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+      CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
+      Builder.CreateStore(CachedVal, NewAlloca);
     }
 
     for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
