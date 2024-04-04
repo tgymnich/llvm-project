@@ -18,6 +18,8 @@
 #include "JIT.h"
 #include "Utils/ELF.h"
 #include "omptarget.h"
+#include <cstdlib>
+#include <zlib.h>
 
 #ifdef OMPT_SUPPORT
 #include "OpenMP/OMPT/Callback.h"
@@ -529,6 +531,13 @@ GenericKernelTy::getKernelLaunchEnvironment(
     if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, *ImagePtr,
                                                  CacheLengthsGVs)) {
       report_fatal_error("Error retrieving data for target pointer");
+    }
+
+    unsigned CacheOffset = TotalThreads;
+    GlobalTy CacheOffsetGV((getName() + "_cache_offset").str(), sizeof(uint32_t), &CacheOffset);
+
+    if (auto Err = GHandler.writeGlobalToDevice(GenericDevice, *ImagePtr, CacheOffsetGV)) {
+      report_fatal_error("Error writing data to device");
     }
 
     SmallVector<void *, 16> Caches(NumContinuations * 2);

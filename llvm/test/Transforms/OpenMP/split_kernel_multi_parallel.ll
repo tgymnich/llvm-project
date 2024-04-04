@@ -56,28 +56,30 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK:       CacheStore1:
 ; CHECK-NEXT:    [[TMP0:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
 ; CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[TMP0]], align 8
-; CHECK-NEXT:    [[CONTCOUNT_PTR3:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i32 1
-; CHECK-NEXT:    [[CACHEIDX4:%.*]] = atomicrmw add ptr [[CONTCOUNT_PTR3]], i32 1 monotonic, align 4
+; CHECK-NEXT:    [[CONTCOUNT_PTR2:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i32 1
+; CHECK-NEXT:    [[CACHEIDX3:%.*]] = atomicrmw add ptr [[CONTCOUNT_PTR2]], i32 1 monotonic, align 4
 ; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 4
 ; CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[TMP2]], align 8
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds ptr, ptr [[TMP3]], i32 1
-; CHECK-NEXT:    [[CACHE_OUT_PTR5:%.*]] = load ptr, ptr [[TMP4]], align 8
-; CHECK-NEXT:    [[CACHECELL6:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_OUT_PTR5]], i32 [[CACHEIDX4]]
-; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX7:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL6]], i32 0, i32 0
-; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[ARRAYIDX_CACHEIDX7]], align 8, !invariant.group [[META4:![0-9]+]]
+; CHECK-NEXT:    [[CACHE_OUT_PTR4:%.*]] = load ptr, ptr [[TMP4]], align 8
+; CHECK-NEXT:    [[CACHECELL5:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_OUT_PTR4]], i32 [[CACHEIDX3]]
+; CHECK-NEXT:    [[TMP5:%.*]] = load i32, ptr @test_cache_offset, align 4
+; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_OUT_PTR4]], i32 [[CACHEIDX3]]
+; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[TMP6]], align 8, !invariant.group [[META4:![0-9]+]]
 ; CHECK-NEXT:    br label [[THREADEXIT:%.*]]
 ; CHECK:       CacheStore0:
-; CHECK-NEXT:    [[TMP5:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 3
-; CHECK-NEXT:    [[TMP6:%.*]] = load ptr, ptr [[TMP5]], align 8
-; CHECK-NEXT:    [[CONTCOUNT_PTR:%.*]] = getelementptr inbounds i32, ptr [[TMP6]], i32 0
-; CHECK-NEXT:    [[CACHEIDX:%.*]] = atomicrmw add ptr [[CONTCOUNT_PTR]], i32 1 monotonic, align 4
-; CHECK-NEXT:    [[TMP7:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 4
+; CHECK-NEXT:    [[TMP7:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 3
 ; CHECK-NEXT:    [[TMP8:%.*]] = load ptr, ptr [[TMP7]], align 8
-; CHECK-NEXT:    [[TMP9:%.*]] = getelementptr inbounds ptr, ptr [[TMP8]], i32 0
-; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP9]], align 8
+; CHECK-NEXT:    [[CONTCOUNT_PTR:%.*]] = getelementptr inbounds i32, ptr [[TMP8]], i32 0
+; CHECK-NEXT:    [[CACHEIDX:%.*]] = atomicrmw add ptr [[CONTCOUNT_PTR]], i32 1 monotonic, align 4
+; CHECK-NEXT:    [[TMP9:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 4
+; CHECK-NEXT:    [[TMP10:%.*]] = load ptr, ptr [[TMP9]], align 8
+; CHECK-NEXT:    [[TMP11:%.*]] = getelementptr inbounds ptr, ptr [[TMP10]], i32 0
+; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP11]], align 8
 ; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
-; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL]], i32 0, i32 0
-; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[ARRAYIDX_CACHEIDX]], align 8, !invariant.group [[META5:![0-9]+]]
+; CHECK-NEXT:    [[TMP12:%.*]] = load i32, ptr @test_cache_offset, align 4
+; CHECK-NEXT:    [[TMP13:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
+; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[TMP13]], align 8, !invariant.group [[META5:![0-9]+]]
 ; CHECK-NEXT:    br label [[THREADEXIT]]
 ; CHECK:       ThreadExit:
 ; CHECK-NEXT:    call void asm sideeffect "exit
@@ -104,8 +106,9 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds ptr, ptr [[TMP7]], i32 2
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
 ; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX2:%.*]] = getelementptr inbounds [[CACHE_CELL0]], ptr [[CACHECELL1]], i32 0, i32 0
-; CHECK-NEXT:    [[ARRAYIDX_CACHE:%.*]] = load ptr, ptr [[ARRAYIDX_CACHEIDX2]], align 8, !invariant.group [[META5]]
+; CHECK-NEXT:    [[TMP9:%.*]] = load i32, ptr @test_cache_offset, align 4
+; CHECK-NEXT:    [[TMP10:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_IN_PTR]], i32 [[GTID]]
+; CHECK-NEXT:    [[ARRAYIDX_CACHE:%.*]] = load ptr, ptr [[TMP10]], align 8, !invariant.group [[META5]]
 ; CHECK-NEXT:    [[VAL2:%.*]] = load double, ptr [[ARRAYIDX_CACHE]], align 8
 ; CHECK-NEXT:    [[MUL:%.*]] = fmul double [[VAL2]], [[VAL2]]
 ; CHECK-NEXT:    store double [[MUL]], ptr [[ARRAYIDX_CACHE]], align 8
@@ -123,24 +126,25 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ntid.x()
 ; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
 ; CHECK-NEXT:    [[TMP3:%.*]] = mul i32 [[TMP1]], [[TMP2]]
-; CHECK-NEXT:    [[GTID8:%.*]] = add i32 [[TMP0]], [[TMP3]]
+; CHECK-NEXT:    [[GTID6:%.*]] = add i32 [[TMP0]], [[TMP3]]
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0:%.*]], ptr [[LAUNCH_ENV]], i32 0, i32 3
 ; CHECK-NEXT:    [[TMP5:%.*]] = load ptr, ptr [[TMP4]], align 8
-; CHECK-NEXT:    [[CONTCOUNT_IN_PTR9:%.*]] = getelementptr inbounds i32, ptr [[TMP5]], i32 2
-; CHECK-NEXT:    [[CONTCOUNT_IN10:%.*]] = load i32, ptr [[CONTCOUNT_IN_PTR9]], align 4
-; CHECK-NEXT:    [[MASKTHREAD11:%.*]] = icmp ult i32 [[GTID8]], [[CONTCOUNT_IN10]]
-; CHECK-NEXT:    br i1 [[MASKTHREAD11]], label [[CACHEREMAT1:%.*]], label [[THREADEXIT:%.*]]
+; CHECK-NEXT:    [[CONTCOUNT_IN_PTR7:%.*]] = getelementptr inbounds i32, ptr [[TMP5]], i32 2
+; CHECK-NEXT:    [[CONTCOUNT_IN8:%.*]] = load i32, ptr [[CONTCOUNT_IN_PTR7]], align 4
+; CHECK-NEXT:    [[MASKTHREAD9:%.*]] = icmp ult i32 [[GTID6]], [[CONTCOUNT_IN8]]
+; CHECK-NEXT:    br i1 [[MASKTHREAD9]], label [[CACHEREMAT1:%.*]], label [[THREADEXIT:%.*]]
 ; CHECK:       CacheRemat1:
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[LAUNCH_ENV]], i32 0, i32 4
 ; CHECK-NEXT:    [[TMP7:%.*]] = load ptr, ptr [[TMP6]], align 8
 ; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds ptr, ptr [[TMP7]], i32 3
-; CHECK-NEXT:    [[CACHE_IN_PTR12:%.*]] = load ptr, ptr [[TMP8]], align 8
-; CHECK-NEXT:    [[CACHECELL13:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_IN_PTR12]], i32 [[GTID8]]
-; CHECK-NEXT:    [[ARRAYIDX_CACHEIDX14:%.*]] = getelementptr inbounds [[CACHE_CELL1]], ptr [[CACHECELL13]], i32 0, i32 0
-; CHECK-NEXT:    [[ARRAYIDX_CACHE15:%.*]] = load ptr, ptr [[ARRAYIDX_CACHEIDX14]], align 8, !invariant.group [[META4]]
-; CHECK-NEXT:    [[VAL1:%.*]] = load double, ptr [[ARRAYIDX_CACHE15]], align 8
+; CHECK-NEXT:    [[CACHE_IN_PTR10:%.*]] = load ptr, ptr [[TMP8]], align 8
+; CHECK-NEXT:    [[CACHECELL11:%.*]] = getelementptr inbounds [[CACHE_CELL1:%.*]], ptr [[CACHE_IN_PTR10]], i32 [[GTID6]]
+; CHECK-NEXT:    [[TMP9:%.*]] = load i32, ptr @test_cache_offset, align 4
+; CHECK-NEXT:    [[TMP10:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_IN_PTR10]], i32 [[GTID6]]
+; CHECK-NEXT:    [[ARRAYIDX_CACHE12:%.*]] = load ptr, ptr [[TMP10]], align 8, !invariant.group [[META4]]
+; CHECK-NEXT:    [[VAL1:%.*]] = load double, ptr [[ARRAYIDX_CACHE12]], align 8
 ; CHECK-NEXT:    [[ADD:%.*]] = fadd double [[VAL1]], 2.000000e+00
-; CHECK-NEXT:    store double [[ADD]], ptr [[ARRAYIDX_CACHE15]], align 8
+; CHECK-NEXT:    store double [[ADD]], ptr [[ARRAYIDX_CACHE12]], align 8
 ; CHECK-NEXT:    call void @__kmpc_target_deinit()
 ; CHECK-NEXT:    ret void
 ; CHECK:       ThreadExit:

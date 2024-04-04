@@ -3254,9 +3254,9 @@ void setNumContinuations(GlobalVariable *KernelEnvGV, unsigned NumSplits) {
   KernelEnvGV->setInitializer(NewInitializer);
 }
 
-void setCacheLength(GlobalVariable *KernelEnvGV, GlobalVariable *CacheLengthsGV,
-                    size_t CacheLength, unsigned SplitIndex) {
-  LLVMContext &C = KernelEnvGV->getContext();
+void setCacheLength(GlobalVariable *CacheLengthsGV, size_t CacheLength,
+                    unsigned SplitIndex) {
+  LLVMContext &C = CacheLengthsGV->getContext();
 
   Type *ContCountTy = Type::getInt32Ty(C);
 
@@ -3268,14 +3268,6 @@ void setCacheLength(GlobalVariable *KernelEnvGV, GlobalVariable *CacheLengthsGV,
   Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
       CacheLengthInitializer, ContinuationCacheLength, SplitIndex);
   CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
-
-  constexpr int ContinuationCacheLengthsIdx =
-      KernelInfo::ContinuationCacheLengthsIdx;
-
-  Constant *NewKernelEnvInitalizer = ConstantFoldInsertValueInstruction(
-      KernelEnvGV->getInitializer(), CacheLengthsGV,
-      {0, ContinuationCacheLengthsIdx});
-  KernelEnvGV->setInitializer(NewKernelEnvInitalizer);
 }
 
 void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
@@ -3383,6 +3375,21 @@ void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
   }
 }
 
+Value *getCachePtr(IRBuilder<> &Builder, ArrayRef<Type *> RequiredTypes,
+                   Value *CachePtr, unsigned TypeIdx, Value *ThreadIdx,
+                   Value *NumThreads) {
+  Value *Result = CachePtr;
+
+  for (auto &&[Idx, Ty] : enumerate(RequiredTypes)) {
+    if (Idx == TypeIdx)
+      break;
+
+    Result = Builder.CreateInBoundsGEP(Ty, Result, NumThreads);
+  }
+
+  return Builder.CreateInBoundsGEP(RequiredTypes[TypeIdx], Result, ThreadIdx);
+}
+
 Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                                     ArrayRef<Use *> Splits,
                                                     SwitchInst *ContDispatch) {
@@ -3459,6 +3466,14 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
             Constant::getNullValue(CacheLengthsTy), CacheLengthsGVName);
       }));
 
+  constexpr int ContinuationCacheLengthsIdx =
+      KernelInfo::ContinuationCacheLengthsIdx;
+
+  Constant *NewKernelEnvInitalizer = ConstantFoldInsertValueInstruction(
+      KernelEnvironmentGV->getInitializer(), CacheLengthsGV,
+      {0, ContinuationCacheLengthsIdx});
+  KernelEnvironmentGV->setInitializer(NewKernelEnvInitalizer);
+
   setNumContinuations(KernelEnvironmentGV, NumSplits);
 
   StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
@@ -3479,6 +3494,17 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     minimizeValuesAcross(SplitInst, DT, *SCI.get(), RequiredAllocas,
                          CachedValues, RecomputedValues);
   }
+
+  std::string OffsetGVName = (Kernel->getName() + "_cache_offset").str();
+  Type *OffsetTy = Builder.getInt32Ty();
+
+  auto *OffsetGV =
+      cast<GlobalVariable>(M.getOrInsertGlobal(OffsetGVName, OffsetTy, [&]() {
+        return new GlobalVariable(M, OffsetTy, false,
+                                  GlobalValue::ExternalLinkage,
+                                  UndefValue::get(OffsetTy), OffsetGVName);
+      }));
+  OffsetGV->setVisibility(GlobalValue::DefaultVisibility);
 
   for (auto &&[SplitIndex, U] : enumerate(Splits)) {
     ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
@@ -3514,7 +3540,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                   KernelInfo::ContinuationCntBufferIdx);
       OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
       OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
-                                                  {SplitIdx}, "contcount.ptr");
+                                                  SplitIdx, "contcount.ptr");
 
       Value *CacheIdx = Builder.CreateAtomicRMW(
           AtomicRMWInst::Add, OutContCountPtr, ConstantInt::get(ContCountTy, 1),
@@ -3537,7 +3563,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       };
       DT.applyUpdates(Updates);
 
-      setCacheLength(KernelEnvironmentGV, CacheLengthsGV, 0, SplitIndex);
+      setCacheLength(CacheLengthsGV, 0, SplitIndex);
 
       assert(!verifyFunction(*Kernel, &errs()));
 
@@ -3547,8 +3573,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     Type *CacheCellTy = StructType::create(
         RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
 
-    setCacheLength(KernelEnvironmentGV, CacheLengthsGV,
-                   DL.getTypeAllocSize(CacheCellTy), SplitIndex);
+    setCacheLength(CacheLengthsGV, DL.getTypeAllocSize(CacheCellTy) * 2,
+                   SplitIndex);
 
     BasicBlock *CacheStoreBB = BasicBlock::Create(
         C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
@@ -3577,20 +3603,19 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                 KernelInfo::ContinuationCacheBufferIdx);
     OutCachePtr = Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr);
     OutCachePtr =
-        Builder.CreateInBoundsGEP(Builder.getPtrTy(), OutCachePtr, {SplitIdx});
+        Builder.CreateInBoundsGEP(Builder.getPtrTy(), OutCachePtr, SplitIdx);
     OutCachePtr =
         Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr, "cache.out.ptr");
 
-    Value *OutCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, OutCachePtr,
-                                                    {CacheIdx}, "cachecell");
+    Value *OutOffset = Builder.CreateLoad(OffsetTy, OffsetGV);
 
     SmallVector<MDNode *, 64> InvariantGroups(CachedValues.size() +
                                               RequiredAllocas.size());
 
     // Cache Values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, Idx,
-                                           Inst->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, OutCachePtr, Idx,
+                               CacheIdx, OutOffset);
 
       MDNode *InvGroup = MDNode::getDistinct(C, {});
       InvariantGroups[Idx] = InvGroup;
@@ -3607,8 +3632,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       unsigned OffsetIdx = CachedValues.size() + Idx;
       AllocaInst *Alloca = Info.Alloca;
 
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, OutCacheCell, OffsetIdx,
-                                           Alloca->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, OutCachePtr, OffsetIdx,
+                               CacheIdx, OutOffset);
 
       MDNode *InvGroup = MDNode::getDistinct(C, {});
       InvariantGroups[OffsetIdx] = InvGroup;
@@ -3671,7 +3696,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
                                 KernelInfo::ContinuationCntBufferIdx);
     InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
     InContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, InContCountPtr,
-                                               {Builder.getInt32(NumSplits)},
+                                               Builder.getInt32(NumSplits),
                                                "contcount.in.ptr");
 
     Value *ContCount =
@@ -3683,23 +3708,6 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
     Builder.SetInsertPoint(CacheRematBB);
 
-    // Get buffer containing pointers to the caches for each split point.
-    // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
-    // Get the pointer to the cache for this split point at the right offset
-    // for the current thread
-    ConstantInt *InSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
-    Value *InCachePtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
-                                KernelInfo::ContinuationCacheBufferIdx);
-    InCachePtr = Builder.CreateLoad(Builder.getPtrTy(), InCachePtr);
-    InCachePtr =
-        Builder.CreateInBoundsGEP(Builder.getPtrTy(), InCachePtr, {InSplitIdx});
-    InCachePtr =
-        Builder.CreateLoad(Builder.getPtrTy(), InCachePtr, "cache.in.ptr");
-
-    Value *InCacheCell = Builder.CreateInBoundsGEP(CacheCellTy, InCachePtr,
-                                                   {GlobalTid}, "cachecell");
-
     CFGUpdate Updates[] = {
         {DT.Delete, SplitBB, AfterSplitBB},
         {DT.Insert, ContDispatch->getParent(), CacheEntryBB},
@@ -3710,10 +3718,26 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     };
     DT.applyUpdates(Updates);
 
+    // Get buffer containing pointers to the caches for each split point.
+    // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
+    // Get the pointer to the cache for this split point at the right offset
+    // for the current thread
+    ConstantInt *InSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
+    Value *InCachePtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+                                KernelInfo::ContinuationCacheBufferIdx);
+    InCachePtr = Builder.CreateLoad(Builder.getPtrTy(), InCachePtr);
+    InCachePtr =
+        Builder.CreateInBoundsGEP(Builder.getPtrTy(), InCachePtr, InSplitIdx);
+    InCachePtr =
+        Builder.CreateLoad(Builder.getPtrTy(), InCachePtr, "cache.in.ptr");
+
+    Value *InOffset = Builder.CreateLoad(OffsetTy, OffsetGV);
+
     // Rematerialize values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, Idx,
-                                           Inst->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, Idx,
+                               GlobalTid, InOffset);
 
       MDNode *InvGroup = InvariantGroups[Idx];
 
@@ -3812,8 +3836,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       unsigned OffsetIdx = CachedValues.size() + Idx;
       MDNode *InvGroup = InvariantGroups[OffsetIdx];
 
-      Value *Ptr = Builder.CreateStructGEP(CacheCellTy, InCacheCell, OffsetIdx,
-                                           Alloca->getName() + ".cacheidx");
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, OffsetIdx,
+                               GlobalTid, InOffset);
 
       LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
