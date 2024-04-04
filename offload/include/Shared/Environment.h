@@ -106,6 +106,7 @@ struct KernelLaunchEnvironmentTy {
   uint32_t ReductionIterCnt = 0;
   void *ReductionBuffer = nullptr;
   uint32_t *ContinuationCntBuffer = nullptr;
+  uint32_t ContinuationCacheOffset = 0;
   void **ContinuationCacheBuffer = nullptr;
 };
 

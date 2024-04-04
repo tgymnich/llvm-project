@@ -44,15 +44,15 @@ define void @square(ptr %env, ptr %x) "kernel" {
 ; CHECK-NEXT:    [[TMP1:%.*]] = load ptr, ptr [[TMP0]], align 8
 ; CHECK-NEXT:    [[CONTCOUNT_PTR:%.*]] = getelementptr inbounds i32, ptr [[TMP1]], i32 0
 ; CHECK-NEXT:    [[CACHEIDX:%.*]] = atomicrmw add ptr [[CONTCOUNT_PTR]], i32 1 monotonic, align 4
-; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ENV]], i32 0, i32 4
+; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ENV]], i32 0, i32 5
 ; CHECK-NEXT:    [[TMP3:%.*]] = load ptr, ptr [[TMP2]], align 8
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds ptr, ptr [[TMP3]], i32 0
 ; CHECK-NEXT:    [[CACHE_OUT_PTR:%.*]] = load ptr, ptr [[TMP4]], align 8
-; CHECK-NEXT:    [[CACHECELL:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
-; CHECK-NEXT:    [[TMP5:%.*]] = load i32, ptr @square_cache_offset, align 4
+; CHECK-NEXT:    [[TMP5:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ENV]], i32 0, i32 4
+; CHECK-NEXT:    [[CACHE_OUT_OFFSET:%.*]] = load i32, ptr [[TMP5]], align 4
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    store ptr [[X_I]], ptr [[TMP6]], align 8, !invariant.group [[META3:![0-9]+]]
-; CHECK-NEXT:    [[TMP7:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_OUT_PTR]], i32 [[TMP5]]
+; CHECK-NEXT:    [[TMP7:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_OUT_PTR]], i32 [[CACHE_OUT_OFFSET]]
 ; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds double, ptr [[TMP7]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    store double [[VAL]], ptr [[TMP8]], align 8, !invariant.group [[META4:![0-9]+]]
 ; CHECK-NEXT:    call void asm sideeffect "exit
@@ -74,15 +74,15 @@ define void @square(ptr %env, ptr %x) "kernel" {
 ; CHECK-NEXT:    [[MASKTHREAD:%.*]] = icmp ult i32 [[GTID]], [[CONTCOUNT_IN]]
 ; CHECK-NEXT:    br i1 [[MASKTHREAD]], label [[CACHEREMAT0:%.*]], label [[THREADEXIT:%.*]]
 ; CHECK:       CacheRemat0:
-; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ENV]], i32 0, i32 4
+; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ENV]], i32 0, i32 5
 ; CHECK-NEXT:    [[TMP7:%.*]] = load ptr, ptr [[TMP6]], align 8
 ; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds ptr, ptr [[TMP7]], i32 1
 ; CHECK-NEXT:    [[CACHE_IN_PTR:%.*]] = load ptr, ptr [[TMP8]], align 8
-; CHECK-NEXT:    [[CACHECELL1:%.*]] = getelementptr inbounds [[CACHE_CELL0:%.*]], ptr [[CACHE_IN_PTR]], i32 [[GTID]]
-; CHECK-NEXT:    [[TMP9:%.*]] = load i32, ptr @square_cache_offset, align 4
+; CHECK-NEXT:    [[TMP9:%.*]] = getelementptr inbounds [[STRUCT_KERNELLAUNCHENVIRONMENTTY_0]], ptr [[ENV]], i32 0, i32 4
+; CHECK-NEXT:    [[CACHE_IN_OFFSET:%.*]] = load i32, ptr [[TMP9]], align 4
 ; CHECK-NEXT:    [[TMP10:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_IN_PTR]], i32 [[GTID]]
 ; CHECK-NEXT:    [[X_I_CACHE:%.*]] = load ptr, ptr [[TMP10]], align 8, !invariant.group [[META3]]
-; CHECK-NEXT:    [[TMP11:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_IN_PTR]], i32 [[TMP9]]
+; CHECK-NEXT:    [[TMP11:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_IN_PTR]], i32 [[CACHE_IN_OFFSET]]
 ; CHECK-NEXT:    [[TMP12:%.*]] = getelementptr inbounds double, ptr [[TMP11]], i32 [[GTID]]
 ; CHECK-NEXT:    [[VAL_CACHE:%.*]] = load double, ptr [[TMP12]], align 8, !invariant.group [[META4]]
 ; CHECK-NEXT:    [[SQ:%.*]] = fmul double [[VAL_CACHE]], [[VAL_CACHE]]

@@ -295,7 +295,8 @@ KERNEL_ENVIRONMENT_CONFIGURATION_IDX(ContinuationCacheLengths, 10)
 // KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionIterCnt, 1)
 // KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionBuffer, 2)
 KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCntBuffer, 3)
-KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCacheBuffer, 4)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCacheOffset, 4)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCacheBuffer, 5)
 
 #undef KERNEL_LAUNCH_ENVIRONMENT_IDX
 
@@ -335,7 +336,7 @@ StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
   return StructType::create(
       {IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
        PointerType::getUnqual(C), PointerType::getUnqual(C),
-       PointerType::getUnqual(C)},
+       Type::getInt32Ty(C), PointerType::getUnqual(C)},
       "struct.KernelLaunchEnvironmentTy");
 }
 
@@ -3478,8 +3479,9 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
   StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
   Type *ContCountTy = Builder.getInt32Ty();
+  Type *OffsetTy = Builder.getInt32Ty();
 
-  Argument *KernelLaunchEnvironment = Kernel->getArg(0);
+  Argument *KernelLaunchEnv = Kernel->getArg(0);
 
   SmallVector<SmallVector<Instruction *, 64>, 4> CachedValuesArray(NumSplits);
   SmallVector<SmallVector<Instruction *, 64>, 4> RecomputedValuesArray(
@@ -3494,17 +3496,6 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     minimizeValuesAcross(SplitInst, DT, *SCI.get(), RequiredAllocas,
                          CachedValues, RecomputedValues);
   }
-
-  std::string OffsetGVName = (Kernel->getName() + "_cache_offset").str();
-  Type *OffsetTy = Builder.getInt32Ty();
-
-  auto *OffsetGV =
-      cast<GlobalVariable>(M.getOrInsertGlobal(OffsetGVName, OffsetTy, [&]() {
-        return new GlobalVariable(M, OffsetTy, false,
-                                  GlobalValue::ExternalLinkage,
-                                  UndefValue::get(OffsetTy), OffsetGVName);
-      }));
-  OffsetGV->setVisibility(GlobalValue::DefaultVisibility);
 
   for (auto &&[SplitIndex, U] : enumerate(Splits)) {
     ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
@@ -3536,7 +3527,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
       // Keep track of the number of continuation kernels to spawn.
       Value *OutContCountPtr =
-          Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+          Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
                                   KernelInfo::ContinuationCntBufferIdx);
       OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
       OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
@@ -3584,7 +3575,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
 
     // Keep track of the number of continuation kernels to spawn.
     Value *OutContCountPtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
                                 KernelInfo::ContinuationCntBufferIdx);
     OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
     OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
@@ -3599,7 +3590,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     // Get the pointer to the cache for this split point at the right offset for
     // the current thread
     Value *OutCachePtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
                                 KernelInfo::ContinuationCacheBufferIdx);
     OutCachePtr = Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr);
     OutCachePtr =
@@ -3607,7 +3598,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     OutCachePtr =
         Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr, "cache.out.ptr");
 
-    Value *OutOffset = Builder.CreateLoad(OffsetTy, OffsetGV);
+    Value *OutOffsetPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCacheOffsetIdx);
+    Value *OutOffset =
+        Builder.CreateLoad(OffsetTy, OutOffsetPtr, "cache.out.offset");
 
     SmallVector<MDNode *, 64> InvariantGroups(CachedValues.size() +
                                               RequiredAllocas.size());
@@ -3692,7 +3687,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     }
 
     Value *InContCountPtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
                                 KernelInfo::ContinuationCntBufferIdx);
     InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
     InContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, InContCountPtr,
@@ -3724,7 +3719,7 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     // for the current thread
     ConstantInt *InSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
     Value *InCachePtr =
-        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnvironment,
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
                                 KernelInfo::ContinuationCacheBufferIdx);
     InCachePtr = Builder.CreateLoad(Builder.getPtrTy(), InCachePtr);
     InCachePtr =
@@ -3732,7 +3727,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     InCachePtr =
         Builder.CreateLoad(Builder.getPtrTy(), InCachePtr, "cache.in.ptr");
 
-    Value *InOffset = Builder.CreateLoad(OffsetTy, OffsetGV);
+    Value *InOffsetPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCacheOffsetIdx);
+    Value *InOffset =
+        Builder.CreateLoad(OffsetTy, InOffsetPtr, "cache.in.offset");
 
     // Rematerialize values
     for (auto [Idx, Inst] : enumerate(CachedValues)) {

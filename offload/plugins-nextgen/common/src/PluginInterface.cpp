@@ -533,13 +533,6 @@ GenericKernelTy::getKernelLaunchEnvironment(
       report_fatal_error("Error retrieving data for target pointer");
     }
 
-    unsigned CacheOffset = TotalThreads;
-    GlobalTy CacheOffsetGV((getName() + "_cache_offset").str(), sizeof(uint32_t), &CacheOffset);
-
-    if (auto Err = GHandler.writeGlobalToDevice(GenericDevice, *ImagePtr, CacheOffsetGV)) {
-      report_fatal_error("Error writing data to device");
-    }
-
     SmallVector<void *, 16> Caches(NumContinuations * 2);
 
     for (unsigned i = 0; i < NumContinuations * 2; ++i) {
@@ -584,6 +577,9 @@ GenericKernelTy::getKernelLaunchEnvironment(
             sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
       return Err;
 
+    // Offset
+    LocalKLE.ContinuationCacheOffset = TotalThreads;
+
     // Counters
     auto CounterAllocOrErr = GenericDevice.dataAlloc(
         sizeof(uint32_t) * (NumContinuations + 1),
@@ -622,7 +618,7 @@ GenericKernelTy::getKernelLaunchEnvironment(
   }
 
   INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
-       "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
+       "HELLO :) Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
        ", Size=%" PRId64 ", Name=KernelLaunchEnv\n",
        DPxPTR(&LocalKLE), DPxPTR(*AllocOrErr),
        sizeof(KernelLaunchEnvironmentTy));
