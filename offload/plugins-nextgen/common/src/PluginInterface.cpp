@@ -485,8 +485,9 @@ Error GenericKernelTy::init(GenericDeviceTy &GenericDevice,
 
 Expected<KernelLaunchEnvironmentTy *>
 GenericKernelTy::getKernelLaunchEnvironment(
-    GenericDeviceTy &GenericDevice, uint32_t Version, AsyncInfoWrapperTy &AsyncInfoWrapper,
-    uint32_t NumThreads, uint64_t NumBlocks) const {
+    GenericDeviceTy &GenericDevice, uint32_t Version,
+    AsyncInfoWrapperTy &AsyncInfoWrapper, uint32_t NumThreads,
+    uint64_t NumBlocks) const {
   // Ctor/Dtor have no arguments, replaying uses the original kernel launch
   // environment. Older versions of the compiler do not generate a kernel
   // launch environment.
@@ -535,6 +536,23 @@ GenericKernelTy::getKernelLaunchEnvironment(
 
     SmallVector<void *, 16> Caches(NumContinuations * 2);
 
+    unsigned TotalCacheSize = 0;
+    for (unsigned i = 0; i < NumContinuations; ++i) {
+      unsigned ContinuationCacheLength = CacheLengths[i];
+      TotalCacheSize += 2 * ContinuationCacheLength * TotalThreads;
+    }
+
+    auto CacheAllocOrErr =
+        GenericDevice.dataAlloc(TotalCacheSize, /*HostPtr=*/nullptr,
+                                TargetAllocTy::TARGET_ALLOC_DEVICE);
+    if (!CacheAllocOrErr)
+      return CacheAllocOrErr.takeError();
+
+    // Remember to free the memory later.
+    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
+
+    uint8_t *CachePtr = (uint8_t *)*CacheAllocOrErr;
+
     for (unsigned i = 0; i < NumContinuations * 2; ++i) {
       unsigned ContinuationCacheLength = CacheLengths[i % NumContinuations];
 
@@ -543,37 +561,29 @@ GenericKernelTy::getKernelLaunchEnvironment(
         continue;
       }
 
-      // FIXME: This could be one large allocation.
-      auto CacheAllocOrErr = GenericDevice.dataAlloc(
-          TotalThreads * ContinuationCacheLength,
-          /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
-      if (!CacheAllocOrErr)
-        return CacheAllocOrErr.takeError();
-
-      Caches[i] = *CacheAllocOrErr;
-      // Remember to free the memory later.
-      AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
+      Caches[i] = CachePtr;
+      CachePtr += ContinuationCacheLength * TotalThreads;
     }
 
     // Caches
-    auto CacheAllocOrErr = GenericDevice.dataAlloc(
+    auto CacheBufferAllocOrErr = GenericDevice.dataAlloc(
         sizeof(void *) * (NumContinuations * 2),
         /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
-    if (!CacheAllocOrErr)
-      return CacheAllocOrErr.takeError();
+    if (!CacheBufferAllocOrErr)
+      return CacheBufferAllocOrErr.takeError();
 
-    LocalKLE.ContinuationCacheBuffer = (void **)*CacheAllocOrErr;
+    LocalKLE.ContinuationCacheBuffer = (void **)*CacheBufferAllocOrErr;
     // Remember to free the memory later.
-    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
+    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheBufferAllocOrErr);
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
          "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
-         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCaches\n",
-         DPxPTR(Caches.data()), DPxPTR(*CacheAllocOrErr),
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCacheBuffer\n",
+         DPxPTR(Caches.data()), DPxPTR(*CacheBufferAllocOrErr),
          sizeof(void *) * (NumContinuations * 2));
 
     if (auto Err = GenericDevice.dataSubmit(
-            *CacheAllocOrErr, Caches.data(),
+            *CacheBufferAllocOrErr, Caches.data(),
             sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
       return Err;
 
@@ -618,8 +628,8 @@ GenericKernelTy::getKernelLaunchEnvironment(
   }
 
   INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
-       "HELLO :) Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
-       ", Size=%" PRId64 ", Name=KernelLaunchEnv\n",
+       "HELLO :) Copying data from host to device, HstPtr=" DPxMOD
+       ", TgtPtr=" DPxMOD ", Size=%" PRId64 ", Name=KernelLaunchEnv\n",
        DPxPTR(&LocalKLE), DPxPTR(*AllocOrErr),
        sizeof(KernelLaunchEnvironmentTy));
 
@@ -661,8 +671,9 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
       getNumBlocks(GenericDevice, KernelArgs.NumTeams, KernelArgs.Tripcount,
                    NumThreads, KernelArgs.ThreadLimit[0] > 0);
 
-  auto KernelLaunchEnvOrErr = getKernelLaunchEnvironment(
-      GenericDevice, KernelArgs.Version, AsyncInfoWrapper, NumThreads, NumBlocks);
+  auto KernelLaunchEnvOrErr =
+      getKernelLaunchEnvironment(GenericDevice, KernelArgs.Version,
+                                 AsyncInfoWrapper, NumThreads, NumBlocks);
   if (!KernelLaunchEnvOrErr)
     return KernelLaunchEnvOrErr.takeError();
 
