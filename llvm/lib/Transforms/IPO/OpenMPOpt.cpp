@@ -3620,10 +3620,10 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     }
 
     // Cache allocas
-    for (auto [Idx, Info] : enumerate(RequiredAllocas)) {
-      if (Info.MayWriteBeforeSplit)
-        continue;
-
+    for (auto [Idx, Info] :
+         enumerate(make_filter_range(RequiredAllocas, [](AllocaInfo &I) {
+           return I.MayWriteBeforeSplit;
+         }))) {
       unsigned OffsetIdx = CachedValues.size() + Idx;
       AllocaInst *Alloca = Info.Alloca;
 
@@ -3771,7 +3771,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
     }
 
     // Rematerialize allocas
-    for (auto [Idx, Info] : enumerate(RequiredAllocas)) {
+    unsigned AllocaIdx = CachedValues.size();
+    for (auto &Info : RequiredAllocas) {
       AllocaInst *Alloca = Info.Alloca;
       Instruction *NewAlloca = Alloca->clone();
       Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
@@ -3832,15 +3833,16 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
       if (!Info.MayWriteBeforeSplit)
         continue;
 
-      unsigned OffsetIdx = CachedValues.size() + Idx;
-      MDNode *InvGroup = InvariantGroups[OffsetIdx];
+      MDNode *InvGroup = InvariantGroups[AllocaIdx];
 
-      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, OffsetIdx,
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, AllocaIdx,
                                GlobalTid, InOffset);
 
       LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
       CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
       Builder.CreateStore(CachedVal, NewAlloca);
+
+      AllocaIdx += 1;
     }
 
     for (auto [Idx, Inst] : enumerate(RecomputedValues)) {

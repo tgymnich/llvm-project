@@ -73,6 +73,10 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[CACHE_OUT_OFFSET:%.*]] = load i32, ptr [[TMP5]], align 4
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_OUT_PTR]], i32 [[CACHEIDX]]
 ; CHECK-NEXT:    store ptr [[ARRAYIDX]], ptr [[TMP6]], align 8, !invariant.group [[META3:![0-9]+]]
+; CHECK-NEXT:    [[TMP7:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_OUT_PTR]], i32 [[CACHE_OUT_OFFSET]]
+; CHECK-NEXT:    [[TMP8:%.*]] = getelementptr inbounds double, ptr [[TMP7]], i32 [[CACHEIDX]]
+; CHECK-NEXT:    [[TMP9:%.*]] = load double, ptr [[PTRY]], align 8
+; CHECK-NEXT:    store double [[TMP9]], ptr [[TMP8]], align 8, !invariant.group [[META4:![0-9]+]]
 ; CHECK-NEXT:    call void asm sideeffect "exit
 ; CHECK-NEXT:    unreachable
 ; CHECK:       end:
@@ -109,7 +113,7 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ; CHECK-NEXT:    [[PTRY_REMAT:%.*]] = alloca double, align 8
 ; CHECK-NEXT:    [[TMP11:%.*]] = getelementptr inbounds ptr, ptr [[CACHE_IN_PTR]], i32 [[CACHE_IN_OFFSET]]
 ; CHECK-NEXT:    [[TMP12:%.*]] = getelementptr inbounds double, ptr [[TMP11]], i32 [[GTID]]
-; CHECK-NEXT:    [[TMP13:%.*]] = load double, ptr [[TMP12]], align 8
+; CHECK-NEXT:    [[TMP13:%.*]] = load double, ptr [[TMP12]], align 8, !invariant.group [[META4]]
 ; CHECK-NEXT:    store double [[TMP13]], ptr [[PTRY_REMAT]], align 8
 ; CHECK-NEXT:    [[VAL1:%.*]] = load double, ptr [[ARRAYIDX_CACHE]], align 8
 ; CHECK-NEXT:    [[Y:%.*]] = load double, ptr [[PTRY_REMAT]], align 8
@@ -126,4 +130,5 @@ define void @test(ptr %launch_env, ptr %tid_addr, ptr %ptr, ptr %dyn) "kernel" "
 ;
 ;.
 ; CHECK: [[META3]] = distinct !{}
+; CHECK: [[META4]] = distinct !{}
 ;.
