@@ -359,6 +359,7 @@ namespace {
 
 enum class RematModeKind { Cache, Recompute, MinCut };
 enum class MaxFlowAlgorithmKind { PushRelabel, Dinic };
+enum class CacheMemoryLayoutKind { StructOfArrays, ArrayOfStructs };
 
 static const auto RematModeKindEnumOptions = cl::values(
     clEnumValN(RematModeKind::Cache, "cache",
@@ -373,6 +374,12 @@ static const auto MaxFlowAlgorithmKindEnumOptions = cl::values(
                "FIFO push relabel algorithm"),
     clEnumValN(MaxFlowAlgorithmKind::Dinic, "dinic", "dinic's algorithm"));
 
+static const auto CacheMemoryLayoutKindEnumOptions =
+    cl::values(clEnumValN(CacheMemoryLayoutKind::StructOfArrays, "soa",
+                          "struct of Arrays"),
+               clEnumValN(CacheMemoryLayoutKind::ArrayOfStructs, "aos",
+                          "array of structs"));
+
 static cl::opt<RematModeKind> SplitKernelRematMode(
     "split-kernel-remat-mode", cl::Hidden,
     cl::desc("Rematerialization mode for values alive across a split kernel."),
@@ -385,6 +392,12 @@ static cl::opt<MaxFlowAlgorithmKind>
                               "of instructions to cache across split points."),
                      cl::init(MaxFlowAlgorithmKind::PushRelabel),
                      MaxFlowAlgorithmKindEnumOptions);
+
+static cl::opt<CacheMemoryLayoutKind> SplitKernelCacheMemoryLayout(
+    "split-kernel-cache-memory-layout", cl::Hidden,
+    cl::desc("Memory Layout for the rematerialization cache."),
+    cl::init(CacheMemoryLayoutKind::StructOfArrays),
+    CacheMemoryLayoutKindEnumOptions);
 
 struct AAHeapToShared;
 
@@ -3379,16 +3392,27 @@ void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
 Value *getCachePtr(IRBuilder<> &Builder, ArrayRef<Type *> RequiredTypes,
                    Value *CachePtr, unsigned TypeIdx, Value *ThreadIdx,
                    Value *NumThreads) {
-  Value *Result = CachePtr;
 
-  for (auto &&[Idx, Ty] : enumerate(RequiredTypes)) {
-    if (Idx == TypeIdx)
-      break;
+  switch (SplitKernelCacheMemoryLayout) {
+  case CacheMemoryLayoutKind::ArrayOfStructs: {
+    Type *CacheCellTy = StructType::create(RequiredTypes, "cache_cell");
+    Value *CacheCellPtr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr,
+                                                    {ThreadIdx}, "cachecell");
 
-    Result = Builder.CreateInBoundsGEP(Ty, Result, NumThreads);
+    return Builder.CreateStructGEP(CacheCellTy, CacheCellPtr, TypeIdx);
   }
+  case CacheMemoryLayoutKind::StructOfArrays: {
+    Value *Result = CachePtr;
+    for (auto &&[Idx, Ty] : enumerate(RequiredTypes)) {
+      if (Idx == TypeIdx)
+        break;
 
-  return Builder.CreateInBoundsGEP(RequiredTypes[TypeIdx], Result, ThreadIdx);
+      Result = Builder.CreateInBoundsGEP(Ty, Result, NumThreads);
+    }
+
+    return Builder.CreateInBoundsGEP(RequiredTypes[TypeIdx], Result, ThreadIdx);
+  }
+  }
 }
 
 Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
