@@ -259,7 +259,8 @@ namespace KernelInfo {
 //   uint32_t ReductionCnt;
 //   uint32_t ReductionIterCnt;
 //   void *ReductionBuffer;
-//   uint32_t *ContinuationCntBuffer;
+//   uint64_t *ContinuationCntBuffer;
+//   uint64_t ContinuationCacheOffset = 0;
 //   void **ContinuationCacheBuffer;
 // };
 
@@ -336,7 +337,7 @@ StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
   return StructType::create(
       {IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
        PointerType::getUnqual(C), PointerType::getUnqual(C),
-       Type::getInt32Ty(C), PointerType::getUnqual(C)},
+       Type::getInt64Ty(C), PointerType::getUnqual(C)},
       "struct.KernelLaunchEnvironmentTy");
 }
 
@@ -3502,8 +3503,8 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
   setNumContinuations(KernelEnvironmentGV, NumSplits);
 
   StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
-  Type *ContCountTy = Builder.getInt32Ty();
-  Type *OffsetTy = Builder.getInt32Ty();
+  Type *ContCountTy = Builder.getInt64Ty();
+  Type *OffsetTy = Builder.getInt64Ty();
 
   Argument *KernelLaunchEnv = Kernel->getArg(0);
 
@@ -3689,8 +3690,11 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
           Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ntid_x, {});
       Value *NumThreads = Builder.CreateIntrinsic(
           Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ctaid_x, {});
-      GlobalTid = Builder.CreateAdd(Tid, Builder.CreateMul(BlockId, NumThreads),
-                                    "gtid");
+      GlobalTid = Builder.CreateAdd(
+          Builder.CreateZExt(Tid, ContCountTy),
+          Builder.CreateMul(Builder.CreateZExt(BlockId, ContCountTy),
+                            Builder.CreateZExt(NumThreads, ContCountTy)),
+          "gtid");
     } else if (TT.isAMDGCN()) {
       Value *Tid = Builder.CreateIntrinsic(Builder.getInt32Ty(),
                                            Intrinsic::amdgcn_workitem_id_x, {});
@@ -3702,10 +3706,12 @@ Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
           Builder.getInt16Ty(), ArgPtr, Builder.getInt64(6));
       Value *NumThreads =
           Builder.CreateLoad(Builder.getInt16Ty(), NumThreadsPtr);
-      Value *NumThreadsZext =
-          Builder.CreateZExt(NumThreads, Builder.getInt32Ty());
+      Value *NumThreadsZext = Builder.CreateZExt(NumThreads, ContCountTy);
       GlobalTid = Builder.CreateAdd(
-          Tid, Builder.CreateMul(BlockId, NumThreadsZext), "gtid");
+          Builder.CreateZExt(Tid, ContCountTy),
+          Builder.CreateMul(Builder.CreateZExt(BlockId, ContCountTy),
+                            NumThreadsZext),
+          "gtid");
     } else {
       llvm_unreachable("unsupported");
     }

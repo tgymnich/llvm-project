@@ -496,7 +496,7 @@ GenericKernelTy::getKernelLaunchEnvironment(
     return nullptr;
 
   unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
-  unsigned TotalThreads = NumThreads * NumBlocks;
+  uint64_t TotalThreads = NumThreads * NumBlocks;
 
   bool isReduction = KernelEnvironment.Configuration.ReductionDataSize > 0 &&
                      KernelEnvironment.Configuration.ReductionBufferLength > 0;
@@ -536,7 +536,7 @@ GenericKernelTy::getKernelLaunchEnvironment(
 
     SmallVector<void *, 16> Caches(NumContinuations * 2);
 
-    unsigned TotalCacheSize = 0;
+    size_t TotalCacheSize = 0;
     for (unsigned i = 0; i < NumContinuations; ++i) {
       unsigned ContinuationCacheLength = CacheLengths[i];
       TotalCacheSize += 2 * ContinuationCacheLength * TotalThreads;
@@ -592,25 +592,25 @@ GenericKernelTy::getKernelLaunchEnvironment(
 
     // Counters
     auto CounterAllocOrErr = GenericDevice.dataAlloc(
-        sizeof(uint32_t) * (NumContinuations + 1),
+        sizeof(uint64_t) * (NumContinuations + 1),
         /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
     if (!CounterAllocOrErr)
       return CounterAllocOrErr.takeError();
 
-    llvm::SmallVector<uint32_t, 9> Zeros(NumContinuations + 1, 0);
+    llvm::SmallVector<uint64_t, 9> Zeros(NumContinuations + 1, 0);
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
          "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
          ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCounts\n",
          DPxPTR(Zeros.data()), DPxPTR(*CounterAllocOrErr),
-         sizeof(uint32_t) * (NumContinuations + 1));
+         sizeof(uint64_t) * (NumContinuations + 1));
 
     if (auto Err = GenericDevice.dataSubmit(
             *CounterAllocOrErr, Zeros.data(),
-            sizeof(uint32_t) * (NumContinuations + 1), AsyncInfoWrapper))
+            sizeof(uint64_t) * (NumContinuations + 1), AsyncInfoWrapper))
       return Err;
 
-    LocalKLE.ContinuationCntBuffer = (uint32_t *)*CounterAllocOrErr;
+    LocalKLE.ContinuationCntBuffer = (uint64_t *)*CounterAllocOrErr;
     // Remember to free the memory later.
     AsyncInfoWrapper.freeAllocationAfterSynchronization(*CounterAllocOrErr);
   }
@@ -704,7 +704,7 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
   if (!NumContinuations)
     return Plugin::success();
 
-  llvm::SmallVector<uint32_t, 9> ContinuationCntBuffer(NumContinuations + 1);
+  llvm::SmallVector<uint64_t, 9> ContinuationCntBuffer(NumContinuations + 1);
   llvm::SmallVector<void *, 16> ContinuationCachePtrBuffer(NumContinuations *
                                                            2);
   KernelLaunchEnvironmentTy KernelLaunchEnv;
@@ -714,11 +714,11 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
     if (auto Err = GenericDevice.dataRetrieve(
             &KernelLaunchEnv, *KernelLaunchEnvOrErr,
             sizeof(KernelLaunchEnvironmentTy), AsyncInfoWrapper))
-      report_fatal_error("Error retrieving data for target pointer");
+      return Err;
 
     if (auto Err = GenericDevice.dataRetrieve(
             ContinuationCntBuffer.data(), KernelLaunchEnv.ContinuationCntBuffer,
-            sizeof(uint32_t) * (NumContinuations + 1), AsyncInfoWrapper))
+            sizeof(uint64_t) * (NumContinuations + 1), AsyncInfoWrapper))
       return Err;
 
     auto MaxElem = std::max_element(ContinuationCntBuffer.begin(),
@@ -770,11 +770,11 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
          ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCounts\n",
          DPxPTR(ContinuationCntBuffer.data()),
          DPxPTR(KernelLaunchEnv.ContinuationCntBuffer),
-         sizeof(uint32_t) * (NumContinuations + 1));
+         sizeof(uint64_t) * (NumContinuations + 1));
 
     if (auto Err = GenericDevice.dataSubmit(
             KernelLaunchEnv.ContinuationCntBuffer, ContinuationCntBuffer.data(),
-            sizeof(uint32_t) * (NumContinuations + 1), AsyncInfoWrapper))
+            sizeof(uint64_t) * (NumContinuations + 1), AsyncInfoWrapper))
       return Err;
 
     // Record the kernel description after we modified the argument count and
