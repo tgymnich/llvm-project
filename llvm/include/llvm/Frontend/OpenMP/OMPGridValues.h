@@ -111,13 +111,13 @@ template <unsigned wavesize> constexpr const GV &getAMDGPUGridValues() {
 
 /// For Nvidia GPUs
 static constexpr GV NVPTXGridValues = {
-    256,       // GV_Slot_Size
-    32,        // GV_Warp_Size
-    (1 << 16), // GV_Max_Teams
-    3200,      // GV_Default_Num_Teams
-    896,       // GV_SimpleBufferSize
-    1024,      // GV_Max_WG_Size
-    128,       // GV_Default_WG_Size
+    256,                                  // GV_Slot_Size
+    32,                                   // GV_Warp_Size
+    2147483647,                           // GV_Max_Teams
+    3200,                         // GV_Default_Num_Teams
+    896,                           // GV_SimpleBufferSize
+    1024,                               // GV_Max_WG_Size
+    128,                            // GV_Default_WG_Size
 };
 
 } // namespace omp
