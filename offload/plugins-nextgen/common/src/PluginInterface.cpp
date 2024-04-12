@@ -483,20 +483,115 @@ Error GenericKernelTy::init(GenericDeviceTy &GenericDevice,
   return initImpl(GenericDevice, Image);
 }
 
+Expected<void **> GenericKernelTy::getContinuationCacheBuffer(
+    GenericDeviceTy &GenericDevice, AsyncInfoWrapperTy &AsyncInfoWrapper,
+    uint64_t TotalThreads, unsigned NumContinuations) const {
+  llvm::SmallVector<uint32_t, 8> CacheLengths(NumContinuations);
+
+  GlobalTy CacheLengthsGVs((getName() + "_cache_lengths").str(),
+                           sizeof(uint32_t) * NumContinuations,
+                           CacheLengths.data());
+
+  GenericGlobalHandlerTy &GHandler = GenericDevice.Plugin.getGlobalHandler();
+  if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, *ImagePtr,
+                                               CacheLengthsGVs)) {
+    return Err;
+  }
+
+  SmallVector<void *, 16> Caches(NumContinuations * 2);
+
+  size_t TotalCacheSize = 0;
+  for (unsigned i = 0; i < NumContinuations; ++i) {
+    unsigned ContinuationCacheLength = CacheLengths[i];
+    TotalCacheSize += 2 * ContinuationCacheLength * TotalThreads;
+  }
+
+  auto CacheAllocOrErr = GenericDevice.dataAlloc(
+      TotalCacheSize, /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
+  if (!CacheAllocOrErr)
+    return CacheAllocOrErr.takeError();
+
+  // Remember to free the memory later.
+  AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
+
+  uint8_t *CachePtr = (uint8_t *)*CacheAllocOrErr;
+
+  for (unsigned i = 0; i < NumContinuations * 2; ++i) {
+    unsigned ContinuationCacheLength = CacheLengths[i % NumContinuations];
+
+    if (ContinuationCacheLength == 0) {
+      Caches[i] = nullptr;
+      continue;
+    }
+
+    Caches[i] = CachePtr;
+    CachePtr += ContinuationCacheLength * TotalThreads;
+  }
+
+  // Caches
+  auto CacheBufferAllocOrErr = GenericDevice.dataAlloc(
+      sizeof(void *) * (NumContinuations * 2),
+      /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
+  if (!CacheBufferAllocOrErr)
+    return CacheBufferAllocOrErr.takeError();
+
+  // Remember to free the memory later.
+  AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheBufferAllocOrErr);
+
+  INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
+       "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
+       ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCacheBuffer\n",
+       DPxPTR(Caches.data()), DPxPTR(*CacheBufferAllocOrErr),
+       sizeof(void *) * (NumContinuations * 2));
+
+  if (auto Err = GenericDevice.dataSubmit(
+          *CacheBufferAllocOrErr, Caches.data(),
+          sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
+    return Err;
+
+  return static_cast<void **>(*CacheBufferAllocOrErr);
+}
+
+Expected<uint64_t *> GenericKernelTy::getContinuationCountBuffer(
+    GenericDeviceTy &GenericDevice, AsyncInfoWrapperTy &AsyncInfoWrapper,
+    unsigned NumContinuations) const {
+  auto CounterAllocOrErr = GenericDevice.dataAlloc(
+      sizeof(uint64_t) * (NumContinuations + 1),
+      /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
+  if (!CounterAllocOrErr)
+    return CounterAllocOrErr.takeError();
+
+  llvm::SmallVector<uint64_t, 9> Zeros(NumContinuations + 1, 0);
+
+  INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
+       "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
+       ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCounts\n",
+       DPxPTR(Zeros.data()), DPxPTR(*CounterAllocOrErr),
+       sizeof(uint64_t) * (NumContinuations + 1));
+
+  if (auto Err = GenericDevice.dataSubmit(
+          *CounterAllocOrErr, Zeros.data(),
+          sizeof(uint64_t) * (NumContinuations + 1), AsyncInfoWrapper))
+    return Err;
+
+  // Remember to free the memory later.
+  AsyncInfoWrapper.freeAllocationAfterSynchronization(*CounterAllocOrErr);
+
+  return static_cast<uint64_t *>(*CounterAllocOrErr);
+}
+
 Expected<KernelLaunchEnvironmentTy *>
 GenericKernelTy::getKernelLaunchEnvironment(
     GenericDeviceTy &GenericDevice, uint32_t Version,
     AsyncInfoWrapperTy &AsyncInfoWrapper, uint32_t NumThreads,
-    uint64_t NumBlocks) const {
+    uint64_t NumBlocks, void **ContinuationCacheBuffer,
+    uint64_t *ContinuationCountBuffer) const {
   // Ctor/Dtor have no arguments, replaying uses the original kernel launch
   // environment. Older versions of the compiler do not generate a kernel
   // launch environment.
   if (GenericDevice.Plugin.getRecordReplay().isReplaying() ||
       Version < OMP_KERNEL_ARG_MIN_VERSION_WITH_DYN_PTR)
     return nullptr;
-
-  unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
-  uint64_t TotalThreads = NumThreads * NumBlocks;
 
   bool isReduction = KernelEnvironment.Configuration.ReductionDataSize > 0 &&
                      KernelEnvironment.Configuration.ReductionBufferLength > 0;
@@ -521,98 +616,10 @@ GenericKernelTy::getKernelLaunchEnvironment(
   LocalKLE = KernelLaunchEnvironment;
 
   if (hasContinuations) {
-
-    llvm::SmallVector<uint32_t, 8> CacheLengths(NumContinuations);
-
-    GlobalTy CacheLengthsGVs((getName() + "_cache_lengths").str(),
-                             sizeof(uint32_t) * NumContinuations,
-                             CacheLengths.data());
-
-    GenericGlobalHandlerTy &GHandler = GenericDevice.Plugin.getGlobalHandler();
-    if (auto Err = GHandler.readGlobalFromDevice(GenericDevice, *ImagePtr,
-                                                 CacheLengthsGVs)) {
-      report_fatal_error("Error retrieving data for target pointer");
-    }
-
-    SmallVector<void *, 16> Caches(NumContinuations * 2);
-
-    size_t TotalCacheSize = 0;
-    for (unsigned i = 0; i < NumContinuations; ++i) {
-      unsigned ContinuationCacheLength = CacheLengths[i];
-      TotalCacheSize += 2 * ContinuationCacheLength * TotalThreads;
-    }
-
-    auto CacheAllocOrErr =
-        GenericDevice.dataAlloc(TotalCacheSize, /*HostPtr=*/nullptr,
-                                TargetAllocTy::TARGET_ALLOC_DEVICE);
-    if (!CacheAllocOrErr)
-      return CacheAllocOrErr.takeError();
-
-    // Remember to free the memory later.
-    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheAllocOrErr);
-
-    uint8_t *CachePtr = (uint8_t *)*CacheAllocOrErr;
-
-    for (unsigned i = 0; i < NumContinuations * 2; ++i) {
-      unsigned ContinuationCacheLength = CacheLengths[i % NumContinuations];
-
-      if (ContinuationCacheLength == 0) {
-        Caches[i] = nullptr;
-        continue;
-      }
-
-      Caches[i] = CachePtr;
-      CachePtr += ContinuationCacheLength * TotalThreads;
-    }
-
-    // Caches
-    auto CacheBufferAllocOrErr = GenericDevice.dataAlloc(
-        sizeof(void *) * (NumContinuations * 2),
-        /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
-    if (!CacheBufferAllocOrErr)
-      return CacheBufferAllocOrErr.takeError();
-
-    LocalKLE.ContinuationCacheBuffer = (void **)*CacheBufferAllocOrErr;
-    // Remember to free the memory later.
-    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CacheBufferAllocOrErr);
-
-    INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
-         "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
-         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCacheBuffer\n",
-         DPxPTR(Caches.data()), DPxPTR(*CacheBufferAllocOrErr),
-         sizeof(void *) * (NumContinuations * 2));
-
-    if (auto Err = GenericDevice.dataSubmit(
-            *CacheBufferAllocOrErr, Caches.data(),
-            sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
-      return Err;
-
-    // Offset
+    uint64_t TotalThreads = NumThreads * NumBlocks;
     LocalKLE.ContinuationCacheOffset = TotalThreads;
-
-    // Counters
-    auto CounterAllocOrErr = GenericDevice.dataAlloc(
-        sizeof(uint64_t) * (NumContinuations + 1),
-        /*HostPtr=*/nullptr, TargetAllocTy::TARGET_ALLOC_DEVICE);
-    if (!CounterAllocOrErr)
-      return CounterAllocOrErr.takeError();
-
-    llvm::SmallVector<uint64_t, 9> Zeros(NumContinuations + 1, 0);
-
-    INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
-         "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
-         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCounts\n",
-         DPxPTR(Zeros.data()), DPxPTR(*CounterAllocOrErr),
-         sizeof(uint64_t) * (NumContinuations + 1));
-
-    if (auto Err = GenericDevice.dataSubmit(
-            *CounterAllocOrErr, Zeros.data(),
-            sizeof(uint64_t) * (NumContinuations + 1), AsyncInfoWrapper))
-      return Err;
-
-    LocalKLE.ContinuationCntBuffer = (uint64_t *)*CounterAllocOrErr;
-    // Remember to free the memory later.
-    AsyncInfoWrapper.freeAllocationAfterSynchronization(*CounterAllocOrErr);
+    LocalKLE.ContinuationCntBuffer = ContinuationCountBuffer;
+    LocalKLE.ContinuationCacheBuffer = ContinuationCacheBuffer;
   }
 
   if (isReduction) {
@@ -671,15 +678,53 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
       getNumBlocks(GenericDevice, KernelArgs.NumTeams, KernelArgs.Tripcount,
                    NumThreads, KernelArgs.ThreadLimit[0] > 0);
 
-  auto KernelLaunchEnvOrErr =
-      getKernelLaunchEnvironment(GenericDevice, KernelArgs.Version,
-                                 AsyncInfoWrapper, NumThreads, NumBlocks);
-  if (!KernelLaunchEnvOrErr)
-    return KernelLaunchEnvOrErr.takeError();
+  unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
+  bool hasContinuations = NumContinuations > 0;
 
-  KernelLaunchParamsTy LaunchParams =
-      prepareArgs(GenericDevice, ArgPtrs, ArgOffsets, KernelArgs.NumArgs, Args,
-                  Ptrs, *KernelLaunchEnvOrErr);
+  KernelLaunchParamsTy LaunchParams;
+  void** ContinuationCache;
+  uint64_t*  ContinuationCount;
+
+  if (hasContinuations) {
+    uint64_t TotalThreads = NumThreads * NumBlocks;
+    auto ContinuationCacheOrErr = getContinuationCacheBuffer(
+        GenericDevice, AsyncInfoWrapper, TotalThreads, NumContinuations);
+
+    if (!ContinuationCacheOrErr)
+      return ContinuationCacheOrErr.takeError();
+
+    ContinuationCache = *ContinuationCacheOrErr;
+
+    auto ContinuationCountOrErr = getContinuationCountBuffer(
+        GenericDevice, AsyncInfoWrapper, NumContinuations);
+
+    if (!ContinuationCountOrErr)
+      return ContinuationCountOrErr.takeError();
+
+    ContinuationCount = *ContinuationCountOrErr;
+
+    auto KernelLaunchEnvOrErr = getKernelLaunchEnvironment(
+        GenericDevice, KernelArgs.Version, AsyncInfoWrapper, NumThreads,
+        NumBlocks, ContinuationCache, ContinuationCount);
+
+    if (!KernelLaunchEnvOrErr)
+      return KernelLaunchEnvOrErr.takeError();
+
+    LaunchParams =
+        prepareArgs(GenericDevice, ArgPtrs, ArgOffsets, KernelArgs.NumArgs,
+                    Args, Ptrs, *KernelLaunchEnvOrErr);
+  } else {
+    auto KernelLaunchEnvOrErr = getKernelLaunchEnvironment(
+        GenericDevice, KernelArgs.Version, AsyncInfoWrapper, NumThreads,
+        NumBlocks, nullptr, nullptr);
+
+    if (!KernelLaunchEnvOrErr)
+      return KernelLaunchEnvOrErr.takeError();
+
+    LaunchParams =
+        prepareArgs(GenericDevice, ArgPtrs, ArgOffsets, KernelArgs.NumArgs,
+                    Args, Ptrs, *KernelLaunchEnvOrErr);
+  }
 
   // Record the kernel description after we modified the argument count and num
   // blocks/threads.
@@ -699,25 +744,17 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
                             LaunchParams, AsyncInfoWrapper))
     return Err;
 
-  unsigned NumContinuations = KernelEnvironment.Configuration.NumContinuations;
-
-  if (!NumContinuations)
+  if (!hasContinuations)
     return Plugin::success();
 
   llvm::SmallVector<uint64_t, 9> ContinuationCntBuffer(NumContinuations + 1);
   llvm::SmallVector<void *, 16> ContinuationCachePtrBuffer(NumContinuations *
                                                            2);
-  KernelLaunchEnvironmentTy KernelLaunchEnv;
 
   while (true) {
     // determine which continuation kernel to launch
     if (auto Err = GenericDevice.dataRetrieve(
-            &KernelLaunchEnv, *KernelLaunchEnvOrErr,
-            sizeof(KernelLaunchEnvironmentTy), AsyncInfoWrapper))
-      return Err;
-
-    if (auto Err = GenericDevice.dataRetrieve(
-            ContinuationCntBuffer.data(), KernelLaunchEnv.ContinuationCntBuffer,
+            ContinuationCntBuffer.data(), ContinuationCount,
             sizeof(uint64_t) * (NumContinuations + 1), AsyncInfoWrapper))
       return Err;
 
@@ -741,8 +778,7 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
     uint64_t NumBlocksCont = (ContCount + NumThreads - 1) / NumThreads;
 
     if (auto Err = GenericDevice.dataRetrieve(
-            ContinuationCachePtrBuffer.data(),
-            KernelLaunchEnv.ContinuationCacheBuffer,
+            ContinuationCachePtrBuffer.data(), ContinuationCache,
             sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
       return Err;
 
@@ -754,26 +790,23 @@ Error GenericKernelTy::launch(GenericDeviceTy &GenericDevice, void **ArgPtrs,
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
          "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
-         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCaches\n",
-         DPxPTR(ContinuationCachePtrBuffer.data()),
-         DPxPTR(KernelLaunchEnv.ContinuationCacheBuffer),
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv->ContinuationCaches\n",
+         DPxPTR(ContinuationCachePtrBuffer.data()), DPxPTR(ContinuationCache),
          sizeof(void *) * (NumContinuations * 2));
 
     if (auto Err = GenericDevice.dataSubmit(
-            KernelLaunchEnv.ContinuationCacheBuffer,
-            ContinuationCachePtrBuffer.data(),
+            ContinuationCache, ContinuationCachePtrBuffer.data(),
             sizeof(void *) * (NumContinuations * 2), AsyncInfoWrapper))
       return Err;
 
     INFO(OMP_INFOTYPE_DATA_TRANSFER, GenericDevice.getDeviceId(),
          "Copying data from host to device, HstPtr=" DPxMOD ", TgtPtr=" DPxMOD
-         ", Size=%" PRId64 ", Name=KernelLaunchEnv.ContinuationCounts\n",
-         DPxPTR(ContinuationCntBuffer.data()),
-         DPxPTR(KernelLaunchEnv.ContinuationCntBuffer),
+         ", Size=%" PRId64 ", Name=KernelLaunchEnv->ContinuationCounts\n",
+         DPxPTR(ContinuationCntBuffer.data()), DPxPTR(ContinuationCount),
          sizeof(uint64_t) * (NumContinuations + 1));
 
     if (auto Err = GenericDevice.dataSubmit(
-            KernelLaunchEnv.ContinuationCntBuffer, ContinuationCntBuffer.data(),
+            ContinuationCount, ContinuationCntBuffer.data(),
             sizeof(uint64_t) * (NumContinuations + 1), AsyncInfoWrapper))
       return Err;
 

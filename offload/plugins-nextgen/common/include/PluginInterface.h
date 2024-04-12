@@ -287,7 +287,17 @@ struct GenericKernelTy {
   Expected<KernelLaunchEnvironmentTy *>
   getKernelLaunchEnvironment(GenericDeviceTy &GenericDevice, uint32_t Version,
                              AsyncInfoWrapperTy &AsyncInfo, uint32_t NumThreads,
-                             uint64_t NumBlocks) const;
+                             uint64_t NumBlocks, void ** ContinuationCacheBuffer,
+                             uint64_t * ContinuationCountBuffer) const;
+
+  Expected<void **> getContinuationCacheBuffer(
+      GenericDeviceTy &GenericDevice, AsyncInfoWrapperTy &AsyncInfoWrapper,
+      uint64_t TotalThreads, unsigned NumContinuations) const;
+
+  Expected<uint64_t *>
+  getContinuationCountBuffer(GenericDeviceTy &GenericDevice,
+                             AsyncInfoWrapperTy &AsyncInfoWrapper,
+                             unsigned NumContinuations) const;
 
   /// Indicate whether an execution mode is valid.
   static bool isValidExecutionMode(OMPTgtExecModeFlags ExecutionMode) {
