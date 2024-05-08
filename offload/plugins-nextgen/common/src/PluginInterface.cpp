@@ -152,18 +152,18 @@ private:
   }
 
   Error preallocateDeviceMemory(uint64_t DeviceMemorySize, void *ReqVAddr) {
+    uint64_t DevMemSize;
+    if (Device->getDeviceMemorySize(DevMemSize))
+      return Plugin::error("Cannot determine Device Memory Size");
+
     if (Device->supportVAManagement()) {
-      auto Err = preAllocateVAMemory(DeviceMemorySize, ReqVAddr);
+      auto Err = preAllocateVAMemory(DevMemSize, ReqVAddr);
       if (Err) {
         REPORT("WARNING VA mapping failed, fallback to heuristic: "
                "(Error: %s)\n",
                toString(std::move(Err)).data());
       }
     }
-
-    uint64_t DevMemSize;
-    if (Device->getDeviceMemorySize(DevMemSize))
-      return Plugin::error("Cannot determine Device Memory Size");
 
     return preAllocateHeuristic(DevMemSize, DeviceMemorySize, ReqVAddr);
   }
