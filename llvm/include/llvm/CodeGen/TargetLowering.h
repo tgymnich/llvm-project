@@ -5069,6 +5069,8 @@ public:
                     SmallVectorImpl<SDNode *> &Created) const;
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
+  SDValue BuildUREM(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
+                    SmallVectorImpl<SDNode *> &Created) const;
   // Build sdiv by power-of-2 with conditional move instructions
   SDValue buildSDIVPow2WithCMov(SDNode *N, const APInt &Divisor,
                                 SelectionDAG &DAG,
