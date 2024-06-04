@@ -15,6 +15,7 @@
 #include "llvm/Analysis/VectorUtils.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/CodeGenCommonISel.h"
+#include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineJumpTableInfo.h"
@@ -6584,11 +6585,14 @@ SDValue TargetLowering::BuildUDIV(SDNode *N, SelectionDAG &DAG,
   return DAG.getSelect(dl, VT, IsOne, N0, Q);
 }
 
-SDValue TargetLowering::BuildUREM(SDNode *Node, SelectionDAG &DAG,
+SDValue TargetLowering::BuildUREM(SDNode *N, SelectionDAG &DAG,
                                   bool IsAfterLegalization,
                                   SmallVectorImpl<SDNode *> &Created) const {
-  SDLoc DL(Node);
-  EVT VT = Node->getValueType(0);
+  SDLoc DL(N);
+  EVT VT = N->getValueType(0);
+  // EVT SVT = VT.getScalarType();
+  // EVT MulVT;
+
   EVT FVT;
   if (VT.isVector()) {
     EVT SVT =
@@ -6598,9 +6602,9 @@ SDValue TargetLowering::BuildUREM(SDNode *Node, SelectionDAG &DAG,
     FVT = EVT::getIntegerVT(*DAG.getContext(), VT.getScalarSizeInBits() * 2);
   }
 
-  unsigned F = FVT.getScalarSizeInBits();
+  unsigned EltBits = FVT.getScalarSizeInBits();
 
-  // when optimising for minimum size, we don't want to expand div
+  // when optimising for minimum size, we don't want to expand rem
   if (DAG.getMachineFunction().getFunction().hasMinSize())
     return SDValue();
 
@@ -6619,7 +6623,7 @@ SDValue TargetLowering::BuildUREM(SDNode *Node, SelectionDAG &DAG,
   auto BuildUREMPattern = [&](ConstantSDNode *DivisorConstant) {
     // calculate magic number: c = ceil(2^N / d) + 1
     const APInt &D = DivisorConstant->getAPIntValue();
-    APInt C = APInt::getMaxValue(F).udiv(D.zext(F)) + APInt(F, 1);
+    APInt C = APInt::getMaxValue(EltBits).udiv(D.zext(EltBits)) + APInt(EltBits, 1);
     SDValue AproximateReciprocal = DAG.getConstant(C, DL, FVT.getScalarType());
 
     MagicFactors.push_back(AproximateReciprocal);
@@ -6638,23 +6642,18 @@ SDValue TargetLowering::BuildUREM(SDNode *Node, SelectionDAG &DAG,
   };
 
   // numerator
-  SDValue Numerator = Node->getOperand(0);
-  SDValue ExtendedNumerator = DAG.getZExtOrTrunc(Numerator, DL, FVT);
+  SDValue Numerator = N->getOperand(0);
+  SDValue ExtendedNumerator = DAG.getNode(ISD::ZERO_EXTEND, DL, FVT, Numerator);
 
   // divisor constant
-  SDValue Divisor = Node->getOperand(1);
-  SDValue ExtendedDivisor = DAG.getZExtOrTrunc(Divisor, DL, FVT);
+  SDValue Divisor = N->getOperand(1);
+  SDValue ExtendedDivisor = DAG.getNode(ISD::ZERO_EXTEND, DL, FVT, Divisor);
 
   if (!ISD::matchUnaryPredicate(Divisor, BuildUREMPattern))
     return SDValue();
 
   // If this is a urem by a one, avoid the fold since it can be constant-folded.
   if (AllDivisorsAreOnes)
-    return SDValue();
-
-  // If this is a urem by a powers-of-two, avoid the fold since it can be
-  // best implemented as a bit test.
-  if (AllDivisorsArePowerOfTwo)
     return SDValue();
 
   SDValue MagicFactor = VT.isVector()
@@ -6667,12 +6666,9 @@ SDValue TargetLowering::BuildUREM(SDNode *Node, SelectionDAG &DAG,
 
   // result = lowbits * d >> F
   SDValue Result;
-  if (IsAfterLegalization ? isOperationLegal(ISD::MULHU, FVT)
-                          : isOperationLegalOrCustom(ISD::MULHU, FVT))
+  if (isOperationLegalOrCustom(ISD::MULHU, FVT, IsAfterLegalization)) {
     Result = DAG.getNode(ISD::MULHU, DL, FVT, Lowbits, ExtendedDivisor);
-  else if (IsAfterLegalization
-               ? isOperationLegal(ISD::UMUL_LOHI, FVT)
-               : isOperationLegalOrCustom(ISD::UMUL_LOHI, FVT)) {
+  } else if (isOperationLegalOrCustom(ISD::UMUL_LOHI, FVT, IsAfterLegalization)) {
     SDValue LoHi = DAG.getNode(ISD::UMUL_LOHI, DL, DAG.getVTList(FVT, FVT),
                                Lowbits, ExtendedDivisor);
     Result = SDValue(LoHi.getNode(), 1);
@@ -6686,7 +6682,7 @@ SDValue TargetLowering::BuildUREM(SDNode *Node, SelectionDAG &DAG,
   Created.push_back(ExtendedDivisor.getNode());
   Created.push_back(Result.getNode());
 
-  return DAG.getZExtOrTrunc(Result, DL, VT);
+  return DAG.getNode(ISD::TRUNCATE, DL, VT, Result);
 }
 
 /// If all values in Values that *don't* match the predicate are same 'splat'
