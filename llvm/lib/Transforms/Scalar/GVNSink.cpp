@@ -43,6 +43,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/GlobalsModRef.h"
+#include "llvm/Analysis/MemoryDependenceAnalysis.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Constants.h"
@@ -54,9 +55,6 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Use.h"
 #include "llvm/IR/Value.h"
-#include "llvm/Support/Allocator.h"
-#include "llvm/Support/ArrayRecycler.h"
-#include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Debug.h"
@@ -65,7 +63,6 @@
 #include "llvm/Transforms/Scalar/GVNExpression.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
-#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -358,256 +355,21 @@ template <typename ModelledPHI> struct DenseMapInfo {
 
 using ModelledPHISet = DenseSet<ModelledPHI, DenseMapInfo<ModelledPHI>>;
 
-//===----------------------------------------------------------------------===//
-//                             ValueTable
-//===----------------------------------------------------------------------===//
-// This is a value number table where the value number is a function of the
-// *uses* of a value, rather than its operands. Thus, if VN(A) == VN(B) we know
-// that the program would be equivalent if we replaced A with PHI(A, B).
-//===----------------------------------------------------------------------===//
-
-/// A GVN expression describing how an instruction is used. The operands
-/// field of BasicExpression is used to store uses, not operands.
-///
-/// This class also contains fields for discriminators used when determining
-/// equivalence of instructions with sideeffects.
-class InstructionUseExpr : public GVNExpression::BasicExpression {
-  unsigned MemoryUseOrder = -1;
-  bool Volatile = false;
-  ArrayRef<int> ShuffleMask;
-
-public:
-  InstructionUseExpr(Instruction *I, ArrayRecycler<Value *> &R,
-                     BumpPtrAllocator &A)
-      : GVNExpression::BasicExpression(I->getNumUses()) {
-    allocateOperands(R, A);
-    setOpcode(I->getOpcode());
-    setType(I->getType());
-
-    if (ShuffleVectorInst *SVI = dyn_cast<ShuffleVectorInst>(I))
-      ShuffleMask = SVI->getShuffleMask().copy(A);
-
-    for (auto &U : I->uses())
-      op_push_back(U.getUser());
-    llvm::sort(op_begin(), op_end());
-  }
-
-  void setMemoryUseOrder(unsigned MUO) { MemoryUseOrder = MUO; }
-  void setVolatile(bool V) { Volatile = V; }
-
-  hash_code getHashValue() const override {
-    return hash_combine(GVNExpression::BasicExpression::getHashValue(),
-                        MemoryUseOrder, Volatile, ShuffleMask);
-  }
-
-  template <typename Function> hash_code getHashValue(Function MapFn) {
-    hash_code H = hash_combine(getOpcode(), getType(), MemoryUseOrder, Volatile,
-                               ShuffleMask);
-    for (auto *V : operands())
-      H = hash_combine(H, MapFn(V));
-    return H;
-  }
-};
-
-using BasicBlocksSet = SmallPtrSet<const BasicBlock *, 32>;
-
-class ValueTable {
-  DenseMap<Value *, uint32_t> ValueNumbering;
-  DenseMap<GVNExpression::Expression *, uint32_t> ExpressionNumbering;
-  DenseMap<size_t, uint32_t> HashNumbering;
-  BumpPtrAllocator Allocator;
-  ArrayRecycler<Value *> Recycler;
-  uint32_t nextValueNumber = 1;
-  BasicBlocksSet ReachableBBs;
-
-  /// Create an expression for I based on its opcode and its uses. If I
-  /// touches or reads memory, the expression is also based upon its memory
-  /// order - see \c getMemoryUseOrder().
-  InstructionUseExpr *createExpr(Instruction *I) {
-    InstructionUseExpr *E =
-        new (Allocator) InstructionUseExpr(I, Recycler, Allocator);
-    if (isMemoryInst(I))
-      E->setMemoryUseOrder(getMemoryUseOrder(I));
-
-    if (CmpInst *C = dyn_cast<CmpInst>(I)) {
-      CmpInst::Predicate Predicate = C->getPredicate();
-      E->setOpcode((C->getOpcode() << 8) | Predicate);
-    }
-    return E;
-  }
-
-  /// Helper to compute the value number for a memory instruction
-  /// (LoadInst/StoreInst), including checking the memory ordering and
-  /// volatility.
-  template <class Inst> InstructionUseExpr *createMemoryExpr(Inst *I) {
-    if (isStrongerThanUnordered(I->getOrdering()) || I->isAtomic())
-      return nullptr;
-    InstructionUseExpr *E = createExpr(I);
-    E->setVolatile(I->isVolatile());
-    return E;
-  }
-
-public:
-  ValueTable() = default;
-
-  /// Set basic blocks reachable from entry block.
-  void setReachableBBs(const BasicBlocksSet &ReachableBBs) {
-    this->ReachableBBs = ReachableBBs;
-  }
-
-  /// Returns the value number for the specified value, assigning
-  /// it a new number if it did not have one before.
-  uint32_t lookupOrAdd(Value *V) {
-    auto VI = ValueNumbering.find(V);
-    if (VI != ValueNumbering.end())
-      return VI->second;
-
-    if (!isa<Instruction>(V)) {
-      ValueNumbering[V] = nextValueNumber;
-      return nextValueNumber++;
-    }
-
-    Instruction *I = cast<Instruction>(V);
-    if (!ReachableBBs.contains(I->getParent()))
-      return ~0U;
-
-    InstructionUseExpr *exp = nullptr;
-    switch (I->getOpcode()) {
-    case Instruction::Load:
-      exp = createMemoryExpr(cast<LoadInst>(I));
-      break;
-    case Instruction::Store:
-      exp = createMemoryExpr(cast<StoreInst>(I));
-      break;
-    case Instruction::Call:
-    case Instruction::Invoke:
-    case Instruction::FNeg:
-    case Instruction::Add:
-    case Instruction::FAdd:
-    case Instruction::Sub:
-    case Instruction::FSub:
-    case Instruction::Mul:
-    case Instruction::FMul:
-    case Instruction::UDiv:
-    case Instruction::SDiv:
-    case Instruction::FDiv:
-    case Instruction::URem:
-    case Instruction::SRem:
-    case Instruction::FRem:
-    case Instruction::Shl:
-    case Instruction::LShr:
-    case Instruction::AShr:
-    case Instruction::And:
-    case Instruction::Or:
-    case Instruction::Xor:
-    case Instruction::ICmp:
-    case Instruction::FCmp:
-    case Instruction::Trunc:
-    case Instruction::ZExt:
-    case Instruction::SExt:
-    case Instruction::FPToUI:
-    case Instruction::FPToSI:
-    case Instruction::UIToFP:
-    case Instruction::SIToFP:
-    case Instruction::FPTrunc:
-    case Instruction::FPExt:
-    case Instruction::PtrToInt:
-    case Instruction::IntToPtr:
-    case Instruction::BitCast:
-    case Instruction::AddrSpaceCast:
-    case Instruction::Select:
-    case Instruction::ExtractElement:
-    case Instruction::InsertElement:
-    case Instruction::ShuffleVector:
-    case Instruction::InsertValue:
-    case Instruction::GetElementPtr:
-      exp = createExpr(I);
-      break;
-    default:
-      break;
-    }
-
-    if (!exp) {
-      ValueNumbering[V] = nextValueNumber;
-      return nextValueNumber++;
-    }
-
-    uint32_t e = ExpressionNumbering[exp];
-    if (!e) {
-      hash_code H = exp->getHashValue([=](Value *V) { return lookupOrAdd(V); });
-      auto I = HashNumbering.find(H);
-      if (I != HashNumbering.end()) {
-        e = I->second;
-      } else {
-        e = nextValueNumber++;
-        HashNumbering[H] = e;
-        ExpressionNumbering[exp] = e;
-      }
-    }
-    ValueNumbering[V] = e;
-    return e;
-  }
-
-  /// Returns the value number of the specified value. Fails if the value has
-  /// not yet been numbered.
-  uint32_t lookup(Value *V) const {
-    auto VI = ValueNumbering.find(V);
-    assert(VI != ValueNumbering.end() && "Value not numbered?");
-    return VI->second;
-  }
-
-  /// Removes all value numberings and resets the value table.
-  void clear() {
-    ValueNumbering.clear();
-    ExpressionNumbering.clear();
-    HashNumbering.clear();
-    Recycler.clear(Allocator);
-    nextValueNumber = 1;
-  }
-
-  /// \c Inst uses or touches memory. Return an ID describing the memory state
-  /// at \c Inst such that if getMemoryUseOrder(I1) == getMemoryUseOrder(I2),
-  /// the exact same memory operations happen after I1 and I2.
-  ///
-  /// This is a very hard problem in general, so we use domain-specific
-  /// knowledge that we only ever check for equivalence between blocks sharing a
-  /// single immediate successor that is common, and when determining if I1 ==
-  /// I2 we will have already determined that next(I1) == next(I2). This
-  /// inductive property allows us to simply return the value number of the next
-  /// instruction that defines memory.
-  uint32_t getMemoryUseOrder(Instruction *Inst) {
-    auto *BB = Inst->getParent();
-    for (auto I = std::next(Inst->getIterator()), E = BB->end();
-         I != E && !I->isTerminator(); ++I) {
-      if (!isMemoryInst(&*I))
-        continue;
-      if (isa<LoadInst>(&*I))
-        continue;
-      CallInst *CI = dyn_cast<CallInst>(&*I);
-      if (CI && CI->onlyReadsMemory())
-        continue;
-      InvokeInst *II = dyn_cast<InvokeInst>(&*I);
-      if (II && II->onlyReadsMemory())
-        continue;
-      return lookupOrAdd(&*I);
-    }
-    return 0;
-  }
-};
-
-//===----------------------------------------------------------------------===//
-
 class GVNSink {
 public:
-  GVNSink() {}
+  GVNSink(DominatorTree *DT, AliasAnalysis *AA, MemoryDependenceResults *MD) : DT(DT), AA(AA), MD(MD) {}
 
   bool run(Function &F) {
     LLVM_DEBUG(dbgs() << "GVNSink: running on function @" << F.getName()
                       << "\n");
 
+    VN.setDomTree(DT);
+    VN.setAliasAnalysis(AA);
+    VN.setMemDep(MD);
+
     unsigned NumSunk = 0;
     ReversePostOrderTraversal<Function*> RPOT(&F);
-    VN.setReachableBBs(BasicBlocksSet(RPOT.begin(), RPOT.end()));
+    ReachableBBs = BasicBlocksSet(RPOT.begin(), RPOT.end());
     // Populate reverse post-order to order basic blocks in deterministic
     // order. Any arbitrary ordering will work in this case as long as they are
     // deterministic. The node ordering of newly created basic blocks
@@ -625,7 +387,14 @@ public:
   }
 
 private:
-  ValueTable VN;
+  using BasicBlocksSet = SmallPtrSet<const BasicBlock *, 32>;
+
+  GVNPass::ValueTable VN;
+  DominatorTree *DT;
+  AliasAnalysis *AA;
+  MemoryDependenceResults *MD;
+  
+  BasicBlocksSet ReachableBBs;
   DenseMap<const BasicBlock *, unsigned> RPOTOrder;
 
   bool shouldAvoidSinkingInstruction(Instruction *I) {
@@ -693,10 +462,10 @@ GVNSink::analyzeInstructionForSinking(LockstepReverseIterator &LRI,
 
   DenseMap<uint32_t, unsigned> VNums;
   for (auto *I : Insts) {
+    if (!ReachableBBs.contains(I->getParent()))
+      return std::nullopt;
     uint32_t N = VN.lookupOrAdd(I);
     LLVM_DEBUG(dbgs() << " VN=" << Twine::utohexstr(N) << " for" << *I << "\n");
-    if (N == ~0U)
-      return std::nullopt;
     VNums[N]++;
   }
   unsigned VNumToSink = llvm::max_element(VNums, llvm::less_second())->first;
@@ -938,7 +707,10 @@ void GVNSink::sinkLastInstruction(ArrayRef<BasicBlock *> Blocks,
 } // end anonymous namespace
 
 PreservedAnalyses GVNSinkPass::run(Function &F, FunctionAnalysisManager &AM) {
-  GVNSink G;
+  DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
+  AliasAnalysis &AA = AM.getResult<AAManager>(F);
+  MemoryDependenceResults &MD = AM.getResult<MemoryDependenceAnalysis>(F);
+  GVNSink G(&DT, &AA, &MD);
   if (!G.run(F))
     return PreservedAnalyses::all();
 
