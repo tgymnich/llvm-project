@@ -18,31 +18,54 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
-
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/BitVector.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DinicMaxFlow.h"
 #include "llvm/ADT/EnumeratedArray.h"
+#include "llvm/ADT/FlowNetwork.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/ADT/PushRelabelMaxFlow.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/iterator.h"
+#include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CallGraph.h"
-#include "llvm/Analysis/CallGraphSCCPass.h"
+#include "llvm/Analysis/ConstantFolding.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/MemoryLocation.h"
+#include "llvm/Analysis/MemorySSAUpdater.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+#include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/PtrUseVisitor.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/CodeGen/GlobalISel/MachineIRBuilder.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include "llvm/Frontend/OpenMP/OMPDeviceConstants.h"
 #include "llvm/Frontend/OpenMP/OMPIRBuilder.h"
+#include "llvm/IR/Argument.h"
 #include "llvm/IR/Assumptions.h"
 #include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/CFG.h"
+#include "llvm/IR/Constant.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GlobalObject.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
@@ -50,14 +73,34 @@
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Metadata.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/PassManager.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Use.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/Transforms/Utils/BreakCriticalEdges.h"
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Utils/CodeExtractor.h"
+#include "llvm/Transforms/Utils/CodeMoverUtils.h"
+#include "llvm/Transforms/Utils/Local.h"
+#include "llvm/Transforms/Utils/LoopSimplify.h"
+#include "llvm/Transforms/Utils/LoopUtils.h"
+#include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <limits>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -181,6 +224,11 @@ STATISTIC(NumBytesMovedToSharedMemory,
           "Amount of memory pushed to shared memory");
 STATISTIC(NumBarriersEliminated, "Number of redundant barriers eliminated");
 
+STATISTIC(NumCachedValues, "Number of cached values across split points");
+
+STATISTIC(NumRecomputedValues,
+          "Number of recomputed values across split points");
+
 #if !defined(NDEBUG)
 static constexpr auto TAG = "[" DEBUG_TYPE "]";
 #endif
@@ -207,6 +255,15 @@ namespace KernelInfo {
 //   DynamicEnvironmentTy *DynamicEnv;
 // };
 
+// struct KernelLaunchEnvironmentTy {
+//   uint32_t ReductionCnt;
+//   uint32_t ReductionIterCnt;
+//   void *ReductionBuffer;
+//   uint64_t *ContinuationCntBuffer;
+//   uint64_t ContinuationCacheOffset = 0;
+//   void **ContinuationCacheBuffer;
+// };
+
 #define KERNEL_ENVIRONMENT_IDX(MEMBER, IDX)                                    \
   constexpr const unsigned MEMBER##Idx = IDX;
 
@@ -225,8 +282,24 @@ KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MinThreads, 3)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxThreads, 4)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MinTeams, 5)
 KERNEL_ENVIRONMENT_CONFIGURATION_IDX(MaxTeams, 6)
+// KERNEL_ENVIRONMENT_CONFIGURATION_IDX(ReductionDataSize, 7)
+// KERNEL_ENVIRONMENT_CONFIGURATION_IDX(ReductionBufferLength, 8)
+KERNEL_ENVIRONMENT_CONFIGURATION_IDX(NumContinuations, 9)
+KERNEL_ENVIRONMENT_CONFIGURATION_IDX(ContinuationCacheLengths, 10)
 
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_IDX
+
+#define KERNEL_LAUNCH_ENVIRONMENT_IDX(MEMBER, IDX)                             \
+  constexpr const unsigned MEMBER##Idx = IDX;
+
+// KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionCnt, 0)
+// KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionIterCnt, 1)
+// KERNEL_LAUNCH_ENVIRONMENT_IDX(ReductionBuffer, 2)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCntBuffer, 3)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCacheOffset, 4)
+KERNEL_LAUNCH_ENVIRONMENT_IDX(ContinuationCacheBuffer, 5)
+
+#undef KERNEL_LAUNCH_ENVIRONMENT_IDX
 
 #define KERNEL_ENVIRONMENT_GETTER(MEMBER, RETURNTYPE)                          \
   RETURNTYPE *get##MEMBER##FromKernelEnvironment(ConstantStruct *KernelEnvC) { \
@@ -253,8 +326,20 @@ KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MinThreads)
 KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MaxThreads)
 KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MinTeams)
 KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(MaxTeams)
+// KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(ReductionDataSize)
+// KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(ReductionBufferLength)
+KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(NumContinuations)
+// KERNEL_ENVIRONMENT_CONFIGURATION_GETTER(ContinuationCacheLengths)
 
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_GETTER
+
+StructType *getKernelLaunchEnvironmentTy(LLVMContext &C) {
+  return StructType::create(
+      {IntegerType::getInt32Ty(C), IntegerType::getInt32Ty(C),
+       PointerType::getUnqual(C), PointerType::getUnqual(C),
+       Type::getInt64Ty(C), PointerType::getUnqual(C)},
+      "struct.KernelLaunchEnvironmentTy");
+}
 
 GlobalVariable *
 getKernelEnvironementGVFromKernelInitCB(CallBase *KernelInitCB) {
@@ -272,6 +357,48 @@ ConstantStruct *getKernelEnvironementFromKernelInitCB(CallBase *KernelInitCB) {
 } // namespace KernelInfo
 
 namespace {
+
+enum class RematModeKind { Cache, Recompute, MinCut };
+enum class MaxFlowAlgorithmKind { PushRelabel, Dinic };
+enum class CacheMemoryLayoutKind { StructOfArrays, ArrayOfStructs };
+
+static const auto RematModeKindEnumOptions = cl::values(
+    clEnumValN(RematModeKind::Cache, "cache",
+               "cache all values across the split"),
+    clEnumValN(RematModeKind::Recompute, "recompute",
+               "aggressively recompute values across the split"),
+    clEnumValN(RematModeKind::MinCut, "mincut",
+               "try to minimize the number of cached values across the split"));
+
+static const auto MaxFlowAlgorithmKindEnumOptions = cl::values(
+    clEnumValN(MaxFlowAlgorithmKind::PushRelabel, "push-relabel",
+               "FIFO push relabel algorithm"),
+    clEnumValN(MaxFlowAlgorithmKind::Dinic, "dinic", "dinic's algorithm"));
+
+static const auto CacheMemoryLayoutKindEnumOptions =
+    cl::values(clEnumValN(CacheMemoryLayoutKind::StructOfArrays, "soa",
+                          "struct of Arrays"),
+               clEnumValN(CacheMemoryLayoutKind::ArrayOfStructs, "aos",
+                          "array of structs"));
+
+static cl::opt<RematModeKind> SplitKernelRematMode(
+    "split-kernel-remat-mode", cl::Hidden,
+    cl::desc("Rematerialization mode for values alive across a split kernel."),
+    cl::init(RematModeKind::MinCut), RematModeKindEnumOptions);
+
+static cl::opt<MaxFlowAlgorithmKind>
+    MaxFlowAlogrithm("split-kernel-max-flow-algorithm", cl::Hidden,
+                     cl::desc("Algorithm to be used to solve the max flow "
+                              "problem in order to determine the minimal set "
+                              "of instructions to cache across split points."),
+                     cl::init(MaxFlowAlgorithmKind::PushRelabel),
+                     MaxFlowAlgorithmKindEnumOptions);
+
+static cl::opt<CacheMemoryLayoutKind> SplitKernelCacheMemoryLayout(
+    "split-kernel-cache-memory-layout", cl::Hidden,
+    cl::desc("Memory Layout for the rematerialization cache."),
+    cl::init(CacheMemoryLayoutKind::StructOfArrays),
+    CacheMemoryLayoutKindEnumOptions);
 
 struct AAHeapToShared;
 
@@ -921,12 +1048,16 @@ struct OpenMPOpt {
 
   using OptimizationRemarkGetter =
       function_ref<OptimizationRemarkEmitter &(Function *)>;
+  using LoopInfoGetter = function_ref<LoopInfo &(Function *)>;
+  using DominatorTreeGetter = function_ref<DominatorTree &(Function *)>;
 
   OpenMPOpt(SmallVectorImpl<Function *> &SCC, CallGraphUpdater &CGUpdater,
-            OptimizationRemarkGetter OREGetter,
-            OMPInformationCache &OMPInfoCache, Attributor &A)
+            OptimizationRemarkGetter OREGetter, LoopInfoGetter LIGetter,
+            DominatorTreeGetter DTGetter, OMPInformationCache &OMPInfoCache,
+            Attributor &A)
       : M(*(*SCC.begin())->getParent()), SCC(SCC), CGUpdater(CGUpdater),
-        OREGetter(OREGetter), OMPInfoCache(OMPInfoCache), A(A) {}
+        OREGetter(OREGetter), LIGetter(LIGetter), DTGetter(DTGetter),
+        OMPInfoCache(OMPInfoCache), A(A) {}
 
   /// Check if any remarks are enabled for openmp-opt
   bool remarksEnabled() {
@@ -935,7 +1066,7 @@ struct OpenMPOpt {
   }
 
   /// Run all OpenMP optimizations on the underlying SCC.
-  bool run(bool IsModulePass) {
+  bool run(bool IsModulePass, bool SplitKernels) {
     if (SCC.empty())
       return false;
 
@@ -978,6 +1109,9 @@ struct OpenMPOpt {
         }
       }
     }
+
+    if (SplitKernels && OMPInfoCache.OpenMPPostLink)
+      Changed |= splitKernels();
 
     if (OMPInfoCache.OpenMPPostLink)
       Changed |= removeRuntimeSymbols();
@@ -1977,6 +2111,14 @@ private:
   /// the cases we can avoid taking the address of a function.
   bool rewriteDeviceCodeStateMachine();
 
+  bool splitKernels();
+
+  Function *rematerializeValuesAcrossSplit(Function *Kernel,
+                                           ArrayRef<Use *> Splits,
+                                           SwitchInst *ContDispatch);
+
+  void splitKernel(Function *Kernel, SwitchInst *ContDispatch,
+                   unsigned NumSplits);
   ///
   ///}}
 
@@ -2035,6 +2177,10 @@ private:
 
   /// Callback to get an OptimizationRemarkEmitter from a Function *
   OptimizationRemarkGetter OREGetter;
+
+  LoopInfoGetter LIGetter;
+
+  DominatorTreeGetter DTGetter;
 
   /// OpenMP-specific information cache. Also Used for Attributor runs.
   OMPInformationCache &OMPInfoCache;
@@ -2244,6 +2390,1595 @@ bool OpenMPOpt::rewriteDeviceCodeStateMachine() {
   return Changed;
 }
 
+// Moves the values in the PHIs in SuccBB that correspong to PredBB into a new
+// PHI in InsertedBB.
+static void movePHIValuesToInsertedBlock(BasicBlock *SuccBB,
+                                         BasicBlock *InsertedBB,
+                                         BasicBlock *PredBB,
+                                         PHINode *UntilPHI = nullptr) {
+  auto *PN = cast<PHINode>(&SuccBB->front());
+  do {
+    int Index = PN->getBasicBlockIndex(InsertedBB);
+    Value *V = PN->getIncomingValue(Index);
+    PHINode *InputV = PHINode::Create(
+        V->getType(), 1, V->getName() + Twine(".") + SuccBB->getName());
+    InputV->insertBefore(InsertedBB->begin());
+    InputV->addIncoming(V, PredBB);
+    PN->setIncomingValue(Index, InputV);
+    PN = dyn_cast<PHINode>(PN->getNextNode());
+  } while (PN != UntilPHI);
+}
+
+static void cleanupSinglePredPHIs(Function &F) {
+  SmallVector<PHINode *, 32> Worklist;
+  for (auto &BB : F) {
+    for (auto &Phi : BB.phis()) {
+      if (Phi.getNumIncomingValues() == 1) {
+        Worklist.push_back(&Phi);
+      } else
+        break;
+    }
+  }
+  while (!Worklist.empty()) {
+    auto *Phi = Worklist.pop_back_val();
+    auto *OriginalValue = Phi->getIncomingValue(0);
+    Phi->replaceAllUsesWith(OriginalValue);
+  }
+}
+
+static void rewritePHIs(BasicBlock &BB, DominatorTree *DT = nullptr,
+                        LoopInfo *LI = nullptr) {
+  SmallVector<BasicBlock *, 8> Preds(predecessors(&BB));
+  for (BasicBlock *Pred : Preds) {
+    auto *IncomingBB = SplitEdge(Pred, &BB, DT, LI);
+    IncomingBB->setName(BB.getName() + Twine(".from.") + Pred->getName());
+
+    movePHIValuesToInsertedBlock(&BB, IncomingBB, Pred);
+  }
+}
+
+static void rewritePHIs(Function &F, DominatorTree *DT = nullptr,
+                        LoopInfo *LI = nullptr) {
+  SmallVector<BasicBlock *, 8> WorkList;
+  for (BasicBlock &BB : F)
+    if (auto *PN = dyn_cast<PHINode>(&BB.front()))
+      if (PN->getNumIncomingValues() > 1)
+        WorkList.push_back(&BB);
+
+  for (BasicBlock *BB : WorkList)
+    rewritePHIs(*BB, DT, LI);
+}
+
+static void movePTXRegisterReadsIntoEntry(Function *Kernel) {
+  // Move all ptx register reads to the beginning of the Kernel, so that they
+  // will be cached
+  DenseMap<Function *, CallInst *> MovedCalls;
+  auto TT = Triple(Kernel->getParent()->getTargetTriple());
+
+  for (Instruction &I : make_early_inc_range(instructions(Kernel))) {
+    CallInst *Call = dyn_cast<CallInst>(&I);
+    if (!Call)
+      continue;
+
+    Function *Callee = Call->getCalledFunction();
+
+    if (!Callee)
+      continue;
+
+    StringRef FuncName = Callee->getName();
+
+    if (FuncName.starts_with("amdgcn_implicitarg_ptr")) {
+      Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+      for (User *CallUser : Call->users()) {
+        GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(CallUser);
+        if (!GEP)
+          continue;
+        GEP->moveBefore(
+            &*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+        for (User *GEPUser : GEP->users()) {
+          LoadInst *Load = dyn_cast<LoadInst>(GEPUser);
+          if (!Load)
+            continue;
+          Load->moveBefore(
+              &*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+        }
+      }
+      continue;
+    }
+
+    if (TT.isNVPTX() && !FuncName.starts_with("llvm.nvvm.read.ptx.sreg."))
+      continue;
+
+    auto AMDIntrinsicPrefix = {"amdgcn_workitem_id", "amdgcn_workgroup_id"};
+
+    if (TT.isAMDGCN() && none_of(AMDIntrinsicPrefix, [FuncName](StringRef Str) {
+          return FuncName.starts_with(Str);
+        }))
+      continue;
+
+    auto It = MovedCalls.find(Callee);
+    if (It != MovedCalls.end()) {
+      Call->replaceAllUsesWith(It->getSecond());
+      Call->eraseFromParent();
+    } else {
+      Call->moveBefore(&*Kernel->getEntryBlock().getFirstNonPHIOrDbgOrAlloca());
+      MovedCalls[Callee] = Call;
+    }
+  }
+}
+
+static SwitchInst *createContDispatchBlock(Function *Kernel, DominatorTree &DT,
+                                           unsigned NumSplits) {
+  Module *M = Kernel->getParent();
+  LLVMContext &C = Kernel->getContext();
+  BasicBlock &OldEntry = Kernel->getEntryBlock();
+  BasicBlock *ContDispatchBB =
+      BasicBlock::Create(C, "ContDispatchBB", Kernel, &OldEntry);
+
+  DT.setNewRoot(ContDispatchBB);
+
+  IRBuilder<> Builder(ContDispatchBB);
+
+  FunctionType *ContIdGetterFTy =
+      FunctionType::get(Builder.getInt32Ty(), false);
+  Function *ContIdGetter = Function::Create(
+      ContIdGetterFTy, GlobalValue::ExternalLinkage, "__ompx_get_cont_id", M);
+
+  Value *ContId = Builder.CreateCall(ContIdGetter, {}, "cont_id");
+
+  SwitchInst *Switch = Builder.CreateSwitch(ContId, &OldEntry, NumSplits + 1);
+
+  DT.insertEdge(ContDispatchBB, &OldEntry);
+
+  return Switch;
+}
+
+bool OpenMPOpt::splitKernels() {
+  bool Changed = false;
+  auto &RFI = OMPInfoCache.RFIs[OMPRTL___ompx_split];
+
+  for (auto &&[Kernel, UseVec] : RFI) {
+    if (!isOpenMPKernel(*Kernel))
+      continue;
+
+    unsigned NumSplit = UseVec->size();
+    DominatorTree &DT = DTGetter(Kernel);
+
+    movePTXRegisterReadsIntoEntry(Kernel);
+
+    SwitchInst *ContDispatch = createContDispatchBlock(Kernel, DT, NumSplit);
+
+    cleanupSinglePredPHIs(*Kernel);
+
+    rewritePHIs(*Kernel, &DT);
+
+    rematerializeValuesAcrossSplit(Kernel, *UseVec, ContDispatch);
+
+    for (Use *U : *UseVec) {
+      CallInst *SplitInst = cast<CallInst>(U->getUser());
+      SplitInst->eraseFromParent();
+    }
+
+    splitKernel(Kernel, ContDispatch, NumSplit);
+    Changed = true;
+  }
+
+  return Changed;
+}
+namespace {
+
+class BlockToIndexMapping {
+  SmallVector<BasicBlock *, 32> V;
+
+public:
+  size_t size() const { return V.size(); }
+
+  BlockToIndexMapping(Function &F) {
+    for (BasicBlock &BB : F)
+      V.push_back(&BB);
+    sort(V);
+  }
+
+  size_t blockToIndex(BasicBlock *BB) const {
+    auto *I = llvm::lower_bound(V, BB);
+    assert(I != V.end() && *I == BB && "BasicBlockNumbering: Unknown block");
+    return I - V.begin();
+  }
+
+  BasicBlock *indexToBlock(unsigned Index) const { return V[Index]; }
+
+  unsigned operator[](BasicBlock *BB) const { return blockToIndex(BB); }
+
+  BasicBlock *operator[](unsigned Index) const { return indexToBlock(Index); }
+};
+class SuspendCrossingInfo {
+  struct BlockData {
+    BitVector Consumes;
+    BitVector Kills;
+    bool Suspend = false;
+    bool End = false;
+    bool KillLoop = false;
+    bool Changed = false;
+  };
+
+  BlockToIndexMapping Mapping;
+  SmallVector<BlockData> Block;
+
+public:
+  SuspendCrossingInfo(Function &F, Instruction *SI) : Mapping(F) {
+    size_t N = Mapping.size();
+    Block.resize(N);
+
+    // Initialize every block so that it consumes itself
+    for (size_t I = 0; I < N; ++I) {
+      auto &B = Block[I];
+      B.Consumes.resize(N);
+      B.Kills.resize(N);
+      B.Consumes.set(I);
+      B.Changed = true;
+    }
+
+    // Mark all suspend blocks and indicate that they kill everything they
+    // consume.
+    BasicBlock *SuspendBlock = SI->getParent();
+    auto &B = getBlockData(SuspendBlock);
+    B.Suspend = true;
+    B.Kills |= B.Consumes;
+
+    // It is considered to be faster to use RPO traversal for forward-edges
+    // dataflow analysis.
+    ReversePostOrderTraversal<Function *> RPOT(&F);
+    computeBlockData</*Initialize=*/true>(RPOT);
+    while (computeBlockData</*Initialize*/ false>(RPOT))
+      ;
+
+    LLVM_DEBUG(dump());
+  }
+
+  ~SuspendCrossingInfo() = default;
+
+  iterator_range<pred_iterator> predecessors(BlockData const &BD) const {
+    BasicBlock *BB = Mapping[&BD - &Block[0]];
+    return llvm::predecessors(BB);
+  }
+
+  BlockData &getBlockData(BasicBlock *BB) { return Block[Mapping[BB]]; }
+
+  /// Compute the BlockData for the current function in one iteration.
+  /// Initialize - Whether this is the first iteration, we can optimize
+  /// the initial case a little bit by manual loop switch.
+  /// Returns whether the BlockData changes in this iteration.
+  template <bool Initialize>
+  bool computeBlockData(ReversePostOrderTraversal<Function *> &RPOT) {
+    bool Changed = false;
+
+    for (BasicBlock *BB : RPOT) {
+      unsigned BBNo = Mapping[BB];
+      BlockData &B = Block[BBNo];
+
+      // We don't need to count the predecessors when initialization.
+      if constexpr (!Initialize)
+        // If all the predecessors of the current Block don't change,
+        // the BlockData for the current block must not change too.
+        if (all_of(predecessors(B), [&](BasicBlock *BB) {
+              return !Block[Mapping[BB]].Changed;
+            })) {
+          B.Changed = false;
+          continue;
+        }
+
+      // Saved Consumes and Kills bitsets so that it is easy to see
+      // if anything changed after propagation.
+      BitVector SavedConsumes = B.Consumes;
+      BitVector SavedKills = B.Kills;
+
+      for (BasicBlock *PI : predecessors(B)) {
+        unsigned PrevNo = Mapping[PI];
+        auto &P = Block[PrevNo];
+
+        // Propagate Kills and Consumes from predecessors into B.
+        B.Consumes |= P.Consumes;
+        B.Kills |= P.Kills;
+
+        // If block P is a suspend block, it should propagate kills into block
+        // B for every block P consumes.
+        if (P.Suspend)
+          B.Kills |= P.Consumes;
+      }
+
+      if (B.Suspend) {
+        // If block B is a suspend block, it should kill all of the blocks it
+        // consumes.
+        B.Kills |= B.Consumes;
+      } else {
+        // This is reached when B block it not Suspend nor coro.end and it
+        // need to make sure that it is not in the kill set.
+        B.KillLoop |= B.Kills[BBNo];
+        B.Kills.reset(BBNo);
+      }
+
+      if constexpr (!Initialize) {
+        B.Changed = (B.Kills != SavedKills) || (B.Consumes != SavedConsumes);
+        Changed |= B.Changed;
+      }
+    }
+
+    return Changed;
+  }
+
+public:
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  LLVM_DUMP_METHOD void dump(StringRef Label, BitVector const &BV) const {
+    dbgs() << Label << ":";
+    for (size_t I = 0, N = BV.size(); I < N; ++I)
+      if (BV[I])
+        dbgs() << " " << Mapping[I]->getNameOrAsOperand();
+    dbgs() << "\n";
+  }
+
+  LLVM_DUMP_METHOD void dump() const {
+    for (size_t I = 0, N = Block.size(); I < N; ++I) {
+      BasicBlock *const B = Mapping[I];
+      dbgs() << B->getNameOrAsOperand() << ":\n";
+      dump("   Consumes", Block[I].Consumes);
+      dump("      Kills", Block[I].Kills);
+    }
+    dbgs() << "\n";
+  }
+#endif
+
+  /// Returns true if there is a path from \p From to \p To crossing a suspend
+  /// point without crossing \p From a 2nd time.
+  bool hasPathCrossingSuspendPoint(BasicBlock *From, BasicBlock *To) const {
+    unsigned FromIndex = Mapping[From];
+    unsigned ToIndex = Mapping[To];
+    bool Result = Block[ToIndex].Kills[FromIndex];
+    LLVM_DEBUG(dbgs() << From->getName() << " => " << To->getName()
+                      << " answer is " << Result << "\n");
+    return Result;
+  }
+
+  /// Returns true if there is a path from \p From to \p To crossing a suspend
+  /// point without crossing \p From a 2nd time. If \p From is the same as \p To
+  /// this will also check if there is a looping path crossing a suspend point.
+  bool hasPathOrLoopCrossingSuspendPoint(BasicBlock *From,
+                                         BasicBlock *To) const {
+    unsigned FromIndex = Mapping[From];
+    unsigned ToIndex = Mapping[To];
+    bool Result = Block[ToIndex].Kills[FromIndex] ||
+                  (From == To && Block[ToIndex].KillLoop);
+    LLVM_DEBUG(dbgs() << From->getName() << " => " << To->getName()
+                      << " answer is " << Result << " (path or loop)\n");
+    return Result;
+  }
+
+  bool isDefinitionAcrossSplit(BasicBlock *DefBB, User *U) const {
+    Instruction *I = cast<Instruction>(U);
+
+    // We rewrote PHINodes, so that only the ones with exactly one incoming
+    // value need to be analyzed.
+    if (auto *PN = dyn_cast<PHINode>(I))
+      if (PN->getNumIncomingValues() > 1)
+        return false;
+
+    BasicBlock *UseBB = I->getParent();
+
+    return hasPathCrossingSuspendPoint(DefBB, UseBB);
+  }
+
+  bool isDefinitionAcrossSplit(Argument &A, User *U) const {
+    return isDefinitionAcrossSplit(&A.getParent()->getEntryBlock(), U);
+  }
+
+  bool isDefinitionAcrossSplit(Instruction &I, User *U) const {
+    BasicBlock *DefBB = I.getParent();
+
+    return isDefinitionAcrossSplit(DefBB, U);
+  }
+
+  bool isDefinitionAcrossSplit(Value &V, User *U) const {
+    if (auto *Arg = dyn_cast<Argument>(&V))
+      return isDefinitionAcrossSplit(*Arg, U);
+    if (auto *Inst = dyn_cast<Instruction>(&V))
+      return isDefinitionAcrossSplit(*Inst, U);
+
+    llvm_unreachable(
+        "Coroutine could only collect Argument and Instruction now.");
+  }
+};
+} // end anonymous namespace
+
+namespace {
+class AllocaUseVisitor : public PtrUseVisitor<AllocaUseVisitor> {
+  friend class PtrUseVisitor<AllocaUseVisitor>;
+  friend class InstVisitor<AllocaUseVisitor>;
+
+  using Base = PtrUseVisitor<AllocaUseVisitor>;
+
+private:
+  const DominatorTree &DT;
+  const SuspendCrossingInfo &SCI;
+  const Instruction &SplitInstruction;
+  // All alias to the original AllocaInst, created before SplitInst and used
+  // after SplitInst. Each entry contains the instruction and the offset in the
+  // original Alloca. They need to be recreated after SplitInst is split off the
+  // frame.
+  DenseMap<Instruction *, std::optional<APInt>> AliasOffetMap;
+  SmallPtrSet<Instruction *, 4> Users;
+  SmallPtrSet<IntrinsicInst *, 2> LifetimeStarts;
+
+  bool MayWriteBeforeSplit = false;
+  bool ShouldUseLifetimeStartInfo = true;
+
+  mutable std::optional<bool> ShouldRestoreAlloca;
+
+public:
+  AllocaUseVisitor(const DataLayout &DL, const DominatorTree &DT,
+                   const SuspendCrossingInfo &SCI, const Instruction &Split,
+                   bool ShouldUseLifetimeStartInfo)
+      : PtrUseVisitor(DL), DT(DT), SCI(SCI), SplitInstruction(Split),
+        ShouldUseLifetimeStartInfo(ShouldUseLifetimeStartInfo) {}
+
+  bool getShouldRestoreAlloca() const {
+    if (!ShouldRestoreAlloca)
+      ShouldRestoreAlloca = computeShouldRestoreAlloca();
+    return *ShouldRestoreAlloca;
+  }
+
+  bool getMayWriteBeforeSplit() const { return MayWriteBeforeSplit; }
+
+  DenseMap<Instruction *, std::optional<APInt>> getAliasesCopy() const {
+    assert(getShouldRestoreAlloca() &&
+           "This method should only be called if the "
+           "alloca needs to be restored after a split.");
+    for (const auto &P : AliasOffetMap)
+      if (!P.second)
+        report_fatal_error("Unable to handle an alias with unknown offset "
+                           "created before split.");
+    return AliasOffetMap;
+  }
+
+private:
+  void visit(Instruction *I) { return visit(*I); }
+
+  void visit(Instruction &I) {
+    Users.insert(&I);
+    Base::visit(I);
+
+    // If the pointer is escaped prior to SplitInstruction, we have to assume it
+    // would be written into before SplitInstruction as well.
+    if (PI.isEscaped() &&
+        !DT.dominates(&SplitInstruction, PI.getEscapingInst())) {
+      MayWriteBeforeSplit = true;
+    }
+  }
+  // We need to provide this overload as PtrUseVisitor uses a pointer based
+  // visiting function.
+
+  void visitPHINode(PHINode &I) {
+    enqueueUsers(I);
+    handleAlias(I);
+  }
+
+  void visitSelectInst(SelectInst &I) {
+    enqueueUsers(I);
+    handleAlias(I);
+  }
+
+  void visitStoreInst(StoreInst &SI) {
+    // Regardless whether the alias of the alloca is the value operand or the
+    // pointer operand, we need to assume the alloca is been written.
+    handleMayWrite(SI);
+
+    if (SI.getValueOperand() != U->get())
+      return;
+
+    // We are storing the pointer into a memory location, potentially escaping.
+    // As an optimization, we try to detect simple cases where it doesn't
+    // actually escape, for example:
+    //   %ptr = alloca ..
+    //   %addr = alloca ..
+    //   store %ptr, %addr
+    //   %x = load %addr
+    //   ..
+    // If %addr is only used by loading from it, we could simply treat %x as
+    // another alias of %ptr, and not considering %ptr being escaped.
+    auto IsSimpleStoreThenLoad = [&]() {
+      auto *AI = dyn_cast<AllocaInst>(SI.getPointerOperand());
+      // If the memory location we are storing to is not an alloca, it
+      // could be an alias of some other memory locations, which is difficult
+      // to analyze.
+      if (!AI)
+        return false;
+      // StoreAliases contains aliases of the memory location stored into.
+      SmallVector<Instruction *, 4> StoreAliases = {AI};
+      while (!StoreAliases.empty()) {
+        Instruction *I = StoreAliases.pop_back_val();
+        for (User *U : I->users()) {
+          // If we are loading from the memory location, we are creating an
+          // alias of the original pointer.
+          if (auto *LI = dyn_cast<LoadInst>(U)) {
+            enqueueUsers(*LI);
+            handleAlias(*LI);
+            continue;
+          }
+          // If we are overriding the memory location, the pointer certainly
+          // won't escape.
+          if (auto *S = dyn_cast<StoreInst>(U))
+            if (S->getPointerOperand() == I)
+              continue;
+          if (auto *II = dyn_cast<IntrinsicInst>(U))
+            if (II->isLifetimeStartOrEnd())
+              continue;
+          // BitCastInst creats aliases of the memory location being stored
+          // into.
+          if (auto *BI = dyn_cast<BitCastInst>(U)) {
+            StoreAliases.push_back(BI);
+            continue;
+          }
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    if (!IsSimpleStoreThenLoad())
+      PI.setEscaped(&SI);
+  }
+
+  // All mem intrinsics modify the data.
+  void visitMemIntrinsic(MemIntrinsic &MI) { handleMayWrite(MI); }
+
+  void visitBitCastInst(BitCastInst &BC) {
+    Base::visitBitCastInst(BC);
+    handleAlias(BC);
+  }
+
+  void visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) {
+    Base::visitAddrSpaceCastInst(ASC);
+    handleAlias(ASC);
+  }
+
+  void visitGetElementPtrInst(GetElementPtrInst &GEPI) {
+    // The base visitor will adjust Offset accordingly.
+    Base::visitGetElementPtrInst(GEPI);
+    handleAlias(GEPI);
+  }
+
+  void visitIntrinsicInst(IntrinsicInst &II) {
+    // When we found the lifetime markers refers to a
+    // subrange of the original alloca, ignore the lifetime
+    // markers to avoid misleading the analysis.
+    if (II.getIntrinsicID() != Intrinsic::lifetime_start || !IsOffsetKnown ||
+        !Offset.isZero())
+      return Base::visitIntrinsicInst(II);
+    LifetimeStarts.insert(&II);
+  }
+
+  void visitCallBase(CallBase &CB) {
+    for (unsigned Op = 0, OpCount = CB.arg_size(); Op < OpCount; ++Op)
+      if (U->get() == CB.getArgOperand(Op) && !CB.doesNotCapture(Op))
+        PI.setEscaped(&CB);
+    handleMayWrite(CB);
+  }
+
+private:
+  bool computeShouldRestoreAlloca() const {
+    // If lifetime information is available, we check it first since it's
+    // more precise. We look at every pair of lifetime.start intrinsic and
+    // every basic block that uses the pointer to see if they cross suspension
+    // points. The uses cover both direct uses as well as indirect uses.
+    if (ShouldUseLifetimeStartInfo && !LifetimeStarts.empty()) {
+      for (auto *I : Users)
+        for (auto *S : LifetimeStarts)
+          if (SCI.isDefinitionAcrossSplit(*S, I))
+            return true;
+      // Addresses are guaranteed to be identical after every lifetime.start so
+      // we cannot use the local stack if the address escaped and there is a
+      // suspend point between lifetime markers. This should also cover the
+      // case of a single lifetime.start intrinsic in a loop with suspend point.
+      if (PI.isEscaped()) {
+        for (auto *A : LifetimeStarts) {
+          for (auto *B : LifetimeStarts) {
+            if (SCI.hasPathOrLoopCrossingSuspendPoint(A->getParent(),
+                                                      B->getParent()))
+              return true;
+          }
+        }
+      }
+      return false;
+    }
+    // FIXME: Ideally the isEscaped check should come at the beginning.
+    // However there are a few loose ends that need to be fixed first before
+    // we can do that. We need to make sure we are not over-conservative, so
+    // that the data accessed in-between await_suspend and symmetric transfer
+    // is always put on the stack, and also data accessed after coro.end is
+    // always put on the stack (esp the return object). To fix that, we need
+    // to:
+    //  1) Potentially treat sret as nocapture in calls
+    //  2) Special handle the return object and put it on the stack
+    //  3) Utilize lifetime.end intrinsic
+    if (PI.isEscaped())
+      return true;
+
+    for (auto *U1 : Users)
+      for (auto *U2 : Users)
+        if (SCI.isDefinitionAcrossSplit(*U1, U2))
+          return true;
+
+    return false;
+  }
+
+  void handleMayWrite(const Instruction &I) {
+    if (!DT.dominates(&SplitInstruction, &I))
+      MayWriteBeforeSplit = true;
+  }
+
+  bool usedAfterSplit(Instruction &I) {
+    for (auto &U : I.uses())
+      if (SCI.isDefinitionAcrossSplit(I, U.getUser()))
+        return true;
+    return false;
+  }
+
+  void handleAlias(Instruction &I) {
+    // We track all aliases created prior to ompx_split but used after.
+    // These aliases may need to be recreated after ompx_split if the alloca
+    // need to live on the frame.
+    if (DT.dominates(&SplitInstruction, &I) || !usedAfterSplit(I))
+      return;
+
+    if (!IsOffsetKnown) {
+      AliasOffetMap[&I].reset();
+    } else {
+      auto Itr = AliasOffetMap.find(&I);
+      if (Itr == AliasOffetMap.end()) {
+        AliasOffetMap[&I] = Offset;
+      } else if (Itr->second && *Itr->second != Offset) {
+        // If we have seen two different possible values for this alias, we set
+        // it to empty.
+        AliasOffetMap[&I].reset();
+      }
+    }
+  }
+};
+} // namespace
+
+struct AllocaInfo {
+  AllocaInst *Alloca;
+  DenseMap<Instruction *, std::optional<APInt>> Aliases;
+  bool MayWriteBeforeSplit;
+  AllocaInfo(AllocaInst *Alloca,
+             DenseMap<Instruction *, std::optional<APInt>> Aliases,
+             bool MayWriteBeforeSplit)
+      : Alloca(Alloca), Aliases(std::move(Aliases)),
+        MayWriteBeforeSplit(MayWriteBeforeSplit) {}
+};
+
+/// For each local variable that all of its user are only after a split, we sink
+/// their lifetime.start markers to after the split block. Doing so minimizes
+/// the lifetime of each variable, hence minimizing the amount of data we end up
+/// caching.
+static void sinkLifetimeStartMarkers(Function &Kernel, Instruction *SplitInst,
+                                     SuspendCrossingInfo &SCI,
+                                     DominatorTree &DT) {
+  // Collect all possible basic blocks which may dominate all uses of allocas.
+  SmallPtrSet<BasicBlock *, 4> DomSet;
+  DomSet.insert(&Kernel.getEntryBlock());
+
+  BasicBlock *SplitBB = SplitInst->getParent();
+  DomSet.insert(SplitBB->getSingleSuccessor());
+
+  for (Instruction &I : instructions(Kernel)) {
+    AllocaInst *AI = dyn_cast<AllocaInst>(&I);
+    if (!AI)
+      continue;
+
+    for (BasicBlock *DomBB : DomSet) {
+      bool Valid = true;
+      SmallVector<Instruction *, 1> Lifetimes;
+
+      auto IsLifetimeStart = [](Instruction *I) {
+        if (auto *II = dyn_cast<IntrinsicInst>(I))
+          return II->getIntrinsicID() == Intrinsic::lifetime_start;
+        return false;
+      };
+
+      auto CollectLifetimeStart = [&](Instruction *U, AllocaInst *AI) {
+        if (IsLifetimeStart(U)) {
+          Lifetimes.push_back(U);
+          return true;
+        }
+        if (!U->hasOneUse() || U->stripPointerCasts() != AI)
+          return false;
+        if (IsLifetimeStart(U->user_back())) {
+          Lifetimes.push_back(U->user_back());
+          return true;
+        }
+        return false;
+      };
+
+      for (User *U : AI->users()) {
+        Instruction *UI = cast<Instruction>(U);
+        // For all users except lifetime.start markers, if they are all
+        // dominated by one of the basic blocks and do not cross
+        // split points as well, then there is no need to cache the
+        // instruction.
+        if (!DT.dominates(DomBB, UI->getParent()) ||
+            SCI.isDefinitionAcrossSplit(DomBB, UI)) {
+          // Skip lifetime.start, GEP and bitcast used by lifetime.start
+          // markers.
+          if (CollectLifetimeStart(UI, AI))
+            continue;
+          Valid = false;
+          break;
+        }
+      }
+      // Sink lifetime.start markers to dominate block when they are
+      // only used outside the region.
+      if (Valid && Lifetimes.size() != 0) {
+        auto *NewLifetime = Lifetimes[0]->clone();
+        NewLifetime->replaceUsesOfWith(NewLifetime->getOperand(1), AI);
+        NewLifetime->insertBefore(DomBB->getTerminator());
+
+        // All the outsided lifetime.start markers are no longer necessary.
+        for (Instruction *S : Lifetimes)
+          S->eraseFromParent();
+
+        break;
+      }
+    }
+  }
+}
+
+bool isMaterializable(Instruction *I) {
+  bool IsMaterializableInstruction =
+      (isa<CastInst>(I) || isa<GetElementPtrInst>(I) ||
+       isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<SelectInst>(I));
+
+  if (IsMaterializableInstruction)
+    return true;
+
+  CallBase *Call = dyn_cast<CallBase>(I);
+  if (!Call)
+    return false;
+
+  if (Call->getCalledFunction()->getName().starts_with(
+          "llvm.nvvm.read.ptx.sreg"))
+    return false;
+
+  MemoryEffects ME = Call->getMemoryEffects();
+  if (ME.doesNotAccessMemory())
+    return true;
+
+  // if (Call->hasFnAttr(Attribute::AttrKind::Speculatable))
+  //   return true;
+
+  return isSafeToSpeculativelyExecute(I);
+
+  return false;
+}
+
+void determineValuesAcross(Function *Kernel, SuspendCrossingInfo &SCI,
+                           FlowNetworkBuilder &FNBuilder) {
+  constexpr int64_t InfEdgeWeight = 10000;
+
+  // Args
+  for (Argument &Arg : Kernel->args()) {
+    for (User *U : Arg.users()) {
+      if (SCI.isDefinitionAcrossSplit(Arg, U)) {
+        FNBuilder.addArgumentNode(&Arg);
+        FNBuilder.addSinkEdge(&Arg, InfEdgeWeight);
+        FNBuilder.addSourceEdge(&Arg, InfEdgeWeight);
+      }
+    }
+  }
+
+  // Required
+  SmallVector<std::pair<Value *, Instruction *>> Worklist;
+  for (Instruction &I : instructions(Kernel)) {
+    if (auto *AI = dyn_cast<AllocaInst>(&I))
+      continue;
+
+    for (User *U : I.users()) {
+      if (!SCI.isDefinitionAcrossSplit(I, U)) {
+        continue;
+      }
+
+      FNBuilder.addInstructionNode(&I, 1);
+      FNBuilder.addSinkEdge(&I, 1);
+
+      if (!isMaterializable(&I)) {
+        FNBuilder.addSourceEdge(&I, InfEdgeWeight);
+        break;
+      }
+
+      if (all_of(I.operands(),
+                 [](Use &Op) { return isa<Constant>(Op.get()); })) {
+        FNBuilder.addSourceEdge(&I, InfEdgeWeight);
+        break;
+      }
+
+      for (Use &Op : I.operands()) {
+        Worklist.push_back({Op.get(), &I});
+      }
+
+      break;
+    }
+  }
+
+  // Remat
+  while (!Worklist.empty()) {
+    auto &&[Todo, Parent] = Worklist.pop_back_val();
+
+    if (isa<Constant>(Todo))
+      continue;
+
+    Argument *Arg = dyn_cast<Argument>(Todo);
+    if (Arg) {
+      FNBuilder.addArgumentNode(Arg);
+      FNBuilder.addArgumentEdge(Arg, Parent, InfEdgeWeight);
+      FNBuilder.addSourceEdge(Arg, 1);
+      continue;
+    }
+
+    Instruction *TodoI = dyn_cast<Instruction>(Todo);
+    if (!TodoI)
+      continue;
+
+    if (AllocaInst *Alloca = dyn_cast<AllocaInst>(Todo)) {
+      FNBuilder.addAllocaNode(Alloca);
+      FNBuilder.addAllocaEdge(Alloca, Parent, InfEdgeWeight);
+      FNBuilder.addSourceEdge(Alloca, 1);
+      continue;
+    }
+
+    bool Added = FNBuilder.addInstructionNode(TodoI, 1);
+
+    FNBuilder.addInstructionEdge(TodoI, Parent, InfEdgeWeight);
+
+    if (!Added)
+      continue;
+
+    if (!isMaterializable(TodoI)) {
+      FNBuilder.addSourceEdge(TodoI, InfEdgeWeight);
+      continue;
+    }
+
+    if (all_of(TodoI->operands(),
+               [](Use &Op) { return isa<Constant>(Op.get()); })) {
+      FNBuilder.addSourceEdge(TodoI, InfEdgeWeight);
+      continue;
+    }
+
+    for (Use &Op : TodoI->operands()) {
+      Worklist.push_back({Op.get(), TodoI});
+    }
+  }
+}
+
+void setNumContinuations(GlobalVariable *KernelEnvGV, unsigned NumSplits) {
+  LLVMContext &C = KernelEnvGV->getContext();
+
+  Constant *KernelEnvInitializer = KernelEnvGV->getInitializer();
+  constexpr int NumContinuationsIdx = KernelInfo::NumContinuationsIdx;
+  Constant *NumContinuations = ConstantInt::get(Type::getInt32Ty(C), NumSplits);
+  Constant *NewInitializer = ConstantFoldInsertValueInstruction(
+      KernelEnvInitializer, NumContinuations, {0, NumContinuationsIdx});
+  KernelEnvGV->setInitializer(NewInitializer);
+}
+
+void setCacheLength(GlobalVariable *CacheLengthsGV, size_t CacheLength,
+                    unsigned SplitIndex) {
+  LLVMContext &C = CacheLengthsGV->getContext();
+
+  Type *ContCountTy = Type::getInt32Ty(C);
+
+  Constant *ContinuationCacheLength =
+      ConstantInt::get(ContCountTy, CacheLength);
+
+  Constant *CacheLengthInitializer = CacheLengthsGV->getInitializer();
+
+  Constant *NewCacheLengthInitializer = ConstantFoldInsertValueInstruction(
+      CacheLengthInitializer, ContinuationCacheLength, SplitIndex);
+  CacheLengthsGV->setInitializer(NewCacheLengthInitializer);
+}
+
+void minimizeValuesAcross(Instruction *SplitInst, DominatorTree &DT,
+                          SuspendCrossingInfo &SCI,
+                          SmallVectorImpl<AllocaInfo> &RequiredAllocas,
+                          SmallVectorImpl<Instruction *> &CachedValues,
+                          SmallVectorImpl<Instruction *> &RecomputedValues) {
+  Function *Kernel = SplitInst->getFunction();
+  const DataLayout &DL = SplitInst->getModule()->getDataLayout();
+
+  // Find Instructions that require caching
+  for (Instruction &I : instructions(Kernel)) {
+    AllocaInst *Alloca = dyn_cast<AllocaInst>(&I);
+    if (!Alloca)
+      continue;
+
+    AllocaUseVisitor Visitor(DL, DT, SCI, *SplitInst, false);
+    Visitor.visitPtr(*Alloca);
+
+    if (!Visitor.getShouldRestoreAlloca())
+      continue;
+
+    RequiredAllocas.emplace_back(Alloca, Visitor.getAliasesCopy(),
+                                 Visitor.getMayWriteBeforeSplit());
+  }
+
+  FlowNetwork RematGraph;
+  FlowNetworkBuilder FNBuilder(RematGraph);
+
+  auto &Src = FNBuilder.createSource();
+  auto &Sink = FNBuilder.createSink();
+
+  determineValuesAcross(Kernel, SCI, FNBuilder);
+
+  auto RPO = ReversePostOrderTraversal<FlowNetwork *>(&RematGraph);
+
+  auto IsIncomingInst = [](FlowNetworkNode *N) {
+    return N->isInstruction() && N->getIncoming();
+  };
+
+  auto GetInst = [](FlowNetworkNode *N) { return N->getInstruction(); };
+
+  switch (SplitKernelRematMode) {
+  case RematModeKind::Cache: {
+    auto HasEdgeToSink = [&Sink](FlowNetworkNode *N) {
+      return N->isInstruction() && !N->getIncoming() && N->hasEdgeTo(Sink);
+    };
+
+    auto CachedValuesRange =
+        map_range(make_filter_range(RPO, HasEdgeToSink), GetInst);
+
+    append_range(CachedValues, CachedValuesRange);
+
+    break;
+  }
+  case RematModeKind::Recompute: {
+    auto GetTarget = [](FlowNetworkEdge *E) { return &E->getTargetNode(); };
+    auto SrcHasNoEdgeToNode = [&Src](FlowNetworkNode *N) {
+      return N->isInstruction() && N->getIncoming() && !Src.hasEdgeTo(*N);
+    };
+
+    auto CachedValuesRange = map_range(
+        make_filter_range(map_range(Src, GetTarget), IsIncomingInst), GetInst);
+    auto RecomputedValuesRange =
+        map_range(make_filter_range(RPO, SrcHasNoEdgeToNode), GetInst);
+
+    append_range(CachedValues, CachedValuesRange);
+    append_range(RecomputedValues, RecomputedValuesRange);
+
+    break;
+  }
+  case RematModeKind::MinCut: {
+    SmallPtrSet<FlowNetworkNode *, 32> Cut;
+
+    switch (MaxFlowAlogrithm) {
+    case MaxFlowAlgorithmKind::PushRelabel: {
+      PushRelableMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+      MaxFlow.computeMaxFlow();
+      MaxFlow.getSinkSideMinCut(Cut);
+      break;
+    }
+    case MaxFlowAlgorithmKind::Dinic: {
+      DinicMaxFlow<FlowNetwork, int64_t> MaxFlow(RematGraph, &Src, &Sink);
+      MaxFlow.computeMaxFlow();
+      MaxFlow.getSinkSideMinCut(Cut);
+      break;
+    }
+    }
+
+    RecomputedValues.reserve(Cut.size());
+    CachedValues.reserve(RematGraph.size() - Cut.size());
+
+    for (FlowNetworkNode *N : make_filter_range(RPO, IsIncomingInst)) {
+      if (Cut.contains(N)) {
+        RecomputedValues.push_back(N->getInstruction());
+      } else if (!Cut.contains(N) && !N->getEdges().empty()) {
+        FlowNetworkNode *Target = &N->getEdges().front()->getTargetNode();
+        if (Cut.contains(Target))
+          CachedValues.push_back(N->getInstruction());
+      }
+    }
+
+    break;
+  }
+  }
+}
+
+Value *getCachePtr(IRBuilder<> &Builder, ArrayRef<Type *> RequiredTypes,
+                   Value *CachePtr, unsigned TypeIdx, Value *ThreadIdx,
+                   Value *NumThreads) {
+
+  switch (SplitKernelCacheMemoryLayout) {
+  case CacheMemoryLayoutKind::ArrayOfStructs: {
+    Type *CacheCellTy = StructType::create(RequiredTypes, "cache_cell");
+    Value *CacheCellPtr = Builder.CreateInBoundsGEP(CacheCellTy, CachePtr,
+                                                    {ThreadIdx}, "cachecell");
+
+    return Builder.CreateStructGEP(CacheCellTy, CacheCellPtr, TypeIdx);
+  }
+  case CacheMemoryLayoutKind::StructOfArrays: {
+    Value *Result = CachePtr;
+    for (auto &&[Idx, Ty] : enumerate(RequiredTypes)) {
+      if (Idx == TypeIdx)
+        break;
+
+      Result = Builder.CreateInBoundsGEP(Ty, Result, NumThreads);
+    }
+
+    return Builder.CreateInBoundsGEP(RequiredTypes[TypeIdx], Result, ThreadIdx);
+  }
+  }
+}
+
+Function *OpenMPOpt::rematerializeValuesAcrossSplit(Function *Kernel,
+                                                    ArrayRef<Use *> Splits,
+                                                    SwitchInst *ContDispatch) {
+  LLVMContext &C = M.getContext();
+  IRBuilder<> Builder(Kernel->getEntryBlock().getTerminator());
+  const DataLayout &DL = M.getDataLayout();
+  auto TT = Triple(M.getTargetTriple());
+  unsigned NumSplits = Splits.size();
+
+  DominatorTree &DT = DTGetter(Kernel);
+  SSAUpdaterBulk SSAUpdate;
+  ValueToValueMapTy RematVMap;
+
+  SmallVector<BasicBlock *, 4> SplitBBs(NumSplits);
+  SmallVector<BasicBlock *, 4> AfterSplitBBs(NumSplits);
+  SmallVector<BasicBlock *, 4> CacheRematBBs(NumSplits);
+
+  DenseMap<Value *, unsigned> SSAVars;
+
+  for (auto &&[SplitIdx, U] : enumerate(Splits)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+    BasicBlock *BeforeSplitBB = SplitInst->getParent();
+    BasicBlock *SplitBB = SplitBlock(BeforeSplitBB, SplitInst, &DT);
+    BasicBlock *AfterSplitBB =
+        SplitBlock(SplitBB, SplitInst->getNextNode(), &DT);
+
+    SplitBBs[SplitIdx] = SplitBB;
+    AfterSplitBBs[SplitIdx] = AfterSplitBB;
+  }
+
+  BasicBlock *ExitBB = BasicBlock::Create(C, "ThreadExit", Kernel);
+
+  // Terminate Block
+  Builder.SetInsertPoint(ExitBB);
+
+  // Terminate thread once a split off BB is reached.
+  // FIXME: This only works for NVPTX!
+  if (TT.isNVPTX()) {
+    FunctionType *ExitFTy = FunctionType::get(Builder.getVoidTy(), false);
+    InlineAsm *Exit = InlineAsm::get(ExitFTy, "exit;", "", true);
+
+    Builder.CreateCall(ExitFTy, Exit);
+    Builder.CreateUnreachable();
+  } else if (TT.isAMDGCN()) {
+    Builder.CreateUnaryIntrinsic(Intrinsic::amdgcn_kill, Builder.getTrue());
+    Builder.CreateUnreachable();
+  } else {
+    llvm_unreachable("unsupported");
+  }
+
+  SmallVector<std::unique_ptr<SuspendCrossingInfo>, 4> SCIs(NumSplits);
+
+  for (auto &&[SplitIdx, U] : enumerate(Splits)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+    SCIs[SplitIdx] = std::make_unique<SuspendCrossingInfo>(*Kernel, SplitInst);
+  }
+
+  for (auto &&[U, SCI] : zip(Splits, SCIs)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+    sinkLifetimeStartMarkers(*Kernel, SplitInst, *SCI.get(), DT);
+  }
+
+  std::string KernelEnvironmentGVName =
+      (Kernel->getName() + "_kernel_environment").str();
+  auto *KernelEnvironmentGV = M.getNamedGlobal(KernelEnvironmentGVName);
+  assert(KernelEnvironmentGV && "Expected kernel environment global\n");
+
+  std::string CacheLengthsGVName = (Kernel->getName() + "_cache_lengths").str();
+  Type *CacheLengthsTy = ArrayType::get(Builder.getInt32Ty(), NumSplits);
+  auto *CacheLengthsGV = cast<GlobalVariable>(
+      M.getOrInsertGlobal(CacheLengthsGVName, CacheLengthsTy, [&]() {
+        return new GlobalVariable(
+            M, CacheLengthsTy, true, GlobalValue::PrivateLinkage,
+            Constant::getNullValue(CacheLengthsTy), CacheLengthsGVName);
+      }));
+
+  constexpr int ContinuationCacheLengthsIdx =
+      KernelInfo::ContinuationCacheLengthsIdx;
+
+  Constant *NewKernelEnvInitalizer = ConstantFoldInsertValueInstruction(
+      KernelEnvironmentGV->getInitializer(), CacheLengthsGV,
+      {0, ContinuationCacheLengthsIdx});
+  KernelEnvironmentGV->setInitializer(NewKernelEnvInitalizer);
+
+  setNumContinuations(KernelEnvironmentGV, NumSplits);
+
+  StructType *KernelLaunchEnvTy = KernelInfo::getKernelLaunchEnvironmentTy(C);
+  Type *ContCountTy = Builder.getInt64Ty();
+  Type *OffsetTy = Builder.getInt64Ty();
+
+  Argument *KernelLaunchEnv = Kernel->getArg(0);
+
+  SmallVector<SmallVector<Instruction *, 64>, 4> CachedValuesArray(NumSplits);
+  SmallVector<SmallVector<Instruction *, 64>, 4> RecomputedValuesArray(
+      NumSplits);
+  SmallVector<SmallVector<AllocaInfo>, 4> RequiredAllocasArray(NumSplits);
+
+  for (auto &&[U, SCI, RequiredAllocas, CachedValues, RecomputedValues] :
+       zip(Splits, SCIs, RequiredAllocasArray, CachedValuesArray,
+           RecomputedValuesArray)) {
+    Instruction *SplitInst = cast<Instruction>(U->getUser());
+
+    minimizeValuesAcross(SplitInst, DT, *SCI.get(), RequiredAllocas,
+                         CachedValues, RecomputedValues);
+  }
+
+  for (auto &&[SplitIndex, U] : enumerate(Splits)) {
+    ConstantInt *SplitIdx = Builder.getInt32(SplitIndex);
+
+    BasicBlock *SplitBB = SplitBBs[SplitIndex];
+    BasicBlock *AfterSplitBB = AfterSplitBBs[SplitIndex];
+
+    SmallVector<Instruction *, 64> &CachedValues =
+        CachedValuesArray[SplitIndex];
+    SmallVector<Instruction *, 64> &RecomputedValues =
+        RecomputedValuesArray[SplitIndex];
+    SmallVector<AllocaInfo> &RequiredAllocas = RequiredAllocasArray[SplitIndex];
+
+    // Cache values shared between the original kernel and the split kernel.
+    SmallVector<Type *> RequiredTypes(
+        map_range(CachedValues, [](Instruction *I) { return I->getType(); }));
+
+    RequiredTypes.reserve(RequiredAllocas.size());
+    for (AllocaInfo &Info : RequiredAllocas) {
+      if (!Info.MayWriteBeforeSplit)
+        continue;
+
+      RequiredTypes.push_back(Info.Alloca->getAllocatedType());
+    }
+
+    if (CachedValues.empty() && RecomputedValues.empty()) {
+      BasicBlock *IncBB = BasicBlock::Create(C, "", Kernel);
+      Builder.SetInsertPoint(IncBB);
+
+      // Keep track of the number of continuation kernels to spawn.
+      Value *OutContCountPtr =
+          Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                  KernelInfo::ContinuationCntBufferIdx);
+      OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
+      OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
+                                                  SplitIdx, "contcount.ptr");
+
+      Value *CacheIdx = Builder.CreateAtomicRMW(
+          AtomicRMWInst::Add, OutContCountPtr, ConstantInt::get(ContCountTy, 1),
+          std::nullopt, AtomicOrdering::Monotonic);
+      CacheIdx->setName("cacheidx");
+
+      Builder.CreateBr(ExitBB);
+
+      BranchInst *Branch = BranchInst::Create(IncBB);
+      Instruction *Term = SplitBB->getTerminator();
+      ReplaceInstWithInst(Term, Branch);
+
+      ContDispatch->addCase(SplitIdx, AfterSplitBB);
+
+      CFGUpdate Updates[] = {
+          {DT.Delete, SplitBB, AfterSplitBB},
+          {DT.Insert, SplitBB, IncBB},
+          {DT.Insert, ContDispatch->getParent(), AfterSplitBB},
+          {DT.Insert, IncBB, ExitBB},
+      };
+      DT.applyUpdates(Updates);
+
+      setCacheLength(CacheLengthsGV, 0, SplitIndex);
+
+      assert(!verifyFunction(*Kernel, &errs()));
+
+      return Kernel;
+    }
+
+    Type *CacheCellTy = StructType::create(
+        RequiredTypes, "cache_cell" + std::to_string(SplitIndex));
+
+    setCacheLength(CacheLengthsGV, DL.getTypeAllocSize(CacheCellTy) * 2,
+                   SplitIndex);
+
+    BasicBlock *CacheStoreBB = BasicBlock::Create(
+        C, "CacheStore" + Twine(SplitIndex), Kernel, AfterSplitBB);
+
+    // Store Block
+    Builder.SetInsertPoint(CacheStoreBB);
+
+    // Keep track of the number of continuation kernels to spawn.
+    Value *OutContCountPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCntBufferIdx);
+    OutContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), OutContCountPtr);
+    OutContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, OutContCountPtr,
+                                                {SplitIdx}, "contcount.ptr");
+
+    Value *CacheIdx = Builder.CreateAtomicRMW(
+        AtomicRMWInst::Add, OutContCountPtr, ConstantInt::get(ContCountTy, 1),
+        std::nullopt, AtomicOrdering::Monotonic);
+    CacheIdx->setName("cacheidx");
+
+    // Get buffer containing pointers to the caches for each split point.
+    // Get the pointer to the cache for this split point at the right offset for
+    // the current thread
+    Value *OutCachePtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCacheBufferIdx);
+    OutCachePtr = Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr);
+    OutCachePtr =
+        Builder.CreateInBoundsGEP(Builder.getPtrTy(), OutCachePtr, SplitIdx);
+    OutCachePtr =
+        Builder.CreateLoad(Builder.getPtrTy(), OutCachePtr, "cache.out.ptr");
+
+    Value *OutOffsetPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCacheOffsetIdx);
+    Value *OutOffset =
+        Builder.CreateLoad(OffsetTy, OutOffsetPtr, "cache.out.offset");
+
+    SmallVector<MDNode *, 64> InvariantGroups(CachedValues.size() +
+                                              RequiredAllocas.size());
+
+    // Cache Values
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, OutCachePtr, Idx,
+                               CacheIdx, OutOffset);
+
+      MDNode *InvGroup = MDNode::getDistinct(C, {});
+      InvariantGroups[Idx] = InvGroup;
+
+      StoreInst *Store = Builder.CreateStore(Inst, Ptr);
+      Store->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
+    }
+
+    // Cache allocas
+    for (auto [Idx, Info] :
+         enumerate(make_filter_range(RequiredAllocas, [](AllocaInfo &I) {
+           return I.MayWriteBeforeSplit;
+         }))) {
+      unsigned OffsetIdx = CachedValues.size() + Idx;
+      AllocaInst *Alloca = Info.Alloca;
+
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, OutCachePtr, OffsetIdx,
+                               CacheIdx, OutOffset);
+
+      MDNode *InvGroup = MDNode::getDistinct(C, {});
+      InvariantGroups[OffsetIdx] = InvGroup;
+
+      Value *ToCache = Builder.CreateLoad(Alloca->getAllocatedType(), Alloca);
+      StoreInst *Store = Builder.CreateStore(ToCache, Ptr);
+      Store->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
+    }
+
+    Builder.CreateBr(ExitBB);
+
+    BasicBlock *CacheRematBB = BasicBlock::Create(
+        C, "CacheRemat" + Twine(SplitIndex), Kernel, AfterSplitBB);
+    BasicBlock *CacheEntryBB = BasicBlock::Create(
+        C, "CacheEntry" + Twine(SplitIndex), Kernel, CacheRematBB);
+
+    CacheRematBBs[SplitIndex] = CacheRematBB;
+
+    BranchInst *Branch = BranchInst::Create(CacheStoreBB);
+    Instruction *Term = SplitBB->getTerminator();
+    ReplaceInstWithInst(Term, Branch);
+
+    ContDispatch->addCase(SplitIdx, CacheEntryBB);
+
+    // New Entry Block + Load Block
+    Builder.SetInsertPoint(CacheEntryBB);
+
+    Value *GlobalTid;
+    if (TT.isNVPTX()) {
+      // TODO: Use OMP runtime instead of ptx intrinsics.
+      Value *Tid = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_tid_x, {});
+      Value *BlockId = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ntid_x, {});
+      Value *NumThreads = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::nvvm_read_ptx_sreg_ctaid_x, {});
+      GlobalTid = Builder.CreateAdd(
+          Builder.CreateZExt(Tid, ContCountTy),
+          Builder.CreateMul(Builder.CreateZExt(BlockId, ContCountTy),
+                            Builder.CreateZExt(NumThreads, ContCountTy)),
+          "gtid");
+    } else if (TT.isAMDGCN()) {
+      Value *Tid = Builder.CreateIntrinsic(Builder.getInt32Ty(),
+                                           Intrinsic::amdgcn_workitem_id_x, {});
+      Value *BlockId = Builder.CreateIntrinsic(
+          Builder.getInt32Ty(), Intrinsic::amdgcn_workgroup_id_x, {});
+      Value *ArgPtr = Builder.CreateIntrinsic(
+          Builder.getPtrTy(), Intrinsic::amdgcn_implicitarg_ptr, {});
+      Value *NumThreadsPtr = Builder.CreateInBoundsGEP(
+          Builder.getInt16Ty(), ArgPtr, Builder.getInt64(6));
+      Value *NumThreads =
+          Builder.CreateLoad(Builder.getInt16Ty(), NumThreadsPtr);
+      Value *NumThreadsZext = Builder.CreateZExt(NumThreads, ContCountTy);
+      GlobalTid = Builder.CreateAdd(
+          Builder.CreateZExt(Tid, ContCountTy),
+          Builder.CreateMul(Builder.CreateZExt(BlockId, ContCountTy),
+                            NumThreadsZext),
+          "gtid");
+    } else {
+      llvm_unreachable("unsupported");
+    }
+
+    Value *InContCountPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCntBufferIdx);
+    InContCountPtr = Builder.CreateLoad(Builder.getPtrTy(), InContCountPtr);
+    InContCountPtr = Builder.CreateInBoundsGEP(ContCountTy, InContCountPtr,
+                                               Builder.getInt32(NumSplits),
+                                               "contcount.in.ptr");
+
+    Value *ContCount =
+        Builder.CreateLoad(ContCountTy, InContCountPtr, "contcount.in");
+    Value *ShouldMask =
+        Builder.CreateICmpULT(GlobalTid, ContCount, "maskthread");
+
+    Builder.CreateCondBr(ShouldMask, CacheRematBB, ExitBB);
+
+    Builder.SetInsertPoint(CacheRematBB);
+
+    CFGUpdate Updates[] = {
+        {DT.Delete, SplitBB, AfterSplitBB},
+        {DT.Insert, ContDispatch->getParent(), CacheEntryBB},
+        {DT.Insert, SplitBB, CacheStoreBB},
+        {DT.Insert, CacheEntryBB, CacheRematBB},
+        {DT.Insert, CacheEntryBB, ExitBB},
+        {DT.Insert, CacheStoreBB, ExitBB},
+    };
+    DT.applyUpdates(Updates);
+
+    // Get buffer containing pointers to the caches for each split point.
+    // LaunchEnv -> CachePtrs[NumContinuations + 1] -> Cache[Tid]
+    // Get the pointer to the cache for this split point at the right offset
+    // for the current thread
+    ConstantInt *InSplitIdx = Builder.getInt32(NumSplits + SplitIndex);
+    Value *InCachePtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCacheBufferIdx);
+    InCachePtr = Builder.CreateLoad(Builder.getPtrTy(), InCachePtr);
+    InCachePtr =
+        Builder.CreateInBoundsGEP(Builder.getPtrTy(), InCachePtr, InSplitIdx);
+    InCachePtr =
+        Builder.CreateLoad(Builder.getPtrTy(), InCachePtr, "cache.in.ptr");
+
+    Value *InOffsetPtr =
+        Builder.CreateStructGEP(KernelLaunchEnvTy, KernelLaunchEnv,
+                                KernelInfo::ContinuationCacheOffsetIdx);
+    Value *InOffset =
+        Builder.CreateLoad(OffsetTy, InOffsetPtr, "cache.in.offset");
+
+    // Rematerialize values
+    for (auto [Idx, Inst] : enumerate(CachedValues)) {
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, Idx,
+                               GlobalTid, InOffset);
+
+      MDNode *InvGroup = InvariantGroups[Idx];
+
+      LoadInst *Load =
+          Builder.CreateLoad(Inst->getType(), Ptr, Inst->getName() + ".cache");
+      Load->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
+
+      RematVMap[Inst] = Load;
+
+      unsigned Var;
+      if (SSAVars.contains(Inst)) {
+        Var = SSAVars[Inst];
+      } else {
+        Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+        SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+        SSAVars[Inst] = Var;
+      }
+
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Load);
+
+      for (Use &U : Inst->uses()) {
+        Instruction *User = cast<Instruction>(U.getUser());
+        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+          if (UserPN->getIncomingBlock(U) == Inst->getParent())
+            continue;
+        } else if (User->getParent() == Inst->getParent()) {
+          continue;
+        }
+
+        SSAUpdate.AddUse(Var, &U);
+      }
+    }
+
+    // Rematerialize allocas
+    unsigned AllocaIdx = CachedValues.size();
+    for (auto &Info : RequiredAllocas) {
+      AllocaInst *Alloca = Info.Alloca;
+      Instruction *NewAlloca = Alloca->clone();
+      Builder.Insert(NewAlloca, Alloca->getName() + ".remat");
+      RematVMap[Alloca] = NewAlloca;
+
+      unsigned Var;
+      if (SSAVars.contains(Alloca)) {
+        Var = SSAVars[Alloca];
+      } else {
+        Var = SSAUpdate.AddVariable(Alloca->getName(), Alloca->getType());
+        SSAUpdate.AddAvailableValue(Var, Alloca->getParent(), Alloca);
+        SSAVars[Alloca] = Var;
+      }
+
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewAlloca);
+
+      for (Use &U : Alloca->uses()) {
+        Instruction *User = cast<Instruction>(U.getUser());
+        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+          if (UserPN->getIncomingBlock(U) == Alloca->getParent())
+            continue;
+        } else if (User->getParent() == Alloca->getParent()) {
+          continue;
+        }
+
+        SSAUpdate.AddUse(Var, &U);
+      }
+
+      for (auto &&[Inst, Offset] : Info.Aliases) {
+        Instruction *NewInst = Inst->clone();
+        Builder.Insert(NewInst, Inst->getName() + ".remat");
+        RematVMap[Inst] = NewInst;
+
+        unsigned Var;
+        if (SSAVars.contains(Inst)) {
+          Var = SSAVars[Inst];
+        } else {
+          Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+          SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+          SSAVars[Inst] = Var;
+        }
+
+        SSAUpdate.AddAvailableValue(Var, CacheRematBB, NewInst);
+
+        for (Use &U : Inst->uses()) {
+          Instruction *User = cast<Instruction>(U.getUser());
+          if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+            if (UserPN->getIncomingBlock(U) == Inst->getParent())
+              continue;
+          } else if (User->getParent() == Inst->getParent()) {
+            continue;
+          }
+
+          SSAUpdate.AddUse(Var, &U);
+        }
+      }
+
+      if (!Info.MayWriteBeforeSplit)
+        continue;
+
+      MDNode *InvGroup = InvariantGroups[AllocaIdx];
+
+      Value *Ptr = getCachePtr(Builder, RequiredTypes, InCachePtr, AllocaIdx,
+                               GlobalTid, InOffset);
+
+      LoadInst *CachedVal = Builder.CreateLoad(Alloca->getAllocatedType(), Ptr);
+      CachedVal->setMetadata(LLVMContext::MD_invariant_group, InvGroup);
+      Builder.CreateStore(CachedVal, NewAlloca);
+
+      AllocaIdx += 1;
+    }
+
+    for (auto [Idx, Inst] : enumerate(RecomputedValues)) {
+      Instruction *Remat = Inst->clone();
+      Builder.Insert(Remat, Inst->getName() + ".recompute");
+      RematVMap[Inst] = Remat;
+
+      unsigned Var;
+      if (SSAVars.contains(Inst)) {
+        Var = SSAVars[Inst];
+      } else {
+        Var = SSAUpdate.AddVariable(Inst->getName(), Inst->getType());
+        SSAUpdate.AddAvailableValue(Var, Inst->getParent(), Inst);
+        SSAVars[Inst] = Var;
+      }
+
+      SSAUpdate.AddAvailableValue(Var, CacheRematBB, Remat);
+
+      for (Use &U : Inst->uses()) {
+        Instruction *User = cast<Instruction>(U.getUser());
+        if (PHINode *UserPN = dyn_cast<PHINode>(User)) {
+          if (UserPN->getIncomingBlock(U) == Inst->getParent())
+            continue;
+        } else if (User->getParent() == Inst->getParent()) {
+          continue;
+        }
+
+        SSAUpdate.AddUse(Var, &U);
+      }
+    }
+
+    Builder.CreateBr(AfterSplitBB);
+    DT.insertEdge(CacheRematBB, AfterSplitBB);
+
+    NumCachedValues += CachedValues.size();
+    NumRecomputedValues += RecomputedValues.size();
+  }
+
+  remapInstructionsInBlocks(CacheRematBBs, RematVMap);
+  SSAUpdate.RewriteAllUses(&DT);
+
+  assert(!verifyFunction(*Kernel, &errs()));
+
+  return Kernel;
+}
+
+void OpenMPOpt::splitKernel(Function *Kernel, SwitchInst *ContDispatch,
+                            unsigned NumSplits) {
+  LLVMContext &C = M.getContext();
+  Instruction *ContId = cast<Instruction>(ContDispatch->getCondition());
+  Type *ContIdTy = ContId->getType();
+
+  NamedMDNode *MD = M.getOrInsertNamedMetadata("nvvm.annotations");
+  GlobalVariable *ExecMode =
+      M.getGlobalVariable((Kernel->getName() + "_exec_mode").str());
+  GlobalVariable *NestedParallelism =
+      M.getGlobalVariable((Kernel->getName() + "_nested_parallelism").str());
+
+  for (unsigned Idx = 0; Idx < NumSplits; ++Idx) {
+    ValueToValueMapTy VMap;
+    Function *SplitKernel = CloneFunction(Kernel, VMap);
+    SplitKernel->setName(Kernel->getName() + "_contd_" + Twine(Idx));
+
+    Instruction *SplitContId = cast<Instruction>(VMap[ContId]);
+    SplitContId->replaceAllUsesWith(ConstantInt::get(ContIdTy, Idx));
+    SplitContId->eraseFromParent();
+
+    ConstantFoldTerminator(&SplitKernel->getEntryBlock());
+    removeUnreachableBlocks(*SplitKernel);
+
+    // Get "nvvm.annotations" metadata node.
+    Metadata *MDVals[] = {
+        ConstantAsMetadata::get(SplitKernel), MDString::get(C, "kernel"),
+        ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(C), 1))};
+
+    // Append metadata to nvvm.annotations.
+    MD->addOperand(MDNode::get(C, MDVals));
+
+    // Clone omp globals
+    if (ExecMode)
+      new GlobalVariable(M, ExecMode->getValueType(), ExecMode->isConstant(),
+                         ExecMode->getLinkage(), ExecMode->getInitializer(),
+                         SplitKernel->getName() + "_exec_mode", nullptr,
+                         ExecMode->getThreadLocalMode(),
+                         ExecMode->getAddressSpace());
+
+    if (NestedParallelism)
+      new GlobalVariable(
+          M, NestedParallelism->getValueType(), NestedParallelism->isConstant(),
+          NestedParallelism->getLinkage(), NestedParallelism->getInitializer(),
+          SplitKernel->getName() + "_nested_parallelism", nullptr,
+          NestedParallelism->getThreadLocalMode(),
+          NestedParallelism->getAddressSpace());
+
+    assert(!verifyFunction(*SplitKernel, &errs()));
+  }
+
+  ContId->replaceAllUsesWith(ConstantInt::get(ContIdTy, -1));
+  ContId->eraseFromParent();
+
+  ConstantFoldTerminator(&Kernel->getEntryBlock());
+  removeUnreachableBlocks(*Kernel);
+
+  assert(!verifyFunction(*Kernel, &errs()));
+}
+
 /// Abstract Attribute for tracking ICV values.
 struct AAICVTracker : public StateWrapper<BooleanState, AbstractAttribute> {
   using Base = StateWrapper<BooleanState, AbstractAttribute>;
@@ -2281,7 +4016,8 @@ struct AAICVTracker : public StateWrapper<BooleanState, AbstractAttribute> {
   /// See AbstractAttribute::getIdAddr()
   const char *getIdAddr() const override { return &ID; }
 
-  /// This function should return true if the type of the \p AA is AAICVTracker
+  /// This function should return true if the type of the \p AA is
+  /// AAICVTracker
   static bool classof(const AbstractAttribute *AA) {
     return (AA->getIdAddr() == &ID);
   }
@@ -2645,8 +4381,8 @@ struct AAICVTrackerCallSiteReturned : AAICVTracker {
                   InternalControlVar::ICV___last>
       ICVReplacementValuesMap;
 
-  /// Return the value with which associated value can be replaced for specific
-  /// \p ICV.
+  /// Return the value with which associated value can be replaced for
+  /// specific \p ICV.
   std::optional<Value *>
   getUniqueReplacementValue(InternalControlVar ICV) const override {
     return ICVReplacementValuesMap[ICV];
@@ -2743,13 +4479,14 @@ struct AAExecutionDomainFunction : public AAExecutionDomain {
       if (!ED.EncounteredAssumes.empty() && !A.isModulePass())
         return;
 
-      // We can remove this barrier, if it is one, or aligned barriers reaching
-      // the kernel end (if CB is nullptr). Aligned barriers reaching the kernel
-      // end should only be removed if the kernel end is their unique successor;
-      // otherwise, they may have side-effects that aren't accounted for in the
-      // kernel end in their other successors. If those barriers have other
-      // barriers reaching them, those can be transitively removed as well as
-      // long as the kernel end is also their unique successor.
+      // We can remove this barrier, if it is one, or aligned barriers
+      // reaching the kernel end (if CB is nullptr). Aligned barriers reaching
+      // the kernel end should only be removed if the kernel end is their
+      // unique successor; otherwise, they may have side-effects that aren't
+      // accounted for in the kernel end in their other successors. If those
+      // barriers have other barriers reaching them, those can be transitively
+      // removed as well as long as the kernel end is also their unique
+      // successor.
       if (CB) {
         DeletedBarriers.insert(CB);
         A.deleteAfterManifest(*CB);
@@ -2782,8 +4519,8 @@ struct AAExecutionDomainFunction : public AAExecutionDomain {
         }
       }
 
-      // If we actually eliminated a barrier we need to eliminate the associated
-      // llvm.assumes as well to avoid creating UB.
+      // If we actually eliminated a barrier we need to eliminate the
+      // associated llvm.assumes as well to avoid creating UB.
       if (!ED.EncounteredAssumes.empty() && (CB || !ED.AlignedBarriers.empty()))
         for (auto *AssumeCB : ED.EncounteredAssumes)
           A.deleteAfterManifest(*AssumeCB);
@@ -2803,8 +4540,8 @@ struct AAExecutionDomainFunction : public AAExecutionDomain {
     return getState().isValidState() && !NonNoOpFences.count(&FI);
   }
 
-  /// Merge barrier and assumption information from \p PredED into the successor
-  /// \p ED.
+  /// Merge barrier and assumption information from \p PredED into the
+  /// successor \p ED.
   void
   mergeInPredecessorBarriersAndAssumptions(Attributor &A, ExecutionDomainTy &ED,
                                            const ExecutionDomainTy &PredED);
@@ -3077,8 +4814,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
   bool Changed = false;
 
   // Helper to deal with an aligned barrier encountered during the forward
-  // traversal. \p CB is the aligned barrier, \p ED is the execution domain when
-  // it was encountered.
+  // traversal. \p CB is the aligned barrier, \p ED is the execution domain
+  // when it was encountered.
   auto HandleAlignedBarrier = [&](CallBase &CB, ExecutionDomainTy &ED) {
     Changed |= AlignedBarriers.insert(&CB);
     // First, update the barrier ED kept in the separate CEDMap.
@@ -3108,7 +4845,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
 
     bool IsEntryBB = &BB == &EntryBB;
     // TODO: We use local reasoning since we don't have a divergence analysis
-    // 	     running as well. We could basically allow uniform branches here.
+    // 	     running as well. We could basically allow uniform branches
+    // here.
     bool AlignedBarrierLastInBlock = IsEntryBB && IsKernel;
     bool IsExplicitlyAligned = IsEntryBB && IsKernel;
     ExecutionDomainTy ED;
@@ -3188,8 +4926,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
       IsExplicitlyAligned &= IsNoSync;
 
       // Next we check for calls. Aligned barriers are handled
-      // explicitly, everything else is kept for the backward traversal and will
-      // also affect our state.
+      // explicitly, everything else is kept for the backward traversal and
+      // will also affect our state.
       if (CB) {
         if (IsAlignedBarrier) {
           HandleAlignedBarrier(*CB, ED);
@@ -3314,8 +5052,8 @@ ChangeStatus AAExecutionDomainFunction::updateImpl(Attributor &A) {
 
     // Check if we computed anything different as part of the forward
     // traversal. We do not take assumptions and aligned barriers into account
-    // as they do not influence the state we iterate. Backward traversal values
-    // are handled later on.
+    // as they do not influence the state we iterate. Backward traversal
+    // values are handled later on.
     if (ED.IsExecutedByInitialThreadOnly !=
             StoredED.IsExecutedByInitialThreadOnly ||
         ED.IsReachedFromAlignedBarrierOnly !=
@@ -3604,8 +5342,8 @@ struct AAKernelInfo : public StateWrapper<KernelInfoState, AbstractAttribute> {
   using Base = StateWrapper<KernelInfoState, AbstractAttribute>;
   AAKernelInfo(const IRPosition &IRP, Attributor &A) : Base(IRP) {}
 
-  /// The callee value is tracked beyond a simple stripPointerCasts, so we allow
-  /// unknown callees.
+  /// The callee value is tracked beyond a simple stripPointerCasts, so we
+  /// allow unknown callees.
   static bool requiresCalleeForCallBase() { return false; }
 
   /// Statistics are tracked as part of manifest for now.
@@ -3647,7 +5385,8 @@ struct AAKernelInfo : public StateWrapper<KernelInfoState, AbstractAttribute> {
   /// See AbstractAttribute::getIdAddr()
   const char *getIdAddr() const override { return &ID; }
 
-  /// This function should return true if the type of the \p AA is AAKernelInfo
+  /// This function should return true if the type of the \p AA is
+  /// AAKernelInfo
   static bool classof(const AbstractAttribute *AA) {
     return (AA->getIdAddr() == &ID);
   }
@@ -3691,6 +5430,10 @@ struct AAKernelInfoFunction : AAKernelInfo {
   KERNEL_ENVIRONMENT_CONFIGURATION_SETTER(MaxThreads)
   KERNEL_ENVIRONMENT_CONFIGURATION_SETTER(MinTeams)
   KERNEL_ENVIRONMENT_CONFIGURATION_SETTER(MaxTeams)
+  KERNEL_ENVIRONMENT_CONFIGURATION_SETTER(NumContinuations)
+  // KERNEL_ENVIRONMENT_CONFIGURATION_SETTER(ContinuationCacheLengths)
+  // KERNEL_ENVIRONMENT_CONFIGURATION_SETTER(ReductionDataSize)
+  // KERNEL_ENVIRONMENT_CONFIGURATION_SETTER(ReductionBufferLength)
 
 #undef KERNEL_ENVIRONMENT_CONFIGURATION_SETTER
 
@@ -5783,6 +7526,14 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
     return FAM.getResult<OptimizationRemarkEmitterAnalysis>(*F);
   };
 
+  auto LIGetter = [&FAM](Function *F) -> LoopInfo & {
+    return FAM.getResult<LoopAnalysis>(*F);
+  };
+
+  auto DTGetter = [&FAM](Function *F) -> DominatorTree & {
+    return FAM.getResult<DominatorTreeAnalysis>(*F);
+  };
+
   BumpPtrAllocator Allocator;
   CallGraphUpdater CGUpdater;
 
@@ -5807,8 +7558,9 @@ PreservedAnalyses OpenMPOptPass::run(Module &M, ModuleAnalysisManager &AM) {
 
   Attributor A(Functions, InfoCache, AC);
 
-  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
-  Changed |= OMPOpt.run(true);
+  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, DTGetter, InfoCache, A);
+
+  Changed |= OMPOpt.run(true, SplitKernels);
 
   // Optionally inline device functions for potentially better performance.
   if (AlwaysInlineDeviceFunctions && isOpenMPDevice(M))
@@ -5861,6 +7613,14 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
     return FAM.getResult<OptimizationRemarkEmitterAnalysis>(*F);
   };
 
+  auto LIGetter = [&FAM](Function *F) -> LoopInfo & {
+    return FAM.getResult<LoopAnalysis>(*F);
+  };
+
+  auto DTGetter = [&FAM](Function *F) -> DominatorTree & {
+    return FAM.getResult<DominatorTreeAnalysis>(*F);
+  };
+
   BumpPtrAllocator Allocator;
   CallGraphUpdater CGUpdater;
   CGUpdater.initialize(CG, C, AM, UR);
@@ -5885,8 +7645,9 @@ PreservedAnalyses OpenMPOptCGSCCPass::run(LazyCallGraph::SCC &C,
 
   Attributor A(Functions, InfoCache, AC);
 
-  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, InfoCache, A);
-  bool Changed = OMPOpt.run(false);
+  OpenMPOpt OMPOpt(SCC, CGUpdater, OREGetter, LIGetter, DTGetter, InfoCache, A);
+
+  bool Changed = OMPOpt.run(false, false);
 
   if (PrintModuleAfterOptimizations)
     LLVM_DEBUG(dbgs() << TAG << "Module after OpenMPOpt CGSCC Pass:\n" << M);

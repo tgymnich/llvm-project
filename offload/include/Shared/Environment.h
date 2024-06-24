@@ -88,6 +88,8 @@ struct ConfigurationEnvironmentTy {
   int32_t MaxTeams = -1;
   int32_t ReductionDataSize = 0;
   int32_t ReductionBufferLength = 0;
+  uint32_t NumContinuations = 0;
+  uint32_t *ContinuationCacheLengths = 0;
   //}
 };
 
@@ -103,6 +105,9 @@ struct KernelLaunchEnvironmentTy {
   uint32_t ReductionCnt = 0;
   uint32_t ReductionIterCnt = 0;
   void *ReductionBuffer = nullptr;
+  uint64_t *ContinuationCntBuffer = nullptr;
+  uint64_t ContinuationCacheOffset = 0;
+  void **ContinuationCacheBuffer = nullptr;
 };
 
 #endif // OMPTARGET_SHARED_ENVIRONMENT_H

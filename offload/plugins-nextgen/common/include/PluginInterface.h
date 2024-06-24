@@ -249,7 +249,7 @@ public:
 /// implement the necessary virtual function members.
 struct GenericKernelTy {
   /// Construct a kernel with a name and a execution mode.
-  GenericKernelTy(const char *Name)
+  GenericKernelTy(StringRef Name)
       : Name(Name), PreferredNumThreads(0), MaxNumThreads(0) {}
 
   virtual ~GenericKernelTy() {}
@@ -270,7 +270,7 @@ struct GenericKernelTy {
                            AsyncInfoWrapperTy &AsyncInfoWrapper) const = 0;
 
   /// Get the kernel name.
-  const char *getName() const { return Name; }
+  StringRef getName() const { return Name; }
 
   /// Get the kernel image.
   DeviceImageTy &getImage() const {
@@ -286,7 +286,18 @@ struct GenericKernelTy {
   /// Return a device pointer to a new kernel launch environment.
   Expected<KernelLaunchEnvironmentTy *>
   getKernelLaunchEnvironment(GenericDeviceTy &GenericDevice, uint32_t Version,
-                             AsyncInfoWrapperTy &AsyncInfo) const;
+                             AsyncInfoWrapperTy &AsyncInfo, uint32_t NumThreads,
+                             uint64_t NumBlocks, void ** ContinuationCacheBuffer,
+                             uint64_t * ContinuationCountBuffer) const;
+
+  Expected<void **> getContinuationCacheBuffer(
+      GenericDeviceTy &GenericDevice, AsyncInfoWrapperTy &AsyncInfoWrapper,
+      uint64_t TotalThreads, unsigned NumContinuations) const;
+
+  Expected<uint64_t *>
+  getContinuationCountBuffer(GenericDeviceTy &GenericDevice,
+                             AsyncInfoWrapperTy &AsyncInfoWrapper,
+                             unsigned NumContinuations) const;
 
   /// Indicate whether an execution mode is valid.
   static bool isValidExecutionMode(OMPTgtExecModeFlags ExecutionMode) {
@@ -360,7 +371,7 @@ private:
   }
 
   /// The kernel name.
-  const char *Name;
+  StringRef Name;
 
   /// The image that contains this kernel.
   DeviceImageTy *ImagePtr = nullptr;
@@ -377,6 +388,10 @@ protected:
 
   /// The prototype kernel launch environment.
   KernelLaunchEnvironmentTy KernelLaunchEnvironment;
+
+  llvm::SmallVector<GenericKernelTy *> Continuations;
+
+  llvm::SmallVector<std::string> ContinuationNames;
 
   /// If the kernel is a bare kernel.
   bool IsBareKernel = false;
@@ -861,7 +876,7 @@ struct GenericDeviceTy : public DeviceAllocatorTy {
   virtual bool useAutoZeroCopyImpl() { return false; }
 
   /// Allocate and construct a kernel object.
-  virtual Expected<GenericKernelTy &> constructKernel(const char *Name) = 0;
+  virtual Expected<GenericKernelTy &> constructKernel(llvm::StringRef Name) = 0;
 
   /// Reference to the underlying plugin that created this device.
   GenericPluginTy &Plugin;

@@ -97,7 +97,7 @@ MODULE_PASS("no-op-module", NoOpModulePass())
 MODULE_PASS("objc-arc-apelim", ObjCARCAPElimPass())
 MODULE_PASS("openmp-opt", OpenMPOptPass())
 MODULE_PASS("openmp-opt-postlink",
-            OpenMPOptPass(ThinOrFullLTOPhase::FullLTOPostLink))
+            OpenMPOptPass(ThinOrFullLTOPhase::FullLTOPostLink, true))
 MODULE_PASS("partial-inliner", PartialInlinerPass())
 MODULE_PASS("pgo-icall-prom", PGOIndirectCallPromotion())
 MODULE_PASS("pgo-instr-gen", PGOInstrumentationGen())
@@ -233,6 +233,7 @@ CGSCC_PASS("attributor-light-cgscc", AttributorLightCGSCCPass())
 CGSCC_PASS("invalidate<all>", InvalidateAllAnalysesPass())
 CGSCC_PASS("no-op-cgscc", NoOpCGSCCPass())
 CGSCC_PASS("openmp-opt-cgscc", OpenMPOptCGSCCPass())
+CGSCC_PASS("openmp-opt-postlink-cgscc", OpenMPOptCGSCCPass(ThinOrFullLTOPhase::FullLTOPostLink))
 #undef CGSCC_PASS
 
 #ifndef CGSCC_PASS_WITH_PARAMS
