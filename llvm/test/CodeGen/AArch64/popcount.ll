@@ -231,28 +231,6 @@ define <2 x i64> @popcount2x64(<2 x i64> %0) {
 ; SVE-GISEL-NEXT:    uaddlp v0.4s, v0.8h
 ; SVE-GISEL-NEXT:    uaddlp v0.2d, v0.4s
 ; SVE-GISEL-NEXT:    ret
-; NEON-LABEL: popcount2x64:
-; NEON:       // %bb.0: // %Entry
-; NEON-NEXT:    cnt v0.16b, v0.16b
-; NEON-NEXT:    uaddlp v0.8h, v0.16b
-; NEON-NEXT:    uaddlp v0.4s, v0.8h
-; NEON-NEXT:    uaddlp v0.2d, v0.4s
-; NEON-NEXT:    ret
-; DOT-LABEL: popcount2x64:
-; DOT:       // %bb.0: // %Entry
-; DOT-NEXT:    movi v1.16b, #1
-; DOT-NEXT:    cnt v0.16b, v0.16b
-; DOT-NEXT:    movi v2.2d, #0000000000000000
-; DOT-NEXT:    udot v2.4s, v1.16b, v0.16b
-; DOT-NEXT:    uaddlp v0.2d, v2.4s
-; DOT-NEXT:    ret
-; SVE-LABEL: popcount2x64:
-; SVE:       // %bb.0: // %Entry
-; SVE-NEXT:    cnt v0.16b, v0.16b
-; SVE-NEXT:    uaddlp v0.8h, v0.16b
-; SVE-NEXT:    uaddlp v0.4s, v0.8h
-; SVE-NEXT:    uaddlp v0.2d, v0.4s
-; SVE-NEXT:    ret
 Entry:
   %1 = tail call <2 x i64> @llvm.ctpop.v2i64(<2 x i64> %0)
   ret <2 x i64> %1
@@ -336,25 +314,6 @@ define <4 x i32> @popcount4x32(<4 x i32> %0) {
 ; SVE-GISEL-NEXT:    uaddlp v0.8h, v0.16b
 ; SVE-GISEL-NEXT:    uaddlp v0.4s, v0.8h
 ; SVE-GISEL-NEXT:    ret
-; NEON-LABEL: popcount4x32:
-; NEON:       // %bb.0: // %Entry
-; NEON-NEXT:    cnt v0.16b, v0.16b
-; NEON-NEXT:    uaddlp v0.8h, v0.16b
-; NEON-NEXT:    uaddlp v0.4s, v0.8h
-; NEON-NEXT:    ret
-; DOT-LABEL: popcount4x32:
-; DOT:       // %bb.0: // %Entry
-; DOT-NEXT:    movi v1.16b, #1
-; DOT-NEXT:    cnt v2.16b, v0.16b
-; DOT-NEXT:    movi v0.2d, #0000000000000000
-; DOT-NEXT:    udot v0.4s, v1.16b, v2.16b
-; DOT-NEXT:    ret
-; SVE-LABEL: popcount4x32:
-; SVE:       // %bb.0: // %Entry
-; SVE-NEXT:    cnt v0.16b, v0.16b
-; SVE-NEXT:    uaddlp v0.8h, v0.16b
-; SVE-NEXT:    uaddlp v0.4s, v0.8h
-; SVE-NEXT:    ret
 Entry:
   %1 = tail call <4 x i32> @llvm.ctpop.v4i32(<4 x i32> %0)
   ret <4 x i32> %1
@@ -399,26 +358,6 @@ define <2 x i32> @popcount2x32(<2 x i32> %0) {
 ; SVE-GISEL-NEXT:    uaddlp v0.4h, v0.8b
 ; SVE-GISEL-NEXT:    uaddlp v0.2s, v0.4h
 ; SVE-GISEL-NEXT:    ret
-; NEON-LABEL: popcount2x32:
-; NEON:       // %bb.0: // %Entry
-; NEON-NEXT:    cnt v0.8b, v0.8b
-; NEON-NEXT:    uaddlp v0.4h, v0.8b
-; NEON-NEXT:    uaddlp v0.2s, v0.4h
-; NEON-NEXT:    ret
-; DOT-LABEL: popcount2x32:
-; DOT:       // %bb.0: // %Entry
-; DOT-NEXT:    movi v1.2d, #0000000000000000
-; DOT-NEXT:    cnt v0.8b, v0.8b
-; DOT-NEXT:    movi v2.8b, #1
-; DOT-NEXT:    udot v1.2s, v2.8b, v0.8b
-; DOT-NEXT:    fmov d0, d1
-; DOT-NEXT:    ret
-; SVE-LABEL: popcount2x32:
-; SVE:       // %bb.0: // %Entry
-; SVE-NEXT:    cnt v0.8b, v0.8b
-; SVE-NEXT:    uaddlp v0.4h, v0.8b
-; SVE-NEXT:    uaddlp v0.2s, v0.4h
-; SVE-NEXT:    ret
 Entry:
   %1 = tail call <2 x i32> @llvm.ctpop.v2i32(<2 x i32> %0)
   ret <2 x i32> %1
