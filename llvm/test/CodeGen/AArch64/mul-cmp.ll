@@ -8,10 +8,10 @@
 define i1 @mul_nsw_eq0_i8(i8 %x, i8 %y) {
 ; CHECK-LABEL: mul_nsw_eq0_i8:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    tst w0, #0xff
-; CHECK-NEXT:    cset w8, eq
+; CHECK-NEXT:    and w8, w0, #0xff
 ; CHECK-NEXT:    tst w1, #0xff
-; CHECK-NEXT:    csinc w0, w8, wzr, ne
+; CHECK-NEXT:    ccmp w8, #0, #4, ne
+; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
   %m = mul nsw i8 %x, %y
   %r = icmp eq i8 %m, 0
@@ -49,10 +49,10 @@ define i1 @mul_nsw_eq0_i8_size(i8 %x, i8 %y) minsize {
 define i1 @mul_nsw_ne0_i16(i16 %x, i16 %y) {
 ; CHECK-LABEL: mul_nsw_ne0_i16:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    tst w0, #0xffff
-; CHECK-NEXT:    cset w8, ne
+; CHECK-NEXT:    and w8, w0, #0xffff
 ; CHECK-NEXT:    tst w1, #0xffff
-; CHECK-NEXT:    csel w0, wzr, w8, eq
+; CHECK-NEXT:    ccmp w8, #0, #4, ne
+; CHECK-NEXT:    cset w0, ne
 ; CHECK-NEXT:    ret
   %m = mul nsw i16 %x, %y
   %r = icmp ne i16 %m, 0
@@ -62,8 +62,8 @@ define i1 @mul_nsw_ne0_i16(i16 %x, i16 %y) {
 define i1 @mul_nuw_eq0_i32(i32 %x, i32 %y) {
 ; CHECK-LABEL: mul_nuw_eq0_i32:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp w0, #0
-; CHECK-NEXT:    ccmp w1, #0, #4, ne
+; CHECK-NEXT:    cmp w1, #0
+; CHECK-NEXT:    ccmp w0, #0, #4, ne
 ; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
   %m = mul nuw i32 %x, %y
@@ -74,8 +74,8 @@ define i1 @mul_nuw_eq0_i32(i32 %x, i32 %y) {
 define i1 @mul_nsw_nuw_ne0_i64(i64 %x, i64 %y) {
 ; CHECK-LABEL: mul_nsw_nuw_ne0_i64:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp x0, #0
-; CHECK-NEXT:    ccmp x1, #0, #4, ne
+; CHECK-NEXT:    cmp x1, #0
+; CHECK-NEXT:    ccmp x0, #0, #4, ne
 ; CHECK-NEXT:    cset w0, ne
 ; CHECK-NEXT:    ret
   %m = mul nsw nuw i64 %x, %y

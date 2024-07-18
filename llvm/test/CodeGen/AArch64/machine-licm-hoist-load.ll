@@ -417,12 +417,13 @@ define i64 @one_dimensional_two_loads(ptr %a, ptr %b, i64 %N) {
 ; CHECK-NEXT:  .LBB6_1: // %for.body
 ; CHECK-NEXT:    // =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ldr x11, [x0], #8
-; CHECK-NEXT:    ldr w12, [x11]
-; CHECK-NEXT:    ldrh w11, [x11, #4]
-; CHECK-NEXT:    cmp w12, w9
-; CHECK-NEXT:    ccmp w11, w10, #0, eq
-; CHECK-NEXT:    cinc x8, x8, eq
+; CHECK-NEXT:    ldrh w12, [x11, #4]
+; CHECK-NEXT:    ldr w11, [x11]
+; CHECK-NEXT:    cmp w12, w10
+; CHECK-NEXT:    ccmp w11, w9, #0, eq
+; CHECK-NEXT:    cset w11, eq
 ; CHECK-NEXT:    subs x2, x2, #1
+; CHECK-NEXT:    add x8, x8, x11
 ; CHECK-NEXT:    b.ne .LBB6_1
 ; CHECK-NEXT:  // %bb.2: // %for.exit
 ; CHECK-NEXT:    mov x0, x8

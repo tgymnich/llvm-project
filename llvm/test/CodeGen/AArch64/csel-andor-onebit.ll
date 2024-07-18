@@ -76,10 +76,10 @@ define i32 @ori32_toomanybits(i32 %x, i32 %y) {
 define i32 @andi32_ne(i8 %x, i8 %y) {
 ; CHECK-LABEL: andi32_ne:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    tst w0, #0xff
-; CHECK-NEXT:    cset w8, eq
+; CHECK-NEXT:    and w8, w0, #0xff
 ; CHECK-NEXT:    tst w1, #0xff
-; CHECK-NEXT:    csel w0, wzr, w8, eq
+; CHECK-NEXT:    ccmp w8, #0, #0, ne
+; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
   %xc = icmp eq i8 %x, 0
   %xa = zext i1 %xc to i32
@@ -93,9 +93,10 @@ define i32 @andi32_sgt(i8 %x, i8 %y) {
 ; CHECK-LABEL: andi32_sgt:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    sxtb w8, w1
-; CHECK-NEXT:    tst w0, #0xff
-; CHECK-NEXT:    ccmp w8, #0, #4, eq
-; CHECK-NEXT:    cset w0, gt
+; CHECK-NEXT:    and w9, w0, #0xff
+; CHECK-NEXT:    cmp w8, #0
+; CHECK-NEXT:    ccmp w9, #0, #0, gt
+; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
   %xc = icmp eq i8 %x, 0
   %xa = zext i1 %xc to i32
@@ -150,10 +151,10 @@ define i64 @ori64_eq_c(i64 %x, i32 %y) {
 define i64 @andi64_ne(i8 %x, i8 %y) {
 ; CHECK-LABEL: andi64_ne:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    tst w0, #0xff
-; CHECK-NEXT:    cset w8, eq
+; CHECK-NEXT:    and w8, w0, #0xff
 ; CHECK-NEXT:    tst w1, #0xff
-; CHECK-NEXT:    csel w0, wzr, w8, eq
+; CHECK-NEXT:    ccmp w8, #0, #0, ne
+; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
   %xc = icmp eq i8 %x, 0
   %xa = zext i1 %xc to i64

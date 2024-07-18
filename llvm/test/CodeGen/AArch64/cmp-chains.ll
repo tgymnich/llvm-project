@@ -8,9 +8,9 @@
 define i32 @cmp_and2(i32 %0, i32 %1, i32 %2, i32 %3) {
 ; SDISEL-LABEL: cmp_and2:
 ; SDISEL:       // %bb.0:
-; SDISEL-NEXT:    cmp w0, w1
-; SDISEL-NEXT:    ccmp w2, w3, #0, lo
-; SDISEL-NEXT:    cset w0, hi
+; SDISEL-NEXT:    cmp w2, w3
+; SDISEL-NEXT:    ccmp w0, w1, #2, hi
+; SDISEL-NEXT:    cset w0, lo
 ; SDISEL-NEXT:    ret
 ;
 ; GISEL-LABEL: cmp_and2:
@@ -32,10 +32,12 @@ define i32 @cmp_and2(i32 %0, i32 %1, i32 %2, i32 %3) {
 define i32 @cmp_and3(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5) {
 ; SDISEL-LABEL: cmp_and3:
 ; SDISEL:       // %bb.0:
-; SDISEL-NEXT:    cmp w0, w1
-; SDISEL-NEXT:    ccmp w2, w3, #0, lo
-; SDISEL-NEXT:    ccmp w4, w5, #4, hi
-; SDISEL-NEXT:    cset w0, ne
+; SDISEL-NEXT:    cmp w2, w3
+; SDISEL-NEXT:    ccmp w0, w1, #2, hi
+; SDISEL-NEXT:    cset w8, lo
+; SDISEL-NEXT:    cmp w4, w5
+; SDISEL-NEXT:    cset w9, ne
+; SDISEL-NEXT:    and w0, w8, w9
 ; SDISEL-NEXT:    ret
 ;
 ; GISEL-LABEL: cmp_and3:
@@ -62,11 +64,14 @@ define i32 @cmp_and3(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5) {
 define i32 @cmp_and4(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5, i32 %6, i32 %7) {
 ; SDISEL-LABEL: cmp_and4:
 ; SDISEL:       // %bb.0:
-; SDISEL-NEXT:    cmp w2, w3
-; SDISEL-NEXT:    ccmp w0, w1, #2, hi
-; SDISEL-NEXT:    ccmp w4, w5, #4, lo
-; SDISEL-NEXT:    ccmp w6, w7, #0, ne
-; SDISEL-NEXT:    cset w0, eq
+; SDISEL-NEXT:    cmp w0, w1
+; SDISEL-NEXT:    ccmp w2, w3, #0, lo
+; SDISEL-NEXT:    cset w8, hi
+; SDISEL-NEXT:    cmp w4, w5
+; SDISEL-NEXT:    cset w9, ne
+; SDISEL-NEXT:    cmp w6, w7
+; SDISEL-NEXT:    and w8, w8, w9
+; SDISEL-NEXT:    csel w0, wzr, w8, ne
 ; SDISEL-NEXT:    ret
 ;
 ; GISEL-LABEL: cmp_and4:
@@ -98,9 +103,9 @@ define i32 @cmp_and4(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5, i32 %6, i32
 define i32 @cmp_or2(i32 %0, i32 %1, i32 %2, i32 %3) {
 ; SDISEL-LABEL: cmp_or2:
 ; SDISEL:       // %bb.0:
-; SDISEL-NEXT:    cmp w0, w1
-; SDISEL-NEXT:    ccmp w2, w3, #0, hs
-; SDISEL-NEXT:    cset w0, ne
+; SDISEL-NEXT:    cmp w2, w3
+; SDISEL-NEXT:    ccmp w0, w1, #0, eq
+; SDISEL-NEXT:    cset w0, lo
 ; SDISEL-NEXT:    ret
 ;
 ; GISEL-LABEL: cmp_or2:
@@ -123,10 +128,12 @@ define i32 @cmp_or2(i32 %0, i32 %1, i32 %2, i32 %3) {
 define i32 @cmp_or3(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5) {
 ; SDISEL-LABEL: cmp_or3:
 ; SDISEL:       // %bb.0:
-; SDISEL-NEXT:    cmp w0, w1
-; SDISEL-NEXT:    ccmp w2, w3, #2, hs
-; SDISEL-NEXT:    ccmp w4, w5, #0, ls
-; SDISEL-NEXT:    cset w0, ne
+; SDISEL-NEXT:    cmp w2, w3
+; SDISEL-NEXT:    ccmp w0, w1, #0, ls
+; SDISEL-NEXT:    cset w8, lo
+; SDISEL-NEXT:    cmp w4, w5
+; SDISEL-NEXT:    cset w9, ne
+; SDISEL-NEXT:    orr w0, w8, w9
 ; SDISEL-NEXT:    ret
 ;
 ; GISEL-LABEL: cmp_or3:
@@ -154,11 +161,15 @@ define i32 @cmp_or3(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5) {
 define i32 @cmp_or4(i32 %0, i32 %1, i32 %2, i32 %3, i32 %4, i32 %5, i32 %6, i32 %7) {
 ; SDISEL-LABEL: cmp_or4:
 ; SDISEL:       // %bb.0:
-; SDISEL-NEXT:    cmp w0, w1
-; SDISEL-NEXT:    ccmp w2, w3, #2, hs
-; SDISEL-NEXT:    ccmp w4, w5, #0, ls
-; SDISEL-NEXT:    ccmp w6, w7, #4, eq
-; SDISEL-NEXT:    cset w0, eq
+; SDISEL-NEXT:    cmp w2, w3
+; SDISEL-NEXT:    ccmp w0, w1, #0, ls
+; SDISEL-NEXT:    cset w8, lo
+; SDISEL-NEXT:    cmp w4, w5
+; SDISEL-NEXT:    cset w9, ne
+; SDISEL-NEXT:    cmp w6, w7
+; SDISEL-NEXT:    cset w10, eq
+; SDISEL-NEXT:    orr w9, w9, w10
+; SDISEL-NEXT:    orr w0, w8, w9
 ; SDISEL-NEXT:    ret
 ;
 ; GISEL-LABEL: cmp_or4:

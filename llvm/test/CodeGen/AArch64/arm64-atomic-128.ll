@@ -260,7 +260,8 @@ define void @fetch_and_nand(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspl x4, x5, x10, x11, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB4_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB4_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -317,7 +318,8 @@ define void @fetch_and_or(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspal x4, x5, x8, x9, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB5_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB5_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -374,7 +376,8 @@ define void @fetch_and_add(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspal x4, x5, x8, x9, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB6_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB6_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -430,7 +433,8 @@ define void @fetch_and_sub(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspal x4, x5, x8, x9, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB7_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB7_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -492,7 +496,8 @@ define void @fetch_and_min(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspal x4, x5, x8, x9, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB8_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB8_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -554,7 +559,8 @@ define void @fetch_and_max(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspal x4, x5, x8, x9, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB9_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB9_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -616,7 +622,8 @@ define void @fetch_and_umin(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspal x4, x5, x8, x9, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB10_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB10_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -678,7 +685,8 @@ define void @fetch_and_umax(ptr %p, i128 %bits) {
 ; LSE-NEXT:    caspal x4, x5, x8, x9, [x0]
 ; LSE-NEXT:    cmp x5, x7
 ; LSE-NEXT:    ccmp x4, x6, #0, eq
-; LSE-NEXT:    b.ne .LBB11_1
+; LSE-NEXT:    cset w8, ne
+; LSE-NEXT:    tbnz w8, #0, .LBB11_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    adrp x8, :got:var
 ; LSE-NEXT:    ldr x8, [x8, :got_lo12:var]
@@ -714,8 +722,8 @@ define i128 @atomic_load_seq_cst(ptr %p) {
 ;
 ; LSE-LABEL: atomic_load_seq_cst:
 ; LSE:       // %bb.0:
-; LSE-NEXT:    mov x2, #0
-; LSE-NEXT:    mov x3, #0
+; LSE-NEXT:    mov x2, #0 // =0x0
+; LSE-NEXT:    mov x3, #0 // =0x0
 ; LSE-NEXT:    caspal x2, x3, x2, x3, [x0]
 ; LSE-NEXT:    mov x0, x2
 ; LSE-NEXT:    mov x1, x3
@@ -747,8 +755,8 @@ define i128 @atomic_load_relaxed(i64, i64, ptr %p) {
 ;
 ; LSE-LABEL: atomic_load_relaxed:
 ; LSE:       // %bb.0:
-; LSE-NEXT:    mov x0, #0
-; LSE-NEXT:    mov x1, #0
+; LSE-NEXT:    mov x0, #0 // =0x0
+; LSE-NEXT:    mov x1, #0 // =0x0
 ; LSE-NEXT:    casp x0, x1, x0, x1, [x2]
 ; LSE-NEXT:    ret
     %r = load atomic i128, ptr %p monotonic, align 16
@@ -789,9 +797,10 @@ define void @atomic_store_seq_cst(i128 %in, ptr %p) {
 ; LSE-NEXT:    caspal x6, x7, x0, x1, [x2]
 ; LSE-NEXT:    cmp x7, x5
 ; LSE-NEXT:    ccmp x6, x4, #0, eq
+; LSE-NEXT:    cset w8, ne
 ; LSE-NEXT:    mov x4, x6
 ; LSE-NEXT:    mov x5, x7
-; LSE-NEXT:    b.ne .LBB14_1
+; LSE-NEXT:    tbnz w8, #0, .LBB14_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    ret
    store atomic i128 %in, ptr %p seq_cst, align 16
@@ -831,9 +840,10 @@ define void @atomic_store_release(i128 %in, ptr %p) {
 ; LSE-NEXT:    caspl x6, x7, x0, x1, [x2]
 ; LSE-NEXT:    cmp x7, x5
 ; LSE-NEXT:    ccmp x6, x4, #0, eq
+; LSE-NEXT:    cset w8, ne
 ; LSE-NEXT:    mov x4, x6
 ; LSE-NEXT:    mov x5, x7
-; LSE-NEXT:    b.ne .LBB15_1
+; LSE-NEXT:    tbnz w8, #0, .LBB15_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    ret
    store atomic i128 %in, ptr %p release, align 16
@@ -873,9 +883,10 @@ define void @atomic_store_relaxed(i128 %in, ptr %p) {
 ; LSE-NEXT:    casp x6, x7, x0, x1, [x2]
 ; LSE-NEXT:    cmp x7, x5
 ; LSE-NEXT:    ccmp x6, x4, #0, eq
+; LSE-NEXT:    cset w8, ne
 ; LSE-NEXT:    mov x4, x6
 ; LSE-NEXT:    mov x5, x7
-; LSE-NEXT:    b.ne .LBB16_1
+; LSE-NEXT:    tbnz w8, #0, .LBB16_1
 ; LSE-NEXT:  // %bb.2: // %atomicrmw.end
 ; LSE-NEXT:    ret
    store atomic i128 %in, ptr %p unordered, align 16

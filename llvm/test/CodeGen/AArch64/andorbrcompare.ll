@@ -9,12 +9,13 @@ define i32 @and_eq_ne_ult(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5, 
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #0, ne
-; SDISEL-NEXT:    b.eq .LBB0_3
+; SDISEL-NEXT:    cset w8, eq
+; SDISEL-NEXT:    tbnz w8, #0, .LBB0_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.lo .LBB0_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.lo .LBB0_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB0_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1
@@ -60,12 +61,13 @@ define i32 @and_ne_ult_ule(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5,
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #4, lo
-; SDISEL-NEXT:    b.ne .LBB1_3
+; SDISEL-NEXT:    cset w8, ne
+; SDISEL-NEXT:    tbnz w8, #0, .LBB1_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.ls .LBB1_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.ls .LBB1_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB1_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1
@@ -111,12 +113,13 @@ define i32 @and_ult_ule_ugt(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #2, ls
-; SDISEL-NEXT:    b.lo .LBB2_3
+; SDISEL-NEXT:    cset w8, lo
+; SDISEL-NEXT:    tbnz w8, #0, .LBB2_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.hi .LBB2_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.hi .LBB2_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB2_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1
@@ -162,12 +165,13 @@ define i32 @and_ule_ugt_uge(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #2, hi
-; SDISEL-NEXT:    b.ls .LBB3_3
+; SDISEL-NEXT:    cset w8, ls
+; SDISEL-NEXT:    tbnz w8, #0, .LBB3_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.hs .LBB3_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.hs .LBB3_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB3_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1
@@ -213,12 +217,13 @@ define i32 @and_ugt_uge_slt(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #0, hs
-; SDISEL-NEXT:    b.hi .LBB4_3
+; SDISEL-NEXT:    cset w8, hi
+; SDISEL-NEXT:    tbnz w8, #0, .LBB4_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.lt .LBB4_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.lt .LBB4_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB4_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1
@@ -264,12 +269,13 @@ define i32 @and_uge_slt_sle(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #0, lt
-; SDISEL-NEXT:    b.hs .LBB5_3
+; SDISEL-NEXT:    cset w8, hs
+; SDISEL-NEXT:    tbnz w8, #0, .LBB5_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.le .LBB5_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.le .LBB5_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB5_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1
@@ -315,12 +321,13 @@ define i32 @and_slt_sle_sgt(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #0, le
-; SDISEL-NEXT:    b.lt .LBB6_3
+; SDISEL-NEXT:    cset w8, lt
+; SDISEL-NEXT:    tbnz w8, #0, .LBB6_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.gt .LBB6_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.gt .LBB6_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB6_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1
@@ -366,12 +373,13 @@ define i32 @and_sle_sgt_sge(i32 %s0, i32 %s1, i32 %s2, i32 %s3, i32 %s4, i32 %s5
 ; SDISEL:       // %bb.0: // %entry
 ; SDISEL-NEXT:    cmp w2, w3
 ; SDISEL-NEXT:    ccmp w0, w1, #0, gt
-; SDISEL-NEXT:    b.le .LBB7_3
+; SDISEL-NEXT:    cset w8, le
+; SDISEL-NEXT:    tbnz w8, #0, .LBB7_3
 ; SDISEL-NEXT:  // %bb.1: // %entry
 ; SDISEL-NEXT:    cmp w4, w5
-; SDISEL-NEXT:    b.ge .LBB7_3
-; SDISEL-NEXT:  // %bb.2:
 ; SDISEL-NEXT:    mov w0, wzr
+; SDISEL-NEXT:    b.ge .LBB7_3
+; SDISEL-NEXT:  // %bb.2: // %common.ret
 ; SDISEL-NEXT:    ret
 ; SDISEL-NEXT:  .LBB7_3: // %if
 ; SDISEL-NEXT:    mov w0, #1 // =0x1

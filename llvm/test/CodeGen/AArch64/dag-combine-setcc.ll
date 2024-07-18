@@ -260,9 +260,9 @@ define i1 @combine_setcc_ne_vecreduce_and_v64i1(<64 x i8> %a) {
 define i1 @combine_setcc_eq0_conjunction_xor_or(ptr %a, ptr %b) {
 ; CHECK-LABEL: combine_setcc_eq0_conjunction_xor_or:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    ldp x8, x11, [x1]
-; CHECK-NEXT:    ldp x9, x10, [x0]
-; CHECK-NEXT:    cmp x9, x8
+; CHECK-NEXT:    ldp x10, x8, [x0]
+; CHECK-NEXT:    ldp x11, x9, [x1]
+; CHECK-NEXT:    cmp x8, x9
 ; CHECK-NEXT:    ccmp x10, x11, #0, eq
 ; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
@@ -274,9 +274,9 @@ define i1 @combine_setcc_eq0_conjunction_xor_or(ptr %a, ptr %b) {
 define i1 @combine_setcc_ne0_conjunction_xor_or(ptr %a, ptr %b) {
 ; CHECK-LABEL: combine_setcc_ne0_conjunction_xor_or:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    ldp x8, x11, [x1]
-; CHECK-NEXT:    ldp x9, x10, [x0]
-; CHECK-NEXT:    cmp x9, x8
+; CHECK-NEXT:    ldp x10, x8, [x0]
+; CHECK-NEXT:    ldp x11, x9, [x1]
+; CHECK-NEXT:    cmp x8, x9
 ; CHECK-NEXT:    ccmp x10, x11, #0, eq
 ; CHECK-NEXT:    cset w0, ne
 ; CHECK-NEXT:    ret
@@ -318,7 +318,11 @@ define i32 @combine_setcc_multiuse(i32 %0, i32 %1, i32 %2, i32 %3) {
 define i32 @combine_setcc_glue(i128 noundef %x, i128 noundef %y) {
 ; CHECK-LABEL: combine_setcc_glue:
 ; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    eor x8, x1, x3
+; CHECK-NEXT:    eor x9, x0, x2
 ; CHECK-NEXT:    cmp x0, x2
+; CHECK-NEXT:    orr x8, x9, x8
+; CHECK-NEXT:    ccmp x8, #0, #4, ne
 ; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
 entry:
@@ -347,7 +351,8 @@ define [2 x i64] @PR58675(i128 %a.addr, i128 %b.addr) {
 ; CHECK-NEXT:    sbc x9, x3, x11
 ; CHECK-NEXT:    cmp x3, x11
 ; CHECK-NEXT:    ccmp x2, x10, #0, eq
-; CHECK-NEXT:    b.ne .LBB20_1
+; CHECK-NEXT:    cset w10, ne
+; CHECK-NEXT:    tbnz w10, #0, .LBB20_1
 ; CHECK-NEXT:  // %bb.2: // %do.end
 ; CHECK-NEXT:    mov x0, xzr
 ; CHECK-NEXT:    mov x1, xzr

@@ -4,9 +4,9 @@
 define i1 @and(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK-LABEL: and:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp w0, w1
-; CHECK-NEXT:    ccmp w2, w3, #4, eq
-; CHECK-NEXT:    cset w0, gt
+; CHECK-NEXT:    cmp w2, w3
+; CHECK-NEXT:    ccmp w0, w1, #0, gt
+; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
   %a = icmp eq i32 %x, %y
   %b = icmp sgt i32 %z, %w
@@ -17,9 +17,9 @@ define i1 @and(i32 %x, i32 %y, i32 %z, i32 %w) {
 define i1 @or(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK-LABEL: or:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp w0, w1
-; CHECK-NEXT:    ccmp w2, w3, #0, ne
-; CHECK-NEXT:    cset w0, gt
+; CHECK-NEXT:    cmp w2, w3
+; CHECK-NEXT:    ccmp w0, w1, #4, le
+; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
   %a = icmp eq i32 %x, %y
   %b = icmp sgt i32 %z, %w
@@ -30,9 +30,9 @@ define i1 @or(i32 %x, i32 %y, i32 %z, i32 %w) {
 define i1 @and_not(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK-LABEL: and_not:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp w0, w1
-; CHECK-NEXT:    ccmp w2, w3, #4, ne
-; CHECK-NEXT:    cset w0, gt
+; CHECK-NEXT:    cmp w2, w3
+; CHECK-NEXT:    ccmp w0, w1, #4, gt
+; CHECK-NEXT:    cset w0, ne
 ; CHECK-NEXT:    ret
   %a = icmp eq i32 %x, %y
   %b = icmp sgt i32 %z, %w
@@ -43,9 +43,9 @@ define i1 @and_not(i32 %x, i32 %y, i32 %z, i32 %w) {
 define i1 @or_not(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK-LABEL: or_not:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp w0, w1
-; CHECK-NEXT:    ccmp w2, w3, #0, eq
-; CHECK-NEXT:    cset w0, gt
+; CHECK-NEXT:    cmp w2, w3
+; CHECK-NEXT:    ccmp w0, w1, #0, le
+; CHECK-NEXT:    cset w0, ne
 ; CHECK-NEXT:    ret
   %a = icmp eq i32 %x, %y
   %b = icmp sgt i32 %z, %w

@@ -8,10 +8,10 @@ declare i32 @memcmp(ptr, ptr, i64) nounwind readonly
 define i1 @test_b2(ptr %s1, ptr %s2) {
 ; CHECKN-LABEL: test_b2:
 ; CHECKN:       // %bb.0: // %entry
-; CHECKN-NEXT:    ldr x8, [x0]
-; CHECKN-NEXT:    ldr x9, [x1]
-; CHECKN-NEXT:    ldur x10, [x0, #7]
-; CHECKN-NEXT:    ldur x11, [x1, #7]
+; CHECKN-NEXT:    ldur x8, [x0, #7]
+; CHECKN-NEXT:    ldur x9, [x1, #7]
+; CHECKN-NEXT:    ldr x10, [x0]
+; CHECKN-NEXT:    ldr x11, [x1]
 ; CHECKN-NEXT:    cmp x8, x9
 ; CHECKN-NEXT:    ccmp x10, x11, #0, eq
 ; CHECKN-NEXT:    cset w0, eq
@@ -38,10 +38,10 @@ entry:
 define i1 @test_b2_align8(ptr align 8 %s1, ptr align 8 %s2) {
 ; CHECKN-LABEL: test_b2_align8:
 ; CHECKN:       // %bb.0: // %entry
-; CHECKN-NEXT:    ldr x8, [x0]
-; CHECKN-NEXT:    ldr x9, [x1]
-; CHECKN-NEXT:    ldur x10, [x0, #7]
-; CHECKN-NEXT:    ldur x11, [x1, #7]
+; CHECKN-NEXT:    ldur x8, [x0, #7]
+; CHECKN-NEXT:    ldur x9, [x1, #7]
+; CHECKN-NEXT:    ldr x10, [x0]
+; CHECKN-NEXT:    ldr x11, [x1]
 ; CHECKN-NEXT:    cmp x8, x9
 ; CHECKN-NEXT:    ccmp x10, x11, #0, eq
 ; CHECKN-NEXT:    cset w0, eq
@@ -67,17 +67,20 @@ entry:
 define i1 @test_bs(ptr %s1, ptr %s2) optsize {
 ; CHECKN-LABEL: test_bs:
 ; CHECKN:       // %bb.0: // %entry
-; CHECKN-NEXT:    ldp x8, x11, [x1]
+; CHECKN-NEXT:    ldp x10, x8, [x0]
 ; CHECKN-NEXT:    ldr x12, [x0, #16]
-; CHECKN-NEXT:    ldp x9, x10, [x0]
+; CHECKN-NEXT:    ldp x11, x9, [x1]
 ; CHECKN-NEXT:    ldr x13, [x1, #16]
-; CHECKN-NEXT:    cmp x9, x8
+; CHECKN-NEXT:    cmp x8, x9
 ; CHECKN-NEXT:    ldur x8, [x0, #23]
 ; CHECKN-NEXT:    ldur x9, [x1, #23]
 ; CHECKN-NEXT:    ccmp x10, x11, #0, eq
-; CHECKN-NEXT:    ccmp x12, x13, #0, eq
-; CHECKN-NEXT:    ccmp x8, x9, #0, eq
-; CHECKN-NEXT:    cset w0, eq
+; CHECKN-NEXT:    cset w10, eq
+; CHECKN-NEXT:    cmp x12, x13
+; CHECKN-NEXT:    cset w11, eq
+; CHECKN-NEXT:    cmp x8, x9
+; CHECKN-NEXT:    and w10, w10, w11
+; CHECKN-NEXT:    csel w0, wzr, w10, ne
 ; CHECKN-NEXT:    ret
 ;
 ; CHECKS-LABEL: test_bs:

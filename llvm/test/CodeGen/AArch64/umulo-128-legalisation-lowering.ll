@@ -5,18 +5,23 @@ define { i128, i8 } @muloti_test(i128 %l, i128 %r) unnamed_addr #0 {
 ; AARCH-LABEL: muloti_test:
 ; AARCH:       // %bb.0: // %start
 ; AARCH-NEXT:    mul x9, x3, x0
-; AARCH-NEXT:    cmp x1, #0
-; AARCH-NEXT:    ccmp x3, #0, #4, ne
+; AARCH-NEXT:    cmp x3, #0
+; AARCH-NEXT:    ccmp x1, #0, #4, ne
 ; AARCH-NEXT:    umulh x8, x1, x2
+; AARCH-NEXT:    cset w12, ne
 ; AARCH-NEXT:    umulh x10, x3, x0
 ; AARCH-NEXT:    madd x9, x1, x2, x9
-; AARCH-NEXT:    ccmp xzr, x8, #0, eq
+; AARCH-NEXT:    cmp xzr, x8
 ; AARCH-NEXT:    umulh x11, x0, x2
-; AARCH-NEXT:    ccmp xzr, x10, #0, eq
-; AARCH-NEXT:    mul x0, x0, x2
 ; AARCH-NEXT:    cset w8, ne
+; AARCH-NEXT:    cmp xzr, x10
+; AARCH-NEXT:    orr w8, w12, w8
+; AARCH-NEXT:    mul x0, x0, x2
+; AARCH-NEXT:    cset w10, ne
+; AARCH-NEXT:    orr w8, w8, w10
 ; AARCH-NEXT:    adds x1, x11, x9
-; AARCH-NEXT:    csinc w2, w8, wzr, lo
+; AARCH-NEXT:    cset w9, hs
+; AARCH-NEXT:    orr w2, w8, w9
 ; AARCH-NEXT:    ret
 start:
   %0 = tail call { i128, i1 } @llvm.umul.with.overflow.i128(i128 %l, i128 %r) #2
@@ -51,25 +56,25 @@ define i128 @__muloti4(i128 %0, i128 %1, ptr nocapture nonnull writeonly align 4
 ; AARCH-NEXT:    umulh x13, x1, x2
 ; AARCH-NEXT:    add x11, x11, x9
 ; AARCH-NEXT:    adds x9, x9, x12
-; AARCH-NEXT:    mul x16, x0, x3
+; AARCH-NEXT:    mul x17, x0, x3
 ; AARCH-NEXT:    adc x10, x11, x10
 ; AARCH-NEXT:    adds x11, x15, x14
-; AARCH-NEXT:    umulh x17, x0, x3
+; AARCH-NEXT:    umulh x16, x0, x3
 ; AARCH-NEXT:    cinc x13, x13, hs
-; AARCH-NEXT:    mul x12, x1, x3
-; AARCH-NEXT:    adds x1, x16, x11
-; AARCH-NEXT:    umulh x11, x8, x3
-; AARCH-NEXT:    cinc x14, x17, hs
-; AARCH-NEXT:    adds x13, x13, x14
+; AARCH-NEXT:    mul x18, x1, x3
+; AARCH-NEXT:    umulh x12, x1, x3
+; AARCH-NEXT:    adds x1, x17, x11
+; AARCH-NEXT:    cinc x11, x16, hs
+; AARCH-NEXT:    adds x11, x13, x11
 ; AARCH-NEXT:    mul x0, x0, x2
-; AARCH-NEXT:    cset w14, hs
-; AARCH-NEXT:    adds x12, x12, x13
-; AARCH-NEXT:    asr x13, x1, #63
-; AARCH-NEXT:    adc x11, x11, x14
-; AARCH-NEXT:    adds x9, x12, x9
-; AARCH-NEXT:    adc x10, x11, x10
-; AARCH-NEXT:    cmp x9, x13
-; AARCH-NEXT:    ccmp x10, x13, #0, eq
+; AARCH-NEXT:    cset w13, hs
+; AARCH-NEXT:    adds x11, x18, x11
+; AARCH-NEXT:    adc x12, x12, x13
+; AARCH-NEXT:    adds x9, x11, x9
+; AARCH-NEXT:    asr x11, x1, #63
+; AARCH-NEXT:    adc x10, x12, x10
+; AARCH-NEXT:    cmp x10, x11
+; AARCH-NEXT:    ccmp x9, x11, #0, eq
 ; AARCH-NEXT:    cset w9, ne
 ; AARCH-NEXT:    tbz x8, #63, .LBB1_2
 ; AARCH-NEXT:  // %bb.1: // %Entry
@@ -77,7 +82,7 @@ define i128 @__muloti4(i128 %0, i128 %1, ptr nocapture nonnull writeonly align 4
 ; AARCH-NEXT:    orr x8, x2, x8
 ; AARCH-NEXT:    cbz x8, .LBB1_3
 ; AARCH-NEXT:  .LBB1_2: // %Else2
-; AARCH-NEXT:    cbz w9, .LBB1_4
+; AARCH-NEXT:    tbz w9, #0, .LBB1_4
 ; AARCH-NEXT:  .LBB1_3: // %Then7
 ; AARCH-NEXT:    mov w8, #1 // =0x1
 ; AARCH-NEXT:    str w8, [x4]

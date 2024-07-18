@@ -6,8 +6,8 @@ declare void @call()
 define i1 @cmp_i128_eq(i128 %a, i128 %b) {
 ; CHECK-LABEL: cmp_i128_eq:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp x0, x2
-; CHECK-NEXT:    ccmp x1, x3, #0, eq
+; CHECK-NEXT:    cmp x1, x3
+; CHECK-NEXT:    ccmp x0, x2, #0, eq
 ; CHECK-NEXT:    cset w0, eq
 ; CHECK-NEXT:    ret
     %cmp = icmp eq i128 %a, %b
@@ -17,8 +17,8 @@ define i1 @cmp_i128_eq(i128 %a, i128 %b) {
 define i1 @cmp_i128_ne(i128 %a, i128 %b) {
 ; CHECK-LABEL: cmp_i128_ne:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    cmp x0, x2
-; CHECK-NEXT:    ccmp x1, x3, #0, eq
+; CHECK-NEXT:    cmp x1, x3
+; CHECK-NEXT:    ccmp x0, x2, #0, eq
 ; CHECK-NEXT:    cset w0, ne
 ; CHECK-NEXT:    ret
     %cmp = icmp ne i128 %a, %b
@@ -118,7 +118,8 @@ define void @br_on_cmp_i128_eq(i128 %a, i128 %b) nounwind {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    cmp x1, x3
 ; CHECK-NEXT:    ccmp x0, x2, #0, eq
-; CHECK-NEXT:    b.ne .LBB10_2
+; CHECK-NEXT:    cset w8, ne
+; CHECK-NEXT:    tbnz w8, #0, .LBB10_2
 ; CHECK-NEXT:  // %bb.1: // %call
 ; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
 ; CHECK-NEXT:    bl call
@@ -139,7 +140,8 @@ define void @br_on_cmp_i128_ne(i128 %a, i128 %b) nounwind {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    cmp x1, x3
 ; CHECK-NEXT:    ccmp x0, x2, #0, eq
-; CHECK-NEXT:    b.eq .LBB11_2
+; CHECK-NEXT:    cset w8, eq
+; CHECK-NEXT:    tbnz w8, #0, .LBB11_2
 ; CHECK-NEXT:  // %bb.1: // %call
 ; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
 ; CHECK-NEXT:    bl call
