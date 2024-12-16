@@ -708,12 +708,17 @@ bool GIMatchTableExecutor::executeMatchTable(
       uint64_t InsnID = (MatcherOpcode == GIM_RootCheckType) ? 0 : readULEB();
       uint64_t OpIdx = readULEB();
       int TypeID = readS8();
-      DEBUG_WITH_TYPE(TgtExecutor::getName(),
-                      dbgs() << CurrentIdx << ": GIM_CheckType(MIs[" << InsnID
-                             << "]->getOperand(" << OpIdx
-                             << "), TypeID=" << TypeID << ")\n");
-      assert(State.MIs[InsnID] != nullptr && "Used insn before defined");
       MachineOperand &MO = State.MIs[InsnID]->getOperand(OpIdx);
+      DEBUG_WITH_TYPE(TgtExecutor::getName(), {
+        dbgs() << CurrentIdx << ": GIM_CheckType(MIs[" << InsnID
+               << "]->getOperand(" << OpIdx << ")" << "), TypeID=" << TypeID
+               << ") // Got=";
+        if (!MO.isReg())
+          dbgs() << "Not a VReg\n";
+        else
+          dbgs() << MRI.getType(MO.getReg()) << "\n";
+      });
+      assert(State.MIs[InsnID] != nullptr && "Used insn before defined");
       if (!MO.isReg() || MRI.getType(MO.getReg()) != getTypeFromIdx(TypeID)) {
         if (handleReject() == RejectAndGiveUp)
           return false;
