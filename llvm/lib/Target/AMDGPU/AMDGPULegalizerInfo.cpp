@@ -2095,7 +2095,6 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST_,
         .clampMaxNumElements(0, S16, 2)
         .scalarize(0);
   } else {
-    // TODO: Implement
     getActionDefinitionsBuilder({G_FMINIMUM, G_FMAXIMUM}).lower();
   }
 
