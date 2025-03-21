@@ -14,9 +14,13 @@
 #define LLVM_CODEGEN_GLOBALISEL_MIPATTERNMATCH_H
 
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/FloatingPointMode.h"
+#include "llvm/CodeGen/GlobalISel/GenericMachineInstrs.h"
 #include "llvm/CodeGen/GlobalISel/Utils.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/IR/InstrTypes.h"
+#include <optional>
 
 namespace llvm {
 namespace MIPatternMatch {
@@ -84,6 +88,12 @@ inline std::optional<int64_t> matchConstant(Register Reg,
   return getIConstantVRegSExtVal(Reg, MRI);
 }
 
+template <>
+inline std::optional<uint64_t> matchConstant(Register Reg,
+                                            const MachineRegisterInfo &MRI) {
+  return getIConstantVRegZExtVal(Reg, MRI);
+}
+
 template <typename ConstT> struct ConstantMatch {
   ConstT &CR;
   ConstantMatch(ConstT &C) : CR(C) {}
@@ -103,6 +113,10 @@ inline ConstantMatch<int64_t> m_ICst(int64_t &Cst) {
   return ConstantMatch<int64_t>(Cst);
 }
 
+inline ConstantMatch<uint64_t> m_ICst(uint64_t &Cst) {
+  return ConstantMatch<uint64_t>(Cst);
+}
+
 template <typename ConstT>
 inline std::optional<ConstT> matchConstantSplat(Register,
                                                 const MachineRegisterInfo &);
@@ -117,6 +131,12 @@ template <>
 inline std::optional<int64_t>
 matchConstantSplat(Register Reg, const MachineRegisterInfo &MRI) {
   return getIConstantSplatSExtVal(Reg, MRI);
+}
+
+template <>
+inline std::optional<uint64_t>
+matchConstantSplat(Register Reg, const MachineRegisterInfo &MRI) {
+  return getIConstantSplatZExtVal(Reg, MRI);
 }
 
 template <typename ConstT> struct ICstOrSplatMatch {
@@ -143,6 +163,10 @@ inline ICstOrSplatMatch<APInt> m_ICstOrSplat(APInt &Cst) {
 
 inline ICstOrSplatMatch<int64_t> m_ICstOrSplat(int64_t &Cst) {
   return ICstOrSplatMatch<int64_t>(Cst);
+}
+
+inline ICstOrSplatMatch<uint64_t> m_ICstOrSplat(uint64_t &Cst) {
+  return ICstOrSplatMatch<uint64_t>(Cst);
 }
 
 struct GCstAndRegMatch {
@@ -393,6 +417,7 @@ inline bind_ty<const MachineInstr *> m_MInstr(const MachineInstr *&MI) {
 inline bind_ty<LLT> m_Type(LLT &Ty) { return Ty; }
 inline bind_ty<CmpInst::Predicate> m_Pred(CmpInst::Predicate &P) { return P; }
 inline operand_type_match m_Pred() { return operand_type_match(); }
+inline bind_ty<FPClassTest> m_FPClassTest(FPClassTest &T) { return T; }
 
 template <typename BindTy> struct deferred_helper {
   static bool match(const MachineRegisterInfo &MRI, BindTy &VR, BindTy &V) {
@@ -762,6 +787,31 @@ struct CompareOp_match {
   }
 };
 
+template <typename LHS_P, typename Test_P, unsigned Opcode>
+struct ClassifyOp_match {
+  LHS_P L;
+  Test_P T;
+
+  ClassifyOp_match(const LHS_P &LHS, const Test_P &Tst) : L(LHS), T(Tst) {}
+
+  template <typename OpTy>
+  bool match(const MachineRegisterInfo &MRI, OpTy &&Op) {
+    MachineInstr *TmpMI;
+    if (!mi_match(Op, MRI, m_MInstr(TmpMI)) || TmpMI->getOpcode() != Opcode)
+      return false;
+
+    Register LHS = TmpMI->getOperand(1).getReg();
+    if (!L.match(MRI, LHS))
+      return false;
+
+    FPClassTest TmpClass = static_cast<FPClassTest>(TmpMI->getOperand(2).getImm());
+    if (T.match(MRI, TmpClass))
+      return true;
+
+    return false;
+  }
+};
+
 template <typename Pred, typename LHS, typename RHS>
 inline CompareOp_match<Pred, LHS, RHS, TargetOpcode::G_ICMP>
 m_GICmp(const Pred &P, const LHS &L, const RHS &R) {
@@ -802,6 +852,14 @@ template <typename Pred, typename LHS, typename RHS>
 inline CompareOp_match<Pred, LHS, RHS, TargetOpcode::G_FCMP, true>
 m_c_GFCmp(const Pred &P, const LHS &L, const RHS &R) {
   return CompareOp_match<Pred, LHS, RHS, TargetOpcode::G_FCMP, true>(P, L, R);
+}
+
+/// Matches a register not-ed by a G_XOR.
+/// G_XOR %not_reg, -1
+template <typename LHS, typename Test>
+inline ClassifyOp_match<LHS, Test, TargetOpcode::G_IS_FPCLASS>
+m_GIsFPClass(const LHS &L, const Test &T) {
+  return ClassifyOp_match<LHS, Test, TargetOpcode::G_IS_FPCLASS>(L, T);
 }
 
 // Helper for checking if a Reg is of specific type.
@@ -866,6 +924,176 @@ template <typename SrcTy>
 inline BinaryOp_match<SrcTy, SpecificConstantMatch, TargetOpcode::G_XOR, true>
 m_Not(const SrcTy &&Src) {
   return m_GXor(Src, m_AllOnesInt());
+}
+
+/// Matching combinators
+template <typename LTy, typename RTy> struct match_combine_or {
+  LTy L;
+  RTy R;
+
+  match_combine_or(const LTy &Left, const RTy &Right) : L(Left), R(Right) {}
+
+  template <typename OpTy>
+  bool match(const MachineRegisterInfo &MRI, OpTy &&Op) {
+    if (L.match(MRI, Op))
+      return true;
+    if (R.match(MRI, Op))
+      return true;
+    return false;
+  }
+};
+
+template <typename LTy, typename RTy> struct match_combine_and {
+  LTy L;
+  RTy R;
+
+  match_combine_and(const LTy &Left, const RTy &Right) : L(Left), R(Right) {}
+
+  template <typename OpTy>
+  bool match(const MachineRegisterInfo &MRI, OpTy &&Op) {
+    if (L.match(MRI, Op))
+      if (R.match(MRI, Op))
+        return true;
+    return false;
+  }
+};
+
+/// Combine two pattern matchers matching L || R
+template <typename LTy, typename RTy>
+inline match_combine_or<LTy, RTy> m_CombineOr(const LTy &L, const RTy &R) {
+  return match_combine_or<LTy, RTy>(L, R);
+}
+
+/// Combine two pattern matchers matching L && R
+template <typename LTy, typename RTy>
+inline match_combine_and<LTy, RTy> m_CombineAnd(const LTy &L, const RTy &R) {
+  return match_combine_and<LTy, RTy>(L, R);
+}
+
+template <typename Opnd_t> struct Argument_match {
+  unsigned OpI;
+  Opnd_t Val;
+
+  Argument_match(unsigned OpIdx, const Opnd_t &V) : OpI(OpIdx), Val(V) {}
+
+  template <typename OpTy>
+  bool match(const MachineRegisterInfo &MRI, OpTy &&Op) {
+    MachineInstr *TmpMI;
+    if (mi_match(Op, MRI, m_MInstr(TmpMI)))
+        return Val.match(MRI, TmpMI->getOperand(TmpMI->getNumDefs() + 1 + OpI).getReg());
+    return false;
+  }
+};
+
+/// Match an argument.
+template <unsigned OpI, typename Opnd_t>
+inline Argument_match<Opnd_t> m_Argument(const Opnd_t &Op) {
+  return Argument_match<Opnd_t>(OpI, Op);
+}
+
+/// Intrinsic matchers.
+struct IntrinsicID_match {
+  unsigned ID;
+
+  IntrinsicID_match(Intrinsic::ID IntrID) : ID(IntrID) {}
+
+  template <typename OpTy>
+  bool match(const MachineRegisterInfo &MRI, OpTy &&Op) {
+    MachineInstr *TmpMI;
+    if (mi_match(Op, MRI, m_MInstr(TmpMI)))
+      if (auto *Intr = dyn_cast<GIntrinsic>(TmpMI))
+        return Intr->getIntrinsicID() == ID;
+    return false;
+  }
+};
+
+/// Intrinsic matches are combinations of ID matchers, and argument
+/// matchers. Higher arity matcher are defined recursively in terms of and-ing
+/// them with lower arity matchers. Here's some convenient typedefs for up to
+/// several arguments, and more can be added as needed
+template <typename T0 = void, typename T1 = void, typename T2 = void,
+          typename T3 = void, typename T4 = void, typename T5 = void,
+          typename T6 = void, typename T7 = void, typename T8 = void,
+          typename T9 = void, typename T10 = void>
+struct m_Intrinsic_Ty;
+template <typename T0> struct m_Intrinsic_Ty<T0> {
+  using Ty = match_combine_and<IntrinsicID_match, Argument_match<T0>>;
+};
+template <typename T0, typename T1> struct m_Intrinsic_Ty<T0, T1> {
+  using Ty =
+      match_combine_and<typename m_Intrinsic_Ty<T0>::Ty, Argument_match<T1>>;
+};
+template <typename T0, typename T1, typename T2>
+struct m_Intrinsic_Ty<T0, T1, T2> {
+  using Ty = match_combine_and<typename m_Intrinsic_Ty<T0, T1>::Ty,
+                               Argument_match<T2>>;
+};
+template <typename T0, typename T1, typename T2, typename T3>
+struct m_Intrinsic_Ty<T0, T1, T2, T3> {
+  using Ty = match_combine_and<typename m_Intrinsic_Ty<T0, T1, T2>::Ty,
+                               Argument_match<T3>>;
+};
+
+template <typename T0, typename T1, typename T2, typename T3, typename T4>
+struct m_Intrinsic_Ty<T0, T1, T2, T3, T4> {
+  using Ty = match_combine_and<typename m_Intrinsic_Ty<T0, T1, T2, T3>::Ty,
+                               Argument_match<T4>>;
+};
+
+template <typename T0, typename T1, typename T2, typename T3, typename T4,
+          typename T5>
+struct m_Intrinsic_Ty<T0, T1, T2, T3, T4, T5> {
+  using Ty = match_combine_and<typename m_Intrinsic_Ty<T0, T1, T2, T3, T4>::Ty,
+                               Argument_match<T5>>;
+};
+
+/// Match intrinsic calls like this:
+/// m_Intrinsic<Intrinsic::fabs>(m_Value(X))
+template <Intrinsic::ID IntrID> inline IntrinsicID_match m_GIntrinsic() {
+  return IntrinsicID_match(IntrID);
+}
+
+template <Intrinsic::ID IntrID, typename T0>
+inline typename m_Intrinsic_Ty<T0>::Ty m_GIntrinsic(const T0 &Op0) {
+  return m_CombineAnd(m_GIntrinsic<IntrID>(), m_Argument<0>(Op0));
+}
+
+
+template <Intrinsic::ID IntrID, typename T0, typename T1>
+inline typename m_Intrinsic_Ty<T0, T1>::Ty m_GIntrinsic(const T0 &Op0,
+                                                        const T1 &Op1) {
+  return m_CombineAnd(m_GIntrinsic<IntrID>(Op0), m_Argument<1>(Op1));
+}
+
+template <Intrinsic::ID IntrID, typename T0, typename T1, typename T2>
+inline typename m_Intrinsic_Ty<T0, T1, T2>::Ty
+m_GIntrinsic(const T0 &Op0, const T1 &Op1, const T2 &Op2) {
+  return m_CombineAnd(m_GIntrinsic<IntrID>(Op0, Op1), m_Argument<2>(Op2));
+}
+
+template <Intrinsic::ID IntrID, typename T0, typename T1, typename T2,
+          typename T3>
+inline typename m_Intrinsic_Ty<T0, T1, T2, T3>::Ty
+m_GIntrinsic(const T0 &Op0, const T1 &Op1, const T2 &Op2, const T3 &Op3) {
+  return m_CombineAnd(m_GIntrinsic<IntrID>(Op0, Op1, Op2), m_Argument<3>(Op3));
+}
+
+template <Intrinsic::ID IntrID, typename T0, typename T1, typename T2,
+          typename T3, typename T4>
+inline typename m_Intrinsic_Ty<T0, T1, T2, T3, T4>::Ty
+m_GIntrinsic(const T0 &Op0, const T1 &Op1, const T2 &Op2, const T3 &Op3,
+             const T4 &Op4) {
+  return m_CombineAnd(m_GIntrinsic<IntrID>(Op0, Op1, Op2, Op3),
+                      m_Argument<4>(Op4));
+}
+
+template <Intrinsic::ID IntrID, typename T0, typename T1, typename T2,
+          typename T3, typename T4, typename T5>
+inline typename m_Intrinsic_Ty<T0, T1, T2, T3, T4, T5>::Ty
+m_GIntrinsic(const T0 &Op0, const T1 &Op1, const T2 &Op2, const T3 &Op3,
+             const T4 &Op4, const T5 &Op5) {
+  return m_CombineAnd(m_GIntrinsic<IntrID>(Op0, Op1, Op2, Op3, Op4),
+                      m_Argument<5>(Op5));
 }
 
 } // namespace MIPatternMatch
