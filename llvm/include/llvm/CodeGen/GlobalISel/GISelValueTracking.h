@@ -195,9 +195,11 @@ public:
 class GISelValueTrackingPrinterPass
     : public PassInfoMixin<GISelValueTrackingPrinterPass> {
   raw_ostream &OS;
+  bool PrintFPClass;
 
 public:
-  GISelValueTrackingPrinterPass(raw_ostream &OS) : OS(OS) {}
+  GISelValueTrackingPrinterPass(raw_ostream &OS, bool PrintFPClass = false)
+      : OS(OS), PrintFPClass(PrintFPClass) {}
 
   LLVM_ABI PreservedAnalyses run(MachineFunction &MF,
                                  MachineFunctionAnalysisManager &MFAM);

@@ -135,7 +135,6 @@ MACHINE_FUNCTION_PASS("postra-machine-sink", PostRAMachineSinkingPass())
 MACHINE_FUNCTION_PASS("postmisched", PostMachineSchedulerPass(TM))
 MACHINE_FUNCTION_PASS("post-ra-pseudos", ExpandPostRAPseudosPass())
 MACHINE_FUNCTION_PASS("print", PrintMIRPass())
-MACHINE_FUNCTION_PASS("print<gisel-value-tracking>", GISelValueTrackingPrinterPass(errs()))
 MACHINE_FUNCTION_PASS("print<livedebugvars>", LiveDebugVariablesPrinterPass(errs()))
 MACHINE_FUNCTION_PASS("print<live-intervals>", LiveIntervalsPrinterPass(errs()))
 MACHINE_FUNCTION_PASS("print<live-stacks>", LiveStacksPrinterPass(errs()))
@@ -241,6 +240,17 @@ MACHINE_FUNCTION_PASS_WITH_PARAMS(
     "virt-reg-rewriter", "VirtRegRewriterPass",
     [](bool ClearVirtRegs) { return VirtRegRewriterPass(ClearVirtRegs); },
     parseVirtRegRewriterPassOptions, "no-clear-vregs;clear-vregs")
+
+MACHINE_FUNCTION_PASS_WITH_PARAMS(
+    "print<gisel-value-tracking>", "GISelValueTrackingPrinterPass",
+    [](bool PrintFPClass) {
+      return GISelValueTrackingPrinterPass(errs(), PrintFPClass);
+    },
+    [](StringRef Params) {
+      return parseSinglePassOption(Params, "fpclass",
+                                   "GISelValueTrackingPrinterPass");
+    },
+    "fpclass")
 
 #undef MACHINE_FUNCTION_PASS_WITH_PARAMS
 
