@@ -5034,6 +5034,9 @@ Register SITargetLowering::getRegisterByName(const char *RegName, LLT VT,
                      .Case("flat_scratch", AMDGPU::FLAT_SCR)
                      .Case("flat_scratch_lo", AMDGPU::FLAT_SCR_LO)
                      .Case("flat_scratch_hi", AMDGPU::FLAT_SCR_HI)
+                     .Case("vcc", AMDGPU::VCC)
+                     .Case("vcc_lo", AMDGPU::VCC_LO)
+                     .Case("vcc_hi", AMDGPU::VCC_HI)
                      .Default(Register());
   if (!Reg)
     return Reg;
@@ -5050,11 +5053,14 @@ Register SITargetLowering::getRegisterByName(const char *RegName, LLT VT,
   case AMDGPU::EXEC_HI:
   case AMDGPU::FLAT_SCR_LO:
   case AMDGPU::FLAT_SCR_HI:
+  case AMDGPU::VCC_LO:
+  case AMDGPU::VCC_HI:
     if (VT.getSizeInBits() == 32)
       return Reg;
     break;
   case AMDGPU::EXEC:
   case AMDGPU::FLAT_SCR:
+  case AMDGPU::VCC:
     if (VT.getSizeInBits() == 64)
       return Reg;
     break;
