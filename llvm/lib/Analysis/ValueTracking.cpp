@@ -356,19 +356,19 @@ bool llvm::MaskedValueIsZero(const Value *V, const APInt &Mask,
 static unsigned ComputeNumSignBits(const Value *V, const APInt &DemandedElts,
                                    const SimplifyQuery &Q, unsigned Depth);
 
-static unsigned ComputeNumSignBits(const Value *V, const SimplifyQuery &Q,
-                                   unsigned Depth = 0) {
+unsigned llvm::ComputeNumSignBits(const Value *V, const SimplifyQuery &Q,
+                                  unsigned Depth) {
   auto *FVTy = dyn_cast<FixedVectorType>(V->getType());
   APInt DemandedElts =
       FVTy ? APInt::getAllOnes(FVTy->getNumElements()) : APInt(1, 1);
-  return ComputeNumSignBits(V, DemandedElts, Q, Depth);
+  return ::ComputeNumSignBits(V, DemandedElts, Q, Depth);
 }
 
 unsigned llvm::ComputeNumSignBits(const Value *V, const DataLayout &DL,
                                   AssumptionCache *AC, const Instruction *CxtI,
                                   const DominatorTree *DT, bool UseInstrInfo,
                                   unsigned Depth) {
-  return ::ComputeNumSignBits(
+  return ComputeNumSignBits(
       V, SimplifyQuery(DL, DT, AC, safeCxtI(V, CxtI), UseInstrInfo), Depth);
 }
 
@@ -7559,7 +7559,7 @@ OverflowResult llvm::computeOverflowForSignedMul(const Value *LHS,
   // Note that underestimating the number of sign bits gives a more
   // conservative answer.
   unsigned SignBits =
-      ::ComputeNumSignBits(LHS, SQ) + ::ComputeNumSignBits(RHS, SQ);
+      ComputeNumSignBits(LHS, SQ) + ComputeNumSignBits(RHS, SQ);
 
   // First handle the easy case: if we have enough sign bits there's
   // definitely no overflow.
@@ -7617,7 +7617,7 @@ computeOverflowForSignedAdd(const WithCache<const Value *> &LHS,
   //
   // Since the carry into the most significant position is always equal to
   // the carry out of the addition, there is no signed overflow.
-  if (::ComputeNumSignBits(LHS, SQ) > 1 && ::ComputeNumSignBits(RHS, SQ) > 1)
+  if (ComputeNumSignBits(LHS, SQ) > 1 && ComputeNumSignBits(RHS, SQ) > 1)
     return OverflowResult::NeverOverflows;
 
   ConstantRange LHSRange =
@@ -7704,7 +7704,7 @@ OverflowResult llvm::computeOverflowForSignedSub(const Value *LHS,
 
   // If LHS and RHS each have at least two sign bits, the subtraction
   // cannot overflow.
-  if (::ComputeNumSignBits(LHS, SQ) > 1 && ::ComputeNumSignBits(RHS, SQ) > 1)
+  if (ComputeNumSignBits(LHS, SQ) > 1 && ComputeNumSignBits(RHS, SQ) > 1)
     return OverflowResult::NeverOverflows;
 
   ConstantRange LHSRange =

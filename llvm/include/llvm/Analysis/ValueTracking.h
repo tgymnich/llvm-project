@@ -233,6 +233,9 @@ LLVM_ABI unsigned ComputeNumSignBits(const Value *Op, const DataLayout &DL,
                                      bool UseInstrInfo = true,
                                      unsigned Depth = 0);
 
+LLVM_ABI unsigned ComputeNumSignBits(const Value *Op, const SimplifyQuery &Q,
+                                     unsigned Depth = 0);
+
 /// Get the upper bound on bit size for this Value \p Op as a signed integer.
 /// i.e.  x == sext(trunc(x to MaxSignificantBits) to bitwidth(x)).
 /// Similar to the APInt::getSignificantBits function.
