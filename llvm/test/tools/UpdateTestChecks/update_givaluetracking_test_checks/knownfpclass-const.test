@@ -1,0 +1,4 @@
+# REQUIRES: amdgpu-registered-target
+# RUN: cp -f %S/Inputs/fpclass.mir %t.mir && %update_givaluetracking_test_checks %t.mir
+# RUN: diff -u %S/Inputs/fpclass.mir.expected %t.mir
+# RUN: FileCheck %t.mir < %t.mir

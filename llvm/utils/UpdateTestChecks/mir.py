@@ -254,14 +254,17 @@ def add_mir_check_lines(
     check_indent=None,
 ):
     func_body = str(func_info).splitlines()
-    if single_bb:
+    if single_bb and func_body:
         # Don't bother checking the basic block label for a single BB
         func_body.pop(0)
 
     # A gap marker carries no information before the first retained line, and
     # popping the basic block label above may have exposed one.  Drop any such
-    # leading markers so indentation is computed from a real instruction line.
-    while func_body and func_body[0] == MIR_FILTER_GAP_MARKER:
+    # leading markers, along with any leading blank lines, so indentation is
+    # computed from a real instruction line.
+    while func_body and (
+        func_body[0] == MIR_FILTER_GAP_MARKER or not func_body[0].strip()
+    ):
         func_body.pop(0)
 
     if not func_body:

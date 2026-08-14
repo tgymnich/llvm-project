@@ -2820,3 +2820,39 @@ GISelValueTrackingPrinterPass::run(MachineFunction &MF,
   }
   return PreservedAnalyses::all();
 }
+
+PreservedAnalyses
+GISelKnownFPClassPrinterPass::run(MachineFunction &MF,
+                                  MachineFunctionAnalysisManager &MFAM) {
+  auto &VTA = MFAM.getResult<GISelValueTrackingAnalysis>(MF);
+  const auto &MRI = MF.getRegInfo();
+  OS << "name: ";
+  MF.getFunction().printAsOperand(OS, /*PrintType=*/false);
+  OS << '\n';
+
+  for (MachineBasicBlock &BB : MF) {
+    for (MachineInstr &MI : BB) {
+      for (MachineOperand &MO : MI.defs()) {
+        if (!MO.isReg() || MO.getReg().isPhysical())
+          continue;
+        Register Reg = MO.getReg();
+        if (!MRI.getType(Reg).isValid())
+          continue;
+        KnownFPClass Known = VTA.computeKnownFPClass(Reg);
+        // The type system does not tell floating-point apart from integer
+        // registers, so instead of printing a line for every def, only print
+        // the ones we managed to infer something about.
+        if (Known.isUnknown())
+          continue;
+        OS << "  " << MO << " KnownFPClasses:" << Known.KnownFPClasses
+           << " SignBit:";
+        if (Known.SignBit)
+          OS << *Known.SignBit;
+        else
+          OS << "unknown";
+        OS << '\n';
+      }
+    }
+  }
+  return PreservedAnalyses::all();
+}

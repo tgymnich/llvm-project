@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-"""Updates FileCheck checks in GlobalISel Known Bits tests.
+"""Updates FileCheck checks in GlobalISel value tracking tests.
 
 This script is a utility to update MIR based tests with new FileCheck
-patterns for GlobalISel Known Bits.
+patterns for GlobalISel value tracking.
 
 The checks added by this script are similar to update_mir_test_checks, using
 the output of KnownBits, SignBits, and IsKnownNeverZero from
--passes=print<gisel-value-tracking>.
+-passes=print<gisel-value-tracking>, or the output of KnownFPClasses and
+SignBit from -passes=print<gisel-known-fpclass>.
 """
 
 from __future__ import print_function
@@ -26,6 +27,15 @@ VT_FUNCTION_RE = re.compile(
     r"\s*name:\s*@(?P<func>[A-Za-z0-9_-]+)"
     r"(?P<body>(\s*%[0-9a-zA-Z_]+:[A-Za-z0-9_-]+\s*KnownBits:[01?]+"
     r"\sSignBits:[0-9]+\sIsKnownNeverZero:[01]$)+)",
+    flags=(re.X | re.M),
+)
+
+# print<gisel-known-fpclass> only prints the registers it inferred something
+# about, so the body may legitimately be empty.
+VT_FPCLASS_FUNCTION_RE = re.compile(
+    r"\s*name:\s*@(?P<func>[A-Za-z0-9_-]+)"
+    r"(?P<body>(\s*%[0-9a-zA-Z_]+:[A-Za-z0-9_-]+\s*KnownFPClasses:\([a-z\ ]+\)"
+    r"\sSignBit:(unknown|[01])$)*)",
     flags=(re.X | re.M),
 )
 
@@ -83,8 +93,13 @@ def update_test(ti: common.TestInfo):
             ti.args.llc_binary or "llc", llc_args, ti.path, verbose=ti.args.verbose
         )
 
+        function_re = (
+            VT_FPCLASS_FUNCTION_RE
+            if "gisel-known-fpclass" in llc_args
+            else VT_FUNCTION_RE
+        )
         builder.process_run_line(
-            VT_FUNCTION_RE,
+            function_re,
             common.scrub_body,
             raw_tool_output,
             prefixes,
