@@ -2962,11 +2962,7 @@ GISelValueTrackingPrinterPass::run(MachineFunction &MF,
         if (!MRI.getType(Reg).isValid())
           continue;
         if (PrintFPClass) {
-          KnownFPClass FPKnown;
-          // computeKnownFPClass currently can't handle scalable-vector
-          // operands.
-          if (!MRI.getType(Reg).isScalableVector())
-            FPKnown = VTA.computeKnownFPClass(Reg);
+          KnownFPClass FPKnown = VTA.computeKnownFPClass(Reg);
           OS << "  " << MO << " FPClasses:" << FPKnown.getKnownFPClasses()
              << " SignBitKnown:";
           if (FPKnown.getSignBit())

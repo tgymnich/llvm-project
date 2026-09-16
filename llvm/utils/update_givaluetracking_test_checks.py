@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-"""Updates FileCheck checks in GlobalISel Known Bits tests.
+"""Updates FileCheck checks in GlobalISel value-tracking tests.
 
 This script is a utility to update MIR based tests with new FileCheck
-patterns for GlobalISel Known Bits.
+patterns for GlobalISel KnownBits and KnownFPClass results.
 
 The checks added by this script are similar to update_mir_test_checks, using
-the output of KnownBits, SignBits, and IsKnownNeverZero from
--passes=print<gisel-value-tracking>.
+the output of -passes=print<gisel-value-tracking>.
 """
 
 from __future__ import print_function
