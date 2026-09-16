@@ -6350,7 +6350,7 @@ Error AMDGPUKernelTy::launchImpl(GenericDeviceTy &GenericDevice,
                                : 1 + (NumBlocks[1] * NumThreads[1] != 1));
 
     hsa_utils::initImplArg(ImplArgs, &ImplArgsTy::DynamicLdsSize, ImplArgsSize,
-                           LaunchArgs.DynCGroupMem);
+                           DynBlockMemSize);
   }
 
   // Get required OMPT-related data

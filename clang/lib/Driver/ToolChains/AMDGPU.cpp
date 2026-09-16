@@ -1074,15 +1074,8 @@ AMDGPUToolChain::getGPUArch(const llvm::opt::ArgList &DriverArgs) const {
 AMDGPUToolChain::ParsedTargetIDType
 AMDGPUToolChain::getParsedTargetID(const llvm::opt::ArgList &DriverArgs) const {
   StringRef TargetID = DriverArgs.getLastArgValue(options::OPT_mcpu_EQ);
-  // For offload toolchains (HIP, OpenMP, etc.), `getAuxTriple()` is the host;
-  // `-march=` there refers to the host CPU (e.g. haswell) and must not be
-  // parsed as an AMDGPU Target ID. Only standalone AMDGPU uses `-march=` as
-  // a legacy spelling for the GPU `-mcpu=` (see TranslateArgs when OFK_None).
-  if (TargetID.empty() && !getAuxTriple())
-    TargetID = DriverArgs.getLastArgValue(options::OPT_march_EQ);
-
   if (TargetID.empty())
-    return {std::nullopt, std::nullopt, std::nullopt};
+    return {};
 
   llvm::StringMap<bool> FeatureMap;
   auto OptionalGpuArch = parseTargetID(getTriple(), TargetID, &FeatureMap);

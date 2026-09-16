@@ -2893,7 +2893,8 @@ void TaskContextStructManager::generateTaskContextStruct() {
   llvm::DataLayout dataLayout =
       builder.GetInsertBlock()->getModule()->getDataLayout();
   llvm::Type *intPtrTy = builder.getIntPtrTy(dataLayout);
-  llvm::Constant *allocSize = llvm::ConstantExpr::getSizeOf(structTy);
+  llvm::Value *allocSize =
+      builder.CreateTypeSize(intPtrTy, dataLayout.getTypeAllocSize(structTy));
 
   // Heap allocate the structure
   structPtr = builder.CreateMalloc(intPtrTy, allocSize,
@@ -3213,7 +3214,10 @@ buildDependData(OperandRange dependVars, std::optional<ArrayAttr> dependKinds,
 
   // Heap-allocate the kmp_depend_info array so we don't risk
   // dynamic-sized alloca outside the entry block (e.g. inside loops).
-  llvm::Constant *allocSize = llvm::ConstantExpr::getSizeOf(dependInfoTy);
+  llvm::DataLayout dataLayout =
+      builder.GetInsertBlock()->getModule()->getDataLayout();
+  llvm::Value *allocSize = builder.CreateTypeSize(
+      ompBuilder.SizeTy, dataLayout.getTypeAllocSize(dependInfoTy));
   llvm::Value *depArray =
       builder.CreateMalloc(ompBuilder.SizeTy, allocSize, totalCount,
                            /*MallocF=*/nullptr, ".dep.arr.addr");
@@ -8123,9 +8127,51 @@ static void mapParentWithMembers(
       // members of derived types.
       mapFlag &= ~llvm::omp::OpenMPOffloadMappingFlags::OMP_MAP_RETURN_PARAM;
 
+
       auto lowAndHigh = getLowAndHighAddr(parentClause);
       highAddr = std::get<0>(std::get<1>(lowAndHigh));
       lowAddr = std::get<0>(std::get<0>(lowAndHigh));
+      // TODO: We may want to skip arrays/array sections in this as Clang does.
+      // It appears to be an optimisation rather than a necessity though,
+      // but this requires further investigation. However, we would have to make
+      // sure to not exclude maps with bounds that ARE pointers, as these are
+      // processed as separate components, i.e. pointer + data.
+      for (auto v : overlapIdxs) {
+        auto mapDataOverlapIdx = getMapDataMemberIdx(
+            mapData,
+            cast<omp::MapInfoOp>(parentClause.getMembers()[v].getDefiningOp()));
+        auto isPtrMap = checkIfPointerMap(
+            llvm::cast<omp::MapInfoOp>(mapData.MapClause[mapDataOverlapIdx]));
+        combinedInfo.Types.emplace_back(mapFlag);
+        // TODO: set HasAttachPtr from Flang for pointee-storage entries.
+        combinedInfo.HasAttachPtr.emplace_back(false);
+        combinedInfo.DevicePointers.emplace_back(
+            llvm::OpenMPIRBuilder::DeviceInfoTy::None);
+        combinedInfo.Names.emplace_back(LLVM::createMappingInformation(
+            mapData.MapClause[mapDataIndex]->getLoc(), ompBuilder));
+        combinedInfo.BasePointers.emplace_back(
+            mapData.BasePointers[mapDataIndex]);
+        combinedInfo.Mappers.emplace_back(nullptr);
+        combinedInfo.Pointers.emplace_back(lowAddr);
+        auto sizeCalc = builder.CreateIntCast(
+            builder.CreatePtrDiff(builder.getInt8Ty(),
+                                  mapData.OriginalValue[mapDataOverlapIdx],
+                                  lowAddr),
+            builder.getInt64Ty(), /*isSigned=*/true);
+        // In certain cases, we'll generate a size of 0 if we're not careful
+        // (e.g. if lowAddr happens to be the first member), which isn't
+        // correct, even if the runtimes is sometimes fine with it so, in these
+        // scenarios we select the types size instead.
+        llvm::DataLayout dataLayout = builder.GetInsertBlock()->getDataLayout();
+        auto sizeSel = builder.CreateSelect(
+            builder.CreateICmpNE(builder.getInt64(0), sizeCalc), sizeCalc,
+            isPtrMap ? builder.getInt64(dataLayout.getPointerSize())
+                     : mapData.Sizes[mapDataOverlapIdx]);
+        combinedInfo.Sizes.emplace_back(sizeSel);
+        lowAddr = builder.CreateConstGEP1_32(
+            isPtrMap ? builder.getPtrTy() : mapData.BaseType[mapDataOverlapIdx],
+            mapData.BasePointers[mapDataOverlapIdx], 1);
+      }
 
       combinedInfo.Types.emplace_back(mapFlag);
       // TODO: set HasAttachPtr from Flang for pointee-storage entries.
