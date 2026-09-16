@@ -437,6 +437,15 @@ class VectorType;
       return HasStandaloneRem;
     }
 
+    bool isDirectRemByConstProfitable(SDNode *N) const override {
+      if (N->getOpcode() != ISD::UREM || N->getValueType(0) != MVT::i8)
+        return false;
+      SDValue Numerator = N->getOperand(0);
+      if (Numerator.getOpcode() == ISD::AND)
+        Numerator = Numerator.getOperand(0);
+      return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+    }
+
     ShiftLegalizationStrategy
     preferredShiftLegalizationStrategy(SelectionDAG &DAG, SDNode *N,
                                        unsigned ExpansionFactor) const override;

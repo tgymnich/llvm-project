@@ -33,6 +33,25 @@ public:
 
   bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override;
 
+  bool isDirectRemByConstProfitable(SDNode *N) const override {
+    EVT VT = N->getValueType(0);
+    if (VT == MVT::i8) {
+      SDValue Numerator = N->getOperand(0);
+      if (Numerator.getOpcode() == ISD::AND ||
+          Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+        Numerator = Numerator.getOperand(0);
+      return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+    }
+    if (N->getOpcode() != ISD::SREM || VT != MVT::i32)
+      return false;
+
+    SDValue Numerator = N->getOperand(0);
+    if (Numerator.getOpcode() == ISD::AND ||
+        Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+      Numerator = Numerator.getOperand(0);
+    return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+  }
+
   // Provide custom lowering hooks for some operations.
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
   void ReplaceNodeResults(SDNode *N, SmallVectorImpl<SDValue> &Results,

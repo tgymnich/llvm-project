@@ -29467,6 +29467,30 @@ bool RISCVTargetLowering::isIntDivCheap(EVT VT, AttributeList Attr) const {
          VT.getSizeInBits() <= getMaxDivRemBitWidthSupported();
 }
 
+bool RISCVTargetLowering::isDirectRemByConstProfitable(SDNode *N) const {
+  EVT VT = N->getValueType(0);
+  if (VT == MVT::i8) {
+    SDValue Numerator = N->getOperand(0);
+    if (Numerator.getOpcode() == ISD::AND ||
+        Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+      Numerator = Numerator.getOperand(0);
+    return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+  }
+  bool IsProfitable =
+      (VT == MVT::i32 && Subtarget.is64Bit()) ||
+      (VT == MVT::i16 && !Subtarget.is64Bit() && N->getOpcode() == ISD::SREM);
+  if (!IsProfitable)
+    return false;
+
+  SDValue Numerator = N->getOperand(0);
+  // Avoid applying the scalar sequence independently to promoted vector
+  // elements.
+  if (Numerator.getOpcode() == ISD::AND ||
+      Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+    Numerator = Numerator.getOperand(0);
+  return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+}
+
 void RISCVTargetLowering::finalizeLowering(MachineFunction &MF) const {
   MF.getFrameInfo().computeMaxCallFrameSize(MF);
   TargetLoweringBase::finalizeLowering(MF);

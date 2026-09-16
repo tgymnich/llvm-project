@@ -51,6 +51,46 @@ using namespace llvm;
 
 #define DEBUG_TYPE "mips-isel"
 
+static bool hasNonMaskOddDivisor(SDNode *N) {
+  unsigned Bits = N->getValueType(0).getScalarSizeInBits();
+  auto IsNonMask = [N, Bits](ConstantSDNode *C) {
+    APInt Divisor = C->getAPIntValue().trunc(Bits);
+    if (N->getOpcode() == ISD::SREM)
+      Divisor = Divisor.abs();
+    if (Divisor.isZero())
+      return false;
+    Divisor.lshrInPlace(Divisor.countr_zero());
+    return !Divisor.isMask();
+  };
+  return ISD::matchUnaryPredicate(N->getOperand(1), IsNonMask,
+                                  /*AllowUndefs=*/false,
+                                  /*AllowTruncation=*/true);
+}
+
+bool MipsSETargetLowering::isDirectRemByConstProfitable(SDNode *N) const {
+  EVT VT = N->getValueType(0);
+  if (VT == MVT::i8) {
+    if (N->getOpcode() != ISD::UREM)
+      return false;
+    SDValue Numerator = N->getOperand(0);
+    if (Numerator.getOpcode() == ISD::AND)
+      Numerator = Numerator.getOperand(0);
+    return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+  }
+  if (VT != MVT::i16 && (VT != MVT::i32 || N->getOpcode() != ISD::UREM))
+    return false;
+  if (!hasNonMaskOddDivisor(N))
+    return false;
+  if (VT == MVT::i32 && !Subtarget.isGP64bit())
+    return false;
+
+  SDValue Numerator = N->getOperand(0);
+  if (Numerator.getOpcode() == ISD::AND ||
+      Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+    Numerator = Numerator.getOperand(0);
+  return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+}
+
 static cl::opt<bool> NoDPLoadStore("mno-ldc1-sdc1", cl::init(false),
                                    cl::desc("Expand double precision loads and "
                                             "stores to their single precision "

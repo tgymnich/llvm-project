@@ -124,6 +124,16 @@ private:
     return false;
   }
 
+  bool isDirectRemByConstProfitable(SDNode *N) const override {
+    if (N->getValueType(0) != MVT::i8)
+      return false;
+    SDValue Numerator = N->getOperand(0);
+    if (Numerator.getOpcode() == ISD::AND ||
+        Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+      Numerator = Numerator.getOperand(0);
+    return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+  }
+
   bool shouldConvertConstantLoadToIntImm(const APInt &Imm,
                                          Type *Ty) const override {
     return true;

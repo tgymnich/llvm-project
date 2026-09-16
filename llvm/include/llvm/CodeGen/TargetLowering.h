@@ -592,6 +592,12 @@ public:
   /// for speed or for size.
   virtual bool isIntDivCheap(EVT VT, AttributeList Attr) const { return false; }
 
+  /// Return true if direct computation of this remainder by a constant using a
+  /// widened reciprocal multiplication is profitable.
+  virtual bool isDirectRemByConstProfitable(SDNode * /*N*/) const {
+    return false;
+  }
+
   /// Return true if the target can handle a standalone remainder operation.
   virtual bool hasStandaloneRem(EVT VT) const {
     return true;
@@ -5571,6 +5577,17 @@ public:
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     bool IsAfterLegalTypes,
                     SmallVectorImpl<SDNode *> &Created) const;
+
+  /// Build an unsigned remainder by a constant using a widened reciprocal
+  /// multiplication, or return an empty value if it cannot be built.
+  SDValue BuildUREM(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
+                    SmallVectorImpl<SDNode *> &Created) const;
+
+  /// Build a signed remainder by a constant using a widened reciprocal
+  /// multiplication, or return an empty value if it cannot be built.
+  SDValue BuildSREM(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
+                    SmallVectorImpl<SDNode *> &Created) const;
+
   // Build sdiv by power-of-2 with conditional move instructions
   SDValue buildSDIVPow2WithCMov(SDNode *N, const APInt &Divisor,
                                 SelectionDAG &DAG,

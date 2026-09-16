@@ -178,6 +178,8 @@ namespace llvm {
     explicit PPCTargetLowering(const PPCTargetMachine &TM,
                                const PPCSubtarget &STI);
 
+    bool isDirectRemByConstProfitable(SDNode *N) const override;
+
     bool isSelectSupported(SelectSupportKind Kind) const override {
       // PowerPC does not support scalar condition selects on vectors.
       return (Kind != SelectSupportKind::ScalarCondVectorVal);

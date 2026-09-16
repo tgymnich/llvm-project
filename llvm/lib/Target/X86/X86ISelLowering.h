@@ -685,6 +685,12 @@ namespace llvm {
         const DataLayout &DL) const override;
 
     bool isIntDivCheap(EVT VT, AttributeList Attr) const override;
+    bool isDirectRemByConstProfitable(SDNode *N) const override {
+      EVT VT = N->getValueType(0);
+      if (VT.isScalarInteger())
+        return VT.getScalarSizeInBits() >= 8 && VT.getScalarSizeInBits() <= 32;
+      return VT.isFixedLengthVector() && VT.getScalarType() == MVT::i8;
+    }
 
     bool supportSwiftError() const override;
 

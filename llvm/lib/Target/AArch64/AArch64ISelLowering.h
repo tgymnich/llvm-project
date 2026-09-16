@@ -415,6 +415,20 @@ public:
                                const Constant *PersonalityFn) const override;
 
   bool isIntDivCheap(EVT VT, AttributeList Attr) const override;
+  bool isDirectRemByConstProfitable(SDNode *N) const override {
+    EVT VT = N->getValueType(0);
+    if (VT.isScalableVector())
+      return VT.getScalarSizeInBits() <= 32;
+    if (VT == MVT::i8) {
+      if (N->getOpcode() != ISD::UREM)
+        return false;
+      SDValue Numerator = N->getOperand(0);
+      if (Numerator.getOpcode() == ISD::AND)
+        Numerator = Numerator.getOperand(0);
+      return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+    }
+    return N->getOpcode() == ISD::UREM && VT == MVT::v8i8;
+  }
 
   bool canMergeStoresTo(unsigned AddressSpace, EVT MemVT,
                         const MachineFunction &MF) const override;

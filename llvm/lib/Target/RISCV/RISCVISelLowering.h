@@ -68,6 +68,7 @@ public:
                                                unsigned Index) const override;
 
   bool isIntDivCheap(EVT VT, AttributeList Attr) const override;
+  bool isDirectRemByConstProfitable(SDNode *N) const override;
 
   bool preferScalarizeSplat(SDNode *N) const override;
 

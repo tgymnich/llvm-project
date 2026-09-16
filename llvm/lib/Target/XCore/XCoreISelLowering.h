@@ -32,6 +32,17 @@ namespace llvm {
     explicit XCoreTargetLowering(const TargetMachine &TM,
                                  const XCoreSubtarget &Subtarget);
 
+    bool isDirectRemByConstProfitable(SDNode *N) const override {
+      if (N->getValueType(0) == MVT::i8) {
+        SDValue Numerator = N->getOperand(0);
+        if (Numerator.getOpcode() == ISD::AND ||
+            Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+          Numerator = Numerator.getOperand(0);
+        return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+      }
+      return N->getValueType(0) == MVT::i16;
+    }
+
     using TargetLowering::isZExtFree;
     bool isZExtFree(SDValue Val, EVT VT2) const override;
 

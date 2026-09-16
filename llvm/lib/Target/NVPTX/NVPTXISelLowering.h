@@ -32,6 +32,21 @@ class NVPTXTargetLowering : public TargetLowering {
 public:
   explicit NVPTXTargetLowering(const NVPTXTargetMachine &TM,
                                const NVPTXSubtarget &STI);
+  bool isDirectRemByConstProfitable(SDNode *N) const override {
+    EVT VT = N->getValueType(0);
+    if (!VT.isScalarInteger() || VT.getScalarSizeInBits() > 32)
+      return false;
+    if (N->getOpcode() == ISD::UREM)
+      return true;
+    if (VT != MVT::i8)
+      return false;
+
+    SDValue Numerator = N->getOperand(0);
+    if (Numerator.getOpcode() == ISD::AND ||
+        Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+      Numerator = Numerator.getOperand(0);
+    return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+  }
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
 
   void getTgtMemIntrinsic(SmallVectorImpl<IntrinsicInfo> &Infos,

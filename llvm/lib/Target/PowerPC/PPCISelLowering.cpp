@@ -21228,6 +21228,37 @@ SDValue PPCTargetLowering::DAGCombineBitcast(SDNode *N,
   return DAG.getNode(ISD::TRUNCATE, dl, ResVT, Extracted);
 }
 
+bool PPCTargetLowering::isDirectRemByConstProfitable(SDNode *N) const {
+  EVT VT = N->getValueType(0);
+  if (VT == MVT::i8 || VT == MVT::v4i8) {
+    if (VT.isVector())
+      return true;
+    SDValue Numerator = N->getOperand(0);
+    if (Numerator.getOpcode() == ISD::AND ||
+        Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+      Numerator = Numerator.getOperand(0);
+    return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+  }
+  if (VT == MVT::i16 || VT == MVT::i32) {
+    if (VT == MVT::i32)
+      return false;
+    SDValue Numerator = N->getOperand(0);
+    // Avoid applying the scalar sequence independently to promoted vector
+    // elements.
+    if (Numerator.getOpcode() == ISD::AND ||
+        Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+      Numerator = Numerator.getOperand(0);
+    if (Numerator.getOpcode() == ISD::EXTRACT_VECTOR_ELT)
+      return false;
+    return true;
+  }
+  if (!Subtarget.isISA3_1())
+    return false;
+  if (VT == MVT::v4i16)
+    return true;
+  return VT == MVT::v2i32 && N->getOpcode() == ISD::UREM;
+}
+
 SDValue PPCTargetLowering::GenerateVBPERM(SelectionDAG &DAG, SDLoc dl,
                                           SDValue Src, EVT SrcVT, EVT ResVT,
                                           bool IsLE) const {

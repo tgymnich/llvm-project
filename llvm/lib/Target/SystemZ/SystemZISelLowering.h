@@ -41,6 +41,20 @@ public:
   explicit SystemZTargetLowering(const TargetMachine &TM,
                                  const SystemZSubtarget &STI);
 
+  bool isDirectRemByConstProfitable(SDNode *N) const override {
+    EVT VT = N->getValueType(0);
+    if (VT == MVT::i8) {
+      SDValue Numerator = N->getOperand(0);
+      if (Numerator.getOpcode() == ISD::AND ||
+          Numerator.getOpcode() == ISD::SIGN_EXTEND_INREG)
+        Numerator = Numerator.getOperand(0);
+      return Numerator.getOpcode() != ISD::EXTRACT_VECTOR_ELT;
+    }
+    return (N->getOpcode() == ISD::SREM &&
+            (VT == MVT::i16 || VT == MVT::i32)) ||
+           (N->getOpcode() == ISD::UREM && VT == MVT::v8i8);
+  }
+
   bool useSoftFloat() const override;
 
   // Override TargetLowering.

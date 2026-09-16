@@ -417,6 +417,11 @@ public:
 
   bool isTypeDesirableForOp(unsigned Op, EVT VT) const override;
 
+  bool isDirectRemByConstProfitable(SDNode *N) const override {
+    unsigned ScalarBits = N->getValueType(0).getScalarSizeInBits();
+    return ScalarBits >= 8 && ScalarBits < 32;
+  }
+
   bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override;
 
   unsigned combineRepeatedFPDivisors() const override {

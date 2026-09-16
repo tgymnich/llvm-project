@@ -7189,6 +7189,245 @@ SDValue TargetLowering::BuildUDIV(SDNode *N, SelectionDAG &DAG,
   return DAG.getSelect(dl, VT, IsOne, N0, Q);
 }
 
+SDValue TargetLowering::BuildUREM(SDNode *N, SelectionDAG &DAG,
+                                  bool IsAfterLegalization,
+                                  SmallVectorImpl<SDNode *> &Created) const {
+  SDLoc DL(N);
+  EVT VT = N->getValueType(0);
+  EVT WideVT = VT.widenIntegerElementType(*DAG.getContext());
+  unsigned ResultBits = WideVT.getScalarSizeInBits();
+
+  while (!isTypeLegal(WideVT) && WideVT.getScalarSizeInBits() < 128)
+    WideVT = WideVT.widenIntegerElementType(*DAG.getContext());
+
+  if (DAG.getMachineFunction().getFunction().hasMinSize())
+    return SDValue();
+
+  if (!isTypeLegal(WideVT) ||
+      !isOperationLegalOrCustom(ISD::MUL, WideVT, IsAfterLegalization))
+    return SDValue();
+
+  unsigned WideBits = WideVT.getScalarSizeInBits();
+  bool UseWideContainer = WideBits != ResultBits;
+  if (UseWideContainer &&
+      (WideBits < ResultBits + VT.getScalarSizeInBits() ||
+       !isOperationLegalOrCustom(ISD::AND, WideVT, IsAfterLegalization) ||
+       !isOperationLegalOrCustom(ISD::SRL, WideVT, IsAfterLegalization)))
+    return SDValue();
+
+  bool HasMULHU =
+      !UseWideContainer &&
+      isOperationLegalOrCustom(ISD::MULHU, WideVT, IsAfterLegalization);
+  bool HasUMUL_LOHI =
+      !UseWideContainer &&
+      isOperationLegalOrCustom(ISD::UMUL_LOHI, WideVT, IsAfterLegalization);
+  if (!UseWideContainer && !HasMULHU && !HasUMUL_LOHI)
+    return SDValue();
+
+  SmallVector<SDValue> MagicFactors;
+  bool AllDivisorsAreOne = true;
+  bool AllDivisorsArePowerOfTwo = true;
+
+  auto BuildUREMPattern = [&](ConstantSDNode *C) {
+    APInt Divisor = C->getAPIntValue().trunc(VT.getScalarSizeInBits());
+    if (Divisor.isZero())
+      return false;
+
+    AllDivisorsAreOne &= Divisor.isOne();
+    AllDivisorsArePowerOfTwo &= Divisor.isPowerOf2();
+
+    APInt WideDivisor = Divisor.zext(ResultBits);
+    // This is ceil(2^(2N) / d), represented in 2N bits. See D. Lemire,
+    // O. Kaser, and N. Kurz, "Faster Remainder by Direct Computation".
+    APInt Reciprocal = APInt::getMaxValue(ResultBits).udiv(WideDivisor) + 1;
+    MagicFactors.push_back(
+        DAG.getConstant(Reciprocal.zext(WideBits), DL, WideVT.getScalarType()));
+    return true;
+  };
+
+  SDValue Divisor = N->getOperand(1);
+  if (!ISD::matchUnaryPredicate(Divisor, BuildUREMPattern,
+                                /*AllowUndefs=*/false,
+                                /*AllowTruncation=*/true) ||
+      AllDivisorsAreOne || AllDivisorsArePowerOfTwo)
+    return SDValue();
+
+  SDValue MagicFactor;
+  if (Divisor.getOpcode() == ISD::BUILD_VECTOR) {
+    MagicFactor = DAG.getBuildVector(WideVT, DL, MagicFactors);
+  } else if (Divisor.getOpcode() == ISD::SPLAT_VECTOR) {
+    assert(MagicFactors.size() == 1 && "expected one splat value");
+    MagicFactor = DAG.getSplatVector(WideVT, DL, MagicFactors.front());
+  } else {
+    assert(isa<ConstantSDNode>(Divisor) && "expected a constant divisor");
+    MagicFactor = MagicFactors.front();
+  }
+  SDValue WideNumerator = DAG.getZExtOrTrunc(N->getOperand(0), DL, WideVT);
+  SDValue LowProduct =
+      DAG.getNode(ISD::MUL, DL, WideVT, WideNumerator, MagicFactor);
+  SDValue WideDivisor = DAG.getZExtOrTrunc(Divisor, DL, WideVT);
+
+  SDValue Result;
+  if (UseWideContainer) {
+    SDValue Mask =
+        DAG.getConstant(APInt::getLowBitsSet(WideBits, ResultBits), DL, WideVT);
+    SDValue LowBits = DAG.getNode(ISD::AND, DL, WideVT, LowProduct, Mask);
+    SDValue Product = DAG.getNode(ISD::MUL, DL, WideVT, LowBits, WideDivisor);
+    Result = DAG.getNode(ISD::SRL, DL, WideVT, Product,
+                         DAG.getShiftAmountConstant(ResultBits, WideVT, DL));
+    Created.push_back(Mask.getNode());
+    Created.push_back(LowBits.getNode());
+    Created.push_back(Product.getNode());
+  } else if (HasMULHU) {
+    Result = DAG.getNode(ISD::MULHU, DL, WideVT, LowProduct, WideDivisor);
+  } else {
+    SDValue LoHi =
+        DAG.getNode(ISD::UMUL_LOHI, DL, DAG.getVTList(WideVT, WideVT),
+                    LowProduct, WideDivisor);
+    Result = LoHi.getValue(1);
+  }
+
+  Created.push_back(MagicFactor.getNode());
+  Created.push_back(WideNumerator.getNode());
+  Created.push_back(LowProduct.getNode());
+  Created.push_back(WideDivisor.getNode());
+  Created.push_back(Result.getNode());
+  return DAG.getZExtOrTrunc(Result, DL, VT);
+}
+
+SDValue TargetLowering::BuildSREM(SDNode *N, SelectionDAG &DAG,
+                                  bool IsAfterLegalization,
+                                  SmallVectorImpl<SDNode *> &Created) const {
+  SDLoc DL(N);
+  EVT VT = N->getValueType(0);
+  EVT WideVT = VT.widenIntegerElementType(*DAG.getContext());
+  unsigned ResultBits = WideVT.getScalarSizeInBits();
+
+  while (!isTypeLegal(WideVT) && WideVT.getScalarSizeInBits() < 128)
+    WideVT = WideVT.widenIntegerElementType(*DAG.getContext());
+
+  if (DAG.getMachineFunction().getFunction().hasMinSize())
+    return SDValue();
+
+  if (!isTypeLegal(WideVT) ||
+      !isOperationLegalOrCustom(ISD::MUL, WideVT, IsAfterLegalization))
+    return SDValue();
+
+  unsigned WideBits = WideVT.getScalarSizeInBits();
+  bool UseWideContainer = WideBits != ResultBits;
+  if (UseWideContainer &&
+      (WideBits < ResultBits + VT.getScalarSizeInBits() ||
+       !isOperationLegalOrCustom(ISD::AND, WideVT, IsAfterLegalization) ||
+       !isOperationLegalOrCustom(ISD::SRL, WideVT, IsAfterLegalization)))
+    return SDValue();
+
+  bool HasMULHU =
+      !UseWideContainer &&
+      isOperationLegalOrCustom(ISD::MULHU, WideVT, IsAfterLegalization);
+  bool HasUMUL_LOHI =
+      !UseWideContainer &&
+      isOperationLegalOrCustom(ISD::UMUL_LOHI, WideVT, IsAfterLegalization);
+  if (!UseWideContainer && !HasMULHU && !HasUMUL_LOHI)
+    return SDValue();
+
+  unsigned Bits = VT.getScalarSizeInBits();
+  SmallVector<SDValue> MagicFactors;
+  SmallVector<SDValue> AbsoluteDivisors;
+  bool AllDivisorsAreOne = true;
+  bool AllDivisorsArePowerOfTwo = true;
+
+  auto BuildSREMPattern = [&](ConstantSDNode *C) {
+    APInt Divisor = C->getAPIntValue().trunc(Bits);
+    if (Divisor.isZero() || Divisor.isMinSignedValue())
+      return false;
+
+    APInt AbsoluteDivisor = Divisor.abs();
+    AllDivisorsAreOne &= AbsoluteDivisor.isOne();
+    AllDivisorsArePowerOfTwo &= AbsoluteDivisor.isPowerOf2();
+
+    APInt WideDivisor = AbsoluteDivisor.zext(ResultBits);
+    // This is ceil(2^(2N) / abs(d)), represented in 2N bits. See D. Lemire,
+    // O. Kaser, and N. Kurz, "Faster Remainder by Direct Computation".
+    APInt Reciprocal = APInt::getMaxValue(ResultBits).udiv(WideDivisor) + 1;
+    if (!AbsoluteDivisor.isOne() && AbsoluteDivisor.isPowerOf2())
+      ++Reciprocal;
+    MagicFactors.push_back(
+        DAG.getConstant(Reciprocal.zext(WideBits), DL, WideVT.getScalarType()));
+    AbsoluteDivisors.push_back(
+        DAG.getConstant(AbsoluteDivisor, DL, VT.getScalarType()));
+    return true;
+  };
+
+  SDValue Divisor = N->getOperand(1);
+  if (!ISD::matchUnaryPredicate(Divisor, BuildSREMPattern,
+                                /*AllowUndefs=*/false,
+                                /*AllowTruncation=*/true) ||
+      AllDivisorsAreOne || AllDivisorsArePowerOfTwo)
+    return SDValue();
+
+  SDValue MagicFactor;
+  SDValue AbsoluteDivisor;
+  if (Divisor.getOpcode() == ISD::BUILD_VECTOR) {
+    MagicFactor = DAG.getBuildVector(WideVT, DL, MagicFactors);
+    AbsoluteDivisor = DAG.getBuildVector(VT, DL, AbsoluteDivisors);
+  } else if (Divisor.getOpcode() == ISD::SPLAT_VECTOR) {
+    assert(MagicFactors.size() == 1 && AbsoluteDivisors.size() == 1 &&
+           "expected one splat value");
+    MagicFactor = DAG.getSplatVector(WideVT, DL, MagicFactors.front());
+    AbsoluteDivisor = DAG.getSplatVector(VT, DL, AbsoluteDivisors.front());
+  } else {
+    assert(isa<ConstantSDNode>(Divisor) && "expected a constant divisor");
+    MagicFactor = MagicFactors.front();
+    AbsoluteDivisor = AbsoluteDivisors.front();
+  }
+  SDValue WideNumerator = DAG.getSExtOrTrunc(N->getOperand(0), DL, WideVT);
+  SDValue LowProduct =
+      DAG.getNode(ISD::MUL, DL, WideVT, WideNumerator, MagicFactor);
+  SDValue WideDivisor = DAG.getZExtOrTrunc(AbsoluteDivisor, DL, WideVT);
+
+  SDValue HighBits;
+  if (UseWideContainer) {
+    SDValue Mask =
+        DAG.getConstant(APInt::getLowBitsSet(WideBits, ResultBits), DL, WideVT);
+    SDValue LowBits = DAG.getNode(ISD::AND, DL, WideVT, LowProduct, Mask);
+    SDValue Product = DAG.getNode(ISD::MUL, DL, WideVT, LowBits, WideDivisor);
+    HighBits = DAG.getNode(ISD::SRL, DL, WideVT, Product,
+                           DAG.getShiftAmountConstant(ResultBits, WideVT, DL));
+    Created.push_back(Mask.getNode());
+    Created.push_back(LowBits.getNode());
+    Created.push_back(Product.getNode());
+  } else if (HasMULHU) {
+    HighBits = DAG.getNode(ISD::MULHU, DL, WideVT, LowProduct, WideDivisor);
+  } else {
+    SDValue LoHi =
+        DAG.getNode(ISD::UMUL_LOHI, DL, DAG.getVTList(WideVT, WideVT),
+                    LowProduct, WideDivisor);
+    HighBits = LoHi.getValue(1);
+  }
+
+  SDValue RemainderMagnitude = DAG.getSExtOrTrunc(HighBits, DL, VT);
+  SDValue DivisorMinusOne = DAG.getNode(ISD::SUB, DL, VT, AbsoluteDivisor,
+                                        DAG.getConstant(1, DL, VT));
+  SDValue Sign = DAG.getNode(ISD::SRA, DL, VT, N->getOperand(0),
+                             DAG.getShiftAmountConstant(Bits - 1, VT, DL));
+  SDValue NegativeCorrection =
+      DAG.getNode(ISD::AND, DL, VT, DivisorMinusOne, Sign);
+  SDValue Result =
+      DAG.getNode(ISD::SUB, DL, VT, RemainderMagnitude, NegativeCorrection);
+
+  Created.push_back(MagicFactor.getNode());
+  Created.push_back(AbsoluteDivisor.getNode());
+  Created.push_back(WideNumerator.getNode());
+  Created.push_back(LowProduct.getNode());
+  Created.push_back(WideDivisor.getNode());
+  Created.push_back(HighBits.getNode());
+  Created.push_back(DivisorMinusOne.getNode());
+  Created.push_back(Sign.getNode());
+  Created.push_back(NegativeCorrection.getNode());
+  Created.push_back(Result.getNode());
+  return Result;
+}
+
 /// If all values in Values that *don't* match the predicate are same 'splat'
 /// value, then replace all values with that splat value.
 /// Else, if AlternativeReplacement was provided, then replace all values that
