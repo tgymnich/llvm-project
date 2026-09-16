@@ -463,9 +463,10 @@ std::optional<FPValueAndVReg> llvm::getFConstantVRegValWithLookThrough(
 const ConstantFP *
 llvm::getConstantFPVRegVal(Register VReg, const MachineRegisterInfo &MRI) {
   MachineInstr *MI = MRI.getVRegDef(VReg);
-  if (TargetOpcode::G_FCONSTANT != MI->getOpcode())
+  const GFConstantInstr *FConstant = dyn_cast<GFConstantInstr>(MI);
+  if (!FConstant)
     return nullptr;
-  return MI->getOperand(1).getFPImm();
+  return FConstant->getConstantFP();
 }
 
 std::optional<DefinitionAndSourceRegister>
@@ -1544,7 +1545,7 @@ bool llvm::isNullOrNullSplat(const MachineInstr &MI,
   case TargetOpcode::G_CONSTANT:
     return MI.getOperand(1).getCImm()->isNullValue();
   case TargetOpcode::G_FCONSTANT: {
-    const ConstantFP *FPImm = MI.getOperand(1).getFPImm();
+    const ConstantFP *FPImm = cast<GFConstantInstr>(MI).getConstantFP();
     return FPImm->isZero() && !FPImm->isNegative();
   }
   default:

@@ -79,6 +79,44 @@ public:
   }
 };
 
+/// Atomically updates memory and returns the value read before the update.
+class GAtomicRMW : public GMemOperation {
+public:
+  Register getOldValueReg() const { return getReg(0); }
+  Register getPointerReg() const { return getReg(1); }
+  Register getValueReg() const { return getReg(2); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() >= TargetOpcode::GENERIC_ATOMICRMW_OP_START &&
+           MI->getOpcode() <= TargetOpcode::GENERIC_ATOMICRMW_OP_END;
+  }
+};
+
+/// Atomically replaces a matching value, optionally returning whether the
+/// comparison succeeded.
+class GAtomicCmpXchg : public GMemOperation {
+public:
+  Register getOldValueReg() const { return getReg(0); }
+
+  bool hasSuccessResult() const {
+    return getOpcode() == TargetOpcode::G_ATOMIC_CMPXCHG_WITH_SUCCESS;
+  }
+
+  Register getSuccessReg() const {
+    assert(hasSuccessResult() && "expected a success result");
+    return getReg(1);
+  }
+
+  Register getPointerReg() const { return getReg(getNumExplicitDefs()); }
+  Register getCompareReg() const { return getReg(getNumExplicitDefs() + 1); }
+  Register getNewValueReg() const { return getReg(getNumExplicitDefs() + 2); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_ATOMIC_CMPXCHG ||
+           MI->getOpcode() == TargetOpcode::G_ATOMIC_CMPXCHG_WITH_SUCCESS;
+  }
+};
+
 /// Represents any type of generic load or store.
 /// G_LOAD, G_STORE, G_ZEXTLOAD, G_SEXTLOAD, G_FPEXTLOAD, G_FPTRUNCSTORE.
 class GLoadStore : public GMemOperation {
@@ -298,6 +336,29 @@ public:
   }
 };
 
+/// Extracts a result-sized bit range at a constant offset from a source.
+class GExtract : public GenericMachineInstr {
+public:
+  Register getSrcReg() const { return getReg(1); }
+  uint64_t getOffsetInBits() const { return getOperand(2).getImm(); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_EXTRACT;
+  }
+};
+
+/// Replaces a bit range in a base value at a constant offset.
+class GInsert : public GenericMachineInstr {
+public:
+  Register getBaseReg() const { return getReg(1); }
+  Register getInsertedReg() const { return getReg(2); }
+  uint64_t getOffsetInBits() const { return getOperand(3).getImm(); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_INSERT;
+  }
+};
+
 /// Represents G_BUILD_VECTOR, G_CONCAT_VECTORS or G_MERGE_VALUES.
 /// All these have the common property of generating a single value from
 /// multiple sources.
@@ -375,6 +436,50 @@ public:
   }
 };
 
+/// Materializes the address of a machine frame object.
+class GFrameIndex : public GenericMachineInstr {
+public:
+  int getFrameIndex() const { return getOperand(1).getIndex(); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_FRAME_INDEX;
+  }
+};
+
+/// Materializes a global address with an offset and target-specific flags.
+class GGlobalValue : public GenericMachineInstr {
+public:
+  MachineOperand &getGlobalValueOperand() { return getOperand(1); }
+  const MachineOperand &getGlobalValueOperand() const { return getOperand(1); }
+  int64_t getOffset() const { return getGlobalValueOperand().getOffset(); }
+  unsigned getTargetFlags() const {
+    return getGlobalValueOperand().getTargetFlags();
+  }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_GLOBAL_VALUE;
+  }
+};
+
+/// Materializes a constant-pool address with an offset and target-specific
+/// flags.
+class GConstantPool : public GenericMachineInstr {
+public:
+  MachineOperand &getConstantPoolOperand() { return getOperand(1); }
+  const MachineOperand &getConstantPoolOperand() const { return getOperand(1); }
+  int getConstantPoolIndex() const {
+    return getConstantPoolOperand().getIndex();
+  }
+  int64_t getOffset() const { return getConstantPoolOperand().getOffset(); }
+  unsigned getTargetFlags() const {
+    return getConstantPoolOperand().getTargetFlags();
+  }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_CONSTANT_POOL;
+  }
+};
+
 /// Represents a G_IMPLICIT_DEF.
 class GImplicitDef : public GenericMachineInstr {
 public:
@@ -392,6 +497,17 @@ public:
 
   static bool classof(const MachineInstr *MI) {
     return MI->getOpcode() == TargetOpcode::G_SELECT;
+  }
+};
+
+/// Branches to a target block when its condition is nonzero.
+class GBrCond : public GenericMachineInstr {
+public:
+  Register getConditionReg() const { return getReg(0); }
+  MachineBasicBlock *getTargetMBB() const { return getOperand(1).getMBB(); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_BRCOND;
   }
 };
 
@@ -562,6 +678,34 @@ public:
   }
 };
 
+/// Multiplies two integers and returns the product and overflow indicator.
+class GMulOverflow : public GBinOpCarryOut {
+public:
+  Register getOverflowReg() const { return getReg(1); }
+  bool isSigned() const { return getOpcode() == TargetOpcode::G_SMULO; }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_UMULO ||
+           MI->getOpcode() == TargetOpcode::G_SMULO;
+  }
+};
+
+/// Divides two integers and returns both the quotient and remainder.
+class GDivRem : public GenericMachineInstr {
+public:
+  Register getQuotientReg() const { return getReg(0); }
+  Register getRemainderReg() const { return getReg(1); }
+  Register getLHSReg() const { return getReg(2); }
+  Register getRHSReg() const { return getReg(3); }
+
+  bool isSigned() const { return getOpcode() == TargetOpcode::G_SDIVREM; }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_SDIVREM ||
+           MI->getOpcode() == TargetOpcode::G_UDIVREM;
+  }
+};
+
 /// Represents a call to an intrinsic.
 class GIntrinsic final : public GenericMachineInstr {
 public:
@@ -726,6 +870,8 @@ public:
     case TargetOpcode::G_ADD:
     case TargetOpcode::G_SUB:
     case TargetOpcode::G_MUL:
+    case TargetOpcode::G_CLMUL:
+    case TargetOpcode::G_CLMULH:
     case TargetOpcode::G_SDIV:
     case TargetOpcode::G_UDIV:
     case TargetOpcode::G_SREM:
@@ -839,6 +985,14 @@ class GOr : public GLogicalBinOp {
 public:
   static bool classof(const MachineInstr *MI) {
     return MI->getOpcode() == TargetOpcode::G_OR;
+  };
+};
+
+/// Computes the bitwise exclusive-or of two values.
+class GXor : public GLogicalBinOp {
+public:
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_XOR;
   };
 };
 
@@ -964,6 +1118,19 @@ public:
   };
 };
 
+/// Sign-extends the low source-width bits within the existing value type.
+class GSExtInReg : public GenericMachineInstr {
+public:
+  Register getSrcReg() const { return getReg(1); }
+  unsigned getSourceSizeInBits() const {
+    return static_cast<unsigned>(getOperand(2).getImm());
+  }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_SEXT_INREG;
+  }
+};
+
 /// Represents a vscale.
 class GVScale : public GenericMachineInstr {
 public:
@@ -997,6 +1164,17 @@ public:
   };
 };
 
+/// Defines a scalar floating-point constant.
+class GFConstantInstr : public GenericMachineInstr {
+public:
+  const ConstantFP *getConstantFP() const { return getOperand(1).getFPImm(); }
+  const APFloat &getValue() const { return getConstantFP()->getValueAPF(); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_FCONSTANT;
+  };
+};
+
 /// Represents an integer subtraction.
 class GSub : public GIntBinOp {
 public:
@@ -1013,15 +1191,90 @@ public:
   };
 };
 
-/// Represents a shift left.
-class GShl : public GenericMachineInstr {
+/// Models carry-less multiplication returning either half of the double-width
+/// product.
+class GCarrylessMul : public GIntBinOp {
+public:
+  bool returnsHighHalf() const {
+    return getOpcode() == TargetOpcode::G_CLMULH;
+  }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_CLMUL ||
+           MI->getOpcode() == TargetOpcode::G_CLMULH;
+  }
+};
+
+/// Returns the low half of a double-width carry-less product.
+class GCLMul : public GCarrylessMul {
+public:
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_CLMUL;
+  }
+};
+
+/// Returns the high half of a double-width carry-less product.
+class GCLMulH : public GCarrylessMul {
+public:
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_CLMULH;
+  }
+};
+
+/// Provides source, shift amount, direction, and saturation information.
+class GShift : public GenericMachineInstr {
 public:
   Register getSrcReg() const { return getOperand(1).getReg(); }
   Register getShiftReg() const { return getOperand(2).getReg(); }
 
+  bool isLeftShift() const {
+    return getOpcode() == TargetOpcode::G_SHL ||
+           getOpcode() == TargetOpcode::G_USHLSAT ||
+           getOpcode() == TargetOpcode::G_SSHLSAT;
+  }
+  bool isRightShift() const { return !isLeftShift(); }
+
+  bool isSaturating() const {
+    return getOpcode() == TargetOpcode::G_USHLSAT ||
+           getOpcode() == TargetOpcode::G_SSHLSAT;
+  }
+
+  static bool classof(const MachineInstr *MI) {
+    switch (MI->getOpcode()) {
+    case TargetOpcode::G_SHL:
+    case TargetOpcode::G_LSHR:
+    case TargetOpcode::G_ASHR:
+    case TargetOpcode::G_USHLSAT:
+    case TargetOpcode::G_SSHLSAT:
+      return true;
+    default:
+      return false;
+    }
+  };
+};
+
+/// Shifts a value left, filling low bits with zero.
+class GShl : public GShift {
+public:
   static bool classof(const MachineInstr *MI) {
     return MI->getOpcode() == TargetOpcode::G_SHL;
-  };
+  }
+};
+
+/// Shifts a value right, filling high bits with zero.
+class GLShr : public GShift {
+public:
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_LSHR;
+  }
+};
+
+/// Shifts a value right, replicating its sign bit.
+class GAShr : public GShift {
+public:
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_ASHR;
+  }
 };
 
 /// Represents a threeway compare.

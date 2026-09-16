@@ -248,11 +248,13 @@ bool GISelAddressing::aliasIsKnownForLoadStore(const MachineInstr &MI1,
 
   if (Base0Def->getOpcode() == TargetOpcode::G_FRAME_INDEX) {
     MachineFrameInfo &MFI = Base0Def->getMF()->getFrameInfo();
+    GFrameIndex &FrameIndex0 = cast<GFrameIndex>(*Base0Def);
+    GFrameIndex &FrameIndex1 = cast<GFrameIndex>(*Base1Def);
     // If the bases have the same frame index but we couldn't find a
     // constant offset, (indices are different) be conservative.
     if (Base0Def != Base1Def &&
-        (!MFI.isFixedObjectIndex(Base0Def->getOperand(1).getIndex()) ||
-         !MFI.isFixedObjectIndex(Base1Def->getOperand(1).getIndex()))) {
+        (!MFI.isFixedObjectIndex(FrameIndex0.getFrameIndex()) ||
+         !MFI.isFixedObjectIndex(FrameIndex1.getFrameIndex()))) {
       IsAlias = false;
       return true;
     }
@@ -261,8 +263,12 @@ bool GISelAddressing::aliasIsKnownForLoadStore(const MachineInstr &MI1,
   // This implementation is a lot more primitive than the SDAG one for now.
   // FIXME: what about constant pools?
   if (Base0Def->getOpcode() == TargetOpcode::G_GLOBAL_VALUE) {
-    auto GV0 = Base0Def->getOperand(1).getGlobal();
-    auto GV1 = Base1Def->getOperand(1).getGlobal();
+    const MachineOperand &Global0 =
+        cast<GGlobalValue>(*Base0Def).getGlobalValueOperand();
+    const MachineOperand &Global1 =
+        cast<GGlobalValue>(*Base1Def).getGlobalValueOperand();
+    const GlobalValue *GV0 = Global0.getGlobal();
+    const GlobalValue *GV1 = Global1.getGlobal();
     if (GV0 != GV1) {
       IsAlias = false;
       return true;

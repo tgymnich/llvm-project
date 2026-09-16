@@ -2736,8 +2736,12 @@ LegalizerHelper::widenScalarMulo(MachineInstr &MI, unsigned TypeIdx,
     return Legalized;
   }
 
-  bool IsSigned = MI.getOpcode() == TargetOpcode::G_SMULO;
-  auto [Result, OriginalOverflow, LHS, RHS] = MI.getFirst4Regs();
+  GMulOverflow &MulOverflow = cast<GMulOverflow>(MI);
+  bool IsSigned = MulOverflow.isSigned();
+  Register Result = MulOverflow.getDstReg();
+  Register OriginalOverflow = MulOverflow.getOverflowReg();
+  Register LHS = MulOverflow.getLHSReg();
+  Register RHS = MulOverflow.getRHSReg();
   LLT SrcTy = MRI.getType(LHS);
   LLT OverflowTy = MRI.getType(OriginalOverflow);
   unsigned SrcBitWidth = SrcTy.getScalarSizeInBits();
@@ -4784,10 +4788,15 @@ LegalizerHelper::lower(MachineInstr &MI, unsigned TypeIdx, LLT LowerHintTy) {
     return Legalized;
   }
   case TargetOpcode::G_ATOMIC_CMPXCHG_WITH_SUCCESS: {
-    auto [OldValRes, SuccessRes, Addr, CmpVal, NewVal] = MI.getFirst5Regs();
+    GAtomicCmpXchg &CmpXchg = cast<GAtomicCmpXchg>(MI);
+    Register OldValRes = CmpXchg.getOldValueReg();
+    Register SuccessRes = CmpXchg.getSuccessReg();
+    Register Addr = CmpXchg.getPointerReg();
+    Register CmpVal = CmpXchg.getCompareReg();
+    Register NewVal = CmpXchg.getNewValueReg();
     Register NewOldValRes = MRI.cloneVirtualRegister(OldValRes);
     MIRBuilder.buildAtomicCmpXchg(NewOldValRes, Addr, CmpVal, NewVal,
-                                  **MI.memoperands_begin());
+                                  CmpXchg.getMMO());
     MIRBuilder.buildICmp(CmpInst::ICMP_EQ, SuccessRes, NewOldValRes, CmpVal);
     MIRBuilder.buildCopy(OldValRes, NewOldValRes);
     MI.eraseFromParent();
@@ -4926,14 +4935,16 @@ LegalizerHelper::lower(MachineInstr &MI, unsigned TypeIdx, LLT LowerHintTy) {
   case G_UNMERGE_VALUES:
     return lowerUnmergeValues(MI);
   case TargetOpcode::G_SEXT_INREG: {
-    assert(MI.getOperand(2).isImm() && "Expected immediate");
-    int64_t SizeInBits = MI.getOperand(2).getImm();
+    GSExtInReg &SExt = cast<GSExtInReg>(MI);
+    unsigned SizeInBits = SExt.getSourceSizeInBits();
 
-    auto [DstReg, SrcReg] = MI.getFirst2Regs();
+    Register DstReg = SExt.getReg(0);
+    Register SrcReg = SExt.getSrcReg();
     LLT DstTy = MRI.getType(DstReg);
     Register TmpRes = MRI.createGenericVirtualRegister(DstTy);
 
-    auto MIBSz = MIRBuilder.buildConstant(DstTy, DstTy.getScalarSizeInBits() - SizeInBits);
+    auto MIBSz = MIRBuilder.buildConstant(DstTy, DstTy.getScalarSizeInBits() -
+                                                     SizeInBits);
     MIRBuilder.buildShl(TmpRes, SrcReg, MIBSz->getOperand(0));
     MIRBuilder.buildAShr(DstReg, TmpRes, MIBSz->getOperand(0));
     MI.eraseFromParent();
@@ -9834,8 +9845,9 @@ LegalizerHelper::lowerStackRestore(MachineInstr &MI) {
 
 LegalizerHelper::LegalizeResult
 LegalizerHelper::lowerExtract(MachineInstr &MI) {
+  GExtract &Extract = cast<GExtract>(MI);
   auto [DstReg, DstTy, SrcReg, SrcTy] = MI.getFirst2RegLLTs();
-  unsigned Offset = MI.getOperand(2).getImm();
+  uint64_t Offset = Extract.getOffsetInBits();
 
   // Extract sub-vector or one element
   if (SrcTy.isVector()) {
@@ -9905,8 +9917,11 @@ LegalizerHelper::lowerExtract(MachineInstr &MI) {
 }
 
 LegalizerHelper::LegalizeResult LegalizerHelper::lowerInsert(MachineInstr &MI) {
-  auto [Dst, Src, InsertSrc] = MI.getFirst3Regs();
-  uint64_t Offset = MI.getOperand(3).getImm();
+  GInsert &Insert = cast<GInsert>(MI);
+  Register Dst = Insert.getReg(0);
+  Register Src = Insert.getBaseReg();
+  Register InsertSrc = Insert.getInsertedReg();
+  uint64_t Offset = Insert.getOffsetInBits();
 
   LLT DstTy = MRI.getType(Src);
   LLT InsertTy = MRI.getType(InsertSrc);
@@ -10725,16 +10740,16 @@ LegalizerHelper::LegalizeResult LegalizerHelper::lowerSelect(MachineInstr &MI) {
 
 LegalizerHelper::LegalizeResult LegalizerHelper::lowerDIVREM(MachineInstr &MI) {
   // Split DIVREM into individual instructions.
-  unsigned Opcode = MI.getOpcode();
+  GDivRem &DivRem = cast<GDivRem>(MI);
+  unsigned DivOpcode =
+      DivRem.isSigned() ? TargetOpcode::G_SDIV : TargetOpcode::G_UDIV;
+  unsigned RemOpcode =
+      DivRem.isSigned() ? TargetOpcode::G_SREM : TargetOpcode::G_UREM;
 
-  MIRBuilder.buildInstr(
-      Opcode == TargetOpcode::G_SDIVREM ? TargetOpcode::G_SDIV
-                                        : TargetOpcode::G_UDIV,
-      {MI.getOperand(0).getReg()}, {MI.getOperand(2), MI.getOperand(3)});
-  MIRBuilder.buildInstr(
-      Opcode == TargetOpcode::G_SDIVREM ? TargetOpcode::G_SREM
-                                        : TargetOpcode::G_UREM,
-      {MI.getOperand(1).getReg()}, {MI.getOperand(2), MI.getOperand(3)});
+  MIRBuilder.buildInstr(DivOpcode, {DivRem.getQuotientReg()},
+                        {DivRem.getLHSReg(), DivRem.getRHSReg()});
+  MIRBuilder.buildInstr(RemOpcode, {DivRem.getRemainderReg()},
+                        {DivRem.getLHSReg(), DivRem.getRHSReg()});
   MI.eraseFromParent();
   return Legalized;
 }
