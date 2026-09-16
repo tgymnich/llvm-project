@@ -19,6 +19,7 @@ add_llvm_unittest(GlobalISelTests
   ConstantFoldingTest.cpp
   CSETest.cpp
   GIMatchTableExecutorTest.cpp
+  GenericMachineInstrsTest.cpp
   LegalizerTest.cpp
   LegalizerHelperTest.cpp
   LegalizerInfoTest.cpp

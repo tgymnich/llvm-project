@@ -751,6 +751,8 @@ public:
 // Represents a (non-sequential) vector reduction operation.
 class GVecReduce : public GenericMachineInstr {
 public:
+  Register getVectorReg() const { return getReg(1); }
+
   static bool classof(const MachineInstr *MI) {
     switch (MI->getOpcode()) {
     case TargetOpcode::G_VECREDUCE_FADD:
@@ -839,6 +841,18 @@ public:
   }
 };
 
+/// Reduces a vector in order, starting from a scalar accumulator.
+class GSeqVecReduce : public GenericMachineInstr {
+public:
+  Register getAccumulatorReg() const { return getReg(1); }
+  Register getVectorReg() const { return getReg(2); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_VECREDUCE_SEQ_FADD ||
+           MI->getOpcode() == TargetOpcode::G_VECREDUCE_SEQ_FMUL;
+  }
+};
+
 /// Represents a G_PHI.
 class GPhi : public GenericMachineInstr {
 public:
@@ -858,6 +872,84 @@ public:
   }
 };
 
+/// Provides the source operand of a single-input operation.
+class GUnaryOp : public GenericMachineInstr {
+protected:
+  static bool isIntegerOpcode(unsigned Opcode) {
+    switch (Opcode) {
+    case TargetOpcode::G_ABS:
+    case TargetOpcode::G_BITREVERSE:
+    case TargetOpcode::G_BSWAP:
+    case TargetOpcode::G_CTLS:
+    case TargetOpcode::G_CTLZ:
+    case TargetOpcode::G_CTLZ_ZERO_POISON:
+    case TargetOpcode::G_CTPOP:
+    case TargetOpcode::G_CTTZ:
+    case TargetOpcode::G_CTTZ_ZERO_POISON:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  static bool isFloatingPointOpcode(unsigned Opcode) {
+    switch (Opcode) {
+    case TargetOpcode::G_FABS:
+    case TargetOpcode::G_FACOS:
+    case TargetOpcode::G_FASIN:
+    case TargetOpcode::G_FATAN:
+    case TargetOpcode::G_FCANONICALIZE:
+    case TargetOpcode::G_FCEIL:
+    case TargetOpcode::G_FCOS:
+    case TargetOpcode::G_FCOSH:
+    case TargetOpcode::G_FEXP:
+    case TargetOpcode::G_FEXP2:
+    case TargetOpcode::G_FEXP10:
+    case TargetOpcode::G_FFLOOR:
+    case TargetOpcode::G_FLOG:
+    case TargetOpcode::G_FLOG2:
+    case TargetOpcode::G_FLOG10:
+    case TargetOpcode::G_FNEARBYINT:
+    case TargetOpcode::G_FNEG:
+    case TargetOpcode::G_FRINT:
+    case TargetOpcode::G_FSIN:
+    case TargetOpcode::G_FSINH:
+    case TargetOpcode::G_FSQRT:
+    case TargetOpcode::G_FTAN:
+    case TargetOpcode::G_FTANH:
+    case TargetOpcode::G_LROUND:
+    case TargetOpcode::G_LLROUND:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+public:
+  Register getSrcReg() const { return getReg(1); }
+
+  static bool classof(const MachineInstr *MI) {
+    return isIntegerOpcode(MI->getOpcode()) ||
+           isFloatingPointOpcode(MI->getOpcode());
+  }
+};
+
+/// Provides the source operand of an integer unary operation.
+class GIntUnaryOp : public GUnaryOp {
+public:
+  static bool classof(const MachineInstr *MI) {
+    return isIntegerOpcode(MI->getOpcode());
+  }
+};
+
+/// Provides the source operand of a floating-point unary operation.
+class GFPUnaryOp : public GUnaryOp {
+public:
+  static bool classof(const MachineInstr *MI) {
+    return isFloatingPointOpcode(MI->getOpcode());
+  }
+};
+
 /// Represents a binary operation, i.e, x = y op z.
 class GBinOp : public GenericMachineInstr {
 public:
@@ -867,6 +959,8 @@ public:
   static bool classof(const MachineInstr *MI) {
     switch (MI->getOpcode()) {
     // Integer.
+    case TargetOpcode::G_ABDS:
+    case TargetOpcode::G_ABDU:
     case TargetOpcode::G_ADD:
     case TargetOpcode::G_SUB:
     case TargetOpcode::G_MUL:
@@ -876,22 +970,41 @@ public:
     case TargetOpcode::G_UDIV:
     case TargetOpcode::G_SREM:
     case TargetOpcode::G_UREM:
+    case TargetOpcode::G_ROTL:
+    case TargetOpcode::G_ROTR:
     case TargetOpcode::G_SMIN:
     case TargetOpcode::G_SMAX:
     case TargetOpcode::G_UMIN:
     case TargetOpcode::G_UMAX:
+    case TargetOpcode::G_SADDSAT:
+    case TargetOpcode::G_SSUBSAT:
+    case TargetOpcode::G_UADDSAT:
+    case TargetOpcode::G_USUBSAT:
+    case TargetOpcode::G_SAVGCEIL:
+    case TargetOpcode::G_SAVGFLOOR:
+    case TargetOpcode::G_UAVGCEIL:
+    case TargetOpcode::G_UAVGFLOOR:
+    case TargetOpcode::G_SMULH:
+    case TargetOpcode::G_UMULH:
     // Floating point.
+    case TargetOpcode::G_FATAN2:
+    case TargetOpcode::G_FCOPYSIGN:
+    case TargetOpcode::G_FLDEXP:
     case TargetOpcode::G_FMINNUM:
     case TargetOpcode::G_FMAXNUM:
     case TargetOpcode::G_FMINNUM_IEEE:
     case TargetOpcode::G_FMAXNUM_IEEE:
     case TargetOpcode::G_FMINIMUM:
     case TargetOpcode::G_FMAXIMUM:
+    case TargetOpcode::G_FMINIMUMNUM:
+    case TargetOpcode::G_FMAXIMUMNUM:
     case TargetOpcode::G_FADD:
     case TargetOpcode::G_FSUB:
     case TargetOpcode::G_FMUL:
     case TargetOpcode::G_FDIV:
+    case TargetOpcode::G_FPOWI:
     case TargetOpcode::G_FPOW:
+    case TargetOpcode::G_FREM:
     // Logical.
     case TargetOpcode::G_AND:
     case TargetOpcode::G_OR:
@@ -908,17 +1021,33 @@ class GIntBinOp : public GBinOp {
 public:
   static bool classof(const MachineInstr *MI) {
     switch (MI->getOpcode()) {
+    case TargetOpcode::G_ABDS:
+    case TargetOpcode::G_ABDU:
     case TargetOpcode::G_ADD:
     case TargetOpcode::G_SUB:
     case TargetOpcode::G_MUL:
+    case TargetOpcode::G_CLMUL:
+    case TargetOpcode::G_CLMULH:
     case TargetOpcode::G_SDIV:
     case TargetOpcode::G_UDIV:
     case TargetOpcode::G_SREM:
     case TargetOpcode::G_UREM:
+    case TargetOpcode::G_ROTL:
+    case TargetOpcode::G_ROTR:
     case TargetOpcode::G_SMIN:
     case TargetOpcode::G_SMAX:
     case TargetOpcode::G_UMIN:
     case TargetOpcode::G_UMAX:
+    case TargetOpcode::G_SADDSAT:
+    case TargetOpcode::G_SSUBSAT:
+    case TargetOpcode::G_UADDSAT:
+    case TargetOpcode::G_USUBSAT:
+    case TargetOpcode::G_SAVGCEIL:
+    case TargetOpcode::G_SAVGFLOOR:
+    case TargetOpcode::G_UAVGCEIL:
+    case TargetOpcode::G_UAVGFLOOR:
+    case TargetOpcode::G_SMULH:
+    case TargetOpcode::G_UMULH:
       return true;
     default:
       return false;
@@ -931,22 +1060,177 @@ class GFBinOp : public GBinOp {
 public:
   static bool classof(const MachineInstr *MI) {
     switch (MI->getOpcode()) {
+    case TargetOpcode::G_FATAN2:
+    case TargetOpcode::G_FCOPYSIGN:
+    case TargetOpcode::G_FLDEXP:
     case TargetOpcode::G_FMINNUM:
     case TargetOpcode::G_FMAXNUM:
     case TargetOpcode::G_FMINNUM_IEEE:
     case TargetOpcode::G_FMAXNUM_IEEE:
     case TargetOpcode::G_FMINIMUM:
     case TargetOpcode::G_FMAXIMUM:
+    case TargetOpcode::G_FMINIMUMNUM:
+    case TargetOpcode::G_FMAXIMUMNUM:
     case TargetOpcode::G_FADD:
     case TargetOpcode::G_FSUB:
     case TargetOpcode::G_FMUL:
     case TargetOpcode::G_FDIV:
+    case TargetOpcode::G_FPOWI:
     case TargetOpcode::G_FPOW:
+    case TargetOpcode::G_FREM:
       return true;
     default:
       return false;
     }
   };
+};
+
+/// Provides the three register inputs of a ternary operation.
+class GTernaryOp : public GenericMachineInstr {
+public:
+  Register getSrc1Reg() const { return getReg(1); }
+  Register getSrc2Reg() const { return getReg(2); }
+  Register getSrc3Reg() const { return getReg(3); }
+
+  static bool classof(const MachineInstr *MI) {
+    switch (MI->getOpcode()) {
+    case TargetOpcode::G_FMA:
+    case TargetOpcode::G_FMAD:
+    case TargetOpcode::G_FSHL:
+    case TargetOpcode::G_FSHR:
+    case TargetOpcode::G_SBFX:
+    case TargetOpcode::G_UBFX:
+    case TargetOpcode::G_VECTOR_COMPRESS:
+      return true;
+    default:
+      return false;
+    }
+  }
+};
+
+/// Combines two values using a third operand as the funnel shift amount.
+class GFunnelShift : public GTernaryOp {
+public:
+  Register getShiftReg() const { return getSrc3Reg(); }
+  bool isLeft() const { return getOpcode() == TargetOpcode::G_FSHL; }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_FSHL ||
+           MI->getOpcode() == TargetOpcode::G_FSHR;
+  }
+};
+
+/// Extracts a signed or unsigned bit field using register operands.
+class GBitfieldExtract : public GTernaryOp {
+public:
+  Register getSrcReg() const { return getSrc1Reg(); }
+  Register getLSBReg() const { return getSrc2Reg(); }
+  Register getWidthReg() const { return getSrc3Reg(); }
+  bool isSigned() const { return getOpcode() == TargetOpcode::G_SBFX; }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_SBFX ||
+           MI->getOpcode() == TargetOpcode::G_UBFX;
+  }
+};
+
+/// Multiplies two floating-point values and adds a third.
+class GFMulAdd : public GTernaryOp {
+public:
+  bool isFused() const { return getOpcode() == TargetOpcode::G_FMA; }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_FMA ||
+           MI->getOpcode() == TargetOpcode::G_FMAD;
+  }
+};
+
+/// Performs signed or unsigned fixed-point multiplication or division.
+class GFixedPointOp : public GenericMachineInstr {
+public:
+  Register getLHSReg() const { return getReg(1); }
+  Register getRHSReg() const { return getReg(2); }
+  int64_t getScale() const { return getOperand(3).getImm(); }
+
+  bool isSigned() const {
+    switch (getOpcode()) {
+    case TargetOpcode::G_SDIVFIX:
+    case TargetOpcode::G_SDIVFIXSAT:
+    case TargetOpcode::G_SMULFIX:
+    case TargetOpcode::G_SMULFIXSAT:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  bool isSaturating() const {
+    switch (getOpcode()) {
+    case TargetOpcode::G_SDIVFIXSAT:
+    case TargetOpcode::G_SMULFIXSAT:
+    case TargetOpcode::G_UDIVFIXSAT:
+    case TargetOpcode::G_UMULFIXSAT:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  bool isDivision() const {
+    switch (getOpcode()) {
+    case TargetOpcode::G_SDIVFIX:
+    case TargetOpcode::G_SDIVFIXSAT:
+    case TargetOpcode::G_UDIVFIX:
+    case TargetOpcode::G_UDIVFIXSAT:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  static bool classof(const MachineInstr *MI) {
+    switch (MI->getOpcode()) {
+    case TargetOpcode::G_SDIVFIX:
+    case TargetOpcode::G_SDIVFIXSAT:
+    case TargetOpcode::G_SMULFIX:
+    case TargetOpcode::G_SMULFIXSAT:
+    case TargetOpcode::G_UDIVFIX:
+    case TargetOpcode::G_UDIVFIXSAT:
+    case TargetOpcode::G_UMULFIX:
+    case TargetOpcode::G_UMULFIXSAT:
+      return true;
+    default:
+      return false;
+    }
+  }
+};
+
+/// Provides both results and the source of a two-result floating-point
+/// operation.
+class GFPMultiResultOp : public GenericMachineInstr {
+public:
+  Register getFirstResultReg() const { return getReg(0); }
+  Register getSecondResultReg() const { return getReg(1); }
+  Register getSrcReg() const { return getReg(2); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_FFREXP ||
+           MI->getOpcode() == TargetOpcode::G_FMODF ||
+           MI->getOpcode() == TargetOpcode::G_FSINCOS;
+  }
+};
+
+/// Tests a floating-point value against an immediate class mask.
+class GIsFPClass : public GenericMachineInstr {
+public:
+  Register getSrcReg() const { return getReg(1); }
+  unsigned getTestMask() const {
+    return static_cast<unsigned>(getOperand(2).getImm());
+  }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_IS_FPCLASS;
+  }
 };
 
 /// Represents a logical binary operation.
@@ -1039,6 +1323,18 @@ public:
 
   static bool classof(const MachineInstr *MI) {
     return MI->getOpcode() == TargetOpcode::G_INSERT_SUBVECTOR;
+  }
+};
+
+/// Compresses selected vector elements and fills unused lanes from a passthru.
+class GVectorCompress : public GTernaryOp {
+public:
+  Register getVectorReg() const { return getSrc1Reg(); }
+  Register getMaskReg() const { return getSrc2Reg(); }
+  Register getPassthruReg() const { return getSrc3Reg(); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_VECTOR_COMPRESS;
   }
 };
 
@@ -1218,6 +1514,19 @@ class GCLMulH : public GCarrylessMul {
 public:
   static bool classof(const MachineInstr *MI) {
     return MI->getOpcode() == TargetOpcode::G_CLMULH;
+  }
+};
+
+/// Rotates a value by a register-specified amount.
+class GRotate : public GIntBinOp {
+public:
+  Register getSrcReg() const { return getLHSReg(); }
+  Register getAmountReg() const { return getRHSReg(); }
+  bool isLeft() const { return getOpcode() == TargetOpcode::G_ROTL; }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_ROTL ||
+           MI->getOpcode() == TargetOpcode::G_ROTR;
   }
 };
 
