@@ -4,16 +4,13 @@
 define i8 @urem_i8(i8 %x) {
 ; CHECK-LABEL: urem_i8:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    mov w8, #37 // =0x25
+; CHECK-NEXT:    mov w8, #9363 // =0x2493
 ; CHECK-NEXT:    and w9, w0, #0xff
 ; CHECK-NEXT:    mul w8, w9, w8
-; CHECK-NEXT:    lsr w8, w8, #8
-; CHECK-NEXT:    sub w9, w0, w8
-; CHECK-NEXT:    and w9, w9, #0xfe
-; CHECK-NEXT:    add w8, w8, w9, lsr #1
-; CHECK-NEXT:    lsr w8, w8, #2
-; CHECK-NEXT:    sub w8, w8, w8, lsl #3
-; CHECK-NEXT:    add w0, w0, w8
+; CHECK-NEXT:    and w8, w8, #0xffff
+; CHECK-NEXT:    lsl w9, w8, #3
+; CHECK-NEXT:    sub w8, w9, w8
+; CHECK-NEXT:    lsr w0, w8, #16
 ; CHECK-NEXT:    ret
   %r = urem i8 %x, 7
   ret i8 %r
@@ -22,12 +19,12 @@ define i8 @urem_i8(i8 %x) {
 define i8 @urem_i8_no_fixup(i8 %x) {
 ; CHECK-LABEL: urem_i8_no_fixup:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    mov w8, #205 // =0xcd
+; CHECK-NEXT:    mov w8, #13108 // =0x3334
 ; CHECK-NEXT:    and w9, w0, #0xff
 ; CHECK-NEXT:    mul w8, w9, w8
-; CHECK-NEXT:    lsr w8, w8, #10
+; CHECK-NEXT:    and w8, w8, #0xfffc
 ; CHECK-NEXT:    add w8, w8, w8, lsl #2
-; CHECK-NEXT:    sub w0, w0, w8
+; CHECK-NEXT:    lsr w0, w8, #16
 ; CHECK-NEXT:    ret
   %r = urem i8 %x, 5
   ret i8 %r
@@ -53,12 +50,15 @@ define i16 @srem_i16(i16 %x) {
 define <8 x i8> @urem_v8i8(<8 x i8> %x) {
 ; CHECK-LABEL: urem_v8i8:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    movi v1.8b, #205
-; CHECK-NEXT:    movi v2.8b, #10
-; CHECK-NEXT:    umull v1.8h, v0.8b, v1.8b
-; CHECK-NEXT:    shrn v1.8b, v1.8h, #8
-; CHECK-NEXT:    ushr v1.8b, v1.8b, #3
-; CHECK-NEXT:    mls v0.8b, v1.8b, v2.8b
+; CHECK-NEXT:    mov w8, #6554 // =0x199a
+; CHECK-NEXT:    ushll v0.8h, v0.8b, #0
+; CHECK-NEXT:    dup v1.8h, w8
+; CHECK-NEXT:    mul v0.8h, v0.8h, v1.8h
+; CHECK-NEXT:    movi v1.8h, #10
+; CHECK-NEXT:    umull2 v2.4s, v0.8h, v1.8h
+; CHECK-NEXT:    umull v0.4s, v0.4h, v1.4h
+; CHECK-NEXT:    uzp2 v0.8h, v0.8h, v2.8h
+; CHECK-NEXT:    xtn v0.8b, v0.8h
 ; CHECK-NEXT:    ret
   %r = urem <8 x i8> %x, <i8 10, i8 10, i8 10, i8 10, i8 10, i8 10, i8 10, i8 10>
   ret <8 x i8> %r
@@ -67,16 +67,15 @@ define <8 x i8> @urem_v8i8(<8 x i8> %x) {
 define <8 x i8> @urem_v8i8_7(<8 x i8> %x) {
 ; CHECK-LABEL: urem_v8i8_7:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    movi v1.8b, #37
-; CHECK-NEXT:    umull v1.8h, v0.8b, v1.8b
-; CHECK-NEXT:    shrn v1.8b, v1.8h, #8
-; CHECK-NEXT:    sub v2.8b, v0.8b, v1.8b
-; CHECK-NEXT:    ushll v2.8h, v2.8b, #0
-; CHECK-NEXT:    shrn v2.8b, v2.8h, #1
-; CHECK-NEXT:    add v1.8b, v2.8b, v1.8b
-; CHECK-NEXT:    movi v2.8b, #7
-; CHECK-NEXT:    ushr v1.8b, v1.8b, #2
-; CHECK-NEXT:    mls v0.8b, v1.8b, v2.8b
+; CHECK-NEXT:    mov w8, #9363 // =0x2493
+; CHECK-NEXT:    ushll v0.8h, v0.8b, #0
+; CHECK-NEXT:    dup v1.8h, w8
+; CHECK-NEXT:    mul v0.8h, v0.8h, v1.8h
+; CHECK-NEXT:    movi v1.8h, #7
+; CHECK-NEXT:    umull2 v2.4s, v0.8h, v1.8h
+; CHECK-NEXT:    umull v0.4s, v0.4h, v1.4h
+; CHECK-NEXT:    uzp2 v0.8h, v0.8h, v2.8h
+; CHECK-NEXT:    xtn v0.8b, v0.8h
 ; CHECK-NEXT:    ret
   %r = urem <8 x i8> %x, splat (i8 7)
   ret <8 x i8> %r

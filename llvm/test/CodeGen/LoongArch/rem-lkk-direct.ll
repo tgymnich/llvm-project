@@ -4,18 +4,17 @@
 define i32 @srem_i32(i32 %x) {
 ; CHECK-LABEL: srem_i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    addi.w $a1, $a0, 0
-; CHECK-NEXT:    lu12i.w $a2, 342166
-; CHECK-NEXT:    ori $a2, $a2, 3707
-; CHECK-NEXT:    mul.d $a1, $a1, $a2
-; CHECK-NEXT:    srli.d $a1, $a1, 32
-; CHECK-NEXT:    sub.w $a1, $a1, $a0
-; CHECK-NEXT:    bstrpick.d $a2, $a1, 31, 31
-; CHECK-NEXT:    srli.d $a1, $a1, 6
-; CHECK-NEXT:    add.d $a1, $a1, $a2
-; CHECK-NEXT:    addi.d $a2, $zero, -95
-; CHECK-NEXT:    mul.d $a1, $a1, $a2
-; CHECK-NEXT:    sub.w $a0, $a0, $a1
+; CHECK-NEXT:    addi.w $a0, $a0, 0
+; CHECK-NEXT:    lu12i.w $a1, 66225
+; CHECK-NEXT:    ori $a1, $a1, 3493
+; CHECK-NEXT:    lu32i.d $a1, 121414
+; CHECK-NEXT:    lu52i.d $a1, $a1, 43
+; CHECK-NEXT:    mul.d $a1, $a0, $a1
+; CHECK-NEXT:    ori $a2, $zero, 95
+; CHECK-NEXT:    mulh.du $a1, $a1, $a2
+; CHECK-NEXT:    srli.d $a0, $a0, 31
+; CHECK-NEXT:    andi $a0, $a0, 94
+; CHECK-NEXT:    sub.d $a0, $a1, $a0
 ; CHECK-NEXT:    ret
   %r = srem i32 %x, -95
   ret i32 %r
@@ -27,12 +26,14 @@ define i32 @srem_i32_3(i32 %x) {
 ; CHECK-NEXT:    addi.w $a1, $a0, 0
 ; CHECK-NEXT:    lu12i.w $a2, 349525
 ; CHECK-NEXT:    ori $a2, $a2, 1366
+; CHECK-NEXT:    lu32i.d $a2, 349525
+; CHECK-NEXT:    lu52i.d $a2, $a2, 1365
 ; CHECK-NEXT:    mul.d $a1, $a1, $a2
-; CHECK-NEXT:    srli.d $a2, $a1, 63
-; CHECK-NEXT:    srli.d $a1, $a1, 32
-; CHECK-NEXT:    add.d $a1, $a1, $a2
-; CHECK-NEXT:    alsl.d $a1, $a1, $a1, 1
-; CHECK-NEXT:    sub.w $a0, $a0, $a1
+; CHECK-NEXT:    ori $a2, $zero, 3
+; CHECK-NEXT:    mulh.du $a1, $a1, $a2
+; CHECK-NEXT:    srli.d $a0, $a0, 30
+; CHECK-NEXT:    andi $a0, $a0, 2
+; CHECK-NEXT:    sub.d $a0, $a1, $a0
 ; CHECK-NEXT:    ret
   %r = srem i32 %x, 3
   ret i32 %r
@@ -40,17 +41,14 @@ define i32 @srem_i32_3(i32 %x) {
 define i8 @urem_i8(i8 %x) {
 ; CHECK-LABEL: urem_i8:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    andi $a1, $a0, 255
-; CHECK-NEXT:    alsl.d $a2, $a1, $a1, 3
-; CHECK-NEXT:    alsl.d $a1, $a2, $a1, 2
-; CHECK-NEXT:    srli.d $a1, $a1, 8
-; CHECK-NEXT:    sub.d $a2, $a0, $a1
-; CHECK-NEXT:    bstrpick.d $a2, $a2, 7, 1
-; CHECK-NEXT:    add.d $a1, $a2, $a1
-; CHECK-NEXT:    srli.d $a1, $a1, 2
-; CHECK-NEXT:    slli.d $a2, $a1, 3
-; CHECK-NEXT:    sub.d $a1, $a1, $a2
-; CHECK-NEXT:    add.d $a0, $a0, $a1
+; CHECK-NEXT:    andi $a0, $a0, 255
+; CHECK-NEXT:    lu12i.w $a1, 2
+; CHECK-NEXT:    ori $a1, $a1, 1171
+; CHECK-NEXT:    mul.d $a0, $a0, $a1
+; CHECK-NEXT:    bstrpick.d $a0, $a0, 15, 0
+; CHECK-NEXT:    slli.d $a1, $a0, 3
+; CHECK-NEXT:    sub.d $a0, $a1, $a0
+; CHECK-NEXT:    srli.d $a0, $a0, 16
 ; CHECK-NEXT:    ret
   %r = urem i8 %x, 7
   ret i8 %r
@@ -59,18 +57,17 @@ define i8 @urem_i8(i8 %x) {
 define i8 @srem_i8(i8 %x) {
 ; CHECK-LABEL: srem_i8:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    ext.w.b $a1, $a0
-; CHECK-NEXT:    addi.w $a2, $zero, -109
-; CHECK-NEXT:    mul.d $a1, $a1, $a2
-; CHECK-NEXT:    srli.d $a1, $a1, 8
-; CHECK-NEXT:    add.d $a1, $a1, $a0
-; CHECK-NEXT:    bstrpick.d $a2, $a1, 7, 7
-; CHECK-NEXT:    ext.w.b $a1, $a1
-; CHECK-NEXT:    srai.d $a1, $a1, 2
-; CHECK-NEXT:    add.d $a1, $a1, $a2
+; CHECK-NEXT:    ext.w.b $a0, $a0
+; CHECK-NEXT:    lu12i.w $a1, 2
+; CHECK-NEXT:    ori $a1, $a1, 1171
+; CHECK-NEXT:    mul.d $a1, $a0, $a1
+; CHECK-NEXT:    bstrpick.d $a1, $a1, 15, 0
 ; CHECK-NEXT:    slli.d $a2, $a1, 3
-; CHECK-NEXT:    sub.d $a1, $a1, $a2
-; CHECK-NEXT:    add.d $a0, $a0, $a1
+; CHECK-NEXT:    sub.d $a1, $a2, $a1
+; CHECK-NEXT:    srli.d $a1, $a1, 16
+; CHECK-NEXT:    srli.d $a0, $a0, 7
+; CHECK-NEXT:    andi $a0, $a0, 6
+; CHECK-NEXT:    sub.d $a0, $a1, $a0
 ; CHECK-NEXT:    ret
   %r = srem i8 %x, 7
   ret i8 %r

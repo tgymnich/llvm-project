@@ -4,21 +4,14 @@
 define i8 @urem_i8(i8 %x) {
 ; CHECK-LABEL: urem_i8(
 ; CHECK:       {
-; CHECK-NEXT:    .reg .b16 %rs<11>;
+; CHECK-NEXT:    .reg .b16 %rs<4>;
 ; CHECK-NEXT:    .reg .b32 %r<2>;
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
 ; CHECK-NEXT:    ld.param.b8 %rs1, [urem_i8_param_0];
-; CHECK-NEXT:    mul.lo.s16 %rs2, %rs1, 37;
-; CHECK-NEXT:    shr.u16 %rs3, %rs2, 8;
-; CHECK-NEXT:    sub.s16 %rs4, %rs1, %rs3;
-; CHECK-NEXT:    and.b16 %rs5, %rs4, 254;
-; CHECK-NEXT:    shr.u16 %rs6, %rs5, 1;
-; CHECK-NEXT:    add.s16 %rs7, %rs6, %rs3;
-; CHECK-NEXT:    shr.u16 %rs8, %rs7, 2;
-; CHECK-NEXT:    mul.lo.s16 %rs9, %rs8, 7;
-; CHECK-NEXT:    sub.s16 %rs10, %rs1, %rs9;
-; CHECK-NEXT:    cvt.u32.u16 %r1, %rs10;
+; CHECK-NEXT:    mul.lo.s16 %rs2, %rs1, 9363;
+; CHECK-NEXT:    mul.hi.u16 %rs3, %rs2, 7;
+; CHECK-NEXT:    cvt.u32.u16 %r1, %rs3;
 ; CHECK-NEXT:    st.param.b32 [func_retval0], %r1;
 ; CHECK-NEXT:    ret;
   %r = urem i8 %x, 7
@@ -28,22 +21,17 @@ define i8 @urem_i8(i8 %x) {
 define i8 @srem_i8(i8 %x) {
 ; CHECK-LABEL: srem_i8(
 ; CHECK:       {
-; CHECK-NEXT:    .reg .b16 %rs<12>;
+; CHECK-NEXT:    .reg .b16 %rs<7>;
 ; CHECK-NEXT:    .reg .b32 %r<2>;
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
 ; CHECK-NEXT:    ld.param.s8 %rs1, [srem_i8_param_0];
-; CHECK-NEXT:    mul.lo.s16 %rs2, %rs1, 109;
-; CHECK-NEXT:    shr.u16 %rs3, %rs2, 8;
-; CHECK-NEXT:    sub.s16 %rs4, %rs3, %rs1;
-; CHECK-NEXT:    and.b16 %rs5, %rs4, 128;
-; CHECK-NEXT:    shr.u16 %rs6, %rs5, 7;
-; CHECK-NEXT:    cvt.s16.s8 %rs7, %rs4;
-; CHECK-NEXT:    shr.s16 %rs8, %rs7, 2;
-; CHECK-NEXT:    add.s16 %rs9, %rs8, %rs6;
-; CHECK-NEXT:    mul.lo.s16 %rs10, %rs9, -7;
-; CHECK-NEXT:    sub.s16 %rs11, %rs1, %rs10;
-; CHECK-NEXT:    cvt.u32.u16 %r1, %rs11;
+; CHECK-NEXT:    shr.u16 %rs2, %rs1, 7;
+; CHECK-NEXT:    and.b16 %rs3, %rs2, 6;
+; CHECK-NEXT:    mul.lo.s16 %rs4, %rs1, 9363;
+; CHECK-NEXT:    mul.hi.u16 %rs5, %rs4, 7;
+; CHECK-NEXT:    sub.s16 %rs6, %rs5, %rs3;
+; CHECK-NEXT:    cvt.u32.u16 %r1, %rs6;
 ; CHECK-NEXT:    st.param.b32 [func_retval0], %r1;
 ; CHECK-NEXT:    ret;
   %r = srem i8 %x, -7
@@ -53,17 +41,13 @@ define i8 @srem_i8(i8 %x) {
 define i16 @urem_i16(i16 %x) {
 ; CHECK-LABEL: urem_i16(
 ; CHECK:       {
-; CHECK-NEXT:    .reg .b16 %rs<6>;
-; CHECK-NEXT:    .reg .b32 %r<2>;
+; CHECK-NEXT:    .reg .b32 %r<4>;
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
-; CHECK-NEXT:    ld.param.b16 %rs1, [urem_i16_param_0];
-; CHECK-NEXT:    mul.hi.u16 %rs2, %rs1, -21385;
-; CHECK-NEXT:    shr.u16 %rs3, %rs2, 6;
-; CHECK-NEXT:    mul.lo.s16 %rs4, %rs3, 95;
-; CHECK-NEXT:    sub.s16 %rs5, %rs1, %rs4;
-; CHECK-NEXT:    cvt.u32.u16 %r1, %rs5;
-; CHECK-NEXT:    st.param.b32 [func_retval0], %r1;
+; CHECK-NEXT:    ld.param.b16 %r1, [urem_i16_param_0];
+; CHECK-NEXT:    mul.lo.s32 %r2, %r1, 45210183;
+; CHECK-NEXT:    mul.hi.u32 %r3, %r2, 95;
+; CHECK-NEXT:    st.param.b32 [func_retval0], %r3;
 ; CHECK-NEXT:    ret;
   %r = urem i16 %x, 95
   ret i16 %r
@@ -72,17 +56,13 @@ define i16 @urem_i16(i16 %x) {
 define i32 @urem_i32(i32 %x) {
 ; CHECK-LABEL: urem_i32(
 ; CHECK:       {
-; CHECK-NEXT:    .reg .b32 %r<5>;
-; CHECK-NEXT:    .reg .b64 %rd<3>;
+; CHECK-NEXT:    .reg .b64 %rd<4>;
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
-; CHECK-NEXT:    ld.param.b32 %r1, [urem_i32_param_0];
-; CHECK-NEXT:    cvt.u64.u32 %rd1, %r1;
-; CHECK-NEXT:    mul.hi.u64 %rd2, %rd1, 194176253438197760;
-; CHECK-NEXT:    cvt.u32.u64 %r2, %rd2;
-; CHECK-NEXT:    mul.lo.s32 %r3, %r2, 95;
-; CHECK-NEXT:    sub.s32 %r4, %r1, %r3;
-; CHECK-NEXT:    st.param.b32 [func_retval0], %r4;
+; CHECK-NEXT:    ld.param.b32 %rd1, [urem_i32_param_0];
+; CHECK-NEXT:    mul.lo.s64 %rd2, %rd1, 194176253407468965;
+; CHECK-NEXT:    mul.hi.u64 %rd3, %rd2, 95;
+; CHECK-NEXT:    st.param.b32 [func_retval0], %rd3;
 ; CHECK-NEXT:    ret;
   %r = urem i32 %x, 95
   ret i32 %r
@@ -91,66 +71,41 @@ define i32 @urem_i32(i32 %x) {
 define <8 x i8> @urem_v8i8(<8 x i8> %x) {
 ; CHECK-LABEL: urem_v8i8(
 ; CHECK:       {
-; CHECK-NEXT:    .reg .b16 %rs<33>;
-; CHECK-NEXT:    .reg .b32 %r<25>;
+; CHECK-NEXT:    .reg .b32 %r<33>;
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
 ; CHECK-NEXT:    ld.param.v2.b32 {%r1, %r2}, [urem_v8i8_param_0];
 ; CHECK-NEXT:    prmt.b32 %r3, %r2, 0, 0x7773U;
-; CHECK-NEXT:    cvt.u16.u32 %rs1, %r3;
-; CHECK-NEXT:    mul.hi.u16 %rs2, %rs1, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs3, %rs2, 7;
-; CHECK-NEXT:    sub.s16 %rs4, %rs1, %rs3;
-; CHECK-NEXT:    cvt.u32.u16 %r4, %rs4;
-; CHECK-NEXT:    prmt.b32 %r5, %r2, 0, 0x7772U;
-; CHECK-NEXT:    cvt.u16.u32 %rs5, %r5;
-; CHECK-NEXT:    mul.hi.u16 %rs6, %rs5, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs7, %rs6, 7;
-; CHECK-NEXT:    sub.s16 %rs8, %rs5, %rs7;
-; CHECK-NEXT:    cvt.u32.u16 %r6, %rs8;
-; CHECK-NEXT:    prmt.b32 %r7, %r6, %r4, 0x3340U;
-; CHECK-NEXT:    prmt.b32 %r8, %r2, 0, 0x7771U;
-; CHECK-NEXT:    cvt.u16.u32 %rs9, %r8;
-; CHECK-NEXT:    mul.hi.u16 %rs10, %rs9, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs11, %rs10, 7;
-; CHECK-NEXT:    sub.s16 %rs12, %rs9, %rs11;
-; CHECK-NEXT:    cvt.u32.u16 %r9, %rs12;
-; CHECK-NEXT:    prmt.b32 %r10, %r2, 0, 0x7770U;
-; CHECK-NEXT:    cvt.u16.u32 %rs13, %r10;
-; CHECK-NEXT:    mul.hi.u16 %rs14, %rs13, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs15, %rs14, 7;
-; CHECK-NEXT:    sub.s16 %rs16, %rs13, %rs15;
-; CHECK-NEXT:    cvt.u32.u16 %r11, %rs16;
-; CHECK-NEXT:    prmt.b32 %r12, %r11, %r9, 0x3340U;
-; CHECK-NEXT:    prmt.b32 %r13, %r12, %r7, 0x5410U;
-; CHECK-NEXT:    prmt.b32 %r14, %r1, 0, 0x7773U;
-; CHECK-NEXT:    cvt.u16.u32 %rs17, %r14;
-; CHECK-NEXT:    mul.hi.u16 %rs18, %rs17, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs19, %rs18, 7;
-; CHECK-NEXT:    sub.s16 %rs20, %rs17, %rs19;
-; CHECK-NEXT:    cvt.u32.u16 %r15, %rs20;
-; CHECK-NEXT:    prmt.b32 %r16, %r1, 0, 0x7772U;
-; CHECK-NEXT:    cvt.u16.u32 %rs21, %r16;
-; CHECK-NEXT:    mul.hi.u16 %rs22, %rs21, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs23, %rs22, 7;
-; CHECK-NEXT:    sub.s16 %rs24, %rs21, %rs23;
-; CHECK-NEXT:    cvt.u32.u16 %r17, %rs24;
-; CHECK-NEXT:    prmt.b32 %r18, %r17, %r15, 0x3340U;
-; CHECK-NEXT:    prmt.b32 %r19, %r1, 0, 0x7771U;
-; CHECK-NEXT:    cvt.u16.u32 %rs25, %r19;
-; CHECK-NEXT:    mul.hi.u16 %rs26, %rs25, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs27, %rs26, 7;
-; CHECK-NEXT:    sub.s16 %rs28, %rs25, %rs27;
-; CHECK-NEXT:    cvt.u32.u16 %r20, %rs28;
-; CHECK-NEXT:    prmt.b32 %r21, %r1, 0, 0x7770U;
-; CHECK-NEXT:    cvt.u16.u32 %rs29, %r21;
-; CHECK-NEXT:    mul.hi.u16 %rs30, %rs29, 9363;
-; CHECK-NEXT:    mul.lo.s16 %rs31, %rs30, 7;
-; CHECK-NEXT:    sub.s16 %rs32, %rs29, %rs31;
-; CHECK-NEXT:    cvt.u32.u16 %r22, %rs32;
-; CHECK-NEXT:    prmt.b32 %r23, %r22, %r20, 0x3340U;
-; CHECK-NEXT:    prmt.b32 %r24, %r23, %r18, 0x5410U;
-; CHECK-NEXT:    st.param.v2.b32 [func_retval0], {%r24, %r13};
+; CHECK-NEXT:    mul.lo.s32 %r4, %r3, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r5, %r4, 7;
+; CHECK-NEXT:    prmt.b32 %r6, %r2, 0, 0x7772U;
+; CHECK-NEXT:    mul.lo.s32 %r7, %r6, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r8, %r7, 7;
+; CHECK-NEXT:    prmt.b32 %r9, %r8, %r5, 0x3340U;
+; CHECK-NEXT:    prmt.b32 %r10, %r2, 0, 0x7771U;
+; CHECK-NEXT:    mul.lo.s32 %r11, %r10, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r12, %r11, 7;
+; CHECK-NEXT:    prmt.b32 %r13, %r2, 0, 0x7770U;
+; CHECK-NEXT:    mul.lo.s32 %r14, %r13, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r15, %r14, 7;
+; CHECK-NEXT:    prmt.b32 %r16, %r15, %r12, 0x3340U;
+; CHECK-NEXT:    prmt.b32 %r17, %r16, %r9, 0x5410U;
+; CHECK-NEXT:    prmt.b32 %r18, %r1, 0, 0x7773U;
+; CHECK-NEXT:    mul.lo.s32 %r19, %r18, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r20, %r19, 7;
+; CHECK-NEXT:    prmt.b32 %r21, %r1, 0, 0x7772U;
+; CHECK-NEXT:    mul.lo.s32 %r22, %r21, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r23, %r22, 7;
+; CHECK-NEXT:    prmt.b32 %r24, %r23, %r20, 0x3340U;
+; CHECK-NEXT:    prmt.b32 %r25, %r1, 0, 0x7771U;
+; CHECK-NEXT:    mul.lo.s32 %r26, %r25, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r27, %r26, 7;
+; CHECK-NEXT:    prmt.b32 %r28, %r1, 0, 0x7770U;
+; CHECK-NEXT:    mul.lo.s32 %r29, %r28, 613566757;
+; CHECK-NEXT:    mul.hi.u32 %r30, %r29, 7;
+; CHECK-NEXT:    prmt.b32 %r31, %r30, %r27, 0x3340U;
+; CHECK-NEXT:    prmt.b32 %r32, %r31, %r24, 0x5410U;
+; CHECK-NEXT:    st.param.v2.b32 [func_retval0], {%r32, %r17};
 ; CHECK-NEXT:    ret;
   %r = urem <8 x i8> %x, splat (i8 7)
   ret <8 x i8> %r

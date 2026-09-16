@@ -31,20 +31,16 @@ define i16 @urem_i16(i16 %x) {
 define i16 @srem_i16(i16 %x) {
 ; RV32-LABEL: srem_i16:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    lui a1, 5
-; RV32-NEXT:    slli a2, a0, 16
-; RV32-NEXT:    srai a2, a2, 16
-; RV32-NEXT:    addi a1, a1, 905
-; RV32-NEXT:    mul a1, a2, a1
-; RV32-NEXT:    srli a1, a1, 16
-; RV32-NEXT:    sub a1, a1, a0
-; RV32-NEXT:    slli a1, a1, 16
-; RV32-NEXT:    srli a2, a1, 31
-; RV32-NEXT:    srai a1, a1, 22
-; RV32-NEXT:    add a1, a1, a2
-; RV32-NEXT:    li a2, -95
-; RV32-NEXT:    mul a1, a1, a2
-; RV32-NEXT:    sub a0, a0, a1
+; RV32-NEXT:    lui a1, 11038
+; RV32-NEXT:    slli a0, a0, 16
+; RV32-NEXT:    srai a0, a0, 16
+; RV32-NEXT:    addi a1, a1, -1465
+; RV32-NEXT:    mul a1, a0, a1
+; RV32-NEXT:    li a2, 95
+; RV32-NEXT:    mulhu a1, a1, a2
+; RV32-NEXT:    srli a0, a0, 15
+; RV32-NEXT:    andi a0, a0, 94
+; RV32-NEXT:    sub a0, a1, a0
 ; RV32-NEXT:    ret
 ;
 ; RV64-LABEL: srem_i16:
@@ -87,12 +83,11 @@ define i32 @urem_i32(i32 %x) {
 ; RV64:       # %bb.0:
 ; RV64-NEXT:    lui a1, %hi(.LCPI2_0)
 ; RV64-NEXT:    ld a1, %lo(.LCPI2_0)(a1)
-; RV64-NEXT:    slli a2, a0, 32
-; RV64-NEXT:    srli a2, a2, 32
-; RV64-NEXT:    mulhu a1, a2, a1
-; RV64-NEXT:    li a2, 95
-; RV64-NEXT:    mul a1, a1, a2
-; RV64-NEXT:    subw a0, a0, a1
+; RV64-NEXT:    slli a0, a0, 32
+; RV64-NEXT:    srli a0, a0, 32
+; RV64-NEXT:    mul a0, a0, a1
+; RV64-NEXT:    li a1, 95
+; RV64-NEXT:    mulhu a0, a0, a1
 ; RV64-NEXT:    ret
   %r = urem i32 %x, 95
   ret i32 %r
@@ -115,18 +110,15 @@ define i32 @srem_i32(i32 %x) {
 ;
 ; RV64-LABEL: srem_i32:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    lui a1, 342167
+; RV64-NEXT:    lui a1, %hi(.LCPI3_0)
+; RV64-NEXT:    ld a1, %lo(.LCPI3_0)(a1)
 ; RV64-NEXT:    sext.w a2, a0
-; RV64-NEXT:    addi a1, a1, -389
 ; RV64-NEXT:    mul a1, a2, a1
-; RV64-NEXT:    srli a1, a1, 32
-; RV64-NEXT:    sub a1, a1, a0
-; RV64-NEXT:    srliw a2, a1, 31
-; RV64-NEXT:    sraiw a1, a1, 6
-; RV64-NEXT:    add a1, a1, a2
-; RV64-NEXT:    li a2, -95
-; RV64-NEXT:    mul a1, a1, a2
-; RV64-NEXT:    subw a0, a0, a1
+; RV64-NEXT:    li a2, 95
+; RV64-NEXT:    mulhu a1, a1, a2
+; RV64-NEXT:    sraiw a0, a0, 31
+; RV64-NEXT:    andi a0, a0, 94
+; RV64-NEXT:    sub a0, a1, a0
 ; RV64-NEXT:    ret
   %r = srem i32 %x, -95
   ret i32 %r
@@ -134,34 +126,28 @@ define i32 @srem_i32(i32 %x) {
 define i8 @urem_i8(i8 %x) {
 ; RV32-LABEL: urem_i8:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    li a1, 37
-; RV32-NEXT:    zext.b a2, a0
-; RV32-NEXT:    mul a1, a2, a1
-; RV32-NEXT:    srli a1, a1, 8
-; RV32-NEXT:    sub a2, a0, a1
-; RV32-NEXT:    slli a2, a2, 24
-; RV32-NEXT:    srli a2, a2, 25
-; RV32-NEXT:    add a1, a2, a1
-; RV32-NEXT:    srli a1, a1, 2
-; RV32-NEXT:    slli a2, a1, 3
-; RV32-NEXT:    add a0, a0, a1
-; RV32-NEXT:    sub a0, a0, a2
+; RV32-NEXT:    lui a1, 585
+; RV32-NEXT:    addi a1, a1, 768
+; RV32-NEXT:    slli a0, a0, 24
+; RV32-NEXT:    mulhu a0, a0, a1
+; RV32-NEXT:    slli a0, a0, 16
+; RV32-NEXT:    srli a0, a0, 16
+; RV32-NEXT:    slli a1, a0, 3
+; RV32-NEXT:    sub a0, a1, a0
+; RV32-NEXT:    srli a0, a0, 16
 ; RV32-NEXT:    ret
 ;
 ; RV64-LABEL: urem_i8:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    li a1, 37
-; RV64-NEXT:    zext.b a2, a0
-; RV64-NEXT:    mul a1, a2, a1
-; RV64-NEXT:    srli a1, a1, 8
-; RV64-NEXT:    sub a2, a0, a1
-; RV64-NEXT:    slli a2, a2, 56
-; RV64-NEXT:    srli a2, a2, 57
-; RV64-NEXT:    add a1, a2, a1
-; RV64-NEXT:    srli a1, a1, 2
-; RV64-NEXT:    slli a2, a1, 3
-; RV64-NEXT:    add a0, a0, a1
-; RV64-NEXT:    sub a0, a0, a2
+; RV64-NEXT:    lui a1, 585
+; RV64-NEXT:    addi a1, a1, 768
+; RV64-NEXT:    slli a0, a0, 56
+; RV64-NEXT:    mulhu a0, a0, a1
+; RV64-NEXT:    slli a0, a0, 48
+; RV64-NEXT:    srli a0, a0, 48
+; RV64-NEXT:    slli a1, a0, 3
+; RV64-NEXT:    sub a0, a1, a0
+; RV64-NEXT:    srli a0, a0, 16
 ; RV64-NEXT:    ret
   %r = urem i8 %x, 7
   ret i8 %r
@@ -170,36 +156,36 @@ define i8 @urem_i8(i8 %x) {
 define i8 @srem_i8(i8 %x) {
 ; RV32-LABEL: srem_i8:
 ; RV32:       # %bb.0:
-; RV32-NEXT:    li a1, -109
-; RV32-NEXT:    slli a2, a0, 24
-; RV32-NEXT:    srai a2, a2, 24
-; RV32-NEXT:    mul a1, a2, a1
-; RV32-NEXT:    srli a1, a1, 8
-; RV32-NEXT:    add a1, a1, a0
-; RV32-NEXT:    slli a1, a1, 24
-; RV32-NEXT:    srli a2, a1, 31
-; RV32-NEXT:    srai a1, a1, 26
-; RV32-NEXT:    add a1, a1, a2
+; RV32-NEXT:    lui a1, 2
+; RV32-NEXT:    slli a0, a0, 24
+; RV32-NEXT:    srai a0, a0, 24
+; RV32-NEXT:    addi a1, a1, 1171
+; RV32-NEXT:    mul a1, a0, a1
+; RV32-NEXT:    slli a1, a1, 16
+; RV32-NEXT:    srli a1, a1, 16
 ; RV32-NEXT:    slli a2, a1, 3
-; RV32-NEXT:    add a0, a0, a1
-; RV32-NEXT:    sub a0, a0, a2
+; RV32-NEXT:    sub a2, a2, a1
+; RV32-NEXT:    srli a0, a0, 7
+; RV32-NEXT:    srli a2, a2, 16
+; RV32-NEXT:    andi a0, a0, 6
+; RV32-NEXT:    sub a0, a2, a0
 ; RV32-NEXT:    ret
 ;
 ; RV64-LABEL: srem_i8:
 ; RV64:       # %bb.0:
-; RV64-NEXT:    li a1, -109
-; RV64-NEXT:    slli a2, a0, 56
-; RV64-NEXT:    srai a2, a2, 56
-; RV64-NEXT:    mul a1, a2, a1
-; RV64-NEXT:    srli a1, a1, 8
-; RV64-NEXT:    add a1, a1, a0
-; RV64-NEXT:    slli a1, a1, 56
-; RV64-NEXT:    srli a2, a1, 63
-; RV64-NEXT:    srai a1, a1, 58
-; RV64-NEXT:    add a1, a1, a2
+; RV64-NEXT:    lui a1, 2
+; RV64-NEXT:    slli a0, a0, 56
+; RV64-NEXT:    srai a0, a0, 56
+; RV64-NEXT:    addi a1, a1, 1171
+; RV64-NEXT:    mul a1, a0, a1
+; RV64-NEXT:    slli a1, a1, 48
+; RV64-NEXT:    srli a1, a1, 48
 ; RV64-NEXT:    slli a2, a1, 3
-; RV64-NEXT:    add a0, a0, a1
-; RV64-NEXT:    sub a0, a0, a2
+; RV64-NEXT:    sub a2, a2, a1
+; RV64-NEXT:    srli a0, a0, 7
+; RV64-NEXT:    srli a2, a2, 16
+; RV64-NEXT:    andi a0, a0, 6
+; RV64-NEXT:    sub a0, a2, a0
 ; RV64-NEXT:    ret
   %r = srem i8 %x, 7
   ret i8 %r

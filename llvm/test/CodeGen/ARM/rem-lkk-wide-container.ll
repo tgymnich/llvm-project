@@ -5,33 +5,28 @@
 define i8 @urem_i8(i8 %x) {
 ; ARM-LABEL: urem_i8:
 ; ARM:       @ %bb.0:
-; ARM-NEXT:    uxtb r1, r0
-; ARM-NEXT:    mov r2, #37
-; ARM-NEXT:    smulbb r1, r1, r2
-; ARM-NEXT:    sub r2, r0, r1, lsr #8
-; ARM-NEXT:    uxtb r2, r2
-; ARM-NEXT:    lsr r2, r2, #1
-; ARM-NEXT:    add r1, r2, r1, lsr #8
-; ARM-NEXT:    lsr r1, r1, #2
-; ARM-NEXT:    sub r1, r1, r1, lsl #3
-; ARM-NEXT:    add r0, r0, r1
+; ARM-NEXT:    uxtb r0, r0
+; ARM-NEXT:    movw r1, #9363
+; ARM-NEXT:    smulbb r0, r0, r1
+; ARM-NEXT:    uxth r0, r0
+; ARM-NEXT:    rsb r0, r0, r0, lsl #3
+; ARM-NEXT:    lsr r0, r0, #16
 ; ARM-NEXT:    bx lr
 ;
 ; THUMB-LABEL: urem_i8:
 ; THUMB:       @ %bb.0:
-; THUMB-NEXT:    uxtb r1, r0
-; THUMB-NEXT:    movs r2, #37
-; THUMB-NEXT:    muls r2, r1, r2
-; THUMB-NEXT:    lsrs r1, r2, #8
-; THUMB-NEXT:    subs r2, r0, r1
-; THUMB-NEXT:    uxtb r2, r2
-; THUMB-NEXT:    lsrs r2, r2, #1
-; THUMB-NEXT:    adds r1, r2, r1
-; THUMB-NEXT:    lsrs r1, r1, #2
-; THUMB-NEXT:    movs r2, #7
-; THUMB-NEXT:    muls r2, r1, r2
-; THUMB-NEXT:    subs r0, r0, r2
+; THUMB-NEXT:    uxtb r0, r0
+; THUMB-NEXT:    ldr r1, .LCPI0_0
+; THUMB-NEXT:    muls r1, r0, r1
+; THUMB-NEXT:    uxth r0, r1
+; THUMB-NEXT:    movs r1, #7
+; THUMB-NEXT:    muls r1, r0, r1
+; THUMB-NEXT:    lsrs r0, r1, #16
 ; THUMB-NEXT:    bx lr
+; THUMB-NEXT:    .p2align 2
+; THUMB-NEXT:  @ %bb.1:
+; THUMB-NEXT:  .LCPI0_0:
+; THUMB-NEXT:    .long 9363 @ 0x2493
   %r = urem i8 %x, 7
   ret i8 %r
 }
@@ -39,24 +34,29 @@ define i8 @urem_i8(i8 %x) {
 define i8 @urem_i8_no_fixup(i8 %x) {
 ; ARM-LABEL: urem_i8_no_fixup:
 ; ARM:       @ %bb.0:
-; ARM-NEXT:    uxtb r1, r0
-; ARM-NEXT:    mov r2, #205
-; ARM-NEXT:    smulbb r1, r1, r2
-; ARM-NEXT:    lsr r1, r1, #10
-; ARM-NEXT:    add r1, r1, r1, lsl #2
-; ARM-NEXT:    sub r0, r0, r1
+; ARM-NEXT:    uxtb r0, r0
+; ARM-NEXT:    movw r1, #13108
+; ARM-NEXT:    smulbb r0, r0, r1
+; ARM-NEXT:    uxth r1, r0
+; ARM-NEXT:    lsl r1, r1, #2
+; ARM-NEXT:    uxtah r0, r1, r0
+; ARM-NEXT:    lsr r0, r0, #16
 ; ARM-NEXT:    bx lr
 ;
 ; THUMB-LABEL: urem_i8_no_fixup:
 ; THUMB:       @ %bb.0:
-; THUMB-NEXT:    uxtb r1, r0
-; THUMB-NEXT:    movs r2, #205
-; THUMB-NEXT:    muls r2, r1, r2
-; THUMB-NEXT:    lsrs r1, r2, #10
-; THUMB-NEXT:    movs r2, #5
-; THUMB-NEXT:    muls r2, r1, r2
-; THUMB-NEXT:    subs r0, r0, r2
+; THUMB-NEXT:    uxtb r0, r0
+; THUMB-NEXT:    ldr r1, .LCPI1_0
+; THUMB-NEXT:    muls r1, r0, r1
+; THUMB-NEXT:    uxth r0, r1
+; THUMB-NEXT:    movs r1, #5
+; THUMB-NEXT:    muls r1, r0, r1
+; THUMB-NEXT:    lsrs r0, r1, #16
 ; THUMB-NEXT:    bx lr
+; THUMB-NEXT:    .p2align 2
+; THUMB-NEXT:  @ %bb.1:
+; THUMB-NEXT:  .LCPI1_0:
+; THUMB-NEXT:    .long 13108 @ 0x3334
   %r = urem i8 %x, 5
   ret i8 %r
 }

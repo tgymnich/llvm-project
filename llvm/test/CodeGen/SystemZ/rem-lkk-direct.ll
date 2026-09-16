@@ -6,29 +6,27 @@ define i16 @srem_i16(i16 %x) {
 ; Z10-LABEL: srem_i16:
 ; Z10:       # %bb.0:
 ; Z10-NEXT:    lhr %r0, %r2
-; Z10-NEXT:    mhi %r0, 21385
-; Z10-NEXT:    srl %r0, 16
-; Z10-NEXT:    sr %r0, %r2
-; Z10-NEXT:    lhr %r1, %r0
-; Z10-NEXT:    sra %r1, 6
-; Z10-NEXT:    risbg %r0, %r0, 63, 191, 49
-; Z10-NEXT:    ar %r0, %r1
-; Z10-NEXT:    mhi %r0, -95
-; Z10-NEXT:    sr %r2, %r0
+; Z10-NEXT:    lr %r1, %r0
+; Z10-NEXT:    srl %r1, 15
+; Z10-NEXT:    nilf %r1, 94
+; Z10-NEXT:    msfi %r0, 45210183
+; Z10-NEXT:    llgfr %r0, %r0
+; Z10-NEXT:    mghi %r0, 95
+; Z10-NEXT:    srlg %r2, %r0, 32
+; Z10-NEXT:    sr %r2, %r1
+; Z10-NEXT:    # kill: def $r2l killed $r2l killed $r2d
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: srem_i16:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    lhr %r0, %r2
-; Z13-NEXT:    mhi %r0, 21385
-; Z13-NEXT:    srl %r0, 16
-; Z13-NEXT:    sr %r0, %r2
-; Z13-NEXT:    risblg %r1, %r0, 31, 159, 49
-; Z13-NEXT:    lhr %r0, %r0
-; Z13-NEXT:    sra %r0, 6
-; Z13-NEXT:    ar %r0, %r1
-; Z13-NEXT:    mhi %r0, -95
-; Z13-NEXT:    sr %r2, %r0
+; Z13-NEXT:    srlk %r1, %r0, 15
+; Z13-NEXT:    msfi %r0, 45210183
+; Z13-NEXT:    llgfr %r0, %r0
+; Z13-NEXT:    mghi %r0, 95
+; Z13-NEXT:    nilf %r1, 94
+; Z13-NEXT:    srlg %r2, %r0, 32
+; Z13-NEXT:    sr %r2, %r1
 ; Z13-NEXT:    br %r14
   %r = srem i16 %x, -95
   ret i16 %r
@@ -37,29 +35,28 @@ define i16 @srem_i16(i16 %x) {
 define i32 @srem_i32(i32 %x) {
 ; Z10-LABEL: srem_i32:
 ; Z10:       # %bb.0:
-; Z10-NEXT:    lgfr %r0, %r2
-; Z10-NEXT:    msgfi %r0, 1401515643
-; Z10-NEXT:    srlg %r0, %r0, 32
-; Z10-NEXT:    sr %r0, %r2
-; Z10-NEXT:    lr %r1, %r0
-; Z10-NEXT:    srl %r1, 31
-; Z10-NEXT:    sra %r0, 6
-; Z10-NEXT:    ar %r0, %r1
-; Z10-NEXT:    mhi %r0, -95
+; Z10-NEXT:    lr %r0, %r2
+; Z10-NEXT:    llihf %r3, 45210182
+; Z10-NEXT:    oilf %r3, 271261093
+; Z10-NEXT:    msgfr %r3, %r0
+; Z10-NEXT:    lghi %r1, 95
+; Z10-NEXT:    mlgr %r2, %r1
+; Z10-NEXT:    sra %r0, 31
+; Z10-NEXT:    nilf %r0, 94
 ; Z10-NEXT:    sr %r2, %r0
+; Z10-NEXT:    # kill: def $r2l killed $r2l killed $r2q
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: srem_i32:
 ; Z13:       # %bb.0:
-; Z13-NEXT:    lgfr %r0, %r2
-; Z13-NEXT:    msgfi %r0, 1401515643
-; Z13-NEXT:    srlg %r0, %r0, 32
-; Z13-NEXT:    sr %r0, %r2
-; Z13-NEXT:    srlk %r1, %r0, 31
-; Z13-NEXT:    sra %r0, 6
-; Z13-NEXT:    ar %r0, %r1
-; Z13-NEXT:    mhi %r0, -95
-; Z13-NEXT:    sr %r2, %r0
+; Z13-NEXT:    llihf %r1, 45210182
+; Z13-NEXT:    oilf %r1, 271261093
+; Z13-NEXT:    msgfr %r1, %r2
+; Z13-NEXT:    lghi %r3, 95
+; Z13-NEXT:    sra %r2, 31
+; Z13-NEXT:    nilf %r2, 94
+; Z13-NEXT:    mlgr %r0, %r3
+; Z13-NEXT:    srk %r2, %r0, %r2
 ; Z13-NEXT:    br %r14
   %r = srem i32 %x, -95
   ret i32 %r
@@ -68,24 +65,26 @@ define i32 @srem_i32(i32 %x) {
 define i32 @srem_i32_3(i32 %x) {
 ; Z10-LABEL: srem_i32_3:
 ; Z10:       # %bb.0:
-; Z10-NEXT:    lgfr %r0, %r2
-; Z10-NEXT:    msgfi %r0, 1431655766
-; Z10-NEXT:    srlg %r1, %r0, 63
-; Z10-NEXT:    srlg %r0, %r0, 32
-; Z10-NEXT:    ar %r0, %r1
-; Z10-NEXT:    mhi %r0, 3
-; Z10-NEXT:    sr %r2, %r0
+; Z10-NEXT:    # kill: def $r2l killed $r2l def $r2d
+; Z10-NEXT:    risbg %r3, %r2, 62, 190, 34
+; Z10-NEXT:    llihf %r1, 1431655765
+; Z10-NEXT:    oilf %r1, 1431655766
+; Z10-NEXT:    msgfr %r1, %r2
+; Z10-NEXT:    lghi %r2, 3
+; Z10-NEXT:    mlgr %r0, %r2
+; Z10-NEXT:    sr %r0, %r3
+; Z10-NEXT:    lr %r2, %r0
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: srem_i32_3:
 ; Z13:       # %bb.0:
-; Z13-NEXT:    lgfr %r0, %r2
-; Z13-NEXT:    msgfi %r0, 1431655766
-; Z13-NEXT:    srlg %r1, %r0, 63
-; Z13-NEXT:    srlg %r0, %r0, 32
-; Z13-NEXT:    ar %r0, %r1
-; Z13-NEXT:    mhi %r0, 3
-; Z13-NEXT:    sr %r2, %r0
+; Z13-NEXT:    llihf %r1, 1431655765
+; Z13-NEXT:    oilf %r1, 1431655766
+; Z13-NEXT:    msgfr %r1, %r2
+; Z13-NEXT:    lghi %r3, 3
+; Z13-NEXT:    risblg %r2, %r2, 30, 158, 34
+; Z13-NEXT:    mlgr %r0, %r3
+; Z13-NEXT:    srk %r2, %r0, %r2
 ; Z13-NEXT:    br %r14
   %r = srem i32 %x, 3
   ret i32 %r
@@ -161,15 +160,12 @@ define <8 x i8> @urem_v8i8(<8 x i8> %x) {
 ;
 ; Z13-LABEL: urem_v8i8:
 ; Z13:       # %bb.0:
-; Z13-NEXT:    vrepib %v0, 37
-; Z13-NEXT:    vmlhb %v0, %v24, %v0
-; Z13-NEXT:    vsb %v1, %v24, %v0
-; Z13-NEXT:    vesrlb %v1, %v1, 1
-; Z13-NEXT:    vab %v0, %v1, %v0
-; Z13-NEXT:    vesrlb %v0, %v0, 2
-; Z13-NEXT:    vrepib %v1, 7
-; Z13-NEXT:    vmlb %v0, %v0, %v1
-; Z13-NEXT:    vsb %v24, %v24, %v0
+; Z13-NEXT:    vuplhb %v0, %v24
+; Z13-NEXT:    vrepih %v1, 9363
+; Z13-NEXT:    vmlhw %v0, %v0, %v1
+; Z13-NEXT:    vrepih %v1, 7
+; Z13-NEXT:    vmlhh %v0, %v0, %v1
+; Z13-NEXT:    vpkh %v24, %v0, %v0
 ; Z13-NEXT:    br %r14
   %r = urem <8 x i8> %x, splat (i8 7)
   ret <8 x i8> %r
@@ -245,12 +241,12 @@ define <8 x i8> @urem_v8i8_5(<8 x i8> %x) {
 ;
 ; Z13-LABEL: urem_v8i8_5:
 ; Z13:       # %bb.0:
-; Z13-NEXT:    vrepib %v0, -51
-; Z13-NEXT:    vmlhb %v0, %v24, %v0
-; Z13-NEXT:    vesrlb %v0, %v0, 2
-; Z13-NEXT:    vrepib %v1, 5
-; Z13-NEXT:    vmlb %v0, %v0, %v1
-; Z13-NEXT:    vsb %v24, %v24, %v0
+; Z13-NEXT:    vuplhb %v0, %v24
+; Z13-NEXT:    vrepih %v1, 13108
+; Z13-NEXT:    vmlhw %v0, %v0, %v1
+; Z13-NEXT:    vrepih %v1, 5
+; Z13-NEXT:    vmlhh %v0, %v0, %v1
+; Z13-NEXT:    vpkh %v24, %v0, %v0
 ; Z13-NEXT:    br %r14
   %r = urem <8 x i8> %x, splat (i8 5)
   ret <8 x i8> %r
@@ -259,28 +255,19 @@ define i8 @urem_i8(i8 %x) {
 ; Z10-LABEL: urem_i8:
 ; Z10:       # %bb.0:
 ; Z10-NEXT:    llcr %r0, %r2
-; Z10-NEXT:    mhi %r0, 37
-; Z10-NEXT:    srl %r0, 8
-; Z10-NEXT:    lr %r1, %r2
-; Z10-NEXT:    sr %r1, %r0
-; Z10-NEXT:    risbg %r1, %r1, 57, 191, 63
-; Z10-NEXT:    ar %r1, %r0
-; Z10-NEXT:    srl %r1, 2
-; Z10-NEXT:    mhi %r1, 7
-; Z10-NEXT:    sr %r2, %r1
+; Z10-NEXT:    mhi %r0, 9363
+; Z10-NEXT:    llhr %r2, %r0
+; Z10-NEXT:    mhi %r2, 7
+; Z10-NEXT:    srl %r2, 16
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: urem_i8:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    llcr %r0, %r2
-; Z13-NEXT:    mhi %r0, 37
-; Z13-NEXT:    srl %r0, 8
-; Z13-NEXT:    srk %r1, %r2, %r0
-; Z13-NEXT:    risblg %r1, %r1, 25, 159, 63
-; Z13-NEXT:    ar %r0, %r1
-; Z13-NEXT:    srl %r0, 2
-; Z13-NEXT:    mhi %r0, 7
-; Z13-NEXT:    sr %r2, %r0
+; Z13-NEXT:    mhi %r0, 9363
+; Z13-NEXT:    llhr %r2, %r0
+; Z13-NEXT:    mhi %r2, 7
+; Z13-NEXT:    srl %r2, 16
 ; Z13-NEXT:    br %r14
   %r = urem i8 %x, 7
   ret i8 %r
@@ -290,29 +277,23 @@ define i8 @srem_i8(i8 %x) {
 ; Z10-LABEL: srem_i8:
 ; Z10:       # %bb.0:
 ; Z10-NEXT:    lbr %r0, %r2
-; Z10-NEXT:    mhi %r0, -109
-; Z10-NEXT:    srl %r0, 8
-; Z10-NEXT:    ar %r0, %r2
-; Z10-NEXT:    lbr %r1, %r0
-; Z10-NEXT:    sra %r1, 2
-; Z10-NEXT:    risbg %r0, %r0, 63, 191, 57
-; Z10-NEXT:    ar %r0, %r1
-; Z10-NEXT:    mhi %r0, 7
-; Z10-NEXT:    sr %r2, %r0
+; Z10-NEXT:    risbg %r1, %r0, 61, 190, 57
+; Z10-NEXT:    mhi %r0, 9363
+; Z10-NEXT:    llhr %r2, %r0
+; Z10-NEXT:    mhi %r2, 7
+; Z10-NEXT:    srl %r2, 16
+; Z10-NEXT:    sr %r2, %r1
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: srem_i8:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    lbr %r0, %r2
-; Z13-NEXT:    mhi %r0, -109
-; Z13-NEXT:    srl %r0, 8
-; Z13-NEXT:    ar %r0, %r2
-; Z13-NEXT:    risblg %r1, %r0, 31, 159, 57
-; Z13-NEXT:    lbr %r0, %r0
-; Z13-NEXT:    sra %r0, 2
-; Z13-NEXT:    ar %r0, %r1
+; Z13-NEXT:    risblg %r1, %r0, 29, 158, 57
+; Z13-NEXT:    mhi %r0, 9363
+; Z13-NEXT:    llhr %r0, %r0
 ; Z13-NEXT:    mhi %r0, 7
-; Z13-NEXT:    sr %r2, %r0
+; Z13-NEXT:    srl %r0, 16
+; Z13-NEXT:    srk %r2, %r0, %r1
 ; Z13-NEXT:    br %r14
   %r = srem i8 %x, 7
   ret i8 %r

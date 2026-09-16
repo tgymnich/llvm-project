@@ -5,14 +5,10 @@ define i8 @urem_i8(i8 %x) {
 ; CHECK-LABEL: urem_i8:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    v_mov_b32_e32 v1, 37
-; CHECK-NEXT:    v_mul_lo_u16_sdwa v1, v0, v1 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
-; CHECK-NEXT:    v_sub_u16_sdwa v2, v0, v1 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_1
-; CHECK-NEXT:    v_bfe_u32 v2, v2, 1, 7
-; CHECK-NEXT:    v_add_u16_sdwa v1, v2, v1 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_1
-; CHECK-NEXT:    v_lshrrev_b16_e32 v1, 2, v1
-; CHECK-NEXT:    v_mul_lo_u16_e32 v1, 7, v1
-; CHECK-NEXT:    v_sub_u16_e32 v0, v0, v1
+; CHECK-NEXT:    s_movk_i32 s4, 0x2493
+; CHECK-NEXT:    v_mul_lo_u16_sdwa v0, v0, s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
+; CHECK-NEXT:    v_mul_u32_u24_e32 v0, 7, v0
+; CHECK-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
   %r = urem i8 %x, 7
   ret i8 %r
@@ -21,15 +17,13 @@ define i8 @srem_i8(i8 %x) {
 ; CHECK-LABEL: srem_i8:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    s_movk_i32 s4, 0x6d
-; CHECK-NEXT:    v_mul_lo_u16_sdwa v1, sext(v0), s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
-; CHECK-NEXT:    v_sub_u16_sdwa v1, v1, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_1 src1_sel:DWORD
-; CHECK-NEXT:    v_mov_b32_e32 v2, 2
-; CHECK-NEXT:    v_ashrrev_i16_sdwa v2, v2, sext(v1) dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_0
-; CHECK-NEXT:    v_bfe_u32 v1, v1, 7, 1
-; CHECK-NEXT:    v_add_u16_e32 v1, v2, v1
-; CHECK-NEXT:    v_mul_lo_u16_e32 v1, -7, v1
-; CHECK-NEXT:    v_sub_u16_e32 v0, v0, v1
+; CHECK-NEXT:    v_mov_b32_e32 v1, 7
+; CHECK-NEXT:    s_movk_i32 s4, 0x2493
+; CHECK-NEXT:    v_lshrrev_b16_sdwa v1, v1, sext(v0) dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_0
+; CHECK-NEXT:    v_mul_lo_u16_sdwa v0, sext(v0), s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
+; CHECK-NEXT:    v_and_b32_e32 v1, 6, v1
+; CHECK-NEXT:    v_mul_u32_u24_e32 v0, 7, v0
+; CHECK-NEXT:    v_sub_u16_sdwa v0, v0, v1 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
   %r = srem i8 %x, -7
   ret i8 %r
@@ -39,11 +33,11 @@ define i16 @urem_i16(i16 %x) {
 ; CHECK-LABEL: urem_i16:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    s_mov_b32 s4, 0xac77
-; CHECK-NEXT:    v_mul_u32_u24_sdwa v1, v0, s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; CHECK-NEXT:    v_lshrrev_b32_e32 v1, 22, v1
-; CHECK-NEXT:    v_mul_lo_u16_e32 v1, 0x5f, v1
-; CHECK-NEXT:    v_sub_u16_e32 v0, v0, v1
+; CHECK-NEXT:    v_and_b32_e32 v0, 0xffff, v0
+; CHECK-NEXT:    s_mov_b32 s4, 0x2b1da47
+; CHECK-NEXT:    v_mul_lo_u32 v0, v0, s4
+; CHECK-NEXT:    s_movk_i32 s4, 0x5f
+; CHECK-NEXT:    v_mul_hi_u32 v0, v0, s4
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
   %r = urem i16 %x, 95
   ret i16 %r
@@ -53,13 +47,13 @@ define i16 @srem_i16(i16 %x) {
 ; CHECK-LABEL: srem_i16:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    s_movk_i32 s4, 0x5389
-; CHECK-NEXT:    v_mul_i32_i24_sdwa v1, sext(v0), s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; CHECK-NEXT:    v_sub_u16_sdwa v1, v1, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
-; CHECK-NEXT:    v_lshrrev_b16_e32 v2, 15, v1
-; CHECK-NEXT:    v_ashrrev_i16_e32 v1, 6, v1
-; CHECK-NEXT:    v_add_u16_e32 v1, v1, v2
-; CHECK-NEXT:    v_mul_lo_u16_e32 v1, 0xffa1, v1
+; CHECK-NEXT:    v_ashrrev_i16_e32 v1, 15, v0
+; CHECK-NEXT:    v_bfe_i32 v0, v0, 0, 16
+; CHECK-NEXT:    s_mov_b32 s4, 0x2b1da47
+; CHECK-NEXT:    v_mul_lo_u32 v0, v0, s4
+; CHECK-NEXT:    s_movk_i32 s4, 0x5f
+; CHECK-NEXT:    v_and_b32_e32 v1, 0x5e, v1
+; CHECK-NEXT:    v_mul_hi_u32 v0, v0, s4
 ; CHECK-NEXT:    v_sub_u16_e32 v0, v0, v1
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
   %r = srem i16 %x, -95
@@ -70,11 +64,12 @@ define i16 @srem_i16_3(i16 %x) {
 ; CHECK-LABEL: srem_i16_3:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    s_movk_i32 s4, 0x5556
-; CHECK-NEXT:    v_mul_i32_i24_sdwa v1, sext(v0), s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; CHECK-NEXT:    v_lshrrev_b32_e32 v2, 31, v1
-; CHECK-NEXT:    v_add_u16_sdwa v1, v1, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
-; CHECK-NEXT:    v_mul_lo_u16_e32 v1, 3, v1
+; CHECK-NEXT:    v_lshrrev_b16_e32 v1, 14, v0
+; CHECK-NEXT:    v_bfe_i32 v0, v0, 0, 16
+; CHECK-NEXT:    s_mov_b32 s4, 0x55555556
+; CHECK-NEXT:    v_mul_lo_u32 v0, v0, s4
+; CHECK-NEXT:    v_and_b32_e32 v1, 2, v1
+; CHECK-NEXT:    v_mul_hi_u32 v0, v0, 3
 ; CHECK-NEXT:    v_sub_u16_e32 v0, v0, v1
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
   %r = srem i16 %x, 3
@@ -85,21 +80,13 @@ define <2 x i8> @urem_v2i8(<2 x i8> %x) {
 ; CHECK-LABEL: urem_v2i8:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    v_mov_b32_e32 v2, 37
-; CHECK-NEXT:    v_mul_lo_u16_sdwa v3, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
-; CHECK-NEXT:    v_sub_u16_sdwa v4, v0, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_1
-; CHECK-NEXT:    v_bfe_u32 v4, v4, 1, 7
-; CHECK-NEXT:    v_add_u16_sdwa v3, v4, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_1
-; CHECK-NEXT:    v_lshrrev_b16_e32 v3, 2, v3
-; CHECK-NEXT:    v_mul_lo_u16_e32 v3, 7, v3
-; CHECK-NEXT:    v_mul_lo_u16_sdwa v2, v1, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
-; CHECK-NEXT:    v_sub_u16_e32 v0, v0, v3
-; CHECK-NEXT:    v_sub_u16_sdwa v3, v1, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_1
-; CHECK-NEXT:    v_bfe_u32 v3, v3, 1, 7
-; CHECK-NEXT:    v_add_u16_sdwa v2, v3, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:BYTE_1
-; CHECK-NEXT:    v_lshrrev_b16_e32 v2, 2, v2
-; CHECK-NEXT:    v_mul_lo_u16_e32 v2, 7, v2
-; CHECK-NEXT:    v_sub_u16_e32 v1, v1, v2
+; CHECK-NEXT:    s_movk_i32 s4, 0x2493
+; CHECK-NEXT:    v_mul_lo_u16_sdwa v0, v0, s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
+; CHECK-NEXT:    v_mul_lo_u16_sdwa v1, v1, s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:BYTE_0 src1_sel:DWORD
+; CHECK-NEXT:    v_mul_u32_u24_e32 v0, 7, v0
+; CHECK-NEXT:    v_mul_u32_u24_e32 v1, 7, v1
+; CHECK-NEXT:    v_lshrrev_b32_e32 v0, 16, v0
+; CHECK-NEXT:    v_lshrrev_b32_e32 v1, 16, v1
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
   %r = urem <2 x i8> %x, <i8 7, i8 7>
   ret <2 x i8> %r
@@ -109,21 +96,21 @@ define <2 x i16> @srem_v2i16(<2 x i16> %x) {
 ; CHECK-LABEL: srem_v2i16:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; CHECK-NEXT:    s_movk_i32 s4, 0x5389
-; CHECK-NEXT:    v_mul_i32_i24_sdwa v1, sext(v0), s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; CHECK-NEXT:    v_sub_u16_sdwa v1, v1, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
-; CHECK-NEXT:    v_lshrrev_b16_e32 v2, 15, v1
-; CHECK-NEXT:    v_ashrrev_i16_e32 v1, 6, v1
-; CHECK-NEXT:    v_add_u16_e32 v1, v1, v2
-; CHECK-NEXT:    v_mul_i32_i24_sdwa v2, sext(v0), s4 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
-; CHECK-NEXT:    v_sub_u16_sdwa v2, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
-; CHECK-NEXT:    v_lshrrev_b16_e32 v3, 15, v2
-; CHECK-NEXT:    v_ashrrev_i16_e32 v2, 6, v2
-; CHECK-NEXT:    v_add_u16_e32 v2, v2, v3
-; CHECK-NEXT:    v_mul_lo_u16_e32 v1, 0xffa1, v1
-; CHECK-NEXT:    v_mul_lo_u16_e32 v2, 0xffa1, v2
-; CHECK-NEXT:    v_sub_u16_e32 v1, v0, v1
-; CHECK-NEXT:    v_sub_u16_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
+; CHECK-NEXT:    v_bfe_i32 v2, v0, 0, 16
+; CHECK-NEXT:    s_mov_b32 s4, 0x2b1da47
+; CHECK-NEXT:    v_ashrrev_i16_e32 v1, 15, v0
+; CHECK-NEXT:    v_mul_lo_u32 v2, v2, s4
+; CHECK-NEXT:    s_movk_i32 s5, 0x5f
+; CHECK-NEXT:    v_and_b32_e32 v1, 0x5e, v1
+; CHECK-NEXT:    v_mul_hi_u32 v2, v2, s5
+; CHECK-NEXT:    v_sub_u16_e32 v1, v2, v1
+; CHECK-NEXT:    v_mov_b32_e32 v2, 15
+; CHECK-NEXT:    v_ashrrev_i16_sdwa v2, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_1
+; CHECK-NEXT:    v_ashrrev_i32_e32 v0, 16, v0
+; CHECK-NEXT:    v_mul_lo_u32 v0, v0, s4
+; CHECK-NEXT:    v_and_b32_e32 v2, 0x5e, v2
+; CHECK-NEXT:    v_mul_hi_u32 v0, v0, s5
+; CHECK-NEXT:    v_sub_u16_e32 v0, v0, v2
 ; CHECK-NEXT:    s_mov_b32 s4, 0x5040100
 ; CHECK-NEXT:    v_perm_b32 v0, v0, v1, s4
 ; CHECK-NEXT:    s_setpc_b64 s[30:31]
