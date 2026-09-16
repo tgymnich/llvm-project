@@ -75,3 +75,29 @@ TEST_F(AMDGPUGISelMITest, GenericMachineInstrWrapperCoverage) {
                                    TargetOpcode::G_VECREDUCE_SEQ_FMUL});
   expectOpcodes<GVectorCompress>(B, {TargetOpcode::G_VECTOR_COMPRESS});
 }
+
+TEST_F(AMDGPUGISelMITest, BranchWrapperAccessors) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  GBr *Br = cast<GBr>(B.buildBr(*EntryMBB).getInstr());
+  EXPECT_EQ(Br->getTargetMBB(), EntryMBB);
+  Br->eraseFromParent();
+
+  Register Target = MRI->createGenericVirtualRegister(LLT::pointer(0, 64));
+  B.buildUndef(Target);
+  GBrIndirect *BrIndirect =
+      cast<GBrIndirect>(B.buildBrIndirect(Target).getInstr());
+  EXPECT_EQ(BrIndirect->getTargetReg(), Target);
+  BrIndirect->eraseFromParent();
+
+  Register Index = MRI->createGenericVirtualRegister(LLT::scalar(64));
+  B.buildUndef(Index);
+  constexpr unsigned JumpTableIndex = 7;
+  GBrJT *BrJT =
+      cast<GBrJT>(B.buildBrJT(Target, JumpTableIndex, Index).getInstr());
+  EXPECT_EQ(BrJT->getJumpTableReg(), Target);
+  EXPECT_EQ(BrJT->getJumpTableIndex(), JumpTableIndex);
+  EXPECT_EQ(BrJT->getIndexReg(), Index);
+}

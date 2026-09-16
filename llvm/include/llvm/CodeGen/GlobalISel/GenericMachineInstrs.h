@@ -500,6 +500,16 @@ public:
   }
 };
 
+/// Represents an unconditional branch to a basic block.
+class GBr : public GenericMachineInstr {
+public:
+  MachineBasicBlock *getTargetMBB() const { return getOperand(0).getMBB(); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_BR;
+  }
+};
+
 /// Branches to a target block when its condition is nonzero.
 class GBrCond : public GenericMachineInstr {
 public:
@@ -508,6 +518,28 @@ public:
 
   static bool classof(const MachineInstr *MI) {
     return MI->getOpcode() == TargetOpcode::G_BRCOND;
+  }
+};
+
+/// Represents an indirect branch to an address held in a register.
+class GBrIndirect : public GenericMachineInstr {
+public:
+  Register getTargetReg() const { return getReg(0); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_BRINDIRECT;
+  }
+};
+
+/// Represents an indirect branch through a jump table.
+class GBrJT : public GenericMachineInstr {
+public:
+  Register getJumpTableReg() const { return getReg(0); }
+  unsigned getJumpTableIndex() const { return getOperand(1).getIndex(); }
+  Register getIndexReg() const { return getReg(2); }
+
+  static bool classof(const MachineInstr *MI) {
+    return MI->getOpcode() == TargetOpcode::G_BRJT;
   }
 };
 
