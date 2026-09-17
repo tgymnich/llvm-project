@@ -53,15 +53,10 @@ public:
   // resolve through them.
   RegisterState &registers() { return Registers; }
 
-  /// Return an error unless the source f32 environment can be preserved for
-  /// this instruction.
-  llvm::Error validateF32Environment(const DecodedInst &Di) const;
-  /// Return an error unless the source f16 environment can be preserved for
-  /// this instruction.
-  llvm::Error validateF16Environment(const DecodedInst &Di) const;
-  /// Return an error unless the source f64 environment can be preserved for
-  /// this instruction.
-  llvm::Error validateF64Environment(const DecodedInst &Di) const;
+  /// Return an error unless the source floating-point environment for Ty can
+  /// be preserved for this instruction.
+  llvm::Error validateFPEnvironment(const DecodedInst &Di,
+                                    llvm::Type *Ty) const;
 
   // Source text section, and the address the source code object loads it at.
   // PC-relative literals are materialized by reading out of these.
@@ -112,8 +107,8 @@ private:
                llvm::ArrayRef<TextSection::ImageSection> SourceImageSections,
                uint64_t KernelStartOffset, uint64_t KernelEndOffset,
                unsigned SourceFloatRoundMode32,
-               unsigned SourceFloatRoundMode16_64, bool SourceDx10Clamp,
-               bool SourceIeeeMode);
+               unsigned SourceFloatRoundMode16_64, bool SourceFp16Overflow,
+               bool SourceDx10Clamp, bool SourceIeeeMode);
 
   // Source architectural registers, allocated in the entry block.
   RegisterState Registers;
@@ -133,6 +128,7 @@ private:
   // on when their descriptor fields are absent.
   unsigned SourceFloatRoundMode32 = 0;
   unsigned SourceFloatRoundMode16_64 = 0;
+  bool SourceFp16Overflow = false;
   bool SourceDx10Clamp = true;
   bool SourceIeeeMode = true;
 
