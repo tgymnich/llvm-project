@@ -6,7 +6,7 @@ define i16 @urem_i16(i16 %x) {
 ; MIPS32-LABEL: urem_i16:
 ; MIPS32:       # %bb.0:
 ; MIPS32-NEXT:    lui $1, 689
-; MIPS32-NEXT:    ori $1, $1, 55879
+; MIPS32-NEXT:    ori $1, $1, 56320
 ; MIPS32-NEXT:    andi $2, $4, 65535
 ; MIPS32-NEXT:    mul $1, $2, $1
 ; MIPS32-NEXT:    addiu $2, $zero, 95
@@ -17,7 +17,7 @@ define i16 @urem_i16(i16 %x) {
 ; MIPS64-LABEL: urem_i16:
 ; MIPS64:       # %bb.0:
 ; MIPS64-NEXT:    lui $1, 689
-; MIPS64-NEXT:    ori $1, $1, 55879
+; MIPS64-NEXT:    ori $1, $1, 56320
 ; MIPS64-NEXT:    sll $2, $4, 0
 ; MIPS64-NEXT:    andi $2, $2, 65535
 ; MIPS64-NEXT:    mul $1, $2, $1
@@ -64,7 +64,7 @@ define i16 @srem_i16(i16 %x) {
 ; MIPS32-LABEL: srem_i16:
 ; MIPS32:       # %bb.0:
 ; MIPS32-NEXT:    lui $1, 689
-; MIPS32-NEXT:    ori $1, $1, 55879
+; MIPS32-NEXT:    ori $1, $1, 56320
 ; MIPS32-NEXT:    seh $2, $4
 ; MIPS32-NEXT:    mul $1, $2, $1
 ; MIPS32-NEXT:    addiu $3, $zero, 95
@@ -78,7 +78,7 @@ define i16 @srem_i16(i16 %x) {
 ; MIPS64-LABEL: srem_i16:
 ; MIPS64:       # %bb.0:
 ; MIPS64-NEXT:    lui $1, 689
-; MIPS64-NEXT:    ori $1, $1, 55879
+; MIPS64-NEXT:    ori $1, $1, 56320
 ; MIPS64-NEXT:    sll $2, $4, 0
 ; MIPS64-NEXT:    seh $2, $2
 ; MIPS64-NEXT:    mul $1, $2, $1
@@ -143,12 +143,11 @@ define i32 @urem_i32(i32 %x) {
 ; MIPS64-LABEL: urem_i32:
 ; MIPS64:       # %bb.0:
 ; MIPS64-NEXT:    dext $1, $4, 0, 32
-; MIPS64-NEXT:    lui $2, 345
-; MIPS64-NEXT:    daddiu $2, $2, -4829
-; MIPS64-NEXT:    dsll $2, $2, 17
-; MIPS64-NEXT:    daddiu $2, $2, 4139
+; MIPS64-NEXT:    lui $2, 1
+; MIPS64-NEXT:    daddiu $2, $2, 22765
 ; MIPS64-NEXT:    dsll $2, $2, 16
-; MIPS64-NEXT:    daddiu $2, $2, 7589
+; MIPS64-NEXT:    daddiu $2, $2, 8969
+; MIPS64-NEXT:    dsll $2, $2, 25
 ; MIPS64-NEXT:    dmult $1, $2
 ; MIPS64-NEXT:    mflo $1
 ; MIPS64-NEXT:    daddiu $2, $zero, 95
@@ -177,12 +176,10 @@ define i32 @urem_i32_no_fixup(i32 %x) {
 ; MIPS64-LABEL: urem_i32_no_fixup:
 ; MIPS64:       # %bb.0:
 ; MIPS64-NEXT:    dext $1, $4, 0, 32
-; MIPS64-NEXT:    lui $2, 13107
-; MIPS64-NEXT:    daddiu $2, $2, 13107
+; MIPS64-NEXT:    ori $2, $zero, 52429
 ; MIPS64-NEXT:    dsll $2, $2, 16
-; MIPS64-NEXT:    daddiu $2, $2, 13107
-; MIPS64-NEXT:    dsll $2, $2, 16
-; MIPS64-NEXT:    daddiu $2, $2, 13108
+; MIPS64-NEXT:    daddiu $2, $2, -13107
+; MIPS64-NEXT:    dsll $2, $2, 30
 ; MIPS64-NEXT:    dmult $1, $2
 ; MIPS64-NEXT:    mflo $1
 ; MIPS64-NEXT:    daddiu $2, $zero, 5
@@ -197,33 +194,33 @@ define i8 @urem_i8(i8 %x) {
 ; MIPS32-LABEL: urem_i8:
 ; MIPS32:       # %bb.0:
 ; MIPS32-NEXT:    andi $1, $4, 255
-; MIPS32-NEXT:    addiu $2, $zero, 9363
-; MIPS32-NEXT:    mul $1, $1, $2
-; MIPS32-NEXT:    andi $1, $1, 65535
+; MIPS32-NEXT:    sll $2, $1, 2
+; MIPS32-NEXT:    addu $1, $2, $1
+; MIPS32-NEXT:    sll $2, $4, 5
+; MIPS32-NEXT:    addu $1, $2, $1
+; MIPS32-NEXT:    sll $2, $4, 8
+; MIPS32-NEXT:    addu $1, $2, $1
+; MIPS32-NEXT:    andi $1, $1, 2047
 ; MIPS32-NEXT:    sll $2, $1, 3
 ; MIPS32-NEXT:    subu $1, $2, $1
 ; MIPS32-NEXT:    jr $ra
-; MIPS32-NEXT:    srl $2, $1, 16
+; MIPS32-NEXT:    srl $2, $1, 11
 ;
 ; MIPS64-LABEL: urem_i8:
 ; MIPS64:       # %bb.0:
 ; MIPS64-NEXT:    sll $1, $4, 0
 ; MIPS64-NEXT:    andi $2, $1, 255
-; MIPS64-NEXT:    sll $3, $2, 1
-; MIPS64-NEXT:    addu $3, $3, $2
-; MIPS64-NEXT:    sll $4, $2, 4
-; MIPS64-NEXT:    addu $3, $4, $3
-; MIPS64-NEXT:    sll $2, $2, 7
-; MIPS64-NEXT:    addu $2, $2, $3
-; MIPS64-NEXT:    sll $3, $1, 10
+; MIPS64-NEXT:    sll $3, $2, 2
 ; MIPS64-NEXT:    addu $2, $3, $2
-; MIPS64-NEXT:    sll $1, $1, 13
+; MIPS64-NEXT:    sll $3, $1, 5
+; MIPS64-NEXT:    addu $2, $3, $2
+; MIPS64-NEXT:    sll $1, $1, 8
 ; MIPS64-NEXT:    addu $1, $1, $2
-; MIPS64-NEXT:    andi $1, $1, 65535
+; MIPS64-NEXT:    andi $1, $1, 2047
 ; MIPS64-NEXT:    sll $2, $1, 3
 ; MIPS64-NEXT:    subu $1, $2, $1
 ; MIPS64-NEXT:    jr $ra
-; MIPS64-NEXT:    srl $2, $1, 16
+; MIPS64-NEXT:    srl $2, $1, 11
   %r = urem i8 %x, 7
   ret i8 %r
 }
@@ -232,25 +229,37 @@ define i8 @urem_i8_no_fixup(i8 %x) {
 ; MIPS32-LABEL: urem_i8_no_fixup:
 ; MIPS32:       # %bb.0:
 ; MIPS32-NEXT:    andi $1, $4, 255
-; MIPS32-NEXT:    addiu $2, $zero, 13108
-; MIPS32-NEXT:    mul $1, $1, $2
-; MIPS32-NEXT:    andi $1, $1, 65532
+; MIPS32-NEXT:    sll $2, $1, 1
+; MIPS32-NEXT:    addu $1, $2, $1
+; MIPS32-NEXT:    sll $2, $4, 4
+; MIPS32-NEXT:    subu $1, $2, $1
+; MIPS32-NEXT:    sll $2, $4, 6
+; MIPS32-NEXT:    subu $1, $1, $2
+; MIPS32-NEXT:    sll $2, $4, 8
+; MIPS32-NEXT:    addu $1, $2, $1
+; MIPS32-NEXT:    andi $1, $1, 1023
 ; MIPS32-NEXT:    sll $2, $1, 2
 ; MIPS32-NEXT:    addu $1, $2, $1
 ; MIPS32-NEXT:    jr $ra
-; MIPS32-NEXT:    srl $2, $1, 16
+; MIPS32-NEXT:    srl $2, $1, 10
 ;
 ; MIPS64-LABEL: urem_i8_no_fixup:
 ; MIPS64:       # %bb.0:
 ; MIPS64-NEXT:    sll $1, $4, 0
-; MIPS64-NEXT:    andi $1, $1, 255
-; MIPS64-NEXT:    addiu $2, $zero, 13108
-; MIPS64-NEXT:    mul $1, $1, $2
-; MIPS64-NEXT:    andi $1, $1, 65532
+; MIPS64-NEXT:    andi $2, $1, 255
+; MIPS64-NEXT:    sll $3, $2, 1
+; MIPS64-NEXT:    addu $2, $3, $2
+; MIPS64-NEXT:    sll $3, $1, 4
+; MIPS64-NEXT:    subu $2, $3, $2
+; MIPS64-NEXT:    sll $3, $1, 6
+; MIPS64-NEXT:    subu $2, $2, $3
+; MIPS64-NEXT:    sll $1, $1, 8
+; MIPS64-NEXT:    addu $1, $1, $2
+; MIPS64-NEXT:    andi $1, $1, 1023
 ; MIPS64-NEXT:    sll $2, $1, 2
 ; MIPS64-NEXT:    addu $1, $2, $1
 ; MIPS64-NEXT:    jr $ra
-; MIPS64-NEXT:    srl $2, $1, 16
+; MIPS64-NEXT:    srl $2, $1, 10
   %r = urem i8 %x, 5
   ret i8 %r
 }

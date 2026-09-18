@@ -5,7 +5,7 @@ define i32 @fold_urem_positive_odd(i32 %x) {
 ; CHECK-LABEL: fold_urem_positive_odd:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movl %edi, %ecx
-; CHECK-NEXT:    movabsq $194176253407468965, %rax # imm = 0x2B1DA46102B1DA5
+; CHECK-NEXT:    movabsq $194176253438197760, %rax # imm = 0x2B1DA4612000000
 ; CHECK-NEXT:    imulq %rcx, %rax
 ; CHECK-NEXT:    movl $95, %ecx
 ; CHECK-NEXT:    mulq %rcx
@@ -21,7 +21,7 @@ define i32 @fold_urem_positive_even(i32 %x) {
 ; CHECK-LABEL: fold_urem_positive_even:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movl %edi, %ecx
-; CHECK-NEXT:    movabsq $17402588748782596, %rax # imm = 0x3DD38FF08B1C04
+; CHECK-NEXT:    movabsq $17402588752248832, %rax # imm = 0x3DD38FF0C00000
 ; CHECK-NEXT:    imulq %rcx, %rax
 ; CHECK-NEXT:    movl $1060, %ecx # imm = 0x424
 ; CHECK-NEXT:    mulq %rcx

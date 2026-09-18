@@ -5,7 +5,7 @@ define i32 @fold_srem_positive_odd(i32 %x) {
 ; CHECK-LABEL: fold_srem_positive_odd:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movslq %edi, %rcx
-; CHECK-NEXT:    movabsq $194176253407468965, %rax # imm = 0x2B1DA46102B1DA5
+; CHECK-NEXT:    movabsq $194176253471752192, %rax # imm = 0x2B1DA4614000000
 ; CHECK-NEXT:    imulq %rcx, %rax
 ; CHECK-NEXT:    movl $95, %edx
 ; CHECK-NEXT:    mulq %rdx
@@ -24,7 +24,7 @@ define i32 @fold_srem_positive_even(i32 %x) {
 ; CHECK-LABEL: fold_srem_positive_even:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movslq %edi, %rcx
-; CHECK-NEXT:    movabsq $17402588748782596, %rax # imm = 0x3DD38FF08B1C04
+; CHECK-NEXT:    movabsq $17402588756443136, %rax # imm = 0x3DD38FF1000000
 ; CHECK-NEXT:    imulq %rcx, %rax
 ; CHECK-NEXT:    movl $1060, %edx # imm = 0x424
 ; CHECK-NEXT:    mulq %rdx
@@ -43,7 +43,7 @@ define i32 @fold_srem_negative_odd(i32 %x) {
 ; CHECK-LABEL: fold_srem_negative_odd:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movslq %edi, %rcx
-; CHECK-NEXT:    movabsq $25514168843305051, %rax # imm = 0x5AA5005AA5005B
+; CHECK-NEXT:    movabsq $25514168849268736, %rax # imm = 0x5AA5005B000000
 ; CHECK-NEXT:    imulq %rcx, %rax
 ; CHECK-NEXT:    movl $723, %edx # imm = 0x2D3
 ; CHECK-NEXT:    mulq %rdx
@@ -62,7 +62,7 @@ define i32 @fold_srem_negative_even(i32 %x) {
 ; CHECK-LABEL: fold_srem_negative_even:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movslq %edi, %rcx
-; CHECK-NEXT:    movabsq $802695447269900, %rax # imm = 0x2DA0C18FF520C
+; CHECK-NEXT:    movabsq $802695447314432, %rax # imm = 0x2DA0C19000000
 ; CHECK-NEXT:    imulq %rcx, %rax
 ; CHECK-NEXT:    movl $22981, %edx # imm = 0x59C5
 ; CHECK-NEXT:    mulq %rdx

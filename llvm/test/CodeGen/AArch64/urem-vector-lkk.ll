@@ -180,12 +180,15 @@ define <16 x i8> @fold_urem_v16i8(<16 x i8> %x) {
 define <8 x i8> @fold_urem_v8i8(<8 x i8> %x) {
 ; CHECK-LABEL: fold_urem_v8i8:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    movi v1.8b, #205
-; CHECK-NEXT:    movi v2.8b, #10
-; CHECK-NEXT:    umull v1.8h, v0.8b, v1.8b
-; CHECK-NEXT:    shrn v1.8b, v1.8h, #8
-; CHECK-NEXT:    ushr v1.8b, v1.8b, #3
-; CHECK-NEXT:    mls v0.8b, v1.8b, v2.8b
+; CHECK-NEXT:    mov w8, #6560 // =0x19a0
+; CHECK-NEXT:    ushll v0.8h, v0.8b, #0
+; CHECK-NEXT:    dup v1.8h, w8
+; CHECK-NEXT:    mul v0.8h, v0.8h, v1.8h
+; CHECK-NEXT:    movi v1.8h, #10
+; CHECK-NEXT:    umull2 v2.4s, v0.8h, v1.8h
+; CHECK-NEXT:    umull v0.4s, v0.4h, v1.4h
+; CHECK-NEXT:    uzp2 v0.8h, v0.8h, v2.8h
+; CHECK-NEXT:    xtn v0.8b, v0.8h
 ; CHECK-NEXT:    ret
   %1 = urem <8 x i8> %x, <i8 10, i8 10, i8 10, i8 10, i8 10, i8 10, i8 10, i8 10>
   ret <8 x i8> %1

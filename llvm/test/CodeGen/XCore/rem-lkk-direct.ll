@@ -36,12 +36,14 @@ define i8 @urem_i8(i8 %x) {
 ; CHECK-LABEL: urem_i8:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    zext r0, 8
-; CHECK-NEXT:    ldc r1, 9363
+; CHECK-NEXT:    ldc r1, 293
 ; CHECK-NEXT:    mul r0, r0, r1
-; CHECK-NEXT:    zext r0, 16
+; CHECK-NEXT:    ldc r1, 2047
+; CHECK-NEXT:    and r0, r0, r1
 ; CHECK-NEXT:    mkmsk r1, 3
 ; CHECK-NEXT:    mul r0, r0, r1
-; CHECK-NEXT:    shr r0, r0, 16
+; CHECK-NEXT:    ldc r1, 11
+; CHECK-NEXT:    shr r0, r0, r1
 ; CHECK-NEXT:    retsp 0
   %r = urem i8 %x, 7
   ret i8 %r
@@ -54,12 +56,14 @@ define i8 @srem_i8(i8 %x) {
 ; CHECK-NEXT:    shr r1, r0, 7
 ; CHECK-NEXT:    ldc r2, 6
 ; CHECK-NEXT:    and r1, r1, r2
-; CHECK-NEXT:    ldc r2, 9363
+; CHECK-NEXT:    ldc r2, 147
 ; CHECK-NEXT:    mul r0, r0, r2
-; CHECK-NEXT:    zext r0, 16
+; CHECK-NEXT:    ldc r2, 1023
+; CHECK-NEXT:    and r0, r0, r2
 ; CHECK-NEXT:    mkmsk r2, 3
 ; CHECK-NEXT:    mul r0, r0, r2
-; CHECK-NEXT:    shr r0, r0, 16
+; CHECK-NEXT:    ldc r2, 10
+; CHECK-NEXT:    shr r0, r0, r2
 ; CHECK-NEXT:    sub r0, r0, r1
 ; CHECK-NEXT:    retsp 0
   %r = srem i8 %x, 7

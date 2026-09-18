@@ -9,7 +9,7 @@ define i8 @urem_i8(i8 %x) {
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
 ; CHECK-NEXT:    ld.param.b8 %rs1, [urem_i8_param_0];
-; CHECK-NEXT:    mul.lo.s16 %rs2, %rs1, 9363;
+; CHECK-NEXT:    mul.lo.s16 %rs2, %rs1, 9376;
 ; CHECK-NEXT:    mul.hi.u16 %rs3, %rs2, 7;
 ; CHECK-NEXT:    cvt.u32.u16 %r1, %rs3;
 ; CHECK-NEXT:    st.param.b32 [func_retval0], %r1;
@@ -28,7 +28,7 @@ define i8 @srem_i8(i8 %x) {
 ; CHECK-NEXT:    ld.param.s8 %rs1, [srem_i8_param_0];
 ; CHECK-NEXT:    shr.u16 %rs2, %rs1, 7;
 ; CHECK-NEXT:    and.b16 %rs3, %rs2, 6;
-; CHECK-NEXT:    mul.lo.s16 %rs4, %rs1, 9363;
+; CHECK-NEXT:    mul.lo.s16 %rs4, %rs1, 9408;
 ; CHECK-NEXT:    mul.hi.u16 %rs5, %rs4, 7;
 ; CHECK-NEXT:    sub.s16 %rs6, %rs5, %rs3;
 ; CHECK-NEXT:    cvt.u32.u16 %r1, %rs6;
@@ -45,7 +45,7 @@ define i16 @urem_i16(i16 %x) {
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
 ; CHECK-NEXT:    ld.param.b16 %r1, [urem_i16_param_0];
-; CHECK-NEXT:    mul.lo.s32 %r2, %r1, 45210183;
+; CHECK-NEXT:    mul.lo.s32 %r2, %r1, 45210624;
 ; CHECK-NEXT:    mul.hi.u32 %r3, %r2, 95;
 ; CHECK-NEXT:    st.param.b32 [func_retval0], %r3;
 ; CHECK-NEXT:    ret;
@@ -60,7 +60,7 @@ define i32 @urem_i32(i32 %x) {
 ; CHECK-EMPTY:
 ; CHECK-NEXT:  // %bb.0:
 ; CHECK-NEXT:    ld.param.b32 %rd1, [urem_i32_param_0];
-; CHECK-NEXT:    mul.lo.s64 %rd2, %rd1, 194176253407468965;
+; CHECK-NEXT:    mul.lo.s64 %rd2, %rd1, 194176253438197760;
 ; CHECK-NEXT:    mul.hi.u64 %rd3, %rd2, 95;
 ; CHECK-NEXT:    st.param.b32 [func_retval0], %rd3;
 ; CHECK-NEXT:    ret;
@@ -76,32 +76,32 @@ define <8 x i8> @urem_v8i8(<8 x i8> %x) {
 ; CHECK-NEXT:  // %bb.0:
 ; CHECK-NEXT:    ld.param.v2.b32 {%r1, %r2}, [urem_v8i8_param_0];
 ; CHECK-NEXT:    prmt.b32 %r3, %r2, 0, 0x7773U;
-; CHECK-NEXT:    mul.lo.s32 %r4, %r3, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r4, %r3, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r5, %r4, 7;
 ; CHECK-NEXT:    prmt.b32 %r6, %r2, 0, 0x7772U;
-; CHECK-NEXT:    mul.lo.s32 %r7, %r6, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r7, %r6, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r8, %r7, 7;
 ; CHECK-NEXT:    prmt.b32 %r9, %r8, %r5, 0x3340U;
 ; CHECK-NEXT:    prmt.b32 %r10, %r2, 0, 0x7771U;
-; CHECK-NEXT:    mul.lo.s32 %r11, %r10, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r11, %r10, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r12, %r11, 7;
 ; CHECK-NEXT:    prmt.b32 %r13, %r2, 0, 0x7770U;
-; CHECK-NEXT:    mul.lo.s32 %r14, %r13, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r14, %r13, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r15, %r14, 7;
 ; CHECK-NEXT:    prmt.b32 %r16, %r15, %r12, 0x3340U;
 ; CHECK-NEXT:    prmt.b32 %r17, %r16, %r9, 0x5410U;
 ; CHECK-NEXT:    prmt.b32 %r18, %r1, 0, 0x7773U;
-; CHECK-NEXT:    mul.lo.s32 %r19, %r18, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r19, %r18, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r20, %r19, 7;
 ; CHECK-NEXT:    prmt.b32 %r21, %r1, 0, 0x7772U;
-; CHECK-NEXT:    mul.lo.s32 %r22, %r21, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r22, %r21, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r23, %r22, 7;
 ; CHECK-NEXT:    prmt.b32 %r24, %r23, %r20, 0x3340U;
 ; CHECK-NEXT:    prmt.b32 %r25, %r1, 0, 0x7771U;
-; CHECK-NEXT:    mul.lo.s32 %r26, %r25, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r26, %r25, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r27, %r26, 7;
 ; CHECK-NEXT:    prmt.b32 %r28, %r1, 0, 0x7770U;
-; CHECK-NEXT:    mul.lo.s32 %r29, %r28, 613566757;
+; CHECK-NEXT:    mul.lo.s32 %r29, %r28, 613572608;
 ; CHECK-NEXT:    mul.hi.u32 %r30, %r29, 7;
 ; CHECK-NEXT:    prmt.b32 %r31, %r30, %r27, 0x3340U;
 ; CHECK-NEXT:    prmt.b32 %r32, %r31, %r24, 0x5410U;

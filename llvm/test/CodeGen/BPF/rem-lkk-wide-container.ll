@@ -6,10 +6,10 @@ define i8 @urem_i8(i8 %x) {
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    w0 = w1
 ; CHECK-NEXT:    w0 &= 255
-; CHECK-NEXT:    w0 *= 9363
-; CHECK-NEXT:    w0 &= 65535
+; CHECK-NEXT:    w0 *= 293
+; CHECK-NEXT:    w0 &= 2047
 ; CHECK-NEXT:    w0 *= 7
-; CHECK-NEXT:    w0 >>= 16
+; CHECK-NEXT:    w0 >>= 11
 ; CHECK-NEXT:    exit
   %r = urem i8 %x, 7
   ret i8 %r
@@ -24,10 +24,10 @@ define i8 @srem_i8(i8 %x) {
 ; CHECK-NEXT:    w1 = w0
 ; CHECK-NEXT:    w1 >>= 7
 ; CHECK-NEXT:    w1 &= 6
-; CHECK-NEXT:    w0 *= 9363
-; CHECK-NEXT:    w0 &= 65535
+; CHECK-NEXT:    w0 *= 147
+; CHECK-NEXT:    w0 &= 1023
 ; CHECK-NEXT:    w0 *= 7
-; CHECK-NEXT:    w0 >>= 16
+; CHECK-NEXT:    w0 >>= 10
 ; CHECK-NEXT:    w0 -= w1
 ; CHECK-NEXT:    exit
   %r = srem i8 %x, 7

@@ -14,7 +14,7 @@ define <vscale x 8 x i8> @urem_nxv8i8(<vscale x 8 x i8> %x) {
 ; CHECK-NEXT:    ret
 ; SVE-LABEL: urem_nxv8i8:
 ; SVE:       // %bb.0:
-; SVE-NEXT:    mov w8, #9363 // =0x2493
+; SVE-NEXT:    mov w8, #9376 // =0x24a0
 ; SVE-NEXT:    and z0.h, z0.h, #0xff
 ; SVE-NEXT:    ptrue p0.h
 ; SVE-NEXT:    mov z1.h, w8
@@ -25,7 +25,7 @@ define <vscale x 8 x i8> @urem_nxv8i8(<vscale x 8 x i8> %x) {
 ;
 ; SVE2-LABEL: urem_nxv8i8:
 ; SVE2:       // %bb.0:
-; SVE2-NEXT:    mov w8, #9363 // =0x2493
+; SVE2-NEXT:    mov w8, #9376 // =0x24a0
 ; SVE2-NEXT:    and z0.h, z0.h, #0xff
 ; SVE2-NEXT:    mov z1.h, w8
 ; SVE2-NEXT:    mul z0.h, z0.h, z1.h
@@ -53,7 +53,7 @@ define <vscale x 8 x i8> @srem_nxv8i8(<vscale x 8 x i8> %x) {
 ; SVE-LABEL: srem_nxv8i8:
 ; SVE:       // %bb.0:
 ; SVE-NEXT:    ptrue p0.h
-; SVE-NEXT:    mov w8, #9363 // =0x2493
+; SVE-NEXT:    mov w8, #9408 // =0x24c0
 ; SVE-NEXT:    mov z2.h, #7 // =0x7
 ; SVE-NEXT:    mov z1.h, w8
 ; SVE-NEXT:    sxtb z0.h, p0/m, z0.h
@@ -67,7 +67,7 @@ define <vscale x 8 x i8> @srem_nxv8i8(<vscale x 8 x i8> %x) {
 ; SVE2-LABEL: srem_nxv8i8:
 ; SVE2:       // %bb.0:
 ; SVE2-NEXT:    ptrue p0.h
-; SVE2-NEXT:    mov w8, #9363 // =0x2493
+; SVE2-NEXT:    mov w8, #9408 // =0x24c0
 ; SVE2-NEXT:    mov z2.h, #7 // =0x7
 ; SVE2-NEXT:    mov z1.h, w8
 ; SVE2-NEXT:    sxtb z0.h, p0/m, z0.h
@@ -94,7 +94,7 @@ define <vscale x 4 x i16> @urem_nxv4i16(<vscale x 4 x i16> %x) {
 ; CHECK-NEXT:    ret
 ; SVE-LABEL: urem_nxv4i16:
 ; SVE:       // %bb.0:
-; SVE-NEXT:    mov w8, #55879 // =0xda47
+; SVE-NEXT:    mov w8, #56320 // =0xdc00
 ; SVE-NEXT:    and z0.s, z0.s, #0xffff
 ; SVE-NEXT:    ptrue p0.s
 ; SVE-NEXT:    movk w8, #689, lsl #16
@@ -106,7 +106,7 @@ define <vscale x 4 x i16> @urem_nxv4i16(<vscale x 4 x i16> %x) {
 ;
 ; SVE2-LABEL: urem_nxv4i16:
 ; SVE2:       // %bb.0:
-; SVE2-NEXT:    mov w8, #55879 // =0xda47
+; SVE2-NEXT:    mov w8, #56320 // =0xdc00
 ; SVE2-NEXT:    and z0.s, z0.s, #0xffff
 ; SVE2-NEXT:    movk w8, #689, lsl #16
 ; SVE2-NEXT:    mov z1.s, w8
@@ -137,7 +137,7 @@ define <vscale x 4 x i16> @srem_nxv4i16(<vscale x 4 x i16> %x) {
 ; SVE-LABEL: srem_nxv4i16:
 ; SVE:       // %bb.0:
 ; SVE-NEXT:    ptrue p0.s
-; SVE-NEXT:    mov w8, #55879 // =0xda47
+; SVE-NEXT:    mov w8, #56320 // =0xdc00
 ; SVE-NEXT:    mov z2.s, #95 // =0x5f
 ; SVE-NEXT:    movk w8, #689, lsl #16
 ; SVE-NEXT:    mov z3.s, #94 // =0x5e
@@ -153,7 +153,7 @@ define <vscale x 4 x i16> @srem_nxv4i16(<vscale x 4 x i16> %x) {
 ; SVE2-LABEL: srem_nxv4i16:
 ; SVE2:       // %bb.0:
 ; SVE2-NEXT:    ptrue p0.s
-; SVE2-NEXT:    mov w8, #55879 // =0xda47
+; SVE2-NEXT:    mov w8, #56320 // =0xdc00
 ; SVE2-NEXT:    mov z2.s, #95 // =0x5f
 ; SVE2-NEXT:    movk w8, #689, lsl #16
 ; SVE2-NEXT:    mov z3.s, #94 // =0x5e
@@ -184,10 +184,9 @@ define <vscale x 2 x i32> @urem_nxv2i32(<vscale x 2 x i32> %x) {
 ; CHECK-NEXT:    ret
 ; SVE-LABEL: urem_nxv2i32:
 ; SVE:       // %bb.0:
-; SVE-NEXT:    mov x8, #7589 // =0x1da5
+; SVE-NEXT:    mov x8, #301989888 // =0x12000000
 ; SVE-NEXT:    and z0.d, z0.d, #0xffffffff
 ; SVE-NEXT:    ptrue p0.d
-; SVE-NEXT:    movk x8, #4139, lsl #16
 ; SVE-NEXT:    movk x8, #55878, lsl #32
 ; SVE-NEXT:    movk x8, #689, lsl #48
 ; SVE-NEXT:    mov z1.d, x8
@@ -198,9 +197,8 @@ define <vscale x 2 x i32> @urem_nxv2i32(<vscale x 2 x i32> %x) {
 ;
 ; SVE2-LABEL: urem_nxv2i32:
 ; SVE2:       // %bb.0:
-; SVE2-NEXT:    mov x8, #7589 // =0x1da5
+; SVE2-NEXT:    mov x8, #301989888 // =0x12000000
 ; SVE2-NEXT:    and z0.d, z0.d, #0xffffffff
-; SVE2-NEXT:    movk x8, #4139, lsl #16
 ; SVE2-NEXT:    movk x8, #55878, lsl #32
 ; SVE2-NEXT:    movk x8, #689, lsl #48
 ; SVE2-NEXT:    mov z1.d, x8
@@ -232,14 +230,13 @@ define <vscale x 2 x i32> @srem_nxv2i32(<vscale x 2 x i32> %x) {
 ; CHECK-NEXT:    ret
 ; SVE-LABEL: srem_nxv2i32:
 ; SVE:       // %bb.0:
-; SVE-NEXT:    mov x8, #7589 // =0x1da5
+; SVE-NEXT:    mov x8, #335544320 // =0x14000000
 ; SVE-NEXT:    ptrue p0.d
 ; SVE-NEXT:    mov z2.d, #95 // =0x5f
-; SVE-NEXT:    movk x8, #4139, lsl #16
-; SVE-NEXT:    mov z3.d, #94 // =0x5e
 ; SVE-NEXT:    movk x8, #55878, lsl #32
-; SVE-NEXT:    sxtw z0.d, p0/m, z0.d
+; SVE-NEXT:    mov z3.d, #94 // =0x5e
 ; SVE-NEXT:    movk x8, #689, lsl #48
+; SVE-NEXT:    sxtw z0.d, p0/m, z0.d
 ; SVE-NEXT:    mov z1.d, x8
 ; SVE-NEXT:    mul z1.d, p0/m, z1.d, z0.d
 ; SVE-NEXT:    lsr z0.d, z0.d, #31
@@ -250,14 +247,13 @@ define <vscale x 2 x i32> @srem_nxv2i32(<vscale x 2 x i32> %x) {
 ;
 ; SVE2-LABEL: srem_nxv2i32:
 ; SVE2:       // %bb.0:
-; SVE2-NEXT:    mov x8, #7589 // =0x1da5
+; SVE2-NEXT:    mov x8, #335544320 // =0x14000000
 ; SVE2-NEXT:    ptrue p0.d
 ; SVE2-NEXT:    mov z2.d, #95 // =0x5f
-; SVE2-NEXT:    movk x8, #4139, lsl #16
-; SVE2-NEXT:    mov z3.d, #94 // =0x5e
 ; SVE2-NEXT:    movk x8, #55878, lsl #32
-; SVE2-NEXT:    sxtw z0.d, p0/m, z0.d
+; SVE2-NEXT:    mov z3.d, #94 // =0x5e
 ; SVE2-NEXT:    movk x8, #689, lsl #48
+; SVE2-NEXT:    sxtw z0.d, p0/m, z0.d
 ; SVE2-NEXT:    mov z1.d, x8
 ; SVE2-NEXT:    mul z1.d, z0.d, z1.d
 ; SVE2-NEXT:    lsr z0.d, z0.d, #31

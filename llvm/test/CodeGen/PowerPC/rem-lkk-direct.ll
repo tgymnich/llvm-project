@@ -8,7 +8,7 @@ define i16 @urem_i16(i16 %x) {
 ; P8:       # %bb.0:
 ; P8-NEXT:    lis 4, 689
 ; P8-NEXT:    clrlwi 3, 3, 16
-; P8-NEXT:    ori 4, 4, 55879
+; P8-NEXT:    ori 4, 4, 56320
 ; P8-NEXT:    mullw 3, 3, 4
 ; P8-NEXT:    li 4, 95
 ; P8-NEXT:    mulhwu 3, 3, 4
@@ -18,7 +18,7 @@ define i16 @urem_i16(i16 %x) {
 ; P9:       # %bb.0:
 ; P9-NEXT:    lis 4, 689
 ; P9-NEXT:    clrlwi 3, 3, 16
-; P9-NEXT:    ori 4, 4, 55879
+; P9-NEXT:    ori 4, 4, 56320
 ; P9-NEXT:    mullw 3, 3, 4
 ; P9-NEXT:    li 4, 95
 ; P9-NEXT:    mulhwu 3, 3, 4
@@ -27,7 +27,7 @@ define i16 @urem_i16(i16 %x) {
 ; P10-LABEL: urem_i16:
 ; P10:       # %bb.0:
 ; P10-NEXT:    clrlwi 3, 3, 16
-; P10-NEXT:    pli 4, 45210183
+; P10-NEXT:    pli 4, 45210624
 ; P10-NEXT:    mullw 3, 3, 4
 ; P10-NEXT:    li 4, 95
 ; P10-NEXT:    mulhwu 3, 3, 4
@@ -41,7 +41,7 @@ define i16 @urem_i16_5(i16 %x) {
 ; P8:       # %bb.0:
 ; P8-NEXT:    lis 4, 13107
 ; P8-NEXT:    clrlwi 3, 3, 16
-; P8-NEXT:    ori 4, 4, 13108
+; P8-NEXT:    ori 4, 4, 16384
 ; P8-NEXT:    mullw 3, 3, 4
 ; P8-NEXT:    li 4, 5
 ; P8-NEXT:    mulhwu 3, 3, 4
@@ -51,7 +51,7 @@ define i16 @urem_i16_5(i16 %x) {
 ; P9:       # %bb.0:
 ; P9-NEXT:    lis 4, 13107
 ; P9-NEXT:    clrlwi 3, 3, 16
-; P9-NEXT:    ori 4, 4, 13108
+; P9-NEXT:    ori 4, 4, 16384
 ; P9-NEXT:    mullw 3, 3, 4
 ; P9-NEXT:    li 4, 5
 ; P9-NEXT:    mulhwu 3, 3, 4
@@ -60,7 +60,7 @@ define i16 @urem_i16_5(i16 %x) {
 ; P10-LABEL: urem_i16_5:
 ; P10:       # %bb.0:
 ; P10-NEXT:    clrlwi 3, 3, 16
-; P10-NEXT:    pli 4, 858993460
+; P10-NEXT:    pli 4, 858996736
 ; P10-NEXT:    mullw 3, 3, 4
 ; P10-NEXT:    li 4, 5
 ; P10-NEXT:    mulhwu 3, 3, 4
@@ -75,7 +75,7 @@ define i16 @srem_i16(i16 %x) {
 ; P8-NEXT:    lis 4, 689
 ; P8-NEXT:    extsh 3, 3
 ; P8-NEXT:    li 5, 95
-; P8-NEXT:    ori 4, 4, 55879
+; P8-NEXT:    ori 4, 4, 56320
 ; P8-NEXT:    mullw 4, 3, 4
 ; P8-NEXT:    mulhwu 4, 4, 5
 ; P8-NEXT:    rlwinm 5, 3, 17, 27, 30
@@ -88,7 +88,7 @@ define i16 @srem_i16(i16 %x) {
 ; P9-NEXT:    lis 4, 689
 ; P9-NEXT:    extsh 3, 3
 ; P9-NEXT:    li 5, 95
-; P9-NEXT:    ori 4, 4, 55879
+; P9-NEXT:    ori 4, 4, 56320
 ; P9-NEXT:    mullw 4, 3, 4
 ; P9-NEXT:    mulhwu 4, 4, 5
 ; P9-NEXT:    rlwinm 5, 3, 17, 27, 30
@@ -99,7 +99,7 @@ define i16 @srem_i16(i16 %x) {
 ; P10-LABEL: srem_i16:
 ; P10:       # %bb.0:
 ; P10-NEXT:    extsh 3, 3
-; P10-NEXT:    pli 4, 45210183
+; P10-NEXT:    pli 4, 45210624
 ; P10-NEXT:    li 5, 95
 ; P10-NEXT:    mullw 4, 3, 4
 ; P10-NEXT:    mulhwu 4, 4, 5
@@ -117,7 +117,7 @@ define i16 @srem_i16_3(i16 %x) {
 ; P8-NEXT:    lis 5, 21845
 ; P8-NEXT:    extsh 4, 3
 ; P8-NEXT:    rlwinm 3, 3, 18, 30, 30
-; P8-NEXT:    ori 5, 5, 21846
+; P8-NEXT:    ori 5, 5, 32768
 ; P8-NEXT:    mullw 4, 4, 5
 ; P8-NEXT:    li 5, 3
 ; P8-NEXT:    mulhwu 4, 4, 5
@@ -129,7 +129,7 @@ define i16 @srem_i16_3(i16 %x) {
 ; P9-NEXT:    lis 5, 21845
 ; P9-NEXT:    extsh 4, 3
 ; P9-NEXT:    rlwinm 3, 3, 18, 30, 30
-; P9-NEXT:    ori 5, 5, 21846
+; P9-NEXT:    ori 5, 5, 32768
 ; P9-NEXT:    mullw 4, 4, 5
 ; P9-NEXT:    li 5, 3
 ; P9-NEXT:    mulhwu 4, 4, 5
@@ -139,7 +139,7 @@ define i16 @srem_i16_3(i16 %x) {
 ; P10-LABEL: srem_i16_3:
 ; P10:       # %bb.0:
 ; P10-NEXT:    extsh 4, 3
-; P10-NEXT:    pli 5, 1431655766
+; P10-NEXT:    pli 5, 1431666688
 ; P10-NEXT:    rlwinm 3, 3, 18, 30, 30
 ; P10-NEXT:    mullw 4, 4, 5
 ; P10-NEXT:    li 5, 3
@@ -318,12 +318,25 @@ define <4 x i16> @urem_v4i16(<4 x i16> %x) {
 ; P10-LABEL: urem_v4i16:
 ; P10:       # %bb.0:
 ; P10-NEXT:    xxlxor 35, 35, 35
+; P10-NEXT:    li 3, 0
 ; P10-NEXT:    vmrglh 2, 3, 2
 ; P10-NEXT:    plxv 35, .LCPI6_0@PCREL(0), 1
 ; P10-NEXT:    vmuluwm 2, 2, 3
 ; P10-NEXT:    plxv 35, .LCPI6_1@PCREL(0), 1
 ; P10-NEXT:    vmulhuw 2, 2, 3
-; P10-NEXT:    vpkuwum 2, 2, 2
+; P10-NEXT:    vextuwrx 3, 3, 2
+; P10-NEXT:    mtvsrd 35, 3
+; P10-NEXT:    li 3, 4
+; P10-NEXT:    vextuwrx 3, 3, 2
+; P10-NEXT:    mtvsrd 36, 3
+; P10-NEXT:    li 3, 12
+; P10-NEXT:    vextuwrx 3, 3, 2
+; P10-NEXT:    vmrghh 3, 4, 3
+; P10-NEXT:    mtvsrd 36, 3
+; P10-NEXT:    mfvsrwz 3, 34
+; P10-NEXT:    mtvsrd 34, 3
+; P10-NEXT:    vmrghh 2, 4, 2
+; P10-NEXT:    xxmrglw 34, 34, 35
 ; P10-NEXT:    blr
   %r = urem <4 x i16> %x, <i16 95, i16 124, i16 98, i16 1003>
   ret <4 x i16> %r
@@ -444,19 +457,32 @@ define <4 x i16> @srem_v4i16(<4 x i16> %x) {
 ;
 ; P10-LABEL: srem_v4i16:
 ; P10:       # %bb.0:
-; P10-NEXT:    xxspltiw 35, 983055
+; P10-NEXT:    vmrglh 3, 2, 2
 ; P10-NEXT:    plxv 36, .LCPI7_0@PCREL(0), 1
+; P10-NEXT:    li 3, 0
 ; P10-NEXT:    xxsplti32dx 0, 0, 65667169
-; P10-NEXT:    vsrah 3, 2, 3
-; P10-NEXT:    vmrglh 2, 2, 2
+; P10-NEXT:    vextsh2w 3, 3
 ; P10-NEXT:    xxsplti32dx 0, 1, 8061022
-; P10-NEXT:    vextsh2w 2, 2
-; P10-NEXT:    xxland 35, 35, 0
-; P10-NEXT:    vmuluwm 2, 2, 4
+; P10-NEXT:    vmuluwm 3, 3, 4
 ; P10-NEXT:    plxv 36, .LCPI7_1@PCREL(0), 1
-; P10-NEXT:    vmulhuw 2, 2, 4
-; P10-NEXT:    vpkuwum 2, 2, 2
-; P10-NEXT:    vsubuhm 2, 2, 3
+; P10-NEXT:    vmulhuw 3, 3, 4
+; P10-NEXT:    vextuwrx 3, 3, 3
+; P10-NEXT:    mtvsrd 36, 3
+; P10-NEXT:    li 3, 4
+; P10-NEXT:    vextuwrx 3, 3, 3
+; P10-NEXT:    mtvsrd 37, 3
+; P10-NEXT:    li 3, 12
+; P10-NEXT:    vextuwrx 3, 3, 3
+; P10-NEXT:    vmrghh 4, 5, 4
+; P10-NEXT:    mtvsrd 37, 3
+; P10-NEXT:    mfvsrwz 3, 35
+; P10-NEXT:    mtvsrd 35, 3
+; P10-NEXT:    vmrghh 3, 5, 3
+; P10-NEXT:    xxmrglw 35, 35, 36
+; P10-NEXT:    xxspltiw 36, 983055
+; P10-NEXT:    vsrah 2, 2, 4
+; P10-NEXT:    xxland 34, 34, 0
+; P10-NEXT:    vsubuhm 2, 3, 2
 ; P10-NEXT:    blr
   %r = srem <4 x i16> %x, <i16 -95, i16 124, i16 -98, i16 1003>
   ret <4 x i16> %r
@@ -511,7 +537,7 @@ define <2 x i32> @urem_v2i32(<2 x i32> %x) {
 ; P10-NEXT:    xxlxor 35, 35, 35
 ; P10-NEXT:    xxmrglw 34, 35, 34
 ; P10-NEXT:    xxsplti32dx 35, 1, 95
-; P10-NEXT:    xxsplti32dx 36, 1, 271261093
+; P10-NEXT:    xxsplti32dx 36, 1, 301989888
 ; P10-NEXT:    vmulld 2, 2, 4
 ; P10-NEXT:    vmulhud 2, 2, 3
 ; P10-NEXT:    vpkudum 2, 2, 2
@@ -573,7 +599,7 @@ define <2 x i32> @urem_v2i32_5(<2 x i32> %x) {
 ; P10-NEXT:    xxlxor 35, 35, 35
 ; P10-NEXT:    xxmrglw 34, 35, 34
 ; P10-NEXT:    xxsplti32dx 35, 1, 5
-; P10-NEXT:    xxsplti32dx 36, 1, 858993460
+; P10-NEXT:    xxsplti32dx 36, 1, 1073741824
 ; P10-NEXT:    vmulld 2, 2, 4
 ; P10-NEXT:    vmulhud 2, 2, 3
 ; P10-NEXT:    vpkudum 2, 2, 2
@@ -585,31 +611,31 @@ define i8 @urem_i8(i8 %x) {
 ; P8-LABEL: urem_i8:
 ; P8:       # %bb.0:
 ; P8-NEXT:    clrlwi 3, 3, 24
-; P8-NEXT:    mulli 3, 3, 9363
-; P8-NEXT:    rlwinm 4, 3, 3, 13, 28
-; P8-NEXT:    clrlwi 3, 3, 16
+; P8-NEXT:    mulli 3, 3, 293
+; P8-NEXT:    rlwinm 4, 3, 3, 18, 28
+; P8-NEXT:    clrlwi 3, 3, 21
 ; P8-NEXT:    sub 3, 4, 3
-; P8-NEXT:    srwi 3, 3, 16
+; P8-NEXT:    srwi 3, 3, 11
 ; P8-NEXT:    blr
 ;
 ; P9-LABEL: urem_i8:
 ; P9:       # %bb.0:
 ; P9-NEXT:    clrlwi 3, 3, 24
-; P9-NEXT:    mulli 3, 3, 9363
-; P9-NEXT:    rlwinm 4, 3, 3, 13, 28
-; P9-NEXT:    clrlwi 3, 3, 16
+; P9-NEXT:    mulli 3, 3, 293
+; P9-NEXT:    rlwinm 4, 3, 3, 18, 28
+; P9-NEXT:    clrlwi 3, 3, 21
 ; P9-NEXT:    sub 3, 4, 3
-; P9-NEXT:    srwi 3, 3, 16
+; P9-NEXT:    srwi 3, 3, 11
 ; P9-NEXT:    blr
 ;
 ; P10-LABEL: urem_i8:
 ; P10:       # %bb.0:
 ; P10-NEXT:    clrlwi 3, 3, 24
-; P10-NEXT:    mulli 3, 3, 9363
-; P10-NEXT:    rlwinm 4, 3, 3, 13, 28
-; P10-NEXT:    clrlwi 3, 3, 16
+; P10-NEXT:    mulli 3, 3, 293
+; P10-NEXT:    rlwinm 4, 3, 3, 18, 28
+; P10-NEXT:    clrlwi 3, 3, 21
 ; P10-NEXT:    sub 3, 4, 3
-; P10-NEXT:    srwi 3, 3, 16
+; P10-NEXT:    srwi 3, 3, 11
 ; P10-NEXT:    blr
   %r = urem i8 %x, 7
   ret i8 %r
@@ -619,36 +645,36 @@ define i8 @srem_i8(i8 %x) {
 ; P8-LABEL: srem_i8:
 ; P8:       # %bb.0:
 ; P8-NEXT:    extsb 3, 3
-; P8-NEXT:    mulli 4, 3, 9363
+; P8-NEXT:    mulli 4, 3, 147
 ; P8-NEXT:    rlwinm 3, 3, 25, 29, 30
-; P8-NEXT:    rlwinm 5, 4, 3, 13, 28
-; P8-NEXT:    clrlwi 4, 4, 16
+; P8-NEXT:    rlwinm 5, 4, 3, 19, 28
+; P8-NEXT:    clrlwi 4, 4, 22
 ; P8-NEXT:    sub 4, 5, 4
-; P8-NEXT:    srwi 4, 4, 16
+; P8-NEXT:    srwi 4, 4, 10
 ; P8-NEXT:    sub 3, 4, 3
 ; P8-NEXT:    blr
 ;
 ; P9-LABEL: srem_i8:
 ; P9:       # %bb.0:
 ; P9-NEXT:    extsb 3, 3
-; P9-NEXT:    mulli 4, 3, 9363
+; P9-NEXT:    mulli 4, 3, 147
 ; P9-NEXT:    rlwinm 3, 3, 25, 29, 30
-; P9-NEXT:    rlwinm 5, 4, 3, 13, 28
-; P9-NEXT:    clrlwi 4, 4, 16
+; P9-NEXT:    rlwinm 5, 4, 3, 19, 28
+; P9-NEXT:    clrlwi 4, 4, 22
 ; P9-NEXT:    sub 4, 5, 4
-; P9-NEXT:    srwi 4, 4, 16
+; P9-NEXT:    srwi 4, 4, 10
 ; P9-NEXT:    sub 3, 4, 3
 ; P9-NEXT:    blr
 ;
 ; P10-LABEL: srem_i8:
 ; P10:       # %bb.0:
 ; P10-NEXT:    extsb 3, 3
-; P10-NEXT:    mulli 4, 3, 9363
+; P10-NEXT:    mulli 4, 3, 147
 ; P10-NEXT:    rlwinm 3, 3, 25, 29, 30
-; P10-NEXT:    rlwinm 5, 4, 3, 13, 28
-; P10-NEXT:    clrlwi 4, 4, 16
+; P10-NEXT:    rlwinm 5, 4, 3, 19, 28
+; P10-NEXT:    clrlwi 4, 4, 22
 ; P10-NEXT:    sub 4, 5, 4
-; P10-NEXT:    srwi 4, 4, 16
+; P10-NEXT:    srwi 4, 4, 10
 ; P10-NEXT:    sub 3, 4, 3
 ; P10-NEXT:    blr
   %r = srem i8 %x, 7
@@ -660,28 +686,36 @@ define <4 x i8> @urem_v4i8(<4 x i8> %x) {
 ; P8:       # %bb.0:
 ; P8-NEXT:    addis 3, 2, .LCPI12_0@toc@ha
 ; P8-NEXT:    xxlxor 36, 36, 36
-; P8-NEXT:    vspltisw 5, 8
+; P8-NEXT:    vspltisw 5, 11
 ; P8-NEXT:    addi 3, 3, .LCPI12_0@toc@l
 ; P8-NEXT:    lxvd2x 0, 0, 3
 ; P8-NEXT:    addis 3, 2, .LCPI12_1@toc@ha
 ; P8-NEXT:    addi 3, 3, .LCPI12_1@toc@l
 ; P8-NEXT:    lxvd2x 32, 0, 3
-; P8-NEXT:    addis 3, 2, .LCPI12_2@toc@ha
-; P8-NEXT:    addi 3, 3, .LCPI12_2@toc@l
 ; P8-NEXT:    xxswapd 35, 0
-; P8-NEXT:    lxvd2x 0, 0, 3
 ; P8-NEXT:    vperm 2, 4, 2, 3
-; P8-NEXT:    vspltisw 3, -16
+; P8-NEXT:    vspltisw 3, -11
 ; P8-NEXT:    vspltisw 4, 3
 ; P8-NEXT:    vmuluwm 2, 2, 0
 ; P8-NEXT:    vsrw 3, 3, 3
 ; P8-NEXT:    xxland 34, 34, 35
 ; P8-NEXT:    vslw 3, 2, 4
 ; P8-NEXT:    vsubuwm 2, 3, 2
-; P8-NEXT:    vadduwm 3, 5, 5
-; P8-NEXT:    vsrw 2, 2, 3
-; P8-NEXT:    xxswapd 33, 0
-; P8-NEXT:    vperm 2, 2, 2, 1
+; P8-NEXT:    vsrw 2, 2, 5
+; P8-NEXT:    xxswapd 0, 34
+; P8-NEXT:    xxsldwi 1, 34, 34, 1
+; P8-NEXT:    xxsldwi 2, 34, 34, 3
+; P8-NEXT:    mffprwz 3, 0
+; P8-NEXT:    mtvsrd 35, 3
+; P8-NEXT:    mffprwz 3, 1
+; P8-NEXT:    mtvsrd 36, 3
+; P8-NEXT:    mfvsrwz 3, 34
+; P8-NEXT:    mtvsrd 34, 3
+; P8-NEXT:    mffprwz 3, 2
+; P8-NEXT:    vmrghb 3, 4, 3
+; P8-NEXT:    mtvsrd 36, 3
+; P8-NEXT:    vmrghb 2, 4, 2
+; P8-NEXT:    vmrglh 2, 2, 3
 ; P8-NEXT:    blr
 ;
 ; P9-LABEL: urem_v4i8:
@@ -693,39 +727,60 @@ define <4 x i8> @urem_v4i8(<4 x i8> %x) {
 ; P9-NEXT:    addis 3, 2, .LCPI12_1@toc@ha
 ; P9-NEXT:    addi 3, 3, .LCPI12_1@toc@l
 ; P9-NEXT:    lxv 35, 0(3)
-; P9-NEXT:    addis 3, 2, .LCPI12_2@toc@ha
+; P9-NEXT:    li 3, 0
 ; P9-NEXT:    xxperm 34, 1, 0
-; P9-NEXT:    addi 3, 3, .LCPI12_2@toc@l
-; P9-NEXT:    lxv 0, 0(3)
 ; P9-NEXT:    vmuluwm 2, 2, 3
-; P9-NEXT:    vspltisw 3, -16
+; P9-NEXT:    vspltisw 3, -11
 ; P9-NEXT:    vsrw 3, 3, 3
 ; P9-NEXT:    xxland 34, 34, 35
 ; P9-NEXT:    vspltisw 3, 3
 ; P9-NEXT:    vslw 3, 2, 3
 ; P9-NEXT:    vsubuwm 2, 3, 2
-; P9-NEXT:    xxspltib 35, 16
-; P9-NEXT:    vextsb2w 3, 3
+; P9-NEXT:    vspltisw 3, 11
 ; P9-NEXT:    vsrw 2, 2, 3
-; P9-NEXT:    xxperm 34, 34, 0
+; P9-NEXT:    vextuwrx 3, 3, 2
+; P9-NEXT:    mtvsrd 35, 3
+; P9-NEXT:    li 3, 4
+; P9-NEXT:    vextuwrx 3, 3, 2
+; P9-NEXT:    mtvsrd 36, 3
+; P9-NEXT:    li 3, 12
+; P9-NEXT:    vextuwrx 3, 3, 2
+; P9-NEXT:    vmrghb 3, 4, 3
+; P9-NEXT:    mtvsrd 36, 3
+; P9-NEXT:    mfvsrwz 3, 34
+; P9-NEXT:    mtvsrd 34, 3
+; P9-NEXT:    vmrghb 2, 4, 2
+; P9-NEXT:    vmrglh 2, 2, 3
 ; P9-NEXT:    blr
 ;
 ; P10-LABEL: urem_v4i8:
 ; P10:       # %bb.0:
 ; P10-NEXT:    plxv 0, .LCPI12_0@PCREL(0), 1
 ; P10-NEXT:    xxlxor 1, 1, 1
-; P10-NEXT:    xxspltiw 35, 9363
+; P10-NEXT:    xxspltiw 35, 293
+; P10-NEXT:    li 3, 0
 ; P10-NEXT:    xxperm 34, 1, 0
-; P10-NEXT:    plxv 0, .LCPI12_1@PCREL(0), 1
+; P10-NEXT:    xxspltiw 0, 2047
 ; P10-NEXT:    vmuluwm 2, 2, 3
-; P10-NEXT:    mtvsrbmi 3, 13107
-; P10-NEXT:    xxland 34, 34, 35
 ; P10-NEXT:    vspltisw 3, 3
+; P10-NEXT:    xxland 34, 34, 0
 ; P10-NEXT:    vslw 3, 2, 3
 ; P10-NEXT:    vsubuwm 2, 3, 2
-; P10-NEXT:    xxspltiw 35, 16
+; P10-NEXT:    vspltisw 3, 11
 ; P10-NEXT:    vsrw 2, 2, 3
-; P10-NEXT:    xxperm 34, 34, 0
+; P10-NEXT:    vextuwrx 3, 3, 2
+; P10-NEXT:    mtvsrd 35, 3
+; P10-NEXT:    li 3, 4
+; P10-NEXT:    vextuwrx 3, 3, 2
+; P10-NEXT:    mtvsrd 36, 3
+; P10-NEXT:    li 3, 12
+; P10-NEXT:    vextuwrx 3, 3, 2
+; P10-NEXT:    vmrghb 3, 4, 3
+; P10-NEXT:    mtvsrd 36, 3
+; P10-NEXT:    mfvsrwz 3, 34
+; P10-NEXT:    mtvsrd 34, 3
+; P10-NEXT:    vmrghb 2, 4, 2
+; P10-NEXT:    vmrglh 2, 2, 3
 ; P10-NEXT:    blr
   %r = urem <4 x i8> %x, splat (i8 7)
   ret <4 x i8> %r
@@ -735,65 +790,82 @@ define <4 x i8> @srem_v4i8(<4 x i8> %x) {
 ; P8-LABEL: srem_v4i8:
 ; P8:       # %bb.0:
 ; P8-NEXT:    addis 3, 2, .LCPI13_0@toc@ha
-; P8-NEXT:    vspltisw 4, 12
-; P8-NEXT:    vspltisw 5, -16
+; P8-NEXT:    vspltisw 3, 12
+; P8-NEXT:    vspltisw 5, -10
 ; P8-NEXT:    addi 3, 3, .LCPI13_0@toc@l
-; P8-NEXT:    vadduwm 4, 4, 4
-; P8-NEXT:    vsrw 5, 5, 5
+; P8-NEXT:    vadduwm 3, 3, 3
 ; P8-NEXT:    vspltisw 0, 3
-; P8-NEXT:    vspltisw 1, 8
+; P8-NEXT:    vspltisw 1, 10
 ; P8-NEXT:    lxvd2x 0, 0, 3
 ; P8-NEXT:    addis 3, 2, .LCPI13_1@toc@ha
-; P8-NEXT:    vspltisb 8, 6
 ; P8-NEXT:    addi 3, 3, .LCPI13_1@toc@l
-; P8-NEXT:    lxvd2x 38, 0, 3
-; P8-NEXT:    addis 3, 2, .LCPI13_2@toc@ha
-; P8-NEXT:    addi 3, 3, .LCPI13_2@toc@l
-; P8-NEXT:    xxswapd 35, 0
-; P8-NEXT:    lxvd2x 0, 0, 3
-; P8-NEXT:    vperm 3, 2, 2, 3
-; P8-NEXT:    vslw 3, 3, 4
-; P8-NEXT:    vsraw 3, 3, 4
-; P8-NEXT:    vmuluwm 3, 3, 6
-; P8-NEXT:    xxland 35, 35, 37
-; P8-NEXT:    vslw 5, 3, 0
-; P8-NEXT:    vsubuwm 3, 5, 3
-; P8-NEXT:    vadduwm 5, 1, 1
-; P8-NEXT:    vsrw 3, 3, 5
+; P8-NEXT:    xxswapd 36, 0
+; P8-NEXT:    vperm 4, 2, 2, 4
+; P8-NEXT:    vslw 4, 4, 3
+; P8-NEXT:    vsraw 3, 4, 3
+; P8-NEXT:    lxvd2x 36, 0, 3
+; P8-NEXT:    vmuluwm 3, 3, 4
+; P8-NEXT:    vsrw 4, 5, 5
+; P8-NEXT:    xxland 35, 35, 36
+; P8-NEXT:    vslw 4, 3, 0
+; P8-NEXT:    vsubuwm 3, 4, 3
+; P8-NEXT:    vsrw 3, 3, 1
 ; P8-NEXT:    vspltisb 4, 7
 ; P8-NEXT:    vsrab 2, 2, 4
-; P8-NEXT:    xxland 34, 34, 40
-; P8-NEXT:    xxswapd 39, 0
-; P8-NEXT:    vperm 3, 3, 3, 7
+; P8-NEXT:    xxswapd 0, 35
+; P8-NEXT:    xxsldwi 1, 35, 35, 1
+; P8-NEXT:    xxsldwi 2, 35, 35, 3
+; P8-NEXT:    mffprwz 3, 0
+; P8-NEXT:    mtvsrd 37, 3
+; P8-NEXT:    mffprwz 3, 1
+; P8-NEXT:    mtvsrd 32, 3
+; P8-NEXT:    mfvsrwz 3, 35
+; P8-NEXT:    mtvsrd 35, 3
+; P8-NEXT:    mffprwz 3, 2
+; P8-NEXT:    vmrghb 5, 0, 5
+; P8-NEXT:    mtvsrd 32, 3
+; P8-NEXT:    vmrghb 3, 0, 3
+; P8-NEXT:    vspltisb 0, 6
+; P8-NEXT:    xxland 34, 34, 32
+; P8-NEXT:    vmrglh 3, 3, 5
 ; P8-NEXT:    vsububm 2, 3, 2
 ; P8-NEXT:    blr
 ;
 ; P9-LABEL: srem_v4i8:
 ; P9:       # %bb.0:
 ; P9-NEXT:    addis 3, 2, .LCPI13_0@toc@ha
+; P9-NEXT:    xxspltib 0, 6
 ; P9-NEXT:    addi 3, 3, .LCPI13_0@toc@l
 ; P9-NEXT:    lxv 35, 0(3)
 ; P9-NEXT:    addis 3, 2, .LCPI13_1@toc@ha
 ; P9-NEXT:    addi 3, 3, .LCPI13_1@toc@l
 ; P9-NEXT:    lxv 36, 0(3)
-; P9-NEXT:    addis 3, 2, .LCPI13_2@toc@ha
+; P9-NEXT:    li 3, 0
 ; P9-NEXT:    vperm 3, 2, 2, 3
-; P9-NEXT:    addi 3, 3, .LCPI13_2@toc@l
 ; P9-NEXT:    vextsb2w 3, 3
-; P9-NEXT:    lxv 0, 0(3)
 ; P9-NEXT:    vmuluwm 3, 3, 4
-; P9-NEXT:    vspltisw 4, -16
+; P9-NEXT:    vspltisw 4, -10
 ; P9-NEXT:    vsrw 4, 4, 4
 ; P9-NEXT:    xxland 35, 35, 36
 ; P9-NEXT:    vspltisw 4, 3
 ; P9-NEXT:    vslw 4, 3, 4
 ; P9-NEXT:    vsubuwm 3, 4, 3
-; P9-NEXT:    xxspltib 36, 16
-; P9-NEXT:    vextsb2w 4, 4
+; P9-NEXT:    vspltisw 4, 10
 ; P9-NEXT:    vsrw 3, 3, 4
+; P9-NEXT:    vextuwrx 3, 3, 3
+; P9-NEXT:    mtvsrd 36, 3
+; P9-NEXT:    li 3, 4
+; P9-NEXT:    vextuwrx 3, 3, 3
+; P9-NEXT:    mtvsrd 37, 3
+; P9-NEXT:    li 3, 12
+; P9-NEXT:    vextuwrx 3, 3, 3
+; P9-NEXT:    vmrghb 4, 5, 4
+; P9-NEXT:    mtvsrd 37, 3
+; P9-NEXT:    mfvsrwz 3, 35
+; P9-NEXT:    mtvsrd 35, 3
+; P9-NEXT:    vmrghb 3, 5, 3
+; P9-NEXT:    vmrglh 3, 3, 4
 ; P9-NEXT:    xxspltib 36, 7
-; P9-NEXT:    xxperm 35, 35, 0
-; P9-NEXT:    xxspltib 0, 6
 ; P9-NEXT:    vsrab 2, 2, 4
 ; P9-NEXT:    xxland 34, 34, 0
 ; P9-NEXT:    vsububm 2, 3, 2
@@ -802,21 +874,33 @@ define <4 x i8> @srem_v4i8(<4 x i8> %x) {
 ; P10-LABEL: srem_v4i8:
 ; P10:       # %bb.0:
 ; P10-NEXT:    plxv 35, .LCPI13_0@PCREL(0), 1
-; P10-NEXT:    xxspltiw 36, 9363
-; P10-NEXT:    plxv 0, .LCPI13_1@PCREL(0), 1
+; P10-NEXT:    xxspltiw 36, 147
+; P10-NEXT:    xxspltiw 0, 1023
+; P10-NEXT:    li 3, 0
 ; P10-NEXT:    vperm 3, 2, 2, 3
 ; P10-NEXT:    vextsb2w 3, 3
 ; P10-NEXT:    vmuluwm 3, 3, 4
-; P10-NEXT:    mtvsrbmi 4, 13107
-; P10-NEXT:    xxland 35, 35, 36
 ; P10-NEXT:    vspltisw 4, 3
+; P10-NEXT:    xxland 35, 35, 0
+; P10-NEXT:    xxspltib 0, 6
 ; P10-NEXT:    vslw 4, 3, 4
 ; P10-NEXT:    vsubuwm 3, 4, 3
-; P10-NEXT:    xxspltiw 36, 16
+; P10-NEXT:    vspltisw 4, 10
 ; P10-NEXT:    vsrw 3, 3, 4
+; P10-NEXT:    vextuwrx 3, 3, 3
+; P10-NEXT:    mtvsrd 36, 3
+; P10-NEXT:    li 3, 4
+; P10-NEXT:    vextuwrx 3, 3, 3
+; P10-NEXT:    mtvsrd 37, 3
+; P10-NEXT:    li 3, 12
+; P10-NEXT:    vextuwrx 3, 3, 3
+; P10-NEXT:    vmrghb 4, 5, 4
+; P10-NEXT:    mtvsrd 37, 3
+; P10-NEXT:    mfvsrwz 3, 35
+; P10-NEXT:    mtvsrd 35, 3
+; P10-NEXT:    vmrghb 3, 5, 3
+; P10-NEXT:    vmrglh 3, 3, 4
 ; P10-NEXT:    xxspltib 36, 7
-; P10-NEXT:    xxperm 35, 35, 0
-; P10-NEXT:    xxspltib 0, 6
 ; P10-NEXT:    vsrab 2, 2, 4
 ; P10-NEXT:    xxland 34, 34, 0
 ; P10-NEXT:    vsububm 2, 3, 2

@@ -9,7 +9,7 @@ define i16 @srem_i16(i16 %x) {
 ; Z10-NEXT:    lr %r1, %r0
 ; Z10-NEXT:    srl %r1, 15
 ; Z10-NEXT:    nilf %r1, 94
-; Z10-NEXT:    msfi %r0, 45210183
+; Z10-NEXT:    msfi %r0, 45210624
 ; Z10-NEXT:    llgfr %r0, %r0
 ; Z10-NEXT:    mghi %r0, 95
 ; Z10-NEXT:    srlg %r2, %r0, 32
@@ -21,7 +21,7 @@ define i16 @srem_i16(i16 %x) {
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    lhr %r0, %r2
 ; Z13-NEXT:    srlk %r1, %r0, 15
-; Z13-NEXT:    msfi %r0, 45210183
+; Z13-NEXT:    msfi %r0, 45210624
 ; Z13-NEXT:    llgfr %r0, %r0
 ; Z13-NEXT:    mghi %r0, 95
 ; Z13-NEXT:    nilf %r1, 94
@@ -37,7 +37,7 @@ define i32 @srem_i32(i32 %x) {
 ; Z10:       # %bb.0:
 ; Z10-NEXT:    lr %r0, %r2
 ; Z10-NEXT:    llihf %r3, 45210182
-; Z10-NEXT:    oilf %r3, 271261093
+; Z10-NEXT:    oilh %r3, 5120
 ; Z10-NEXT:    msgfr %r3, %r0
 ; Z10-NEXT:    lghi %r1, 95
 ; Z10-NEXT:    mlgr %r2, %r1
@@ -50,7 +50,7 @@ define i32 @srem_i32(i32 %x) {
 ; Z13-LABEL: srem_i32:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    llihf %r1, 45210182
-; Z13-NEXT:    oilf %r1, 271261093
+; Z13-NEXT:    oilh %r1, 5120
 ; Z13-NEXT:    msgfr %r1, %r2
 ; Z13-NEXT:    lghi %r3, 95
 ; Z13-NEXT:    sra %r2, 31
@@ -68,7 +68,7 @@ define i32 @srem_i32_3(i32 %x) {
 ; Z10-NEXT:    # kill: def $r2l killed $r2l def $r2d
 ; Z10-NEXT:    risbg %r3, %r2, 62, 190, 34
 ; Z10-NEXT:    llihf %r1, 1431655765
-; Z10-NEXT:    oilf %r1, 1431655766
+; Z10-NEXT:    oilh %r1, 32768
 ; Z10-NEXT:    msgfr %r1, %r2
 ; Z10-NEXT:    lghi %r2, 3
 ; Z10-NEXT:    mlgr %r0, %r2
@@ -79,7 +79,7 @@ define i32 @srem_i32_3(i32 %x) {
 ; Z13-LABEL: srem_i32_3:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    llihf %r1, 1431655765
-; Z13-NEXT:    oilf %r1, 1431655766
+; Z13-NEXT:    oilh %r1, 32768
 ; Z13-NEXT:    msgfr %r1, %r2
 ; Z13-NEXT:    lghi %r3, 3
 ; Z13-NEXT:    risblg %r2, %r2, 30, 158, 34
@@ -93,75 +93,66 @@ define i32 @srem_i32_3(i32 %x) {
 define <8 x i8> @urem_v8i8(<8 x i8> %x) {
 ; Z10-LABEL: urem_v8i8:
 ; Z10:       # %bb.0:
-; Z10-NEXT:    stmg %r6, %r15, 48(%r15)
-; Z10-NEXT:    .cfi_offset %r6, -112
+; Z10-NEXT:    stmg %r12, %r15, 96(%r15)
 ; Z10-NEXT:    .cfi_offset %r12, -64
 ; Z10-NEXT:    .cfi_offset %r13, -56
 ; Z10-NEXT:    .cfi_offset %r14, -48
 ; Z10-NEXT:    .cfi_offset %r15, -40
-; Z10-NEXT:    # kill: def $r6l killed $r6l def $r6d
-; Z10-NEXT:    # kill: def $r5l killed $r5l def $r5d
-; Z10-NEXT:    # kill: def $r4l killed $r4l def $r4d
-; Z10-NEXT:    # kill: def $r3l killed $r3l def $r3d
-; Z10-NEXT:    llgc %r0, 191(%r15)
-; Z10-NEXT:    llgc %r1, 183(%r15)
-; Z10-NEXT:    llgc %r14, 175(%r15)
-; Z10-NEXT:    llgc %r13, 167(%r15)
-; Z10-NEXT:    llgcr %r12, %r3
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
+; Z10-NEXT:    llc %r12, 191(%r15)
+; Z10-NEXT:    llc %r13, 183(%r15)
+; Z10-NEXT:    llc %r14, 175(%r15)
+; Z10-NEXT:    llc %r1, 167(%r15)
+; Z10-NEXT:    llcr %r0, %r3
+; Z10-NEXT:    mhi %r0, 293
+; Z10-NEXT:    nilf %r0, 2047
+; Z10-NEXT:    mhi %r0, 7
+; Z10-NEXT:    srl %r0, 11
+; Z10-NEXT:    llcr %r3, %r4
+; Z10-NEXT:    mhi %r3, 293
+; Z10-NEXT:    nilf %r3, 2047
+; Z10-NEXT:    mhi %r3, 7
+; Z10-NEXT:    srl %r3, 11
+; Z10-NEXT:    llcr %r4, %r5
+; Z10-NEXT:    mhi %r4, 293
+; Z10-NEXT:    nilf %r4, 2047
+; Z10-NEXT:    mhi %r4, 7
+; Z10-NEXT:    srl %r4, 11
+; Z10-NEXT:    llcr %r5, %r6
+; Z10-NEXT:    mhi %r5, 293
+; Z10-NEXT:    nilf %r5, 2047
+; Z10-NEXT:    mhi %r5, 7
+; Z10-NEXT:    srl %r5, 11
+; Z10-NEXT:    mhi %r1, 293
+; Z10-NEXT:    nilf %r1, 2047
+; Z10-NEXT:    mhi %r1, 7
+; Z10-NEXT:    srl %r1, 11
+; Z10-NEXT:    mhi %r14, 293
+; Z10-NEXT:    nilf %r14, 2047
+; Z10-NEXT:    mhi %r14, 7
+; Z10-NEXT:    srl %r14, 11
+; Z10-NEXT:    mhi %r13, 293
+; Z10-NEXT:    nilf %r13, 2047
+; Z10-NEXT:    mhi %r13, 7
+; Z10-NEXT:    srl %r13, 11
+; Z10-NEXT:    mhi %r12, 293
+; Z10-NEXT:    nilf %r12, 2047
 ; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r3, %r12
-; Z10-NEXT:    llgcr %r12, %r4
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r4, %r12
-; Z10-NEXT:    llgcr %r12, %r5
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r5, %r12
-; Z10-NEXT:    llgcr %r12, %r6
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r6, %r12
-; Z10-NEXT:    lgr %r12, %r13
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r13, %r12
-; Z10-NEXT:    lgr %r12, %r14
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r14, %r12
-; Z10-NEXT:    lgr %r12, %r1
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r1, %r12
-; Z10-NEXT:    lgr %r12, %r0
-; Z10-NEXT:    msgfi %r12, 613566757
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 7
-; Z10-NEXT:    sr %r0, %r12
-; Z10-NEXT:    stc %r0, 7(%r2)
-; Z10-NEXT:    stc %r1, 6(%r2)
+; Z10-NEXT:    srl %r12, 11
+; Z10-NEXT:    stc %r12, 7(%r2)
+; Z10-NEXT:    stc %r13, 6(%r2)
 ; Z10-NEXT:    stc %r14, 5(%r2)
-; Z10-NEXT:    stc %r13, 4(%r2)
-; Z10-NEXT:    stc %r6, 3(%r2)
-; Z10-NEXT:    stc %r5, 2(%r2)
-; Z10-NEXT:    stc %r4, 1(%r2)
-; Z10-NEXT:    stc %r3, 0(%r2)
-; Z10-NEXT:    lmg %r6, %r15, 48(%r15)
+; Z10-NEXT:    stc %r1, 4(%r2)
+; Z10-NEXT:    stc %r5, 3(%r2)
+; Z10-NEXT:    stc %r4, 2(%r2)
+; Z10-NEXT:    stc %r3, 1(%r2)
+; Z10-NEXT:    stc %r0, 0(%r2)
+; Z10-NEXT:    lmg %r12, %r15, 96(%r15)
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: urem_v8i8:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    vuplhb %v0, %v24
-; Z13-NEXT:    vrepih %v1, 9363
+; Z13-NEXT:    vrepih %v1, 9376
 ; Z13-NEXT:    vmlhw %v0, %v0, %v1
 ; Z13-NEXT:    vrepih %v1, 7
 ; Z13-NEXT:    vmlhh %v0, %v0, %v1
@@ -174,75 +165,66 @@ define <8 x i8> @urem_v8i8(<8 x i8> %x) {
 define <8 x i8> @urem_v8i8_5(<8 x i8> %x) {
 ; Z10-LABEL: urem_v8i8_5:
 ; Z10:       # %bb.0:
-; Z10-NEXT:    stmg %r6, %r15, 48(%r15)
-; Z10-NEXT:    .cfi_offset %r6, -112
+; Z10-NEXT:    stmg %r12, %r15, 96(%r15)
 ; Z10-NEXT:    .cfi_offset %r12, -64
 ; Z10-NEXT:    .cfi_offset %r13, -56
 ; Z10-NEXT:    .cfi_offset %r14, -48
 ; Z10-NEXT:    .cfi_offset %r15, -40
-; Z10-NEXT:    # kill: def $r6l killed $r6l def $r6d
-; Z10-NEXT:    # kill: def $r5l killed $r5l def $r5d
-; Z10-NEXT:    # kill: def $r4l killed $r4l def $r4d
-; Z10-NEXT:    # kill: def $r3l killed $r3l def $r3d
-; Z10-NEXT:    llgc %r0, 191(%r15)
-; Z10-NEXT:    llgc %r1, 183(%r15)
-; Z10-NEXT:    llgc %r14, 175(%r15)
-; Z10-NEXT:    llgc %r13, 167(%r15)
-; Z10-NEXT:    llgcr %r12, %r3
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
+; Z10-NEXT:    llc %r12, 191(%r15)
+; Z10-NEXT:    llc %r13, 183(%r15)
+; Z10-NEXT:    llc %r14, 175(%r15)
+; Z10-NEXT:    llc %r1, 167(%r15)
+; Z10-NEXT:    llcr %r0, %r3
+; Z10-NEXT:    mhi %r0, 205
+; Z10-NEXT:    nilf %r0, 1023
+; Z10-NEXT:    mhi %r0, 5
+; Z10-NEXT:    srl %r0, 10
+; Z10-NEXT:    llcr %r3, %r4
+; Z10-NEXT:    mhi %r3, 205
+; Z10-NEXT:    nilf %r3, 1023
+; Z10-NEXT:    mhi %r3, 5
+; Z10-NEXT:    srl %r3, 10
+; Z10-NEXT:    llcr %r4, %r5
+; Z10-NEXT:    mhi %r4, 205
+; Z10-NEXT:    nilf %r4, 1023
+; Z10-NEXT:    mhi %r4, 5
+; Z10-NEXT:    srl %r4, 10
+; Z10-NEXT:    llcr %r5, %r6
+; Z10-NEXT:    mhi %r5, 205
+; Z10-NEXT:    nilf %r5, 1023
+; Z10-NEXT:    mhi %r5, 5
+; Z10-NEXT:    srl %r5, 10
+; Z10-NEXT:    mhi %r1, 205
+; Z10-NEXT:    nilf %r1, 1023
+; Z10-NEXT:    mhi %r1, 5
+; Z10-NEXT:    srl %r1, 10
+; Z10-NEXT:    mhi %r14, 205
+; Z10-NEXT:    nilf %r14, 1023
+; Z10-NEXT:    mhi %r14, 5
+; Z10-NEXT:    srl %r14, 10
+; Z10-NEXT:    mhi %r13, 205
+; Z10-NEXT:    nilf %r13, 1023
+; Z10-NEXT:    mhi %r13, 5
+; Z10-NEXT:    srl %r13, 10
+; Z10-NEXT:    mhi %r12, 205
+; Z10-NEXT:    nilf %r12, 1023
 ; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r3, %r12
-; Z10-NEXT:    llgcr %r12, %r4
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r4, %r12
-; Z10-NEXT:    llgcr %r12, %r5
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r5, %r12
-; Z10-NEXT:    llgcr %r12, %r6
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r6, %r12
-; Z10-NEXT:    lgr %r12, %r13
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r13, %r12
-; Z10-NEXT:    lgr %r12, %r14
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r14, %r12
-; Z10-NEXT:    lgr %r12, %r1
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r1, %r12
-; Z10-NEXT:    lgr %r12, %r0
-; Z10-NEXT:    msgfi %r12, 858993460
-; Z10-NEXT:    srlg %r12, %r12, 32
-; Z10-NEXT:    mhi %r12, 5
-; Z10-NEXT:    sr %r0, %r12
-; Z10-NEXT:    stc %r0, 7(%r2)
-; Z10-NEXT:    stc %r1, 6(%r2)
+; Z10-NEXT:    srl %r12, 10
+; Z10-NEXT:    stc %r12, 7(%r2)
+; Z10-NEXT:    stc %r13, 6(%r2)
 ; Z10-NEXT:    stc %r14, 5(%r2)
-; Z10-NEXT:    stc %r13, 4(%r2)
-; Z10-NEXT:    stc %r6, 3(%r2)
-; Z10-NEXT:    stc %r5, 2(%r2)
-; Z10-NEXT:    stc %r4, 1(%r2)
-; Z10-NEXT:    stc %r3, 0(%r2)
-; Z10-NEXT:    lmg %r6, %r15, 48(%r15)
+; Z10-NEXT:    stc %r1, 4(%r2)
+; Z10-NEXT:    stc %r5, 3(%r2)
+; Z10-NEXT:    stc %r4, 2(%r2)
+; Z10-NEXT:    stc %r3, 1(%r2)
+; Z10-NEXT:    stc %r0, 0(%r2)
+; Z10-NEXT:    lmg %r12, %r15, 96(%r15)
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: urem_v8i8_5:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    vuplhb %v0, %v24
-; Z13-NEXT:    vrepih %v1, 13108
+; Z13-NEXT:    vrepih %v1, 13120
 ; Z13-NEXT:    vmlhw %v0, %v0, %v1
 ; Z13-NEXT:    vrepih %v1, 5
 ; Z13-NEXT:    vmlhh %v0, %v0, %v1
@@ -254,20 +236,20 @@ define <8 x i8> @urem_v8i8_5(<8 x i8> %x) {
 define i8 @urem_i8(i8 %x) {
 ; Z10-LABEL: urem_i8:
 ; Z10:       # %bb.0:
-; Z10-NEXT:    llcr %r0, %r2
-; Z10-NEXT:    mhi %r0, 9363
-; Z10-NEXT:    llhr %r2, %r0
+; Z10-NEXT:    llcr %r2, %r2
+; Z10-NEXT:    mhi %r2, 293
+; Z10-NEXT:    nilf %r2, 2047
 ; Z10-NEXT:    mhi %r2, 7
-; Z10-NEXT:    srl %r2, 16
+; Z10-NEXT:    srl %r2, 11
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: urem_i8:
 ; Z13:       # %bb.0:
-; Z13-NEXT:    llcr %r0, %r2
-; Z13-NEXT:    mhi %r0, 9363
-; Z13-NEXT:    llhr %r2, %r0
+; Z13-NEXT:    llcr %r2, %r2
+; Z13-NEXT:    mhi %r2, 293
+; Z13-NEXT:    nilf %r2, 2047
 ; Z13-NEXT:    mhi %r2, 7
-; Z13-NEXT:    srl %r2, 16
+; Z13-NEXT:    srl %r2, 11
 ; Z13-NEXT:    br %r14
   %r = urem i8 %x, 7
   ret i8 %r
@@ -276,23 +258,24 @@ define i8 @urem_i8(i8 %x) {
 define i8 @srem_i8(i8 %x) {
 ; Z10-LABEL: srem_i8:
 ; Z10:       # %bb.0:
-; Z10-NEXT:    lbr %r0, %r2
-; Z10-NEXT:    risbg %r1, %r0, 61, 190, 57
-; Z10-NEXT:    mhi %r0, 9363
-; Z10-NEXT:    llhr %r2, %r0
+; Z10-NEXT:    lbr %r2, %r2
+; Z10-NEXT:    risbg %r0, %r2, 61, 190, 57
+; Z10-NEXT:    mhi %r2, 147
+; Z10-NEXT:    nilf %r2, 1023
 ; Z10-NEXT:    mhi %r2, 7
-; Z10-NEXT:    srl %r2, 16
-; Z10-NEXT:    sr %r2, %r1
+; Z10-NEXT:    srl %r2, 10
+; Z10-NEXT:    sr %r2, %r0
+; Z10-NEXT:    # kill: def $r2l killed $r2l killed $r2d
 ; Z10-NEXT:    br %r14
 ;
 ; Z13-LABEL: srem_i8:
 ; Z13:       # %bb.0:
 ; Z13-NEXT:    lbr %r0, %r2
 ; Z13-NEXT:    risblg %r1, %r0, 29, 158, 57
-; Z13-NEXT:    mhi %r0, 9363
-; Z13-NEXT:    llhr %r0, %r0
+; Z13-NEXT:    mhi %r0, 147
+; Z13-NEXT:    nilf %r0, 1023
 ; Z13-NEXT:    mhi %r0, 7
-; Z13-NEXT:    srl %r0, 16
+; Z13-NEXT:    srl %r0, 10
 ; Z13-NEXT:    srk %r2, %r0, %r1
 ; Z13-NEXT:    br %r14
   %r = srem i8 %x, 7
