@@ -15,6 +15,7 @@
 
 #include "llvm/ADT/APInt.h"
 #include "llvm/Support/Compiler.h"
+#include <optional>
 
 namespace llvm {
 
@@ -36,6 +37,16 @@ struct UnsignedDivisionByConstantInfo {
   unsigned PostShift;   ///< post-shift amount
   unsigned PreShift;    ///< pre-shift amount
   bool Widen;           ///< use widen optimization
+};
+
+/// Reciprocal data for direct remainder by a constant.
+struct DirectRemainderByConstantInfo {
+  /// Find the least precision at or above MinFractionalBits.
+  LLVM_ABI static std::optional<DirectRemainderByConstantInfo>
+  get(const APInt &D, bool IsSigned, unsigned MinFractionalBits = 0);
+
+  APInt Magic;
+  unsigned FractionalBits;
 };
 
 } // namespace llvm

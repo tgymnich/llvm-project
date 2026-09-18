@@ -7194,54 +7194,24 @@ SDValue TargetLowering::BuildUREM(SDNode *N, SelectionDAG &DAG,
                                   SmallVectorImpl<SDNode *> &Created) const {
   SDLoc DL(N);
   EVT VT = N->getValueType(0);
-  EVT WideVT = VT.widenIntegerElementType(*DAG.getContext());
-  unsigned ResultBits = WideVT.getScalarSizeInBits();
-
-  while (!isTypeLegal(WideVT) && WideVT.getScalarSizeInBits() < 128)
-    WideVT = WideVT.widenIntegerElementType(*DAG.getContext());
+  unsigned Bits = VT.getScalarSizeInBits();
 
   if (DAG.getMachineFunction().getFunction().hasMinSize())
     return SDValue();
 
-  if (!isTypeLegal(WideVT) ||
-      !isOperationLegalOrCustom(ISD::MUL, WideVT, IsAfterLegalization))
-    return SDValue();
-
-  unsigned WideBits = WideVT.getScalarSizeInBits();
-  bool UseWideContainer = WideBits != ResultBits;
-  if (UseWideContainer &&
-      (WideBits < ResultBits + VT.getScalarSizeInBits() ||
-       !isOperationLegalOrCustom(ISD::AND, WideVT, IsAfterLegalization) ||
-       !isOperationLegalOrCustom(ISD::SRL, WideVT, IsAfterLegalization)))
-    return SDValue();
-
-  bool HasMULHU =
-      !UseWideContainer &&
-      isOperationLegalOrCustom(ISD::MULHU, WideVT, IsAfterLegalization);
-  bool HasUMUL_LOHI =
-      !UseWideContainer &&
-      isOperationLegalOrCustom(ISD::UMUL_LOHI, WideVT, IsAfterLegalization);
-  if (!UseWideContainer && !HasMULHU && !HasUMUL_LOHI)
-    return SDValue();
-
-  SmallVector<SDValue> MagicFactors;
+  SmallVector<APInt> Divisors;
   bool AllDivisorsAreOne = true;
   bool AllDivisorsArePowerOfTwo = true;
 
   auto BuildUREMPattern = [&](ConstantSDNode *C) {
-    APInt Divisor = C->getAPIntValue().trunc(VT.getScalarSizeInBits());
+    APInt Divisor = C->getAPIntValue().trunc(Bits);
     if (Divisor.isZero())
       return false;
 
     AllDivisorsAreOne &= Divisor.isOne();
     AllDivisorsArePowerOfTwo &= Divisor.isPowerOf2();
 
-    APInt WideDivisor = Divisor.zext(ResultBits);
-    // This is ceil(2^(2N) / d), represented in 2N bits. See D. Lemire,
-    // O. Kaser, and N. Kurz, "Faster Remainder by Direct Computation".
-    APInt Reciprocal = APInt::getMaxValue(ResultBits).udiv(WideDivisor) + 1;
-    MagicFactors.push_back(
-        DAG.getConstant(Reciprocal.zext(WideBits), DL, WideVT.getScalarType()));
+    Divisors.push_back(Divisor);
     return true;
   };
 
@@ -7251,6 +7221,59 @@ SDValue TargetLowering::BuildUREM(SDNode *N, SelectionDAG &DAG,
                                 /*AllowTruncation=*/true) ||
       AllDivisorsAreOne || AllDivisorsArePowerOfTwo)
     return SDValue();
+
+  unsigned FractionalBits = Bits;
+  SmallVector<DirectRemainderByConstantInfo> Infos;
+  for (;;) {
+    unsigned RequiredBits = FractionalBits;
+    Infos.clear();
+    for (const APInt &D : Divisors) {
+      auto Info = DirectRemainderByConstantInfo::get(D, /*IsSigned=*/false,
+                                                     FractionalBits);
+      if (!Info)
+        return SDValue();
+      RequiredBits = std::max(RequiredBits, Info->FractionalBits);
+      Infos.push_back(std::move(*Info));
+    }
+    if (RequiredBits == FractionalBits)
+      break;
+    FractionalBits = RequiredBits;
+  }
+
+  Type *ScalarTy = IntegerType::get(*DAG.getContext(), FractionalBits);
+  if (IsAfterLegalization)
+    ScalarTy = DAG.getDataLayout().getSmallestLegalIntType(*DAG.getContext(),
+                                                           FractionalBits);
+  if (!ScalarTy)
+    return SDValue();
+  EVT WideVT = EVT::getEVT(ScalarTy);
+  if (VT.isVector())
+    WideVT =
+        EVT::getVectorVT(*DAG.getContext(), WideVT, VT.getVectorElementCount());
+  if (IsAfterLegalization &&
+      (!isTypeLegal(WideVT) || !isOperationLegal(ISD::MUL, WideVT)))
+    return SDValue();
+
+  unsigned WideBits = WideVT.getScalarSizeInBits();
+  bool UseFullProduct = WideBits >= FractionalBits + Bits;
+  bool HasMULHU = !IsAfterLegalization || isOperationLegal(ISD::MULHU, WideVT);
+  bool HasUMUL_LOHI =
+      IsAfterLegalization && isOperationLegal(ISD::UMUL_LOHI, WideVT);
+  if (UseFullProduct) {
+    if (!isOperationLegalOrCustom(ISD::AND, WideVT, IsAfterLegalization) ||
+        !isOperationLegalOrCustom(ISD::SRL, WideVT, IsAfterLegalization))
+      return SDValue();
+  } else if ((!HasMULHU && !HasUMUL_LOHI) ||
+             (FractionalBits != WideBits &&
+              !isOperationLegalOrCustom(ISD::SHL, WideVT,
+                                        IsAfterLegalization))) {
+    return SDValue();
+  }
+
+  SmallVector<SDValue> MagicFactors;
+  for (const DirectRemainderByConstantInfo &Info : Infos)
+    MagicFactors.push_back(
+        DAG.getConstant(Info.Magic.zext(WideBits), DL, WideVT.getScalarType()));
 
   SDValue MagicFactor;
   if (Divisor.getOpcode() == ISD::BUILD_VECTOR) {
@@ -7268,23 +7291,31 @@ SDValue TargetLowering::BuildUREM(SDNode *N, SelectionDAG &DAG,
   SDValue WideDivisor = DAG.getZExtOrTrunc(Divisor, DL, WideVT);
 
   SDValue Result;
-  if (UseWideContainer) {
-    SDValue Mask =
-        DAG.getConstant(APInt::getLowBitsSet(WideBits, ResultBits), DL, WideVT);
+  if (UseFullProduct) {
+    SDValue Mask = DAG.getConstant(
+        APInt::getLowBitsSet(WideBits, FractionalBits), DL, WideVT);
     SDValue LowBits = DAG.getNode(ISD::AND, DL, WideVT, LowProduct, Mask);
     SDValue Product = DAG.getNode(ISD::MUL, DL, WideVT, LowBits, WideDivisor);
-    Result = DAG.getNode(ISD::SRL, DL, WideVT, Product,
-                         DAG.getShiftAmountConstant(ResultBits, WideVT, DL));
+    Result =
+        DAG.getNode(ISD::SRL, DL, WideVT, Product,
+                    DAG.getShiftAmountConstant(FractionalBits, WideVT, DL));
     Created.push_back(Mask.getNode());
     Created.push_back(LowBits.getNode());
     Created.push_back(Product.getNode());
-  } else if (HasMULHU) {
-    Result = DAG.getNode(ISD::MULHU, DL, WideVT, LowProduct, WideDivisor);
   } else {
-    SDValue LoHi =
-        DAG.getNode(ISD::UMUL_LOHI, DL, DAG.getVTList(WideVT, WideVT),
-                    LowProduct, WideDivisor);
-    Result = LoHi.getValue(1);
+    SDValue ScaledLowBits = LowProduct;
+    if (FractionalBits != WideBits) {
+      ScaledLowBits = DAG.getNode(
+          ISD::SHL, DL, WideVT, LowProduct,
+          DAG.getShiftAmountConstant(WideBits - FractionalBits, WideVT, DL));
+      Created.push_back(ScaledLowBits.getNode());
+    }
+    if (HasMULHU)
+      Result = DAG.getNode(ISD::MULHU, DL, WideVT, ScaledLowBits, WideDivisor);
+    else
+      Result = DAG.getNode(ISD::UMUL_LOHI, DL, DAG.getVTList(WideVT, WideVT),
+                           ScaledLowBits, WideDivisor)
+                   .getValue(1);
   }
 
   Created.push_back(MagicFactor.getNode());
@@ -7300,39 +7331,12 @@ SDValue TargetLowering::BuildSREM(SDNode *N, SelectionDAG &DAG,
                                   SmallVectorImpl<SDNode *> &Created) const {
   SDLoc DL(N);
   EVT VT = N->getValueType(0);
-  EVT WideVT = VT.widenIntegerElementType(*DAG.getContext());
-  unsigned ResultBits = WideVT.getScalarSizeInBits();
-
-  while (!isTypeLegal(WideVT) && WideVT.getScalarSizeInBits() < 128)
-    WideVT = WideVT.widenIntegerElementType(*DAG.getContext());
+  unsigned Bits = VT.getScalarSizeInBits();
 
   if (DAG.getMachineFunction().getFunction().hasMinSize())
     return SDValue();
 
-  if (!isTypeLegal(WideVT) ||
-      !isOperationLegalOrCustom(ISD::MUL, WideVT, IsAfterLegalization))
-    return SDValue();
-
-  unsigned WideBits = WideVT.getScalarSizeInBits();
-  bool UseWideContainer = WideBits != ResultBits;
-  if (UseWideContainer &&
-      (WideBits < ResultBits + VT.getScalarSizeInBits() ||
-       !isOperationLegalOrCustom(ISD::AND, WideVT, IsAfterLegalization) ||
-       !isOperationLegalOrCustom(ISD::SRL, WideVT, IsAfterLegalization)))
-    return SDValue();
-
-  bool HasMULHU =
-      !UseWideContainer &&
-      isOperationLegalOrCustom(ISD::MULHU, WideVT, IsAfterLegalization);
-  bool HasUMUL_LOHI =
-      !UseWideContainer &&
-      isOperationLegalOrCustom(ISD::UMUL_LOHI, WideVT, IsAfterLegalization);
-  if (!UseWideContainer && !HasMULHU && !HasUMUL_LOHI)
-    return SDValue();
-
-  unsigned Bits = VT.getScalarSizeInBits();
-  SmallVector<SDValue> MagicFactors;
-  SmallVector<SDValue> AbsoluteDivisors;
+  SmallVector<APInt> Divisors;
   bool AllDivisorsAreOne = true;
   bool AllDivisorsArePowerOfTwo = true;
 
@@ -7345,16 +7349,7 @@ SDValue TargetLowering::BuildSREM(SDNode *N, SelectionDAG &DAG,
     AllDivisorsAreOne &= AbsoluteDivisor.isOne();
     AllDivisorsArePowerOfTwo &= AbsoluteDivisor.isPowerOf2();
 
-    APInt WideDivisor = AbsoluteDivisor.zext(ResultBits);
-    // This is ceil(2^(2N) / abs(d)), represented in 2N bits. See D. Lemire,
-    // O. Kaser, and N. Kurz, "Faster Remainder by Direct Computation".
-    APInt Reciprocal = APInt::getMaxValue(ResultBits).udiv(WideDivisor) + 1;
-    if (!AbsoluteDivisor.isOne() && AbsoluteDivisor.isPowerOf2())
-      ++Reciprocal;
-    MagicFactors.push_back(
-        DAG.getConstant(Reciprocal.zext(WideBits), DL, WideVT.getScalarType()));
-    AbsoluteDivisors.push_back(
-        DAG.getConstant(AbsoluteDivisor, DL, VT.getScalarType()));
+    Divisors.push_back(AbsoluteDivisor);
     return true;
   };
 
@@ -7364,6 +7359,63 @@ SDValue TargetLowering::BuildSREM(SDNode *N, SelectionDAG &DAG,
                                 /*AllowTruncation=*/true) ||
       AllDivisorsAreOne || AllDivisorsArePowerOfTwo)
     return SDValue();
+
+  unsigned FractionalBits = Bits - 1;
+  SmallVector<DirectRemainderByConstantInfo> Infos;
+  for (;;) {
+    unsigned RequiredBits = FractionalBits;
+    Infos.clear();
+    for (const APInt &D : Divisors) {
+      auto Info = DirectRemainderByConstantInfo::get(D, /*IsSigned=*/true,
+                                                     FractionalBits);
+      if (!Info)
+        return SDValue();
+      RequiredBits = std::max(RequiredBits, Info->FractionalBits);
+      Infos.push_back(std::move(*Info));
+    }
+    if (RequiredBits == FractionalBits)
+      break;
+    FractionalBits = RequiredBits;
+  }
+
+  Type *ScalarTy = IntegerType::get(*DAG.getContext(), FractionalBits);
+  if (IsAfterLegalization)
+    ScalarTy = DAG.getDataLayout().getSmallestLegalIntType(*DAG.getContext(),
+                                                           FractionalBits);
+  if (!ScalarTy)
+    return SDValue();
+  EVT WideVT = EVT::getEVT(ScalarTy);
+  if (VT.isVector())
+    WideVT =
+        EVT::getVectorVT(*DAG.getContext(), WideVT, VT.getVectorElementCount());
+  if (IsAfterLegalization &&
+      (!isTypeLegal(WideVT) || !isOperationLegal(ISD::MUL, WideVT)))
+    return SDValue();
+
+  unsigned WideBits = WideVT.getScalarSizeInBits();
+  bool UseFullProduct = WideBits >= FractionalBits + Bits;
+  bool HasMULHU = !IsAfterLegalization || isOperationLegal(ISD::MULHU, WideVT);
+  bool HasUMUL_LOHI =
+      IsAfterLegalization && isOperationLegal(ISD::UMUL_LOHI, WideVT);
+  if (UseFullProduct) {
+    if (!isOperationLegalOrCustom(ISD::AND, WideVT, IsAfterLegalization) ||
+        !isOperationLegalOrCustom(ISD::SRL, WideVT, IsAfterLegalization))
+      return SDValue();
+  } else if ((!HasMULHU && !HasUMUL_LOHI) ||
+             (FractionalBits != WideBits &&
+              !isOperationLegalOrCustom(ISD::SHL, WideVT,
+                                        IsAfterLegalization))) {
+    return SDValue();
+  }
+
+  SmallVector<SDValue> MagicFactors;
+  SmallVector<SDValue> AbsoluteDivisors;
+  for (const auto &[Divisor, Info] : llvm::zip_equal(Divisors, Infos)) {
+    MagicFactors.push_back(
+        DAG.getConstant(Info.Magic.zext(WideBits), DL, WideVT.getScalarType()));
+    AbsoluteDivisors.push_back(
+        DAG.getConstant(Divisor, DL, VT.getScalarType()));
+  }
 
   SDValue MagicFactor;
   SDValue AbsoluteDivisor;
@@ -7386,23 +7438,32 @@ SDValue TargetLowering::BuildSREM(SDNode *N, SelectionDAG &DAG,
   SDValue WideDivisor = DAG.getZExtOrTrunc(AbsoluteDivisor, DL, WideVT);
 
   SDValue HighBits;
-  if (UseWideContainer) {
-    SDValue Mask =
-        DAG.getConstant(APInt::getLowBitsSet(WideBits, ResultBits), DL, WideVT);
+  if (UseFullProduct) {
+    SDValue Mask = DAG.getConstant(
+        APInt::getLowBitsSet(WideBits, FractionalBits), DL, WideVT);
     SDValue LowBits = DAG.getNode(ISD::AND, DL, WideVT, LowProduct, Mask);
     SDValue Product = DAG.getNode(ISD::MUL, DL, WideVT, LowBits, WideDivisor);
-    HighBits = DAG.getNode(ISD::SRL, DL, WideVT, Product,
-                           DAG.getShiftAmountConstant(ResultBits, WideVT, DL));
+    HighBits =
+        DAG.getNode(ISD::SRL, DL, WideVT, Product,
+                    DAG.getShiftAmountConstant(FractionalBits, WideVT, DL));
     Created.push_back(Mask.getNode());
     Created.push_back(LowBits.getNode());
     Created.push_back(Product.getNode());
-  } else if (HasMULHU) {
-    HighBits = DAG.getNode(ISD::MULHU, DL, WideVT, LowProduct, WideDivisor);
   } else {
-    SDValue LoHi =
-        DAG.getNode(ISD::UMUL_LOHI, DL, DAG.getVTList(WideVT, WideVT),
-                    LowProduct, WideDivisor);
-    HighBits = LoHi.getValue(1);
+    SDValue ScaledLowBits = LowProduct;
+    if (FractionalBits != WideBits) {
+      ScaledLowBits = DAG.getNode(
+          ISD::SHL, DL, WideVT, LowProduct,
+          DAG.getShiftAmountConstant(WideBits - FractionalBits, WideVT, DL));
+      Created.push_back(ScaledLowBits.getNode());
+    }
+    if (HasMULHU)
+      HighBits =
+          DAG.getNode(ISD::MULHU, DL, WideVT, ScaledLowBits, WideDivisor);
+    else
+      HighBits = DAG.getNode(ISD::UMUL_LOHI, DL, DAG.getVTList(WideVT, WideVT),
+                             ScaledLowBits, WideDivisor)
+                     .getValue(1);
   }
 
   SDValue RemainderMagnitude = DAG.getSExtOrTrunc(HighBits, DL, VT);

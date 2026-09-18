@@ -11,8 +11,51 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Support/DivisionByConstantInfo.h"
+#include <algorithm>
 
 using namespace llvm;
+
+std::optional<DirectRemainderByConstantInfo>
+DirectRemainderByConstantInfo::get(const APInt &D, bool IsSigned,
+                                   unsigned MinFractionalBits) {
+  unsigned Bits = D.getBitWidth();
+  if (D.isZero() || (IsSigned && D.isMinSignedValue()))
+    return std::nullopt;
+
+  APInt Divisor = IsSigned ? D.abs() : D;
+  if (!IsSigned && Divisor.isPowerOf2()) {
+    unsigned FractionalBits = std::max(Divisor.logBase2(), MinFractionalBits);
+    APInt Magic = APInt::getOneBitSet(FractionalBits + 1,
+                                      FractionalBits - Divisor.logBase2());
+    return DirectRemainderByConstantInfo{
+        Magic.trunc(std::max(1u, FractionalBits)), FractionalBits};
+  }
+
+  unsigned BaseBits = Bits - IsSigned;
+  unsigned FractionalBits = std::max(BaseBits, MinFractionalBits);
+
+  for (; FractionalBits <= 2 * Bits; ++FractionalBits) {
+    unsigned ExtraBits = FractionalBits - BaseBits;
+    unsigned WorkBits = 2 * Bits + 1;
+    APInt WideDivisor = Divisor.zext(WorkBits);
+    APInt Scale = APInt::getOneBitSet(WorkBits, FractionalBits);
+    APInt Remainder = Scale.urem(WideDivisor);
+    APInt Error = WideDivisor - Remainder;
+    APInt Limit = APInt::getOneBitSet(WorkBits, ExtraBits);
+
+    bool IsValid =
+        IsSigned ? Error.ult(Limit) : Remainder.isZero() || Error.ule(Limit);
+    if (!IsValid)
+      continue;
+
+    APInt Magic = Scale.udiv(WideDivisor);
+    if (IsSigned || !Remainder.isZero())
+      ++Magic;
+    return DirectRemainderByConstantInfo{
+        Magic.trunc(std::max(1u, FractionalBits)), FractionalBits};
+  }
+  return std::nullopt;
+}
 
 /// Calculate the magic numbers required to implement a signed integer division
 /// by a constant as a sequence of multiplies, adds and shifts.  Requires that

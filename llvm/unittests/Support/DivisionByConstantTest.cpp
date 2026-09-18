@@ -95,6 +95,91 @@ APInt MULHU(APInt X, APInt Y) {
   return (X.zext(WideBits) * Y.zext(WideBits)).lshr(Bits).trunc(Bits);
 }
 
+static APInt directRemainder(const APInt &Numerator, const APInt &Divisor,
+                             bool IsSigned,
+                             const DirectRemainderByConstantInfo &Info) {
+  unsigned Bits = Numerator.getBitWidth();
+  unsigned WorkBits = 3 * Bits + 1;
+  APInt WideNumerator =
+      IsSigned ? Numerator.sext(WorkBits) : Numerator.zext(WorkBits);
+  APInt LowProduct = WideNumerator * Info.Magic.zext(WorkBits);
+  LowProduct &= APInt::getLowBitsSet(WorkBits, Info.FractionalBits);
+  APInt Result =
+      (LowProduct * Divisor.zext(WorkBits)).lshr(Info.FractionalBits);
+  if (IsSigned && Numerator.isNegative())
+    Result -= Divisor.zext(WorkBits) - 1;
+  return Result.trunc(Bits);
+}
+
+static bool directRemainderWorks(const APInt &Divisor, bool IsSigned,
+                                 unsigned FractionalBits) {
+  unsigned Bits = Divisor.getBitWidth();
+  unsigned WorkBits = 3 * Bits + 1;
+  APInt WideDivisor = Divisor.zext(WorkBits);
+  APInt Scale = APInt::getOneBitSet(WorkBits, FractionalBits);
+  APInt Magic = Scale.udiv(WideDivisor);
+  if (IsSigned || !Scale.urem(WideDivisor).isZero())
+    ++Magic;
+  DirectRemainderByConstantInfo Info{Magic.trunc(std::max(1u, FractionalBits)),
+                                     FractionalBits};
+
+  bool Works = true;
+  EnumerateAPInts(Bits, [&](const APInt &Numerator) {
+    APInt Expected =
+        IsSigned ? Numerator.srem(Divisor) : Numerator.urem(Divisor);
+    Works &= directRemainder(Numerator, Divisor, IsSigned, Info) == Expected;
+  });
+  return Works;
+}
+
+TEST(DirectRemainderByConstantTest, Unsigned) {
+  auto Example = DirectRemainderByConstantInfo::get(APInt(4, 7), false);
+  ASSERT_TRUE(Example);
+  EXPECT_EQ(Example->FractionalBits, 7u);
+  EXPECT_EQ(Example->Magic, APInt(7, 19));
+  EXPECT_EQ(directRemainder(APInt(4, 15), APInt(4, 7), false, *Example),
+            APInt(4, 1));
+  EXPECT_EQ(
+      DirectRemainderByConstantInfo::get(APInt(8, 8), false)->FractionalBits,
+      3u);
+  EXPECT_EQ(
+      DirectRemainderByConstantInfo::get(APInt(6, 6), false)->FractionalBits,
+      8u);
+  EXPECT_EQ(
+      DirectRemainderByConstantInfo::get(APInt(6, 6), false, 9)->FractionalBits,
+      9u);
+  for (unsigned Bits = 2; Bits <= 8; ++Bits) {
+    EnumerateAPInts(Bits, [Bits](const APInt &Divisor) {
+      if (Divisor.isZero())
+        return;
+      auto Info =
+          DirectRemainderByConstantInfo::get(Divisor, /*IsSigned=*/false);
+      ASSERT_TRUE(Info);
+      EXPECT_TRUE(directRemainderWorks(Divisor, false, Info->FractionalBits))
+          << "i" << Bits << " divisor " << Divisor << " fractional bits "
+          << Info->FractionalBits;
+    });
+  }
+}
+
+TEST(DirectRemainderByConstantTest, Signed) {
+  EXPECT_EQ(
+      DirectRemainderByConstantInfo::get(APInt(8, 6), true)->FractionalBits,
+      10u);
+  for (unsigned Bits = 2; Bits <= 8; ++Bits) {
+    EnumerateAPInts(Bits, [Bits](const APInt &D) {
+      if (D.isZero() || D.isMinSignedValue())
+        return;
+      APInt Divisor = D.abs();
+      auto Info = DirectRemainderByConstantInfo::get(D, /*IsSigned=*/true);
+      ASSERT_TRUE(Info);
+      EXPECT_TRUE(directRemainderWorks(Divisor, true, Info->FractionalBits))
+          << "i" << Bits << " divisor " << Divisor << " fractional bits "
+          << Info->FractionalBits;
+    });
+  }
+}
+
 APInt UnsignedDivideUsingMagic(const APInt &Numerator, const APInt &Divisor,
                                bool LZOptimization,
                                bool AllowEvenDivisorOptimization, bool ForceNPQ,
