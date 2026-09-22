@@ -1,4 +1,4 @@
-FROM docker.io/library/ubuntu:26.04
+FROM docker.io/library/ubuntu:24.04
 
 # MPFR is required by some of the mathlib tests.
 RUN apt-get update && \
@@ -9,9 +9,11 @@ RUN apt-get update && \
     libmpc-dev \
     ninja-build \
     build-essential \
+    gcc-9 \
+    g++-9 \
     gcc-11 \
     g++-11 \
-    qemu-user-binfmt \
+    qemu-user-static \
     libc6-dev-arm64-cross \
     libstdc++6-arm64-cross \
     gcc-aarch64-linux-gnu \
@@ -58,7 +60,7 @@ RUN apt-get install -y llvm-23-tools && \
 RUN wget https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz && \
     tar -xf gmp-6.3.0.tar.xz && \
     cd gmp-6.3.0 && \
-    ./configure --host=riscv64-linux-gnu --prefix=/usr/riscv64-linux-gnu CFLAGS="-O2 -std=gnu17" && \
+    ./configure --host=riscv64-linux-gnu --prefix=/usr/riscv64-linux-gnu && \
     make -j8 && \
     sudo make install && \
     cd .. && \
@@ -122,23 +124,7 @@ RUN wget --progress=dot:mega https://ftp.gnu.org/gnu/gcc/gcc-8.5.0/gcc-8.5.0.tar
     rm -rf gcc-8.5.0 && \
     rm gcc-8.5.0.tar.xz
 
-# Install gcc-9 and g++-9
-RUN wget --progress=dot:mega https://ftp.gnu.org/gnu/gcc/gcc-9.5.0/gcc-9.5.0.tar.xz && \
-    tar -xf gcc-9.5.0.tar.xz && \
-    cd gcc-9.5.0 && \
-    ./contrib/download_prerequisites && \
-    cd .. && \
-    mkdir gcc-9 && \
-    cd gcc-9 && \
-    ../gcc-9.5.0/configure --prefix=/usr/local/gcc9 --enable-languages=c,c++ \
-    --disable-multilib --disable-libsanitizer && \
-    make -j8 && \
-    sudo make install && \
-    cd .. && \
-    rm -rf gcc-9 && \
-    rm -rf gcc-9.5.0 && \
-    rm gcc-9.5.0.tar.xz
-
+    
 # Debian has a multilib setup, so we need to symlink the asm directory.
 # For more information, see https://wiki.debian.org/Multiarch/LibraryPathOverview
 RUN ln -sf /usr/include/$(uname -p)-linux-gnu/asm /usr/include/asm
