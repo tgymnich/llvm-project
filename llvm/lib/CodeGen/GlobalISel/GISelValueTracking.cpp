@@ -850,9 +850,21 @@ void GISelValueTracking::computeKnownBitsImpl(Register R, KnownBits &Known,
   }
   case TargetOpcode::G_EXTRACT: {
     Register SrcReg = MI.getOperand(1).getReg();
+    if (DstTy.isVector() || MRI.getType(SrcReg).isVector())
+      break;
     KnownBits SrcOpKnown;
     computeKnownBitsImpl(SrcReg, SrcOpKnown, DemandedElts, Depth + 1);
     Known = SrcOpKnown.extractBits(BitWidth, MI.getOperand(2).getImm());
+    break;
+  }
+  case TargetOpcode::G_INSERT: {
+    Register BaseReg = MI.getOperand(1).getReg();
+    Register InsertReg = MI.getOperand(2).getReg();
+    if (DstTy.isVector() || MRI.getType(InsertReg).isVector())
+      break;
+    computeKnownBitsImpl(BaseReg, Known, DemandedElts, Depth + 1);
+    computeKnownBitsImpl(InsertReg, Known2, DemandedElts, Depth + 1);
+    Known.insertBits(Known2, MI.getOperand(3).getImm());
     break;
   }
   case TargetOpcode::G_MERGE_VALUES: {
@@ -2629,6 +2641,8 @@ unsigned GISelValueTracking::computeNumSignBits(Register R,
   }
   case TargetOpcode::G_EXTRACT: {
     Register Src = MI.getOperand(1).getReg();
+    if (DstTy.isVector() || MRI.getType(Src).isVector())
+      break;
     unsigned SrcBits = MRI.getType(Src).getScalarSizeInBits();
     unsigned Offset = MI.getOperand(2).getImm();
     unsigned BitsAbove = SrcBits - Offset - TyBits;
@@ -2636,6 +2650,19 @@ unsigned GISelValueTracking::computeNumSignBits(Register R,
     if (NumSrcSignBits > BitsAbove)
       return std::min(TyBits, NumSrcSignBits - BitsAbove);
     break;
+  }
+  case TargetOpcode::G_INSERT: {
+    Register Base = MI.getOperand(1).getReg();
+    Register Insert = MI.getOperand(2).getReg();
+    LLT InsertTy = MRI.getType(Insert);
+    if (DstTy.isVector() || InsertTy.isVector())
+      break;
+    unsigned Offset = MI.getOperand(3).getImm();
+    unsigned BitsAbove = TyBits - Offset - InsertTy.getScalarSizeInBits();
+    if (BitsAbove == 0)
+      return computeNumSignBits(Insert, DemandedElts, Depth + 1);
+    return std::min(BitsAbove,
+                    computeNumSignBits(Base, DemandedElts, Depth + 1));
   }
   case TargetOpcode::G_MERGE_VALUES:
     return computeNumSignBits(MI.getOperand(MI.getNumOperands() - 1).getReg(),
