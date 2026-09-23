@@ -66,6 +66,11 @@ Align GISelValueTracking::computeKnownAlignment(Register R, unsigned Depth) {
     int FrameIdx = MI->getOperand(1).getIndex();
     return MF.getFrameInfo().getObjectAlign(FrameIdx);
   }
+  case TargetOpcode::G_GLOBAL_VALUE: {
+    const MachineOperand &Global = MI->getOperand(1);
+    return commonAlignment(Global.getGlobal()->getPointerAlignment(DL),
+                           Global.getOffset());
+  }
   case TargetOpcode::G_INTRINSIC:
   case TargetOpcode::G_INTRINSIC_W_SIDE_EFFECTS:
   case TargetOpcode::G_INTRINSIC_CONVERGENT:
@@ -415,6 +420,13 @@ void GISelValueTracking::computeKnownBitsImpl(Register R, KnownBits &Known,
     int FrameIdx = MI.getOperand(1).getIndex();
     TL.computeKnownBitsForStackObjectPointer(
         Known, MF, MF.getFrameInfo().getObjectAlign(FrameIdx));
+    break;
+  }
+  case TargetOpcode::G_GLOBAL_VALUE: {
+    const MachineOperand &Global = MI.getOperand(1);
+    Align Alignment = commonAlignment(
+        Global.getGlobal()->getPointerAlignment(DL), Global.getOffset());
+    Known.Zero.setLowBits(Log2(Alignment));
     break;
   }
   case TargetOpcode::G_SUB: {
