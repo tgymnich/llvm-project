@@ -848,6 +848,13 @@ void GISelValueTracking::computeKnownBitsImpl(Register R, KnownBits &Known,
     Known.One.clearLowBits(LogOfAlign);
     break;
   }
+  case TargetOpcode::G_EXTRACT: {
+    Register SrcReg = MI.getOperand(1).getReg();
+    KnownBits SrcOpKnown;
+    computeKnownBitsImpl(SrcReg, SrcOpKnown, DemandedElts, Depth + 1);
+    Known = SrcOpKnown.extractBits(BitWidth, MI.getOperand(2).getImm());
+    break;
+  }
   case TargetOpcode::G_MERGE_VALUES: {
     unsigned NumOps = MI.getNumOperands();
     unsigned OpSize = MRI.getType(MI.getOperand(1).getReg()).getSizeInBits();
@@ -2618,6 +2625,16 @@ unsigned GISelValueTracking::computeNumSignBits(Register R,
     unsigned NumSrcSignBits = computeNumSignBits(Src, DemandedElts, Depth + 1);
     if (NumSrcSignBits > (NumSrcBits - TyBits))
       return NumSrcSignBits - (NumSrcBits - TyBits);
+    break;
+  }
+  case TargetOpcode::G_EXTRACT: {
+    Register Src = MI.getOperand(1).getReg();
+    unsigned SrcBits = MRI.getType(Src).getScalarSizeInBits();
+    unsigned Offset = MI.getOperand(2).getImm();
+    unsigned BitsAbove = SrcBits - Offset - TyBits;
+    unsigned NumSrcSignBits = computeNumSignBits(Src, DemandedElts, Depth + 1);
+    if (NumSrcSignBits > BitsAbove)
+      return std::min(TyBits, NumSrcSignBits - BitsAbove);
     break;
   }
   case TargetOpcode::G_MERGE_VALUES:
