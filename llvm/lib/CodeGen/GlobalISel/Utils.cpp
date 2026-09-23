@@ -13,6 +13,7 @@
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/CodeGen/CodeGenCommonISel.h"
 #include "llvm/CodeGen/GlobalISel/GISelChangeObserver.h"
 #include "llvm/CodeGen/GlobalISel/GISelValueTracking.h"
@@ -269,8 +270,8 @@ void llvm::reportGISelFailure(MachineFunction &MF,
                               MachineOptimizationRemarkEmitter &MORE,
                               const char *PassName, StringRef Msg,
                               const MachineInstr &MI) {
-  MachineOptimizationRemarkMissed R(PassName, "GISelFailure: ",
-                                    MI.getDebugLoc(), MI.getParent());
+  MachineOptimizationRemarkMissed R(
+      PassName, "GISelFailure: ", MI.getDebugLoc(), MI.getParent());
   R << Msg;
   // Printing MI is expensive;  only do it if expensive remarks are enabled.
   if (MF.getTarget().Options.GlobalISelAbort == GlobalISelAbortMode::Enable ||
@@ -460,8 +461,8 @@ std::optional<FPValueAndVReg> llvm::getFConstantVRegValWithLookThrough(
   return FPValueAndVReg{FloatVal, Reg->VReg};
 }
 
-const ConstantFP *
-llvm::getConstantFPVRegVal(Register VReg, const MachineRegisterInfo &MRI) {
+const ConstantFP *llvm::getConstantFPVRegVal(Register VReg,
+                                             const MachineRegisterInfo &MRI) {
   MachineInstr *MI = MRI.getVRegDef(VReg);
   if (TargetOpcode::G_FCONSTANT != MI->getOpcode())
     return nullptr;
@@ -857,7 +858,8 @@ Register llvm::getFunctionLiveInPhysReg(MachineFunction &MF,
     MachineInstr *Def = MRI.getVRegDef(LiveIn);
     if (Def) {
       // FIXME: Should the verifier check this is in the entry block?
-      assert(Def->getParent() == &EntryMBB && "live-in copy not in entry block");
+      assert(Def->getParent() == &EntryMBB &&
+             "live-in copy not in entry block");
       return LiveIn;
     }
 
@@ -872,7 +874,7 @@ Register llvm::getFunctionLiveInPhysReg(MachineFunction &MF,
   }
 
   BuildMI(EntryMBB, EntryMBB.begin(), DL, TII.get(TargetOpcode::COPY), LiveIn)
-    .addReg(PhysReg);
+      .addReg(PhysReg);
   if (!EntryMBB.isLiveIn(PhysReg))
     EntryMBB.addLiveIn(PhysReg);
   return LiveIn;
@@ -1395,7 +1397,7 @@ llvm::getIConstantSplatVal(const Register Reg, const MachineRegisterInfo &MRI) {
   if (auto SplatValAndReg =
           getAnyConstantSplat(Reg, MRI, /* AllowUndef */ false)) {
     if (std::optional<ValueAndVReg> ValAndVReg =
-        getIConstantVRegValWithLookThrough(SplatValAndReg->VReg, MRI))
+            getIConstantVRegValWithLookThrough(SplatValAndReg->VReg, MRI))
       return ValAndVReg->Value;
   }
 
@@ -1783,7 +1785,12 @@ static bool shiftAmountKnownInRange(Register ShiftAmount,
 static bool canCreateUndefOrPoison(Register Reg, const MachineRegisterInfo &MRI,
                                    bool ConsiderFlagsAndMetadata,
                                    UndefPoisonKind Kind) {
+  if (!Reg.isVirtual())
+    return true;
+
   MachineInstr *RegDef = MRI.getVRegDef(Reg);
+  if (!RegDef)
+    return true;
 
   if (ConsiderFlagsAndMetadata && includesPoison(Kind))
     if (auto *GMI = dyn_cast<GenericMachineInstr>(RegDef))
@@ -1792,8 +1799,23 @@ static bool canCreateUndefOrPoison(Register Reg, const MachineRegisterInfo &MRI,
 
   // Check whether opcode is a poison/undef-generating operation.
   switch (RegDef->getOpcode()) {
+  case TargetOpcode::COPY:
+  case TargetOpcode::G_BLOCK_ADDR:
   case TargetOpcode::G_BUILD_VECTOR:
+  case TargetOpcode::G_BUILD_VECTOR_TRUNC:
+  case TargetOpcode::G_CONCAT_VECTORS:
+  case TargetOpcode::G_CONSTANT_POOL:
   case TargetOpcode::G_CONSTANT_FOLD_BARRIER:
+  case TargetOpcode::G_EXTRACT:
+  case TargetOpcode::G_EXTRACT_SUBVECTOR:
+  case TargetOpcode::G_FRAME_INDEX:
+  case TargetOpcode::G_GLOBAL_VALUE:
+  case TargetOpcode::G_INSERT:
+  case TargetOpcode::G_INSERT_SUBVECTOR:
+  case TargetOpcode::G_JUMP_TABLE:
+  case TargetOpcode::G_MERGE_VALUES:
+  case TargetOpcode::G_SPLAT_VECTOR:
+  case TargetOpcode::G_UNMERGE_VALUES:
     return false;
   case TargetOpcode::G_SHL:
   case TargetOpcode::G_ASHR:
@@ -1887,53 +1909,229 @@ static bool canCreateUndefOrPoison(Register Reg, const MachineRegisterInfo &MRI,
   }
 }
 
+static APInt getDemandAllElts(Register Reg, const MachineRegisterInfo &MRI) {
+  LLT Ty = MRI.getType(Reg);
+  return Ty.isFixedVector() ? APInt::getAllOnes(Ty.getNumElements())
+                            : APInt(1, 1);
+}
+
 static bool isGuaranteedNotToBeUndefOrPoison(Register Reg,
+                                             const APInt &DemandedElts,
                                              const MachineRegisterInfo &MRI,
                                              unsigned Depth,
                                              UndefPoisonKind Kind) {
-  if (Depth >= MaxAnalysisRecursionDepth)
+  if (!DemandedElts)
+    return true;
+
+  if (!Reg.isVirtual())
     return false;
 
   MachineInstr *RegDef = MRI.getVRegDef(Reg);
+  if (!RegDef)
+    return false;
+
+  if (RegDef->getOpcode() == TargetOpcode::G_FREEZE)
+    return true;
+
+  if (Depth >= MaxAnalysisRecursionDepth)
+    return false;
+
+  LLT DstTy = MRI.getType(Reg);
+  if (!DstTy.isValid())
+    return false;
+
+  assert((DstTy.isFixedVector()
+              ? DemandedElts.getBitWidth() == DstTy.getNumElements()
+              : DemandedElts == APInt(1, 1)) &&
+         "Unexpected demanded elements");
+
+  auto CheckAllElts = [&](Register Src) {
+    if (!Src.isVirtual() || !MRI.getType(Src).isValid())
+      return false;
+    return ::isGuaranteedNotToBeUndefOrPoison(Src, getDemandAllElts(Src, MRI),
+                                              MRI, Depth + 1, Kind);
+  };
+
+  auto CheckSameElts = [&](Register Src) {
+    if (!Src.isVirtual())
+      return false;
+    LLT SrcTy = MRI.getType(Src);
+    if (!SrcTy.isValid())
+      return false;
+    if (SrcTy.isFixedVector() && DstTy.isFixedVector() &&
+        SrcTy.getNumElements() == DstTy.getNumElements())
+      return ::isGuaranteedNotToBeUndefOrPoison(Src, DemandedElts, MRI,
+                                                Depth + 1, Kind);
+    return CheckAllElts(Src);
+  };
 
   switch (RegDef->getOpcode()) {
-  case TargetOpcode::G_FREEZE:
-    return true;
   case TargetOpcode::G_IMPLICIT_DEF:
     return !includesUndef(Kind);
   case TargetOpcode::G_CONSTANT:
   case TargetOpcode::G_FCONSTANT:
     return true;
-  case TargetOpcode::G_BUILD_VECTOR: {
-    GBuildVector *BV = cast<GBuildVector>(RegDef);
-    unsigned NumSources = BV->getNumSources();
-    for (unsigned I = 0; I < NumSources; ++I)
-      if (!::isGuaranteedNotToBeUndefOrPoison(BV->getSourceReg(I), MRI,
-                                              Depth + 1, Kind))
+  case TargetOpcode::COPY:
+    return CheckSameElts(RegDef->getOperand(1).getReg());
+  case TargetOpcode::G_BUILD_VECTOR:
+  case TargetOpcode::G_BUILD_VECTOR_TRUNC: {
+    if (!DstTy.isFixedVector())
+      return all_of(drop_begin(RegDef->operands()), [&](MachineOperand &MO) {
+        return CheckAllElts(MO.getReg());
+      });
+    for (unsigned I = 0, E = RegDef->getNumOperands() - 1; I != E; ++I) {
+      if (!DemandedElts[I])
+        continue;
+      if (!CheckAllElts(RegDef->getOperand(I + 1).getReg()))
         return false;
+    }
     return true;
   }
   case TargetOpcode::G_PHI: {
     GPhi *Phi = cast<GPhi>(RegDef);
     unsigned NumIncoming = Phi->getNumIncomingValues();
     for (unsigned I = 0; I < NumIncoming; ++I)
-      if (!::isGuaranteedNotToBeUndefOrPoison(Phi->getIncomingValue(I), MRI,
-                                              Depth + 1, Kind))
+      if (!CheckSameElts(Phi->getIncomingValue(I)))
         return false;
     return true;
+  }
+  case TargetOpcode::G_SPLAT_VECTOR:
+    return CheckAllElts(cast<GSplatVector>(RegDef)->getScalarReg());
+  case TargetOpcode::G_EXTRACT_VECTOR_ELT: {
+    GExtractVectorElement *Extract = cast<GExtractVectorElement>(RegDef);
+    Register Vec = Extract->getVectorReg();
+    LLT VecTy = MRI.getType(Vec);
+    std::optional<ValueAndVReg> Index =
+        getIConstantVRegValWithLookThrough(Extract->getIndexReg(), MRI);
+    if (!VecTy.isFixedVector() || !Index ||
+        Index->Value.uge(VecTy.getNumElements()))
+      break;
+    APInt DemandedVecElts = APInt::getOneBitSet(VecTy.getNumElements(),
+                                                Index->Value.getZExtValue());
+    return ::isGuaranteedNotToBeUndefOrPoison(Vec, DemandedVecElts, MRI,
+                                              Depth + 1, Kind);
+  }
+  case TargetOpcode::G_INSERT_VECTOR_ELT: {
+    GInsertVectorElement *Insert = cast<GInsertVectorElement>(RegDef);
+    Register Vec = Insert->getVectorReg();
+    LLT VecTy = MRI.getType(Vec);
+    std::optional<ValueAndVReg> Index =
+        getIConstantVRegValWithLookThrough(Insert->getIndexReg(), MRI);
+    if (!VecTy.isFixedVector() || !Index ||
+        Index->Value.uge(VecTy.getNumElements()))
+      break;
+    unsigned Idx = Index->Value.getZExtValue();
+    if (DemandedElts[Idx] && !CheckAllElts(Insert->getElementReg()))
+      return false;
+    APInt DemandedVecElts = DemandedElts;
+    DemandedVecElts.clearBit(Idx);
+    return !DemandedVecElts || ::isGuaranteedNotToBeUndefOrPoison(
+                                   Vec, DemandedVecElts, MRI, Depth + 1, Kind);
+  }
+  case TargetOpcode::G_EXTRACT_SUBVECTOR: {
+    GExtractSubvector *Extract = cast<GExtractSubvector>(RegDef);
+    Register Vec = Extract->getSrcVec();
+    LLT VecTy = MRI.getType(Vec);
+    if (!DstTy.isFixedVector() || !VecTy.isFixedVector())
+      break;
+    APInt DemandedVecElts =
+        DemandedElts.zext(VecTy.getNumElements()).shl(Extract->getIndexImm());
+    return ::isGuaranteedNotToBeUndefOrPoison(Vec, DemandedVecElts, MRI,
+                                              Depth + 1, Kind);
+  }
+  case TargetOpcode::G_INSERT_SUBVECTOR: {
+    GInsertSubvector *Insert = cast<GInsertSubvector>(RegDef);
+    Register Vec = Insert->getBigVec();
+    Register Sub = Insert->getSubVec();
+    LLT SubTy = MRI.getType(Sub);
+    if (!DstTy.isFixedVector() || !SubTy.isFixedVector())
+      break;
+    unsigned Idx = Insert->getIndexImm();
+    unsigned NumSubElts = SubTy.getNumElements();
+    APInt DemandedSubElts = DemandedElts.extractBits(NumSubElts, Idx);
+    if (!!DemandedSubElts && !::isGuaranteedNotToBeUndefOrPoison(
+                                 Sub, DemandedSubElts, MRI, Depth + 1, Kind))
+      return false;
+    APInt DemandedVecElts = DemandedElts;
+    DemandedVecElts.clearBits(Idx, Idx + NumSubElts);
+    return !DemandedVecElts || ::isGuaranteedNotToBeUndefOrPoison(
+                                   Vec, DemandedVecElts, MRI, Depth + 1, Kind);
+  }
+  case TargetOpcode::G_CONCAT_VECTORS: {
+    if (!DstTy.isFixedVector())
+      return all_of(drop_begin(RegDef->operands()), [&](MachineOperand &MO) {
+        return CheckAllElts(MO.getReg());
+      });
+    GConcatVectors *Concat = cast<GConcatVectors>(RegDef);
+    LLT SubTy = MRI.getType(Concat->getSourceReg(0));
+    if (!SubTy.isFixedVector())
+      return false;
+    unsigned NumSubElts = SubTy.getNumElements();
+    for (unsigned I = 0, E = Concat->getNumSources(); I != E; ++I) {
+      APInt DemandedSubElts =
+          DemandedElts.extractBits(NumSubElts, I * NumSubElts);
+      if (!!DemandedSubElts &&
+          !::isGuaranteedNotToBeUndefOrPoison(
+              Concat->getSourceReg(I), DemandedSubElts, MRI, Depth + 1, Kind))
+        return false;
+    }
+    return true;
+  }
+  case TargetOpcode::G_SHUFFLE_VECTOR: {
+    GShuffleVector *Shuffle = cast<GShuffleVector>(RegDef);
+    Register LHS = Shuffle->getSrc1Reg();
+    LLT SrcTy = MRI.getType(LHS);
+    if (!DstTy.isFixedVector() || !SrcTy.isFixedVector())
+      break;
+    APInt DemandedLHS, DemandedRHS;
+    if (!getShuffleDemandedElts(SrcTy.getNumElements(), Shuffle->getMask(),
+                                DemandedElts, DemandedLHS, DemandedRHS,
+                                /*AllowUndefElts=*/false))
+      return false;
+    if (!!DemandedLHS && !::isGuaranteedNotToBeUndefOrPoison(
+                             LHS, DemandedLHS, MRI, Depth + 1, Kind))
+      return false;
+    return !DemandedRHS ||
+           ::isGuaranteedNotToBeUndefOrPoison(
+               Shuffle->getSrc2Reg(), DemandedRHS, MRI, Depth + 1, Kind);
+  }
+  case TargetOpcode::G_UNMERGE_VALUES: {
+    GUnmerge *Unmerge = cast<GUnmerge>(RegDef);
+    Register Src = Unmerge->getSourceReg();
+    LLT SrcTy = MRI.getType(Src);
+    if (!DstTy.isFixedVector() || !SrcTy.isFixedVector() ||
+        DstTy.getScalarType() != SrcTy.getScalarType())
+      return CheckAllElts(Src);
+    unsigned DstIdx = RegDef->findRegisterDefOperandIdx(Reg, nullptr);
+    unsigned NumDstElts = DstTy.getNumElements();
+    APInt DemandedSrcElts =
+        DemandedElts.zext(SrcTy.getNumElements()).shl(DstIdx * NumDstElts);
+    return ::isGuaranteedNotToBeUndefOrPoison(Src, DemandedSrcElts, MRI,
+                                              Depth + 1, Kind);
   }
   default: {
     auto MOCheck = [&](const MachineOperand &MO) {
       if (!MO.isReg())
         return true;
-      return ::isGuaranteedNotToBeUndefOrPoison(MO.getReg(), MRI, Depth + 1,
-                                                Kind);
+      return CheckSameElts(MO.getReg());
     };
     return !::canCreateUndefOrPoison(Reg, MRI,
                                      /*ConsiderFlagsAndMetadata=*/true, Kind) &&
            all_of(RegDef->uses(), MOCheck);
   }
   }
+
+  return false;
+}
+
+static bool isGuaranteedNotToBeUndefOrPoison(Register Reg,
+                                             const MachineRegisterInfo &MRI,
+                                             unsigned Depth,
+                                             UndefPoisonKind Kind) {
+  if (!Reg.isVirtual() || !MRI.getType(Reg).isValid())
+    return false;
+  return ::isGuaranteedNotToBeUndefOrPoison(Reg, getDemandAllElts(Reg, MRI),
+                                            MRI, Depth, Kind);
 }
 
 bool llvm::canCreateUndefOrPoison(Register Reg, const MachineRegisterInfo &MRI,
@@ -1952,6 +2150,14 @@ bool llvm::isGuaranteedNotToBeUndefOrPoison(Register Reg,
                                             const MachineRegisterInfo &MRI,
                                             unsigned Depth) {
   return ::isGuaranteedNotToBeUndefOrPoison(Reg, MRI, Depth,
+                                            UndefPoisonKind::UndefOrPoison);
+}
+
+bool llvm::isGuaranteedNotToBeUndefOrPoison(Register Reg,
+                                            const APInt &DemandedElts,
+                                            const MachineRegisterInfo &MRI,
+                                            unsigned Depth) {
+  return ::isGuaranteedNotToBeUndefOrPoison(Reg, DemandedElts, MRI, Depth,
                                             UndefPoisonKind::UndefOrPoison);
 }
 

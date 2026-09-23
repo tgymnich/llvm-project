@@ -418,6 +418,67 @@ TEST_F(AArch64GISelMITest, ConstFalseTest) {
   }
 }
 
+TEST_F(AArch64GISelMITest, IsGuaranteedNotToBeUndefOrPoison) {
+  StringRef MIRString = R"(
+    %c0:_(s8) = G_CONSTANT i8 1
+    %c1:_(s8) = G_CONSTANT i8 2
+    %wide0:_(s16) = G_CONSTANT i16 3
+    %wide1:_(s16) = G_CONSTANT i16 4
+    %undef:_(s8) = G_IMPLICIT_DEF
+    %copy:_(s8) = COPY %c0
+    %build:_(<2 x s8>) = G_BUILD_VECTOR %c0, %c1
+    %build_undef:_(<2 x s8>) = G_BUILD_VECTOR %c0, %undef
+    %build_trunc:_(<2 x s8>) = G_BUILD_VECTOR_TRUNC %wide0, %wide1
+    %splat:_(<vscale x 2 x s8>) = G_SPLAT_VECTOR %c0
+    %concat:_(<4 x s8>) = G_CONCAT_VECTORS %build, %build_undef
+    %merge:_(s16) = G_MERGE_VALUES %c0, %c1
+    %unmerge0:_(s8), %unmerge1:_(s8) = G_UNMERGE_VALUES %merge
+    %i0:_(s64) = G_CONSTANT i64 0
+    %i1:_(s64) = G_CONSTANT i64 1
+    %extract0:_(s8) = G_EXTRACT_VECTOR_ELT %build_undef, %i0
+    %extract1:_(s8) = G_EXTRACT_VECTOR_ELT %build_undef, %i1
+    %insert:_(<2 x s8>) = G_INSERT_VECTOR_ELT %build, %undef, %i1
+    %extract_sub:_(<2 x s8>) = G_EXTRACT_SUBVECTOR %concat, 0
+    %extract_sub_undef:_(<2 x s8>) = G_EXTRACT_SUBVECTOR %concat, 2
+    %insert_sub:_(<4 x s8>) = G_INSERT_SUBVECTOR %concat, %build, 2
+)";
+  setUp(MIRString);
+  if (!TM)
+    GTEST_SKIP();
+
+  SmallVector<MachineInstr *> Instrs;
+  collectNonCopyMI(Instrs, MF);
+  auto GetReg = [&](unsigned I) { return Instrs[I]->getOperand(0).getReg(); };
+
+  Register Copy;
+  for (MachineInstr &MI : MF->front())
+    if (MI.getOpcode() == TargetOpcode::COPY &&
+        MI.getOperand(1).getReg().isVirtual())
+      Copy = MI.getOperand(0).getReg();
+
+  EXPECT_TRUE(Copy.isValid());
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(Copy, *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(5), *MRI));
+  EXPECT_FALSE(isGuaranteedNotToBeUndefOrPoison(GetReg(6), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(6), APInt(2, 1), *MRI));
+  EXPECT_FALSE(isGuaranteedNotToBeUndefOrPoison(GetReg(6), APInt(2, 2), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(7), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(8), *MRI));
+  EXPECT_FALSE(isGuaranteedNotToBeUndefOrPoison(GetReg(9), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(9), APInt(4, 3), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(9), APInt(4, 4), *MRI));
+  EXPECT_FALSE(isGuaranteedNotToBeUndefOrPoison(GetReg(9), APInt(4, 8), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(10), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(11), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(14), *MRI));
+  EXPECT_FALSE(isGuaranteedNotToBeUndefOrPoison(GetReg(15), *MRI));
+  EXPECT_FALSE(isGuaranteedNotToBeUndefOrPoison(GetReg(16), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(16), APInt(2, 1), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(17), *MRI));
+  EXPECT_FALSE(isGuaranteedNotToBeUndefOrPoison(GetReg(18), *MRI));
+  EXPECT_TRUE(isGuaranteedNotToBeUndefOrPoison(GetReg(19), *MRI));
+}
+
 TEST_F(AMDGPUGISelMITest, isConstantOrConstantSplatVectorFP) {
   StringRef MIRString =
       "  %cst0:_(s32) = G_FCONSTANT float 2.000000e+00\n"

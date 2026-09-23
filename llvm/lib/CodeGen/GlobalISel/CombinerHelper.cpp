@@ -252,6 +252,8 @@ bool CombinerHelper::matchFreezeOfSingleMaybePoisonOperand(
   MachineInstr *OrigDef;
   if (!mi_match(OrigOp, MRI, m_MInstr(OrigDef)))
     return false;
+  if (!isa<GenericMachineInstr>(OrigDef))
+    return false;
   // Even if only a single operand of the PHI is not guaranteed non-poison,
   // moving freeze() backwards across a PHI can cause optimization issues for
   // other users of that operand.
