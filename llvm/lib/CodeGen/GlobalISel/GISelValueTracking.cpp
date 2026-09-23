@@ -35,6 +35,7 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/FMF.h"
 #include "llvm/InitializePasses.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/KnownFPClass.h"
@@ -78,6 +79,12 @@ Align GISelValueTracking::computeKnownAlignment(Register R, unsigned Depth) {
                           ->getConstants()[ConstantPool.getIndex()]
                           .getAlign();
     return commonAlignment(Alignment, ConstantPool.getOffset());
+  }
+  case TargetOpcode::G_BLOCK_ADDR: {
+    const MachineOperand &BlockAddress = MI->getOperand(1);
+    return commonAlignment(
+        Align(MF.getTarget().getMCAsmInfo().getMinInstAlignment()),
+        BlockAddress.getOffset());
   }
   case TargetOpcode::G_INTRINSIC:
   case TargetOpcode::G_INTRINSIC_W_SIDE_EFFECTS:
@@ -444,6 +451,14 @@ void GISelValueTracking::computeKnownBitsImpl(Register R, KnownBits &Known,
                           .getAlign();
     Known.Zero.setLowBits(
         Log2(commonAlignment(Alignment, ConstantPool.getOffset())));
+    break;
+  }
+  case TargetOpcode::G_BLOCK_ADDR: {
+    const MachineOperand &BlockAddress = MI.getOperand(1);
+    Align Alignment = commonAlignment(
+        Align(MF.getTarget().getMCAsmInfo().getMinInstAlignment()),
+        BlockAddress.getOffset());
+    Known.Zero.setLowBits(Log2(Alignment));
     break;
   }
   case TargetOpcode::G_SUB: {
