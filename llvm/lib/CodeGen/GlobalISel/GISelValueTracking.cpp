@@ -2620,6 +2620,9 @@ unsigned GISelValueTracking::computeNumSignBits(Register R,
       return NumSrcSignBits - (NumSrcBits - TyBits);
     break;
   }
+  case TargetOpcode::G_MERGE_VALUES:
+    return computeNumSignBits(MI.getOperand(MI.getNumOperands() - 1).getReg(),
+                              DemandedElts, Depth + 1);
   case TargetOpcode::G_SELECT: {
     return computeNumSignBitsMin(MI.getOperand(2).getReg(),
                                  MI.getOperand(3).getReg(), DemandedElts,
