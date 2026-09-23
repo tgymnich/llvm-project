@@ -381,8 +381,7 @@ LLVM_ABI LLVM_READNONE LLT getLCMType(LLT OrigTy, LLT TargetTy);
 LLVM_ABI LLVM_READNONE
     /// Return smallest type that covers both \p OrigTy and \p TargetTy and is
     /// multiple of TargetTy.
-    LLT
-    getCoverTy(LLT OrigTy, LLT TargetTy);
+    LLT getCoverTy(LLT OrigTy, LLT TargetTy);
 
 /// Return a type where the total size is the greatest common divisor of \p
 /// OrigTy and \p TargetTy. This will try to either change the number of vector
@@ -615,6 +614,12 @@ LLVM_ABI bool canCreatePoison(Register Reg, const MachineRegisterInfo &MRI,
 
 /// Returns true if \p Reg cannot be poison and undef.
 LLVM_ABI bool isGuaranteedNotToBeUndefOrPoison(Register Reg,
+                                               const MachineRegisterInfo &MRI,
+                                               unsigned Depth = 0);
+
+/// Returns true if the demanded elements of \p Reg cannot be poison or undef.
+LLVM_ABI bool isGuaranteedNotToBeUndefOrPoison(Register Reg,
+                                               const APInt &DemandedElts,
                                                const MachineRegisterInfo &MRI,
                                                unsigned Depth = 0);
 
