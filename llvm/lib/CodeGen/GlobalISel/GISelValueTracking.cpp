@@ -23,6 +23,7 @@
 #include "llvm/CodeGen/GlobalISel/MachineFloatingPointPredicateUtils.h"
 #include "llvm/CodeGen/GlobalISel/Utils.h"
 #include "llvm/CodeGen/LowLevelTypeUtils.h"
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineOperand.h"
@@ -70,6 +71,13 @@ Align GISelValueTracking::computeKnownAlignment(Register R, unsigned Depth) {
     const MachineOperand &Global = MI->getOperand(1);
     return commonAlignment(Global.getGlobal()->getPointerAlignment(DL),
                            Global.getOffset());
+  }
+  case TargetOpcode::G_CONSTANT_POOL: {
+    const MachineOperand &ConstantPool = MI->getOperand(1);
+    Align Alignment = MF.getConstantPool()
+                          ->getConstants()[ConstantPool.getIndex()]
+                          .getAlign();
+    return commonAlignment(Alignment, ConstantPool.getOffset());
   }
   case TargetOpcode::G_INTRINSIC:
   case TargetOpcode::G_INTRINSIC_W_SIDE_EFFECTS:
@@ -427,6 +435,15 @@ void GISelValueTracking::computeKnownBitsImpl(Register R, KnownBits &Known,
     Align Alignment = commonAlignment(
         Global.getGlobal()->getPointerAlignment(DL), Global.getOffset());
     Known.Zero.setLowBits(Log2(Alignment));
+    break;
+  }
+  case TargetOpcode::G_CONSTANT_POOL: {
+    const MachineOperand &ConstantPool = MI.getOperand(1);
+    Align Alignment = MF.getConstantPool()
+                          ->getConstants()[ConstantPool.getIndex()]
+                          .getAlign();
+    Known.Zero.setLowBits(
+        Log2(commonAlignment(Alignment, ConstantPool.getOffset())));
     break;
   }
   case TargetOpcode::G_SUB: {
