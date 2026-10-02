@@ -209,6 +209,25 @@ LLVM_ABI std::optional<ValueAndVReg> getAnyConstantVRegValWithLookThrough(
     Register VReg, const MachineRegisterInfo &MRI,
     bool LookThroughInstrs = true, bool LookThroughAnyExt = false);
 
+/// Return each fixed-vector lane's value and underlying G_CONSTANT register,
+/// Recognizes G_BUILD_VECTOR and G_BUILD_VECTOR_TRUNC; LookThroughInstrs also
+/// allows copies, integer casts, concat, shuffle, insert/extract, and unmerge.
+/// Return nullopt for scalable vectors, unknown lanes, or a lane traversal
+/// limit.
+LLVM_ABI std::optional<SmallVector<ValueAndVReg>>
+getIConstantVectorVRegValWithLookThrough(Register VReg,
+                                         const MachineRegisterInfo &MRI,
+                                         bool LookThroughInstrs = true);
+
+/// Like getIConstantVectorVRegValWithLookThrough, but also accept G_FCONSTANT
+/// lanes as APInt bit patterns. LookThroughAnyExt allows choosing sign
+/// extension for otherwise unspecified high bits.
+LLVM_ABI std::optional<SmallVector<ValueAndVReg>>
+getAnyConstantVectorVRegValWithLookThrough(Register VReg,
+                                           const MachineRegisterInfo &MRI,
+                                           bool LookThroughInstrs = true,
+                                           bool LookThroughAnyExt = false);
+
 using MemCpyFamilyLoweringInfo =
     std::tuple<Register, Register, uint64_t, Align, bool, std::vector<LLT>>;
 

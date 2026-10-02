@@ -393,6 +393,247 @@ getConstantVRegValWithLookThrough(Register VReg, const MachineRegisterInfo &MRI,
   return ValueAndVReg{std::move(Val), VReg};
 }
 
+static void
+applyConstantVectorCasts(APInt &Value,
+                         ArrayRef<std::pair<unsigned, unsigned>> Casts) {
+  for (auto [Opcode, BitWidth] : reverse(Casts)) {
+    switch (Opcode) {
+    case TargetOpcode::G_TRUNC:
+      Value = Value.trunc(BitWidth);
+      break;
+    case TargetOpcode::G_ANYEXT:
+    case TargetOpcode::G_SEXT:
+      Value = Value.sext(BitWidth);
+      break;
+    case TargetOpcode::G_ZEXT:
+      Value = Value.zext(BitWidth);
+      break;
+    case TargetOpcode::G_INTTOPTR:
+      Value = Value.zextOrTrunc(BitWidth);
+      break;
+    default:
+      llvm_unreachable("Unexpected constant vector cast");
+    }
+  }
+}
+
+template <bool (*IsConstantOpcode)(const MachineInstr *),
+          bool (*GetAPCstValue)(const MachineInstr *, APInt &)>
+std::optional<ValueAndVReg>
+getConstantVectorElementWithLookThrough(Register VReg, unsigned Index,
+                                        const MachineRegisterInfo &MRI,
+                                        bool LookThroughAnyExt) {
+  SmallVector<std::pair<unsigned, unsigned>, 4> Casts;
+  // Bound repeated lane walks and cycles through insert/extract instructions.
+  for (unsigned Depth = 0; Depth != 64; ++Depth) {
+    if (!VReg.isVirtual())
+      return std::nullopt;
+    LLT Ty = MRI.getType(VReg);
+    if (!Ty.isValid() || Ty.isScalableVector())
+      return std::nullopt;
+    MachineInstr *MI = MRI.getVRegDef(VReg);
+    if (!MI)
+      return std::nullopt;
+    if (IsConstantOpcode(MI)) {
+      APInt Value;
+      if (!GetAPCstValue(MI, Value))
+        return std::nullopt;
+      applyConstantVectorCasts(Value, Casts);
+      return ValueAndVReg{std::move(Value), VReg};
+    }
+
+    unsigned Opcode = MI->getOpcode();
+    switch (Opcode) {
+    case TargetOpcode::G_BUILD_VECTOR_TRUNC:
+      Casts.emplace_back(TargetOpcode::G_TRUNC, Ty.getScalarSizeInBits());
+      [[fallthrough]];
+    case TargetOpcode::G_BUILD_VECTOR:
+      VReg = MI->getOperand(Index + 1).getReg();
+      Index = 0;
+      break;
+    case TargetOpcode::G_CONCAT_VECTORS: {
+      unsigned NumElts =
+          MRI.getType(MI->getOperand(1).getReg()).getNumElements();
+      VReg = MI->getOperand(1 + Index / NumElts).getReg();
+      Index %= NumElts;
+      break;
+    }
+    case TargetOpcode::G_SHUFFLE_VECTOR: {
+      auto &Shuffle = cast<GShuffleVector>(*MI);
+      int MaskIndex = Shuffle.getMask()[Index];
+      if (MaskIndex < 0)
+        return std::nullopt;
+      unsigned NumElts = MRI.getType(Shuffle.getSrc1Reg()).getNumElements();
+      VReg = MaskIndex < NumElts ? Shuffle.getSrc1Reg() : Shuffle.getSrc2Reg();
+      Index = MaskIndex % NumElts;
+      break;
+    }
+    case TargetOpcode::G_INSERT_VECTOR_ELT: {
+      auto &Insert = cast<GInsertVectorElement>(*MI);
+      auto InsertIndex =
+          getIConstantVRegValWithLookThrough(Insert.getIndexReg(), MRI);
+      if (!InsertIndex || InsertIndex->Value.uge(Ty.getNumElements()))
+        return std::nullopt;
+      if (InsertIndex->Value == Index) {
+        VReg = Insert.getElementReg();
+        if (MRI.getType(VReg).getScalarSizeInBits() != Ty.getScalarSizeInBits())
+          return std::nullopt;
+        Index = 0;
+      } else {
+        VReg = Insert.getVectorReg();
+      }
+      break;
+    }
+    case TargetOpcode::G_EXTRACT_VECTOR_ELT: {
+      auto &Extract = cast<GExtractVectorElement>(*MI);
+      LLT SrcTy = MRI.getType(Extract.getVectorReg());
+      if (!SrcTy.isFixedVector() ||
+          SrcTy.getScalarSizeInBits() != Ty.getScalarSizeInBits())
+        return std::nullopt;
+      auto ExtractIndex =
+          getIConstantVRegValWithLookThrough(Extract.getIndexReg(), MRI);
+      if (!ExtractIndex || ExtractIndex->Value.uge(SrcTy.getNumElements()))
+        return std::nullopt;
+      VReg = Extract.getVectorReg();
+      Index = ExtractIndex->Value.getZExtValue();
+      break;
+    }
+    case TargetOpcode::G_INSERT_SUBVECTOR: {
+      auto &Insert = cast<GInsertSubvector>(*MI);
+      uint64_t Start = Insert.getIndexImm();
+      unsigned NumElts = MRI.getType(Insert.getSubVec()).getNumElements();
+      if (Index >= Start && Index - Start < NumElts) {
+        VReg = Insert.getSubVec();
+        Index -= Start;
+      } else {
+        VReg = Insert.getBigVec();
+      }
+      break;
+    }
+    case TargetOpcode::G_EXTRACT_SUBVECTOR: {
+      auto &Extract = cast<GExtractSubvector>(*MI);
+      if (!MRI.getType(Extract.getSrcVec()).isFixedVector())
+        return std::nullopt;
+      VReg = Extract.getSrcVec();
+      Index += Extract.getIndexImm();
+      break;
+    }
+    case TargetOpcode::G_UNMERGE_VALUES: {
+      Register Src = cast<GUnmerge>(*MI).getSourceReg();
+      LLT SrcTy = MRI.getType(Src);
+      if (!SrcTy.isFixedVector() ||
+          SrcTy.getScalarSizeInBits() != Ty.getScalarSizeInBits())
+        return std::nullopt;
+      unsigned NumElts = Ty.isVector() ? Ty.getNumElements() : 1;
+      Index += MRI.def_begin(VReg)->getOperandNo() * NumElts;
+      VReg = Src;
+      break;
+    }
+    case TargetOpcode::G_ANYEXT:
+      if (!LookThroughAnyExt)
+        return std::nullopt;
+      [[fallthrough]];
+    case TargetOpcode::G_TRUNC:
+    case TargetOpcode::G_SEXT:
+    case TargetOpcode::G_ZEXT:
+    case TargetOpcode::G_INTTOPTR:
+      Casts.emplace_back(Opcode, Ty.getScalarSizeInBits());
+      VReg = MI->getOperand(1).getReg();
+      break;
+    case TargetOpcode::COPY:
+      VReg = MI->getOperand(1).getReg();
+      if (MRI.getType(VReg) != Ty)
+        return std::nullopt;
+      break;
+    default:
+      return std::nullopt;
+    }
+  }
+  return std::nullopt;
+}
+
+template <bool (*IsConstantOpcode)(const MachineInstr *),
+          bool (*GetAPCstValue)(const MachineInstr *, APInt &)>
+std::optional<SmallVector<ValueAndVReg>>
+getConstantVectorVRegValWithLookThrough(Register VReg,
+                                        const MachineRegisterInfo &MRI,
+                                        bool LookThroughInstrs,
+                                        bool LookThroughAnyExt = false) {
+  if (!VReg.isVirtual() || !MRI.getType(VReg).isFixedVector())
+    return std::nullopt;
+
+  SmallVector<std::pair<unsigned, unsigned>, 4> SeenOpcodes;
+  MachineInstr *MI;
+  while ((MI = MRI.getVRegDef(VReg))) {
+    unsigned Opcode = MI->getOpcode();
+    if (isa<GBuildVector, GBuildVectorTrunc, GConcatVectors, GShuffleVector,
+            GInsertVectorElement, GInsertSubvector, GExtractSubvector,
+            GUnmerge>(MI))
+      break;
+    if (!LookThroughInstrs)
+      return std::nullopt;
+
+    switch (Opcode) {
+    case TargetOpcode::G_ANYEXT:
+      if (!LookThroughAnyExt)
+        return std::nullopt;
+      [[fallthrough]];
+    case TargetOpcode::G_TRUNC:
+    case TargetOpcode::G_SEXT:
+    case TargetOpcode::G_ZEXT:
+    case TargetOpcode::G_INTTOPTR:
+      SeenOpcodes.emplace_back(Opcode, MRI.getType(VReg).getScalarSizeInBits());
+      break;
+    case TargetOpcode::COPY:
+      if (MRI.getType(VReg) != MRI.getType(MI->getOperand(1).getReg()))
+        return std::nullopt;
+      break;
+    default:
+      return std::nullopt;
+    }
+    VReg = MI->getOperand(1).getReg();
+    if (!VReg.isVirtual())
+      return std::nullopt;
+  }
+  if (!MI)
+    return std::nullopt;
+
+  bool IsBuildVector = isa<GBuildVector, GBuildVectorTrunc>(MI);
+  if (!IsBuildVector && !LookThroughInstrs)
+    return std::nullopt;
+
+  LLT Ty = MRI.getType(VReg);
+  if (MI->getOpcode() == TargetOpcode::G_BUILD_VECTOR_TRUNC)
+    SeenOpcodes.emplace_back(TargetOpcode::G_TRUNC, Ty.getScalarSizeInBits());
+
+  SmallVector<ValueAndVReg> Values;
+  Values.reserve(Ty.getNumElements());
+  Register PreviousSrc;
+  for (unsigned I = 0, E = Ty.getNumElements(); I != E; ++I) {
+    Register Src = IsBuildVector ? MI->getOperand(I + 1).getReg() : VReg;
+    if (IsBuildVector && Src == PreviousSrc) {
+      Values.push_back(Values.back());
+      continue;
+    }
+    std::optional<ValueAndVReg> Value;
+    if (IsBuildVector)
+      Value =
+          getConstantVRegValWithLookThrough<IsConstantOpcode, GetAPCstValue>(
+              Src, MRI, LookThroughInstrs, LookThroughAnyExt);
+    if (!Value && LookThroughInstrs)
+      Value = getConstantVectorElementWithLookThrough<IsConstantOpcode,
+                                                      GetAPCstValue>(
+          Src, IsBuildVector ? 0 : I, MRI, LookThroughAnyExt);
+    if (!Value)
+      return std::nullopt;
+
+    applyConstantVectorCasts(Value->Value, SeenOpcodes);
+    Values.push_back(std::move(*Value));
+    PreviousSrc = Src;
+  }
+  return Values;
+}
+
 bool isIConstant(const MachineInstr *MI) {
   if (!MI)
     return false;
@@ -444,6 +685,24 @@ std::optional<ValueAndVReg> llvm::getAnyConstantVRegValWithLookThrough(
     bool LookThroughAnyExt) {
   return getConstantVRegValWithLookThrough<isAnyConstant,
                                            getCImmOrFPImmAsAPInt>(
+      VReg, MRI, LookThroughInstrs, LookThroughAnyExt);
+}
+
+std::optional<SmallVector<ValueAndVReg>>
+llvm::getIConstantVectorVRegValWithLookThrough(Register VReg,
+                                               const MachineRegisterInfo &MRI,
+                                               bool LookThroughInstrs) {
+  return getConstantVectorVRegValWithLookThrough<isIConstant, getCImmAsAPInt>(
+      VReg, MRI, LookThroughInstrs);
+}
+
+std::optional<SmallVector<ValueAndVReg>>
+llvm::getAnyConstantVectorVRegValWithLookThrough(Register VReg,
+                                                 const MachineRegisterInfo &MRI,
+                                                 bool LookThroughInstrs,
+                                                 bool LookThroughAnyExt) {
+  return getConstantVectorVRegValWithLookThrough<isAnyConstant,
+                                                 getCImmOrFPImmAsAPInt>(
       VReg, MRI, LookThroughInstrs, LookThroughAnyExt);
 }
 
