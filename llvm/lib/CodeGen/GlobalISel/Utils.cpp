@@ -335,6 +335,9 @@ namespace {
 // Please change this function carefully and benchmark your changes.
 template <bool (*IsConstantOpcode)(const MachineInstr *),
           bool (*GetAPCstValue)(const MachineInstr *MI, APInt &)>
+std::optional<ValueAndVReg> template <
+    bool (*IsConstantOpcode)(const MachineInstr *),
+    bool (*GetAPCstValue)(const MachineInstr *MI, APInt &)>
 std::optional<ValueAndVReg>
 getConstantVRegValWithLookThrough(Register VReg, const MachineRegisterInfo &MRI,
                                   bool LookThroughInstrs = true,
@@ -342,9 +345,10 @@ getConstantVRegValWithLookThrough(Register VReg, const MachineRegisterInfo &MRI,
   SmallVector<std::pair<unsigned, unsigned>, 4> SeenOpcodes;
   MachineInstr *MI;
 
-  while ((MI = MRI.getVRegDef(VReg)) && !IsConstantOpcode(MI) &&
-         LookThroughInstrs) {
-    switch (MI->getOpcode()) {
+  while ((MI = MRI.getVRegDef(VReg)) && LookThroughInstrs &&
+         !IsConstantOpcode(MI)) {
+    unsigned Opc = MI->getOpcode();
+    switch (Opc) {
     case TargetOpcode::G_ANYEXT:
       if (!LookThroughAnyExt)
         return std::nullopt;
@@ -352,9 +356,8 @@ getConstantVRegValWithLookThrough(Register VReg, const MachineRegisterInfo &MRI,
     case TargetOpcode::G_TRUNC:
     case TargetOpcode::G_SEXT:
     case TargetOpcode::G_ZEXT:
-      SeenOpcodes.push_back(std::make_pair(
-          MI->getOpcode(),
-          MRI.getType(MI->getOperand(0).getReg()).getSizeInBits()));
+      SeenOpcodes.emplace_back(
+          Opc, MRI.getType(MI->getOperand(0).getReg()).getSizeInBits());
       VReg = MI->getOperand(1).getReg();
       break;
     case TargetOpcode::COPY:
@@ -369,23 +372,23 @@ getConstantVRegValWithLookThrough(Register VReg, const MachineRegisterInfo &MRI,
       return std::nullopt;
     }
   }
-  if (!MI || !IsConstantOpcode(MI))
+  if (!IsConstantOpcode(MI))
     return std::nullopt;
 
   APInt Val;
   if (!GetAPCstValue(MI, Val))
     return std::nullopt;
-  for (auto &Pair : reverse(SeenOpcodes)) {
-    switch (Pair.first) {
+  for (auto [Opc, Width] : reverse(SeenOpcodes)) {
+    switch (Opc) {
     case TargetOpcode::G_TRUNC:
-      Val = Val.trunc(Pair.second);
+      Val = Val.trunc(Width);
       break;
     case TargetOpcode::G_ANYEXT:
     case TargetOpcode::G_SEXT:
-      Val = Val.sext(Pair.second);
+      Val = Val.sext(Width);
       break;
     case TargetOpcode::G_ZEXT:
-      Val = Val.zext(Pair.second);
+      Val = Val.zext(Width);
       break;
     }
   }
