@@ -5934,6 +5934,41 @@ static bool isFloatingPointWaveReduceOperation(unsigned Opc) {
          Opc == AMDGPU::V_ADD_F64_e64 || Opc == AMDGPU::V_ADD_F64_pseudo_e64;
 }
 
+/// Return the scalar opcode for combining 32-bit DPP row reductions.
+static std::optional<unsigned>
+getScalarOpcForWaveReduction(unsigned Opc, const GCNSubtarget &ST) {
+  switch (Opc) {
+  case AMDGPU::S_MIN_U32:
+  case AMDGPU::S_MIN_I32:
+  case AMDGPU::S_MAX_U32:
+  case AMDGPU::S_MAX_I32:
+  case AMDGPU::S_ADD_I32:
+  case AMDGPU::S_AND_B32:
+  case AMDGPU::S_OR_B32:
+  case AMDGPU::S_XOR_B32:
+    return Opc;
+  case AMDGPU::S_SUB_I32:
+    return AMDGPU::S_ADD_I32;
+  default:
+    break;
+  }
+
+  if (!ST.hasSALUFloatInsts())
+    return std::nullopt;
+
+  switch (Opc) {
+  case AMDGPU::V_ADD_F32_e64:
+  case AMDGPU::V_SUB_F32_e64:
+    return AMDGPU::S_ADD_F32;
+  case AMDGPU::V_MIN_F32_e64:
+    return AMDGPU::S_MIN_F32;
+  case AMDGPU::V_MAX_F32_e64:
+    return AMDGPU::S_MAX_F32;
+  default:
+    return std::nullopt;
+  }
+}
+
 static std::tuple<unsigned, unsigned>
 getDPPOpcForWaveReduction(unsigned Opc, const GCNSubtarget &ST) {
   unsigned DPPOpc;
@@ -6789,6 +6824,54 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
                            (AMDGPU::DPP::ROW_SHR_FIRST + 7));
       if (NeedsMovDPP)
         DPPRowShr8 = BuildPostDPPInstr(DPPRowShr4, DPPRowShr8);
+
+      if (std::optional<unsigned> ScalarOpc =
+              ST.hasDPPBroadcasts() ? std::nullopt
+                                    : getScalarOpcForWaveReduction(Opc, ST)) {
+        auto ReadRow = [&](unsigned Lane) {
+          Register Value = MRI.createVirtualRegister(DstRegClass);
+          BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::V_READLANE_B32), Value)
+              .addReg(DPPRowShr8)
+              .addImm(Lane);
+          return Value;
+        };
+        auto CombineRows = [&](Register Src0, Register Src1) {
+          Register Value = MRI.createVirtualRegister(DstRegClass);
+          auto Combine = BuildMI(*CurrBB, MI, DL, TII->get(*ScalarOpc), Value)
+                             .addReg(Src0)
+                             .addReg(Src1);
+          if (!isFPOp)
+            Combine.setOperandDead(3);
+          return Value;
+        };
+
+        // Preserve floating-point rounding by combining rows pairwise.
+        Register Row0 = ReadRow(15);
+        Register Row1 = ReadRow(31);
+        Register Result = CombineRows(Row1, Row0);
+        if (!IsWave32) {
+          Register Row2 = ReadRow(47);
+          Register Row3 = ReadRow(63);
+          Register UpperResult = CombineRows(Row3, Row2);
+          Result = CombineRows(UpperResult, Result);
+        }
+        if (Opc == AMDGPU::S_SUB_I32 || Opc == AMDGPU::V_SUB_F32_e64) {
+          Register Negated = MRI.createVirtualRegister(DstRegClass);
+          auto Sub =
+              BuildMI(*CurrBB, MI, DL,
+                      TII->get(isFPOp ? AMDGPU::S_SUB_F32 : AMDGPU::S_SUB_I32),
+                      Negated)
+                  .addImm(0)
+                  .addReg(Result);
+          if (!isFPOp)
+            Sub.setOperandDead(3);
+          Result = Negated;
+        }
+        BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::STRICT_WWM), DstReg)
+            .addReg(Result);
+        MI.eraseFromParent();
+        return CurrBB;
+      }
 
       if (ST.hasDPPBroadcasts()) {
         BuildDPPMachineInstr(RowBcast15, DPPRowShr8, AMDGPU::DPP::BCAST15);

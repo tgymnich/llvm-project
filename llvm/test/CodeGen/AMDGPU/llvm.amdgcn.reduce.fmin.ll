@@ -1499,9 +1499,7 @@ define void @divergent_value_float_dpp(ptr addrspace(1) %out, float %in) #0 {
 ; GFX12DAGISEL-NEXT:    s_wait_bvhcnt 0x0
 ; GFX12DAGISEL-NEXT:    s_wait_kmcnt 0x0
 ; GFX12DAGISEL-NEXT:    s_xor_saveexec_b32 s0, -1
-; GFX12DAGISEL-NEXT:    s_clause 0x1 ; 8-byte Folded Spill
-; GFX12DAGISEL-NEXT:    scratch_store_b32 off, v3, s32
-; GFX12DAGISEL-NEXT:    scratch_store_b32 off, v4, s32 offset:4
+; GFX12DAGISEL-NEXT:    scratch_store_b32 off, v3, s32 ; 4-byte Folded Spill
 ; GFX12DAGISEL-NEXT:    s_wait_alu depctr_sa_sdst(0)
 ; GFX12DAGISEL-NEXT:    s_mov_b32 exec_lo, s0
 ; GFX12DAGISEL-NEXT:    s_or_saveexec_b32 s0, -1
@@ -1513,18 +1511,16 @@ define void @divergent_value_float_dpp(ptr addrspace(1) %out, float %in) #0 {
 ; GFX12DAGISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX12DAGISEL-NEXT:    v_min_num_f32_dpp v3, v3, v3 row_shr:4 row_mask:0xf bank_mask:0xf
 ; GFX12DAGISEL-NEXT:    v_min_num_f32_dpp v3, v3, v3 row_shr:8 row_mask:0xf bank_mask:0xf
-; GFX12DAGISEL-NEXT:    ds_swizzle_b32 v4, v3 offset:swizzle(BROADCAST,32,15)
-; GFX12DAGISEL-NEXT:    s_wait_dscnt 0x0
-; GFX12DAGISEL-NEXT:    v_min_num_f32_e32 v3, v3, v4
-; GFX12DAGISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX12DAGISEL-NEXT:    v_readlane_b32 s1, v3, 31
+; GFX12DAGISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_4) | instid1(SALU_CYCLE_2)
+; GFX12DAGISEL-NEXT:    v_readlane_b32 s1, v3, 15
+; GFX12DAGISEL-NEXT:    v_readlane_b32 s2, v3, 31
 ; GFX12DAGISEL-NEXT:    s_mov_b32 exec_lo, s0
-; GFX12DAGISEL-NEXT:    v_mov_b32_e32 v2, s1
+; GFX12DAGISEL-NEXT:    s_min_num_f32 s0, s2, s1
+; GFX12DAGISEL-NEXT:    s_wait_alu depctr_sa_sdst(0)
+; GFX12DAGISEL-NEXT:    v_mov_b32_e32 v2, s0
 ; GFX12DAGISEL-NEXT:    global_store_b32 v[0:1], v2, off
 ; GFX12DAGISEL-NEXT:    s_xor_saveexec_b32 s0, -1
-; GFX12DAGISEL-NEXT:    s_clause 0x1 ; 8-byte Folded Reload
-; GFX12DAGISEL-NEXT:    scratch_load_b32 v3, off, s32
-; GFX12DAGISEL-NEXT:    scratch_load_b32 v4, off, s32 offset:4
+; GFX12DAGISEL-NEXT:    scratch_load_b32 v3, off, s32 ; 4-byte Folded Reload
 ; GFX12DAGISEL-NEXT:    s_wait_alu depctr_sa_sdst(0)
 ; GFX12DAGISEL-NEXT:    s_mov_b32 exec_lo, s0
 ; GFX12DAGISEL-NEXT:    s_wait_loadcnt 0x0
