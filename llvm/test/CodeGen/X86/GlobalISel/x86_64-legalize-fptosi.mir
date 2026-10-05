@@ -66,16 +66,17 @@ body:             |
 
     ; CHECK-LABEL: name: float_to_int8
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; CHECK: [[TRUNC1:%[0-9]+]]:_(s8) = G_TRUNC [[FPTOSI]](s32)
-    ; CHECK: $al = COPY [[TRUNC1]](s8)
-    ; CHECK: RET 0, implicit $al
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s8) = G_FPTOSI %0(s32)
-    $al = COPY %2(s8)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f32) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(i8) = G_TRUNC [[FPTOSI]](i32)
+    ; CHECK-NEXT: $al = COPY [[TRUNC1]](i8)
+    ; CHECK-NEXT: RET 0, implicit $al
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(i8) = G_FPTOSI %0(f32)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -93,16 +94,17 @@ body:             |
 
     ; CHECK-LABEL: name: float_to_int16
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; CHECK: [[TRUNC1:%[0-9]+]]:_(s16) = G_TRUNC [[FPTOSI]](s32)
-    ; CHECK: $ax = COPY [[TRUNC1]](s16)
-    ; CHECK: RET 0, implicit $ax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s16) = G_FPTOSI %0(s32)
-    $ax = COPY %2(s16)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f32) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(i16) = G_TRUNC [[FPTOSI]](i32)
+    ; CHECK-NEXT: $ax = COPY [[TRUNC1]](i16)
+    ; CHECK-NEXT: RET 0, implicit $ax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(i16) = G_FPTOSI %0(f32)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -120,15 +122,16 @@ body:             |
 
     ; CHECK-LABEL: name: float_to_int32
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; CHECK: $eax = COPY [[FPTOSI]](s32)
-    ; CHECK: RET 0, implicit $eax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s32) = G_FPTOSI %0(s32)
-    $eax = COPY %2(s32)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f32) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; CHECK-NEXT: $eax = COPY [[FPTOSI]](i32)
+    ; CHECK-NEXT: RET 0, implicit $eax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(i32) = G_FPTOSI %0(f32)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -146,15 +149,16 @@ body:             |
 
     ; CHECK-LABEL: name: float_to_int64
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s64) = G_FPTOSI [[TRUNC]](s32)
-    ; CHECK: $rax = COPY [[FPTOSI]](s64)
-    ; CHECK: RET 0, implicit $rax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s64) = G_FPTOSI %0(s32)
-    $rax = COPY %2(s64)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f32) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i64) = G_FPTOSI [[TRUNC]](f32)
+    ; CHECK-NEXT: $rax = COPY [[FPTOSI]](i64)
+    ; CHECK-NEXT: RET 0, implicit $rax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(i64) = G_FPTOSI %0(f32)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -172,16 +176,17 @@ body:             |
 
     ; CHECK-LABEL: name: double_to_int8
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s64) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; CHECK: [[TRUNC1:%[0-9]+]]:_(s8) = G_TRUNC [[FPTOSI]](s32)
-    ; CHECK: $al = COPY [[TRUNC1]](s8)
-    ; CHECK: RET 0, implicit $al
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %2:_(s8) = G_FPTOSI %0(s64)
-    $al = COPY %2(s8)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f64) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(i8) = G_TRUNC [[FPTOSI]](i32)
+    ; CHECK-NEXT: $al = COPY [[TRUNC1]](i8)
+    ; CHECK-NEXT: RET 0, implicit $al
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %2:_(i8) = G_FPTOSI %0(f64)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -199,16 +204,17 @@ body:             |
 
     ; CHECK-LABEL: name: double_to_int16
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s64) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; CHECK: [[TRUNC1:%[0-9]+]]:_(s16) = G_TRUNC [[FPTOSI]](s32)
-    ; CHECK: $ax = COPY [[TRUNC1]](s16)
-    ; CHECK: RET 0, implicit $ax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %2:_(s16) = G_FPTOSI %0(s64)
-    $ax = COPY %2(s16)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f64) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(i16) = G_TRUNC [[FPTOSI]](i32)
+    ; CHECK-NEXT: $ax = COPY [[TRUNC1]](i16)
+    ; CHECK-NEXT: RET 0, implicit $ax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %2:_(i16) = G_FPTOSI %0(f64)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -226,15 +232,16 @@ body:             |
 
     ; CHECK-LABEL: name: double_to_int32
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s64) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; CHECK: $eax = COPY [[FPTOSI]](s32)
-    ; CHECK: RET 0, implicit $eax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %2:_(s32) = G_FPTOSI %0(s64)
-    $eax = COPY %2(s32)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f64) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; CHECK-NEXT: $eax = COPY [[FPTOSI]](i32)
+    ; CHECK-NEXT: RET 0, implicit $eax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %2:_(i32) = G_FPTOSI %0(f64)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -252,15 +259,16 @@ body:             |
 
     ; CHECK-LABEL: name: double_to_int64
     ; CHECK: liveins: $xmm0
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s64) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[FPTOSI:%[0-9]+]]:_(s64) = G_FPTOSI [[TRUNC]](s64)
-    ; CHECK: $rax = COPY [[FPTOSI]](s64)
-    ; CHECK: RET 0, implicit $rax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %2:_(s64) = G_FPTOSI %0(s64)
-    $rax = COPY %2(s64)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f64) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[FPTOSI:%[0-9]+]]:_(i64) = G_FPTOSI [[TRUNC]](f64)
+    ; CHECK-NEXT: $rax = COPY [[FPTOSI]](i64)
+    ; CHECK-NEXT: RET 0, implicit $rax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %2:_(i64) = G_FPTOSI %0(f64)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...

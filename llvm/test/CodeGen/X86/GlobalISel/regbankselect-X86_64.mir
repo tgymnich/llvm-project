@@ -478,22 +478,25 @@ body:             |
 
     ; FAST-LABEL: name: test_add_i8
     ; FAST: liveins: $edi, $esi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s8) = COPY $dil
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s8) = COPY $sil
-    ; FAST: [[ADD:%[0-9]+]]:gpr(s8) = G_ADD [[COPY]], [[COPY1]]
-    ; FAST: $al = COPY [[ADD]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i8) = COPY $dil
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i8) = COPY $sil
+    ; FAST-NEXT: [[ADD:%[0-9]+]]:gpr(i8) = G_ADD [[COPY]], [[COPY1]]
+    ; FAST-NEXT: $al = COPY [[ADD]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_add_i8
     ; GREEDY: liveins: $edi, $esi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s8) = COPY $dil
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s8) = COPY $sil
-    ; GREEDY: [[ADD:%[0-9]+]]:gpr(s8) = G_ADD [[COPY]], [[COPY1]]
-    ; GREEDY: $al = COPY [[ADD]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %0(s8) = COPY $dil
-    %1(s8) = COPY $sil
-    %2(s8) = G_ADD %0, %1
-    $al = COPY %2(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i8) = COPY $dil
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i8) = COPY $sil
+    ; GREEDY-NEXT: [[ADD:%[0-9]+]]:gpr(i8) = G_ADD [[COPY]], [[COPY1]]
+    ; GREEDY-NEXT: $al = COPY [[ADD]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %0(i8) = COPY $dil
+    %1(i8) = COPY $sil
+    %2(i8) = G_ADD %0, %1
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -514,22 +517,25 @@ body:             |
 
     ; FAST-LABEL: name: test_add_i16
     ; FAST: liveins: $edi, $esi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s16) = COPY $di
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s16) = COPY $si
-    ; FAST: [[ADD:%[0-9]+]]:gpr(s16) = G_ADD [[COPY]], [[COPY1]]
-    ; FAST: $ax = COPY [[ADD]](s16)
-    ; FAST: RET 0, implicit $ax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i16) = COPY $di
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i16) = COPY $si
+    ; FAST-NEXT: [[ADD:%[0-9]+]]:gpr(i16) = G_ADD [[COPY]], [[COPY1]]
+    ; FAST-NEXT: $ax = COPY [[ADD]](i16)
+    ; FAST-NEXT: RET 0, implicit $ax
+    ;
     ; GREEDY-LABEL: name: test_add_i16
     ; GREEDY: liveins: $edi, $esi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s16) = COPY $di
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s16) = COPY $si
-    ; GREEDY: [[ADD:%[0-9]+]]:gpr(s16) = G_ADD [[COPY]], [[COPY1]]
-    ; GREEDY: $ax = COPY [[ADD]](s16)
-    ; GREEDY: RET 0, implicit $ax
-    %0(s16) = COPY $di
-    %1(s16) = COPY $si
-    %2(s16) = G_ADD %0, %1
-    $ax = COPY %2(s16)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i16) = COPY $di
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i16) = COPY $si
+    ; GREEDY-NEXT: [[ADD:%[0-9]+]]:gpr(i16) = G_ADD [[COPY]], [[COPY1]]
+    ; GREEDY-NEXT: $ax = COPY [[ADD]](i16)
+    ; GREEDY-NEXT: RET 0, implicit $ax
+    %0(i16) = COPY $di
+    %1(i16) = COPY $si
+    %2(i16) = G_ADD %0, %1
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -550,22 +556,25 @@ body:             |
 
     ; FAST-LABEL: name: test_add_i32
     ; FAST: liveins: $edi, $esi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; FAST: [[ADD:%[0-9]+]]:gpr(s32) = G_ADD [[COPY]], [[COPY1]]
-    ; FAST: $eax = COPY [[ADD]](s32)
-    ; FAST: RET 0, implicit $eax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; FAST-NEXT: [[ADD:%[0-9]+]]:gpr(i32) = G_ADD [[COPY]], [[COPY1]]
+    ; FAST-NEXT: $eax = COPY [[ADD]](i32)
+    ; FAST-NEXT: RET 0, implicit $eax
+    ;
     ; GREEDY-LABEL: name: test_add_i32
     ; GREEDY: liveins: $edi, $esi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; GREEDY: [[ADD:%[0-9]+]]:gpr(s32) = G_ADD [[COPY]], [[COPY1]]
-    ; GREEDY: $eax = COPY [[ADD]](s32)
-    ; GREEDY: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %2(s32) = G_ADD %0, %1
-    $eax = COPY %2(s32)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; GREEDY-NEXT: [[ADD:%[0-9]+]]:gpr(i32) = G_ADD [[COPY]], [[COPY1]]
+    ; GREEDY-NEXT: $eax = COPY [[ADD]](i32)
+    ; GREEDY-NEXT: RET 0, implicit $eax
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %2(i32) = G_ADD %0, %1
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -586,22 +595,25 @@ body:             |
 
     ; FAST-LABEL: name: test_add_i64
     ; FAST: liveins: $rdi, $rsi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s64) = COPY $rsi
-    ; FAST: [[ADD:%[0-9]+]]:gpr(s64) = G_ADD [[COPY]], [[COPY1]]
-    ; FAST: $rax = COPY [[ADD]](s64)
-    ; FAST: RET 0, implicit $rax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i64) = COPY $rsi
+    ; FAST-NEXT: [[ADD:%[0-9]+]]:gpr(i64) = G_ADD [[COPY]], [[COPY1]]
+    ; FAST-NEXT: $rax = COPY [[ADD]](i64)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_add_i64
     ; GREEDY: liveins: $rdi, $rsi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s64) = COPY $rsi
-    ; GREEDY: [[ADD:%[0-9]+]]:gpr(s64) = G_ADD [[COPY]], [[COPY1]]
-    ; GREEDY: $rax = COPY [[ADD]](s64)
-    ; GREEDY: RET 0, implicit $rax
-    %0(s64) = COPY $rdi
-    %1(s64) = COPY $rsi
-    %2(s64) = G_ADD %0, %1
-    $rax = COPY %2(s64)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i64) = COPY $rsi
+    ; GREEDY-NEXT: [[ADD:%[0-9]+]]:gpr(i64) = G_ADD [[COPY]], [[COPY1]]
+    ; GREEDY-NEXT: $rax = COPY [[ADD]](i64)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %0(i64) = COPY $rdi
+    %1(i64) = COPY $rsi
+    %2(i64) = G_ADD %0, %1
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -625,33 +637,34 @@ body:             |
   bb.1 (%ir-block.0):
 
     ; FAST-LABEL: name: test_mul_gpr
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; FAST: [[DEF1:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; FAST: [[DEF2:%[0-9]+]]:gpr(s16) = G_IMPLICIT_DEF
-    ; FAST: [[DEF3:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; FAST: [[MUL:%[0-9]+]]:gpr(s64) = G_MUL [[DEF]], [[DEF]]
-    ; FAST: [[MUL1:%[0-9]+]]:gpr(s32) = G_MUL [[DEF1]], [[DEF1]]
-    ; FAST: [[MUL2:%[0-9]+]]:gpr(s16) = G_MUL [[DEF2]], [[DEF2]]
-    ; FAST: [[MUL3:%[0-9]+]]:gpr(s8) = G_MUL [[DEF3]], [[DEF3]]
-    ; FAST: RET 0
+    ; FAST: [[DEF:%[0-9]+]]:gpr(i64) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[DEF1:%[0-9]+]]:gpr(i32) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[DEF2:%[0-9]+]]:gpr(i16) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[DEF3:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[MUL:%[0-9]+]]:gpr(i64) = G_MUL [[DEF]], [[DEF]]
+    ; FAST-NEXT: [[MUL1:%[0-9]+]]:gpr(i32) = G_MUL [[DEF1]], [[DEF1]]
+    ; FAST-NEXT: [[MUL2:%[0-9]+]]:gpr(i16) = G_MUL [[DEF2]], [[DEF2]]
+    ; FAST-NEXT: [[MUL3:%[0-9]+]]:gpr(i8) = G_MUL [[DEF3]], [[DEF3]]
+    ; FAST-NEXT: RET 0
+    ;
     ; GREEDY-LABEL: name: test_mul_gpr
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; GREEDY: [[DEF1:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; GREEDY: [[DEF2:%[0-9]+]]:gpr(s16) = G_IMPLICIT_DEF
-    ; GREEDY: [[DEF3:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; GREEDY: [[MUL:%[0-9]+]]:gpr(s64) = G_MUL [[DEF]], [[DEF]]
-    ; GREEDY: [[MUL1:%[0-9]+]]:gpr(s32) = G_MUL [[DEF1]], [[DEF1]]
-    ; GREEDY: [[MUL2:%[0-9]+]]:gpr(s16) = G_MUL [[DEF2]], [[DEF2]]
-    ; GREEDY: [[MUL3:%[0-9]+]]:gpr(s8) = G_MUL [[DEF3]], [[DEF3]]
-    ; GREEDY: RET 0
-    %0(s64) = G_IMPLICIT_DEF
-    %1(s32) = G_IMPLICIT_DEF
-    %2(s16) = G_IMPLICIT_DEF
-    %3(s8)  = G_IMPLICIT_DEF
-    %4(s64) = G_MUL %0, %0
-    %5(s32) = G_MUL %1, %1
-    %6(s16) = G_MUL %2, %2
-    %7(s8)  = G_MUL %3, %3
+    ; GREEDY: [[DEF:%[0-9]+]]:gpr(i64) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[DEF1:%[0-9]+]]:gpr(i32) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[DEF2:%[0-9]+]]:gpr(i16) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[DEF3:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[MUL:%[0-9]+]]:gpr(i64) = G_MUL [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: [[MUL1:%[0-9]+]]:gpr(i32) = G_MUL [[DEF1]], [[DEF1]]
+    ; GREEDY-NEXT: [[MUL2:%[0-9]+]]:gpr(i16) = G_MUL [[DEF2]], [[DEF2]]
+    ; GREEDY-NEXT: [[MUL3:%[0-9]+]]:gpr(i8) = G_MUL [[DEF3]], [[DEF3]]
+    ; GREEDY-NEXT: RET 0
+    %0(i64) = G_IMPLICIT_DEF
+    %1(i32) = G_IMPLICIT_DEF
+    %2(i16) = G_IMPLICIT_DEF
+    %3(i8)  = G_IMPLICIT_DEF
+    %4(i64) = G_MUL %0, %0
+    %5(i32) = G_MUL %1, %1
+    %6(i16) = G_MUL %2, %2
+    %7(i8)  = G_MUL %3, %3
     RET 0
 ...
 ---
@@ -674,31 +687,34 @@ body:             |
 
     ; FAST-LABEL: name: test_add_float
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FADD:%[0-9]+]]:vecr(s32) = G_FADD [[TRUNC]], [[TRUNC1]]
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FADD]](s32)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FADD:%[0-9]+]]:vecr(f32) = G_FADD [[TRUNC]], [[TRUNC1]]
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FADD]](f32)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_add_float
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FADD:%[0-9]+]]:vecr(s32) = G_FADD [[TRUNC]], [[TRUNC1]]
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FADD]](s32)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %4:_(s32) = G_FADD %0, %1
-    %5:_(s128) = G_ANYEXT %4(s32)
-    $xmm0 = COPY %5(s128)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FADD:%[0-9]+]]:vecr(f32) = G_FADD [[TRUNC]], [[TRUNC1]]
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FADD]](f32)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %4:_(f32) = G_FADD %0, %1
+    %5:_(i128) = G_ANYEXT %4(f32)
+    $xmm0 = COPY %5(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -722,31 +738,34 @@ body:             |
 
     ; FAST-LABEL: name: test_add_double
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FADD:%[0-9]+]]:vecr(s64) = G_FADD [[TRUNC]], [[TRUNC1]]
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FADD]](s64)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FADD:%[0-9]+]]:vecr(f64) = G_FADD [[TRUNC]], [[TRUNC1]]
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FADD]](f64)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_add_double
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FADD:%[0-9]+]]:vecr(s64) = G_FADD [[TRUNC]], [[TRUNC1]]
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FADD]](s64)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %4:_(s64) = G_FADD %0, %1
-    %5:_(s128) = G_ANYEXT %4(s64)
-    $xmm0 = COPY %5(s128)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FADD:%[0-9]+]]:vecr(f64) = G_FADD [[TRUNC]], [[TRUNC1]]
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FADD]](f64)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %4:_(f64) = G_FADD %0, %1
+    %5:_(i128) = G_ANYEXT %4(f64)
+    $xmm0 = COPY %5(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -767,29 +786,22 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_fsub_float
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; FAST: [[DEF1:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; FAST: [[FSUB:%[0-9]+]]:vecr(s32) = G_FSUB [[COPY]], [[COPY1]]
-    ; FAST: [[COPY2:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; FAST: [[COPY3:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; FAST: [[FSUB1:%[0-9]+]]:vecr(s64) = G_FSUB [[COPY2]], [[COPY3]]
-    ; FAST: RET 0
+    ; FAST: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[DEF1:%[0-9]+]]:vecr(f64) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[FSUB:%[0-9]+]]:vecr(f32) = G_FSUB [[DEF]], [[DEF]]
+    ; FAST-NEXT: [[FSUB1:%[0-9]+]]:vecr(f64) = G_FSUB [[DEF1]], [[DEF1]]
+    ; FAST-NEXT: RET 0
+    ;
     ; GREEDY-LABEL: name: test_fsub_float
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; GREEDY: [[DEF1:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; GREEDY: [[FSUB:%[0-9]+]]:vecr(s32) = G_FSUB [[COPY]], [[COPY1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; GREEDY: [[COPY3:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; GREEDY: [[FSUB1:%[0-9]+]]:vecr(s64) = G_FSUB [[COPY2]], [[COPY3]]
-    ; GREEDY: RET 0
-    %0(s32) = G_IMPLICIT_DEF
-    %2(s64) = G_IMPLICIT_DEF
-    %1(s32) = G_FSUB %0, %0
-    %3(s64) = G_FSUB %2, %2
+    ; GREEDY: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[DEF1:%[0-9]+]]:vecr(f64) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[FSUB:%[0-9]+]]:vecr(f32) = G_FSUB [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: [[FSUB1:%[0-9]+]]:vecr(f64) = G_FSUB [[DEF1]], [[DEF1]]
+    ; GREEDY-NEXT: RET 0
+    %0(f32) = G_IMPLICIT_DEF
+    %2(f64) = G_IMPLICIT_DEF
+    %1(f32) = G_FSUB %0, %0
+    %3(f64) = G_FSUB %2, %2
     RET 0
 
 ...
@@ -810,29 +822,22 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_fmul_float
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; FAST: [[DEF1:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; FAST: [[FMUL:%[0-9]+]]:vecr(s32) = G_FMUL [[COPY]], [[COPY1]]
-    ; FAST: [[COPY2:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; FAST: [[COPY3:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; FAST: [[FMUL1:%[0-9]+]]:vecr(s64) = G_FMUL [[COPY2]], [[COPY3]]
-    ; FAST: RET 0
+    ; FAST: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[DEF1:%[0-9]+]]:vecr(f64) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[FMUL:%[0-9]+]]:vecr(f32) = G_FMUL [[DEF]], [[DEF]]
+    ; FAST-NEXT: [[FMUL1:%[0-9]+]]:vecr(f64) = G_FMUL [[DEF1]], [[DEF1]]
+    ; FAST-NEXT: RET 0
+    ;
     ; GREEDY-LABEL: name: test_fmul_float
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; GREEDY: [[DEF1:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; GREEDY: [[FMUL:%[0-9]+]]:vecr(s32) = G_FMUL [[COPY]], [[COPY1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; GREEDY: [[COPY3:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; GREEDY: [[FMUL1:%[0-9]+]]:vecr(s64) = G_FMUL [[COPY2]], [[COPY3]]
-    ; GREEDY: RET 0
-    %0(s32) = G_IMPLICIT_DEF
-    %2(s64) = G_IMPLICIT_DEF
-    %1(s32) = G_FMUL %0, %0
-    %3(s64) = G_FMUL %2, %2
+    ; GREEDY: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[DEF1:%[0-9]+]]:vecr(f64) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[FMUL:%[0-9]+]]:vecr(f32) = G_FMUL [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: [[FMUL1:%[0-9]+]]:vecr(f64) = G_FMUL [[DEF1]], [[DEF1]]
+    ; GREEDY-NEXT: RET 0
+    %0(f32) = G_IMPLICIT_DEF
+    %2(f64) = G_IMPLICIT_DEF
+    %1(f32) = G_FMUL %0, %0
+    %3(f64) = G_FMUL %2, %2
     RET 0
 
 ...
@@ -853,29 +858,22 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_fdiv_float
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; FAST: [[DEF1:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; FAST: [[FDIV:%[0-9]+]]:vecr(s32) = G_FDIV [[COPY]], [[COPY1]]
-    ; FAST: [[COPY2:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; FAST: [[COPY3:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; FAST: [[FDIV1:%[0-9]+]]:vecr(s64) = G_FDIV [[COPY2]], [[COPY3]]
-    ; FAST: RET 0
+    ; FAST: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[DEF1:%[0-9]+]]:vecr(f64) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[FDIV:%[0-9]+]]:vecr(f32) = G_FDIV [[DEF]], [[DEF]]
+    ; FAST-NEXT: [[FDIV1:%[0-9]+]]:vecr(f64) = G_FDIV [[DEF1]], [[DEF1]]
+    ; FAST-NEXT: RET 0
+    ;
     ; GREEDY-LABEL: name: test_fdiv_float
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; GREEDY: [[DEF1:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; GREEDY: [[FDIV:%[0-9]+]]:vecr(s32) = G_FDIV [[COPY]], [[COPY1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; GREEDY: [[COPY3:%[0-9]+]]:vecr(s64) = COPY [[DEF1]](s64)
-    ; GREEDY: [[FDIV1:%[0-9]+]]:vecr(s64) = G_FDIV [[COPY2]], [[COPY3]]
-    ; GREEDY: RET 0
-    %0(s32) = G_IMPLICIT_DEF
-    %2(s64) = G_IMPLICIT_DEF
-    %1(s32) = G_FDIV %0, %0
-    %3(s64) = G_FDIV %2, %2
+    ; GREEDY: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[DEF1:%[0-9]+]]:vecr(f64) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[FDIV:%[0-9]+]]:vecr(f32) = G_FDIV [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: [[FDIV1:%[0-9]+]]:vecr(f64) = G_FDIV [[DEF1]], [[DEF1]]
+    ; GREEDY-NEXT: RET 0
+    %0(f32) = G_IMPLICIT_DEF
+    %2(f64) = G_IMPLICIT_DEF
+    %1(f32) = G_FDIV %0, %0
+    %3(f64) = G_FDIV %2, %2
     RET 0
 
 ...
@@ -896,22 +894,25 @@ body:             |
 
     ; FAST-LABEL: name: test_add_v4i32
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm0
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm1
-    ; FAST: [[ADD:%[0-9]+]]:vecr(<4 x s32>) = G_ADD [[COPY]], [[COPY1]]
-    ; FAST: $xmm0 = COPY [[ADD]](<4 x s32>)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(<4 x i32>) = COPY $xmm0
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(<4 x i32>) = COPY $xmm1
+    ; FAST-NEXT: [[ADD:%[0-9]+]]:vecr(<4 x i32>) = G_ADD [[COPY]], [[COPY1]]
+    ; FAST-NEXT: $xmm0 = COPY [[ADD]](<4 x i32>)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_add_v4i32
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm0
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm1
-    ; GREEDY: [[ADD:%[0-9]+]]:vecr(<4 x s32>) = G_ADD [[COPY]], [[COPY1]]
-    ; GREEDY: $xmm0 = COPY [[ADD]](<4 x s32>)
-    ; GREEDY: RET 0, implicit $xmm0
-    %0(<4 x s32>) = COPY $xmm0
-    %1(<4 x s32>) = COPY $xmm1
-    %2(<4 x s32>) = G_ADD %0, %1
-    $xmm0 = COPY %2(<4 x s32>)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(<4 x i32>) = COPY $xmm0
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(<4 x i32>) = COPY $xmm1
+    ; GREEDY-NEXT: [[ADD:%[0-9]+]]:vecr(<4 x i32>) = G_ADD [[COPY]], [[COPY1]]
+    ; GREEDY-NEXT: $xmm0 = COPY [[ADD]](<4 x i32>)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %0(<4 x i32>) = COPY $xmm0
+    %1(<4 x i32>) = COPY $xmm1
+    %2(<4 x i32>) = G_ADD %0, %1
+    $xmm0 = COPY %2(<4 x i32>)
     RET 0, implicit $xmm0
 
 ...
@@ -932,22 +933,25 @@ body:             |
 
     ; FAST-LABEL: name: test_add_v4f32
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm0
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm1
-    ; FAST: [[FADD:%[0-9]+]]:vecr(<4 x s32>) = G_FADD [[COPY]], [[COPY1]]
-    ; FAST: $xmm0 = COPY [[FADD]](<4 x s32>)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(<4 x f32>) = COPY $xmm0
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(<4 x f32>) = COPY $xmm1
+    ; FAST-NEXT: [[FADD:%[0-9]+]]:vecr(<4 x f32>) = G_FADD [[COPY]], [[COPY1]]
+    ; FAST-NEXT: $xmm0 = COPY [[FADD]](<4 x f32>)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_add_v4f32
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm0
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(<4 x s32>) = COPY $xmm1
-    ; GREEDY: [[FADD:%[0-9]+]]:vecr(<4 x s32>) = G_FADD [[COPY]], [[COPY1]]
-    ; GREEDY: $xmm0 = COPY [[FADD]](<4 x s32>)
-    ; GREEDY: RET 0, implicit $xmm0
-    %0(<4 x s32>) = COPY $xmm0
-    %1(<4 x s32>) = COPY $xmm1
-    %2(<4 x s32>) = G_FADD %0, %1
-    $xmm0 = COPY %2(<4 x s32>)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(<4 x f32>) = COPY $xmm0
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(<4 x f32>) = COPY $xmm1
+    ; GREEDY-NEXT: [[FADD:%[0-9]+]]:vecr(<4 x f32>) = G_FADD [[COPY]], [[COPY1]]
+    ; GREEDY-NEXT: $xmm0 = COPY [[FADD]](<4 x f32>)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %0(<4 x f32>) = COPY $xmm0
+    %1(<4 x f32>) = COPY $xmm1
+    %2(<4 x f32>) = G_FADD %0, %1
+    $xmm0 = COPY %2(<4 x f32>)
     RET 0, implicit $xmm0
 
 ...
@@ -965,18 +969,23 @@ body:             |
     liveins: $rdi
 
     ; FAST-LABEL: name: test_load_i8
-    ; FAST: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[LOAD:%[0-9]+]]:gpr(s8) = G_LOAD [[COPY]](p0) :: (load (s8) from %ir.p1)
-    ; FAST: $al = COPY [[LOAD]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: liveins: $rdi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[LOAD:%[0-9]+]]:gpr(i8) = G_LOAD [[COPY]](p0) :: (load (i8) from %ir.p1)
+    ; FAST-NEXT: $al = COPY [[LOAD]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_load_i8
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: [[LOAD:%[0-9]+]]:gpr(s8) = G_LOAD [[COPY]](p0) :: (load (s8) from %ir.p1)
-    ; GREEDY: $al = COPY [[LOAD]](s8)
-    ; GREEDY: RET 0, implicit $al
+    ; GREEDY: liveins: $rdi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: [[LOAD:%[0-9]+]]:gpr(i8) = G_LOAD [[COPY]](p0) :: (load (i8) from %ir.p1)
+    ; GREEDY-NEXT: $al = COPY [[LOAD]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
     %0(p0) = COPY $rdi
-    %1(s8) = G_LOAD %0(p0) :: (load (s8) from %ir.p1)
-    $al = COPY %1(s8)
+    %1(i8) = G_LOAD %0(p0) :: (load (i8) from %ir.p1)
+    $al = COPY %1(i8)
     RET 0, implicit $al
 
 ...
@@ -994,18 +1003,23 @@ body:             |
     liveins: $rdi
 
     ; FAST-LABEL: name: test_load_i16
-    ; FAST: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[LOAD:%[0-9]+]]:gpr(s16) = G_LOAD [[COPY]](p0) :: (load (s16) from %ir.p1)
-    ; FAST: $ax = COPY [[LOAD]](s16)
-    ; FAST: RET 0, implicit $ax
+    ; FAST: liveins: $rdi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[LOAD:%[0-9]+]]:gpr(i16) = G_LOAD [[COPY]](p0) :: (load (i16) from %ir.p1)
+    ; FAST-NEXT: $ax = COPY [[LOAD]](i16)
+    ; FAST-NEXT: RET 0, implicit $ax
+    ;
     ; GREEDY-LABEL: name: test_load_i16
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: [[LOAD:%[0-9]+]]:gpr(s16) = G_LOAD [[COPY]](p0) :: (load (s16) from %ir.p1)
-    ; GREEDY: $ax = COPY [[LOAD]](s16)
-    ; GREEDY: RET 0, implicit $ax
+    ; GREEDY: liveins: $rdi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: [[LOAD:%[0-9]+]]:gpr(i16) = G_LOAD [[COPY]](p0) :: (load (i16) from %ir.p1)
+    ; GREEDY-NEXT: $ax = COPY [[LOAD]](i16)
+    ; GREEDY-NEXT: RET 0, implicit $ax
     %0(p0) = COPY $rdi
-    %1(s16) = G_LOAD %0(p0) :: (load (s16) from %ir.p1)
-    $ax = COPY %1(s16)
+    %1(i16) = G_LOAD %0(p0) :: (load (i16) from %ir.p1)
+    $ax = COPY %1(i16)
     RET 0, implicit $ax
 
 ...
@@ -1023,18 +1037,23 @@ body:             |
     liveins: $rdi
 
     ; FAST-LABEL: name: test_load_i32
-    ; FAST: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[LOAD:%[0-9]+]]:gpr(s32) = G_LOAD [[COPY]](p0) :: (load (s32) from %ir.p1)
-    ; FAST: $eax = COPY [[LOAD]](s32)
-    ; FAST: RET 0, implicit $eax
+    ; FAST: liveins: $rdi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[LOAD:%[0-9]+]]:gpr(i32) = G_LOAD [[COPY]](p0) :: (load (i32) from %ir.p1)
+    ; FAST-NEXT: $eax = COPY [[LOAD]](i32)
+    ; FAST-NEXT: RET 0, implicit $eax
+    ;
     ; GREEDY-LABEL: name: test_load_i32
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: [[LOAD:%[0-9]+]]:gpr(s32) = G_LOAD [[COPY]](p0) :: (load (s32) from %ir.p1)
-    ; GREEDY: $eax = COPY [[LOAD]](s32)
-    ; GREEDY: RET 0, implicit $eax
+    ; GREEDY: liveins: $rdi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: [[LOAD:%[0-9]+]]:gpr(i32) = G_LOAD [[COPY]](p0) :: (load (i32) from %ir.p1)
+    ; GREEDY-NEXT: $eax = COPY [[LOAD]](i32)
+    ; GREEDY-NEXT: RET 0, implicit $eax
     %0(p0) = COPY $rdi
-    %1(s32) = G_LOAD %0(p0) :: (load (s32) from %ir.p1)
-    $eax = COPY %1(s32)
+    %1(i32) = G_LOAD %0(p0) :: (load (i32) from %ir.p1)
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 
 ...
@@ -1053,18 +1072,23 @@ body:             |
     liveins: $rdi
 
     ; FAST-LABEL: name: test_load_i64
-    ; FAST: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[LOAD:%[0-9]+]]:gpr(s64) = G_LOAD [[COPY]](p0) :: (load (s64) from %ir.p1)
-    ; FAST: $rax = COPY [[LOAD]](s64)
-    ; FAST: RET 0, implicit $rax
+    ; FAST: liveins: $rdi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[LOAD:%[0-9]+]]:gpr(i64) = G_LOAD [[COPY]](p0) :: (load (i64) from %ir.p1)
+    ; FAST-NEXT: $rax = COPY [[LOAD]](i64)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_load_i64
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: [[LOAD:%[0-9]+]]:gpr(s64) = G_LOAD [[COPY]](p0) :: (load (s64) from %ir.p1)
-    ; GREEDY: $rax = COPY [[LOAD]](s64)
-    ; GREEDY: RET 0, implicit $rax
+    ; GREEDY: liveins: $rdi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: [[LOAD:%[0-9]+]]:gpr(i64) = G_LOAD [[COPY]](p0) :: (load (i64) from %ir.p1)
+    ; GREEDY-NEXT: $rax = COPY [[LOAD]](i64)
+    ; GREEDY-NEXT: RET 0, implicit $rax
     %0(p0) = COPY $rdi
-    %1(s64) = G_LOAD %0(p0) :: (load (s64) from %ir.p1)
-    $rax = COPY %1(s64)
+    %1(i64) = G_LOAD %0(p0) :: (load (i64) from %ir.p1)
+    $rax = COPY %1(i64)
     RET 0, implicit $rax
 
 ...
@@ -1082,23 +1106,28 @@ body:             |
     liveins: $rdi
 
     ; FAST-LABEL: name: test_load_float
-    ; FAST: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[LOAD:%[0-9]+]]:gpr(s32) = G_LOAD [[COPY]](p0) :: (load (s32) from %ir.p1)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[LOAD]](s32)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[COPY1]](s32)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST: liveins: $rdi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[LOAD:%[0-9]+]]:gpr(i32) = G_LOAD [[COPY]](p0) :: (load (i32) from %ir.p1)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i32) = COPY [[LOAD]](i32)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[COPY1]](i32)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_load_float
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: [[LOAD:%[0-9]+]]:gpr(s32) = G_LOAD [[COPY]](p0) :: (load (s32) from %ir.p1)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[LOAD]](s32)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[COPY1]](s32)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
+    ; GREEDY: liveins: $rdi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: [[LOAD:%[0-9]+]]:gpr(i32) = G_LOAD [[COPY]](p0) :: (load (i32) from %ir.p1)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i32) = COPY [[LOAD]](i32)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[COPY1]](i32)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
     %0:_(p0) = COPY $rdi
-    %1:_(s32) = G_LOAD %0(p0) :: (load (s32) from %ir.p1)
-    %2:_(s128) = G_ANYEXT %1(s32)
-    $xmm0 = COPY %2(s128)
+    %1:_(i32) = G_LOAD %0(p0) :: (load (i32) from %ir.p1)
+    %2:_(i128) = G_ANYEXT %1(i32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -1116,23 +1145,28 @@ body:             |
     liveins: $rdi
 
     ; FAST-LABEL: name: test_load_double
-    ; FAST: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[LOAD:%[0-9]+]]:gpr(s64) = G_LOAD [[COPY]](p0) :: (load (s64) from %ir.p1)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s64) = COPY [[LOAD]](s64)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[COPY1]](s64)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST: liveins: $rdi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[LOAD:%[0-9]+]]:gpr(i64) = G_LOAD [[COPY]](p0) :: (load (i64) from %ir.p1)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i64) = COPY [[LOAD]](i64)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[COPY1]](i64)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_load_double
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: [[LOAD:%[0-9]+]]:gpr(s64) = G_LOAD [[COPY]](p0) :: (load (s64) from %ir.p1)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s64) = COPY [[LOAD]](s64)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[COPY1]](s64)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
+    ; GREEDY: liveins: $rdi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: [[LOAD:%[0-9]+]]:gpr(i64) = G_LOAD [[COPY]](p0) :: (load (i64) from %ir.p1)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i64) = COPY [[LOAD]](i64)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[COPY1]](i64)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
     %0:_(p0) = COPY $rdi
-    %1:_(s64) = G_LOAD %0(p0) :: (load (s64) from %ir.p1)
-    %2:_(s128) = G_ANYEXT %1(s64)
-    $xmm0 = COPY %2(s128)
+    %1:_(i64) = G_LOAD %0(p0) :: (load (i64) from %ir.p1)
+    %2:_(i128) = G_ANYEXT %1(i64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -1150,18 +1184,23 @@ body:             |
     liveins: $rdi
 
     ; FAST-LABEL: name: test_load_v4i32
-    ; FAST: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[LOAD:%[0-9]+]]:vecr(<4 x s32>) = G_LOAD [[COPY]](p0) :: (load (<4 x s32>) from %ir.p1, align 1)
-    ; FAST: $xmm0 = COPY [[LOAD]](<4 x s32>)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST: liveins: $rdi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[LOAD:%[0-9]+]]:vecr(<4 x i32>) = G_LOAD [[COPY]](p0) :: (load (<4 x i32>) from %ir.p1, align 1)
+    ; FAST-NEXT: $xmm0 = COPY [[LOAD]](<4 x i32>)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_load_v4i32
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: [[LOAD:%[0-9]+]]:vecr(<4 x s32>) = G_LOAD [[COPY]](p0) :: (load (<4 x s32>) from %ir.p1, align 1)
-    ; GREEDY: $xmm0 = COPY [[LOAD]](<4 x s32>)
-    ; GREEDY: RET 0, implicit $xmm0
+    ; GREEDY: liveins: $rdi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: [[LOAD:%[0-9]+]]:vecr(<4 x i32>) = G_LOAD [[COPY]](p0) :: (load (<4 x i32>) from %ir.p1, align 1)
+    ; GREEDY-NEXT: $xmm0 = COPY [[LOAD]](<4 x i32>)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
     %0(p0) = COPY $rdi
-    %1(<4 x s32>) = G_LOAD %0(p0) :: (load (<4 x s32>) from %ir.p1, align 1)
-    $xmm0 = COPY %1(<4 x s32>)
+    %1(<4 x i32>) = G_LOAD %0(p0) :: (load (<4 x i32>) from %ir.p1, align 1)
+    $xmm0 = COPY %1(<4 x i32>)
     RET 0, implicit $xmm0
 
 ...
@@ -1179,20 +1218,25 @@ body:             |
     liveins: $edi, $rsi
 
     ; FAST-LABEL: name: test_store_i32
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
-    ; FAST: G_STORE [[COPY]](s32), [[COPY1]](p0) :: (store (s32) into %ir.p1)
-    ; FAST: $rax = COPY [[COPY1]](p0)
-    ; FAST: RET 0, implicit $rax
+    ; FAST: liveins: $edi, $rsi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
+    ; FAST-NEXT: G_STORE [[COPY]](i32), [[COPY1]](p0) :: (store (i32) into %ir.p1)
+    ; FAST-NEXT: $rax = COPY [[COPY1]](p0)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_store_i32
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
-    ; GREEDY: G_STORE [[COPY]](s32), [[COPY1]](p0) :: (store (s32) into %ir.p1)
-    ; GREEDY: $rax = COPY [[COPY1]](p0)
-    ; GREEDY: RET 0, implicit $rax
-    %0(s32) = COPY $edi
+    ; GREEDY: liveins: $edi, $rsi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
+    ; GREEDY-NEXT: G_STORE [[COPY]](i32), [[COPY1]](p0) :: (store (i32) into %ir.p1)
+    ; GREEDY-NEXT: $rax = COPY [[COPY1]](p0)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %0(i32) = COPY $edi
     %1(p0) = COPY $rsi
-    G_STORE %0(s32), %1(p0) :: (store (s32) into %ir.p1)
+    G_STORE %0(i32), %1(p0) :: (store (i32) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -1211,20 +1255,25 @@ body:             |
     liveins: $rdi, $rsi
 
     ; FAST-LABEL: name: test_store_i64
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
-    ; FAST: G_STORE [[COPY]](s64), [[COPY1]](p0) :: (store (s64) into %ir.p1)
-    ; FAST: $rax = COPY [[COPY1]](p0)
-    ; FAST: RET 0, implicit $rax
+    ; FAST: liveins: $rdi, $rsi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
+    ; FAST-NEXT: G_STORE [[COPY]](i64), [[COPY1]](p0) :: (store (i64) into %ir.p1)
+    ; FAST-NEXT: $rax = COPY [[COPY1]](p0)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_store_i64
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
-    ; GREEDY: G_STORE [[COPY]](s64), [[COPY1]](p0) :: (store (s64) into %ir.p1)
-    ; GREEDY: $rax = COPY [[COPY1]](p0)
-    ; GREEDY: RET 0, implicit $rax
-    %0(s64) = COPY $rdi
+    ; GREEDY: liveins: $rdi, $rsi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rsi
+    ; GREEDY-NEXT: G_STORE [[COPY]](i64), [[COPY1]](p0) :: (store (i64) into %ir.p1)
+    ; GREEDY-NEXT: $rax = COPY [[COPY1]](p0)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %0(i64) = COPY $rdi
     %1(p0) = COPY $rsi
-    G_STORE %0(s64), %1(p0) :: (store (s64) into %ir.p1)
+    G_STORE %0(i64), %1(p0) :: (store (i64) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -1246,24 +1295,29 @@ body:             |
     liveins: $rdi, $xmm0
 
     ; FAST-LABEL: name: test_store_float
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s32) = COPY [[TRUNC]](s32)
-    ; FAST: G_STORE [[COPY2]](s32), [[COPY1]](p0) :: (store (s32) into %ir.p1)
-    ; FAST: $rax = COPY [[COPY1]](p0)
-    ; FAST: RET 0, implicit $rax
+    ; FAST: liveins: $rdi, $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(i32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i32) = COPY [[TRUNC]](i32)
+    ; FAST-NEXT: G_STORE [[COPY2]](i32), [[COPY1]](p0) :: (store (i32) into %ir.p1)
+    ; FAST-NEXT: $rax = COPY [[COPY1]](p0)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_store_float
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: G_STORE [[TRUNC]](s32), [[COPY1]](p0) :: (store (s32) into %ir.p1)
-    ; GREEDY: $rax = COPY [[COPY1]](p0)
-    ; GREEDY: RET 0, implicit $rax
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
+    ; GREEDY: liveins: $rdi, $xmm0
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(i32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: G_STORE [[TRUNC]](i32), [[COPY1]](p0) :: (store (i32) into %ir.p1)
+    ; GREEDY-NEXT: $rax = COPY [[COPY1]](p0)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %2:_(i128) = COPY $xmm0
+    %0:_(i32) = G_TRUNC %2(i128)
     %1:_(p0) = COPY $rdi
-    G_STORE %0(s32), %1(p0) :: (store (s32) into %ir.p1)
+    G_STORE %0(i32), %1(p0) :: (store (i32) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -1285,24 +1339,29 @@ body:             |
     liveins: $rdi, $xmm0
 
     ; FAST-LABEL: name: test_store_double
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s64) = COPY [[TRUNC]](s64)
-    ; FAST: G_STORE [[COPY2]](s64), [[COPY1]](p0) :: (store (s64) into %ir.p1)
-    ; FAST: $rax = COPY [[COPY1]](p0)
-    ; FAST: RET 0, implicit $rax
+    ; FAST: liveins: $rdi, $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(i64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i64) = COPY [[TRUNC]](i64)
+    ; FAST-NEXT: G_STORE [[COPY2]](i64), [[COPY1]](p0) :: (store (i64) into %ir.p1)
+    ; FAST-NEXT: $rax = COPY [[COPY1]](p0)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_store_double
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
-    ; GREEDY: G_STORE [[TRUNC]](s64), [[COPY1]](p0) :: (store (s64) into %ir.p1)
-    ; GREEDY: $rax = COPY [[COPY1]](p0)
-    ; GREEDY: RET 0, implicit $rax
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
+    ; GREEDY: liveins: $rdi, $xmm0
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(i64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(p0) = COPY $rdi
+    ; GREEDY-NEXT: G_STORE [[TRUNC]](i64), [[COPY1]](p0) :: (store (i64) into %ir.p1)
+    ; GREEDY-NEXT: $rax = COPY [[COPY1]](p0)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %2:_(i128) = COPY $xmm0
+    %0:_(i64) = G_TRUNC %2(i128)
     %1:_(p0) = COPY $rdi
-    G_STORE %0(s64), %1(p0) :: (store (s64) into %ir.p1)
+    G_STORE %0(i64), %1(p0) :: (store (i64) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -1319,21 +1378,22 @@ registers:
 body:             |
   bb.0 (%ir-block.0):
     ; FAST-LABEL: name: constInt_check
-    ; FAST: [[C:%[0-9]+]]:gpr(s8) = G_CONSTANT i8 8
-    ; FAST: [[C1:%[0-9]+]]:gpr(s16) = G_CONSTANT i16 16
-    ; FAST: [[C2:%[0-9]+]]:gpr(s32) = G_CONSTANT i32 32
-    ; FAST: [[C3:%[0-9]+]]:gpr(s64) = G_CONSTANT i64 64
-    ; FAST: RET 0
+    ; FAST: [[C:%[0-9]+]]:gpr(i8) = G_CONSTANT i8 8
+    ; FAST-NEXT: [[C1:%[0-9]+]]:gpr(i16) = G_CONSTANT i16 16
+    ; FAST-NEXT: [[C2:%[0-9]+]]:gpr(i32) = G_CONSTANT i32 32
+    ; FAST-NEXT: [[C3:%[0-9]+]]:gpr(i64) = G_CONSTANT i64 64
+    ; FAST-NEXT: RET 0
+    ;
     ; GREEDY-LABEL: name: constInt_check
-    ; GREEDY: [[C:%[0-9]+]]:gpr(s8) = G_CONSTANT i8 8
-    ; GREEDY: [[C1:%[0-9]+]]:gpr(s16) = G_CONSTANT i16 16
-    ; GREEDY: [[C2:%[0-9]+]]:gpr(s32) = G_CONSTANT i32 32
-    ; GREEDY: [[C3:%[0-9]+]]:gpr(s64) = G_CONSTANT i64 64
-    ; GREEDY: RET 0
-    %0(s8) = G_CONSTANT i8 8
-    %1(s16) = G_CONSTANT i16 16
-    %2(s32) = G_CONSTANT i32 32
-    %3(s64) = G_CONSTANT i64 64
+    ; GREEDY: [[C:%[0-9]+]]:gpr(i8) = G_CONSTANT i8 8
+    ; GREEDY-NEXT: [[C1:%[0-9]+]]:gpr(i16) = G_CONSTANT i16 16
+    ; GREEDY-NEXT: [[C2:%[0-9]+]]:gpr(i32) = G_CONSTANT i32 32
+    ; GREEDY-NEXT: [[C3:%[0-9]+]]:gpr(i64) = G_CONSTANT i64 64
+    ; GREEDY-NEXT: RET 0
+    %0(i8) = G_CONSTANT i8 8
+    %1(i16) = G_CONSTANT i16 16
+    %2(i32) = G_CONSTANT i32 32
+    %3(i64) = G_CONSTANT i64 64
     RET 0
 
 ...
@@ -1349,21 +1409,22 @@ registers:
 body:             |
   bb.0 (%ir-block.0):
     ; FAST-LABEL: name: trunc_check
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; FAST: [[TRUNC:%[0-9]+]]:gpr(s1) = G_TRUNC [[DEF]](s32)
-    ; FAST: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[DEF]](s32)
-    ; FAST: [[TRUNC2:%[0-9]+]]:gpr(s16) = G_TRUNC [[DEF]](s32)
-    ; FAST: RET 0
+    ; FAST: [[DEF:%[0-9]+]]:gpr(i32) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:gpr(i1) = G_TRUNC [[DEF]](i32)
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[DEF]](i32)
+    ; FAST-NEXT: [[TRUNC2:%[0-9]+]]:gpr(i16) = G_TRUNC [[DEF]](i32)
+    ; FAST-NEXT: RET 0
+    ;
     ; GREEDY-LABEL: name: trunc_check
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; GREEDY: [[TRUNC:%[0-9]+]]:gpr(s1) = G_TRUNC [[DEF]](s32)
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[DEF]](s32)
-    ; GREEDY: [[TRUNC2:%[0-9]+]]:gpr(s16) = G_TRUNC [[DEF]](s32)
-    ; GREEDY: RET 0
-    %0(s32) = G_IMPLICIT_DEF
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s8) = G_TRUNC %0(s32)
-    %3(s16) = G_TRUNC %0(s32)
+    ; GREEDY: [[DEF:%[0-9]+]]:gpr(i32) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:gpr(i1) = G_TRUNC [[DEF]](i32)
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[DEF]](i32)
+    ; GREEDY-NEXT: [[TRUNC2:%[0-9]+]]:gpr(i16) = G_TRUNC [[DEF]](i32)
+    ; GREEDY-NEXT: RET 0
+    %0(i32) = G_IMPLICIT_DEF
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i8) = G_TRUNC %0(i32)
+    %3(i16) = G_TRUNC %0(i32)
     RET 0
 
 ...
@@ -1380,18 +1441,18 @@ body:             |
   bb.0 (%ir-block.0):
     ; FAST-LABEL: name: test_gep
     ; FAST: [[DEF:%[0-9]+]]:gpr(p0) = G_IMPLICIT_DEF
-    ; FAST: [[C:%[0-9]+]]:gpr(s64) = G_CONSTANT i64 20
-    ; FAST: [[PTR_ADD:%[0-9]+]]:gpr(p0) = G_PTR_ADD [[DEF]], [[C]](s64)
-    ; FAST: RET 0
+    ; FAST-NEXT: [[C:%[0-9]+]]:gpr(i64) = G_CONSTANT i64 20
+    ; FAST-NEXT: [[PTR_ADD:%[0-9]+]]:gpr(p0) = G_PTR_ADD [[DEF]], [[C]](i64)
+    ; FAST-NEXT: RET 0
     ;
     ; GREEDY-LABEL: name: test_gep
     ; GREEDY: [[DEF:%[0-9]+]]:gpr(p0) = G_IMPLICIT_DEF
-    ; GREEDY: [[C:%[0-9]+]]:gpr(s64) = G_CONSTANT i64 20
-    ; GREEDY: [[PTR_ADD:%[0-9]+]]:gpr(p0) = G_PTR_ADD [[DEF]], [[C]](s64)
-    ; GREEDY: RET 0
+    ; GREEDY-NEXT: [[C:%[0-9]+]]:gpr(i64) = G_CONSTANT i64 20
+    ; GREEDY-NEXT: [[PTR_ADD:%[0-9]+]]:gpr(p0) = G_PTR_ADD [[DEF]], [[C]](i64)
+    ; GREEDY-NEXT: RET 0
     %0(p0) = G_IMPLICIT_DEF
-    %1(s64) = G_CONSTANT i64 20
-    %2(p0) = G_PTR_ADD %0, %1(s64)
+    %1(i64) = G_CONSTANT i64 20
+    %2(p0) = G_PTR_ADD %0, %1(i64)
     RET 0
 
 ...
@@ -1409,30 +1470,35 @@ body:             |
     liveins: $edi, $esi
 
     ; FAST-LABEL: name: test_icmp_eq_i8
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; FAST: [[TRUNC:%[0-9]+]]:gpr(s8) = G_TRUNC [[COPY]](s32)
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; FAST: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[COPY1]](s32)
-    ; FAST: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[TRUNC]](s8), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: liveins: $edi, $esi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:gpr(i8) = G_TRUNC [[COPY]](i32)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[COPY1]](i32)
+    ; FAST-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[TRUNC]](i8), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_icmp_eq_i8
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; GREEDY: [[TRUNC:%[0-9]+]]:gpr(s8) = G_TRUNC [[COPY]](s32)
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[COPY1]](s32)
-    ; GREEDY: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[TRUNC]](s8), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s32) = COPY $edi
-    %0:_(s8) = G_TRUNC %2(s32)
-    %3:_(s32) = COPY $esi
-    %1:_(s8) = G_TRUNC %3(s32)
-    %6:_(s8) = G_ICMP intpred(eq), %0(s8), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY: liveins: $edi, $esi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:gpr(i8) = G_TRUNC [[COPY]](i32)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[COPY1]](i32)
+    ; GREEDY-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[TRUNC]](i8), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i32) = COPY $edi
+    %0:_(i8) = G_TRUNC %2(i32)
+    %3:_(i32) = COPY $esi
+    %1:_(i8) = G_TRUNC %3(i32)
+    %6:_(i8) = G_ICMP intpred(eq), %0(i8), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -1450,30 +1516,35 @@ body:             |
     liveins: $edi, $esi
 
     ; FAST-LABEL: name: test_icmp_eq_i16
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; FAST: [[TRUNC:%[0-9]+]]:gpr(s16) = G_TRUNC [[COPY]](s32)
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; FAST: [[TRUNC1:%[0-9]+]]:gpr(s16) = G_TRUNC [[COPY1]](s32)
-    ; FAST: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[TRUNC]](s16), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: liveins: $edi, $esi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:gpr(i16) = G_TRUNC [[COPY]](i32)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i16) = G_TRUNC [[COPY1]](i32)
+    ; FAST-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[TRUNC]](i16), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_icmp_eq_i16
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; GREEDY: [[TRUNC:%[0-9]+]]:gpr(s16) = G_TRUNC [[COPY]](s32)
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:gpr(s16) = G_TRUNC [[COPY1]](s32)
-    ; GREEDY: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[TRUNC]](s16), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s32) = COPY $edi
-    %0:_(s16) = G_TRUNC %2(s32)
-    %3:_(s32) = COPY $esi
-    %1:_(s16) = G_TRUNC %3(s32)
-    %6:_(s8) = G_ICMP intpred(eq), %0(s16), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY: liveins: $edi, $esi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:gpr(i16) = G_TRUNC [[COPY]](i32)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i16) = G_TRUNC [[COPY1]](i32)
+    ; GREEDY-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[TRUNC]](i16), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i32) = COPY $edi
+    %0:_(i16) = G_TRUNC %2(i32)
+    %3:_(i32) = COPY $esi
+    %1:_(i16) = G_TRUNC %3(i32)
+    %6:_(i8) = G_ICMP intpred(eq), %0(i16), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -1491,24 +1562,29 @@ body:             |
     liveins: $edi, $esi
 
     ; FAST-LABEL: name: test_icmp_eq_i32
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; FAST: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[COPY]](s32), [[COPY1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: liveins: $edi, $esi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; FAST-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[COPY]](i32), [[COPY1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_icmp_eq_i32
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-    ; GREEDY: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[COPY]](s32), [[COPY1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %0:_(s32) = COPY $edi
-    %1:_(s32) = COPY $esi
-    %4:_(s8) = G_ICMP intpred(eq), %0(s32), %1
-    %3:_(s8) = COPY %4(s8)
-    $al = COPY %3(s8)
+    ; GREEDY: liveins: $edi, $esi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+    ; GREEDY-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[COPY]](i32), [[COPY1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %0:_(i32) = COPY $edi
+    %1:_(i32) = COPY $esi
+    %4:_(i8) = G_ICMP intpred(eq), %0(i32), %1
+    %3:_(i8) = COPY %4(i8)
+    $al = COPY %3(i8)
     RET 0, implicit $al
 
 ...
@@ -1526,24 +1602,29 @@ body:             |
     liveins: $rdi, $rsi
 
     ; FAST-LABEL: name: test_icmp_eq_i64
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; FAST: [[COPY1:%[0-9]+]]:gpr(s64) = COPY $rsi
-    ; FAST: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[COPY]](s64), [[COPY1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: liveins: $rdi, $rsi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:gpr(i64) = COPY $rsi
+    ; FAST-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[COPY]](i64), [[COPY1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_icmp_eq_i64
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; GREEDY: [[COPY1:%[0-9]+]]:gpr(s64) = COPY $rsi
-    ; GREEDY: [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(eq), [[COPY]](s64), [[COPY1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[ICMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %0:_(s64) = COPY $rdi
-    %1:_(s64) = COPY $rsi
-    %4:_(s8) = G_ICMP intpred(eq), %0(s64), %1
-    %3:_(s8) = COPY %4(s8)
-    $al = COPY %3(s8)
+    ; GREEDY: liveins: $rdi, $rsi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:gpr(i64) = COPY $rsi
+    ; GREEDY-NEXT: [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(eq), [[COPY]](i64), [[COPY1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[ICMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %0:_(i64) = COPY $rdi
+    %1:_(i64) = COPY $rsi
+    %4:_(i8) = G_ICMP intpred(eq), %0(i64), %1
+    %3:_(i8) = COPY %4(i8)
+    $al = COPY %3(i8)
     RET 0, implicit $al
 
 ...
@@ -1562,18 +1643,19 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_xor_i8
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; FAST: [[XOR:%[0-9]+]]:gpr(s8) = G_XOR [[DEF]], [[DEF]]
-    ; FAST: $al = COPY [[XOR]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: [[DEF:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[XOR:%[0-9]+]]:gpr(i8) = G_XOR [[DEF]], [[DEF]]
+    ; FAST-NEXT: $al = COPY [[XOR]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_xor_i8
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; GREEDY: [[XOR:%[0-9]+]]:gpr(s8) = G_XOR [[DEF]], [[DEF]]
-    ; GREEDY: $al = COPY [[XOR]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %0(s8) = G_IMPLICIT_DEF
-    %1(s8) = G_XOR %0, %0
-    $al = COPY %1(s8)
+    ; GREEDY: [[DEF:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[XOR:%[0-9]+]]:gpr(i8) = G_XOR [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: $al = COPY [[XOR]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %0(i8) = G_IMPLICIT_DEF
+    %1(i8) = G_XOR %0, %0
+    $al = COPY %1(i8)
     RET 0, implicit $al
 
 ...
@@ -1592,18 +1674,19 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_or_i16
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s16) = G_IMPLICIT_DEF
-    ; FAST: [[OR:%[0-9]+]]:gpr(s16) = G_OR [[DEF]], [[DEF]]
-    ; FAST: $ax = COPY [[OR]](s16)
-    ; FAST: RET 0, implicit $ax
+    ; FAST: [[DEF:%[0-9]+]]:gpr(i16) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[OR:%[0-9]+]]:gpr(i16) = G_OR [[DEF]], [[DEF]]
+    ; FAST-NEXT: $ax = COPY [[OR]](i16)
+    ; FAST-NEXT: RET 0, implicit $ax
+    ;
     ; GREEDY-LABEL: name: test_or_i16
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s16) = G_IMPLICIT_DEF
-    ; GREEDY: [[OR:%[0-9]+]]:gpr(s16) = G_OR [[DEF]], [[DEF]]
-    ; GREEDY: $ax = COPY [[OR]](s16)
-    ; GREEDY: RET 0, implicit $ax
-    %0(s16) = G_IMPLICIT_DEF
-    %1(s16) = G_OR %0, %0
-    $ax = COPY %1(s16)
+    ; GREEDY: [[DEF:%[0-9]+]]:gpr(i16) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[OR:%[0-9]+]]:gpr(i16) = G_OR [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: $ax = COPY [[OR]](i16)
+    ; GREEDY-NEXT: RET 0, implicit $ax
+    %0(i16) = G_IMPLICIT_DEF
+    %1(i16) = G_OR %0, %0
+    $ax = COPY %1(i16)
     RET 0, implicit $ax
 
 ...
@@ -1622,18 +1705,19 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_and_i32
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; FAST: [[AND:%[0-9]+]]:gpr(s32) = G_AND [[DEF]], [[DEF]]
-    ; FAST: $eax = COPY [[AND]](s32)
-    ; FAST: RET 0, implicit $eax
+    ; FAST: [[DEF:%[0-9]+]]:gpr(i32) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[AND:%[0-9]+]]:gpr(i32) = G_AND [[DEF]], [[DEF]]
+    ; FAST-NEXT: $eax = COPY [[AND]](i32)
+    ; FAST-NEXT: RET 0, implicit $eax
+    ;
     ; GREEDY-LABEL: name: test_and_i32
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; GREEDY: [[AND:%[0-9]+]]:gpr(s32) = G_AND [[DEF]], [[DEF]]
-    ; GREEDY: $eax = COPY [[AND]](s32)
-    ; GREEDY: RET 0, implicit $eax
-    %0(s32) = G_IMPLICIT_DEF
-    %1(s32) = G_AND %0, %0
-    $eax = COPY %1(s32)
+    ; GREEDY: [[DEF:%[0-9]+]]:gpr(i32) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[AND:%[0-9]+]]:gpr(i32) = G_AND [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: $eax = COPY [[AND]](i32)
+    ; GREEDY-NEXT: RET 0, implicit $eax
+    %0(i32) = G_IMPLICIT_DEF
+    %1(i32) = G_AND %0, %0
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 
 ...
@@ -1652,18 +1736,19 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_and_i64
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; FAST: [[AND:%[0-9]+]]:gpr(s64) = G_AND [[DEF]], [[DEF]]
-    ; FAST: $rax = COPY [[AND]](s64)
-    ; FAST: RET 0, implicit $rax
+    ; FAST: [[DEF:%[0-9]+]]:gpr(i64) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[AND:%[0-9]+]]:gpr(i64) = G_AND [[DEF]], [[DEF]]
+    ; FAST-NEXT: $rax = COPY [[AND]](i64)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_and_i64
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s64) = G_IMPLICIT_DEF
-    ; GREEDY: [[AND:%[0-9]+]]:gpr(s64) = G_AND [[DEF]], [[DEF]]
-    ; GREEDY: $rax = COPY [[AND]](s64)
-    ; GREEDY: RET 0, implicit $rax
-    %0(s64) = G_IMPLICIT_DEF
-    %1(s64) = G_AND %0, %0
-    $rax = COPY %1(s64)
+    ; GREEDY: [[DEF:%[0-9]+]]:gpr(i64) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[AND:%[0-9]+]]:gpr(i64) = G_AND [[DEF]], [[DEF]]
+    ; GREEDY-NEXT: $rax = COPY [[AND]](i64)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %0(i64) = G_IMPLICIT_DEF
+    %1(i64) = G_AND %0, %0
+    $rax = COPY %1(i64)
     RET 0, implicit $rax
 
 ...
@@ -1678,12 +1763,13 @@ body:             |
   bb.1.entry:
     ; FAST-LABEL: name: test_global_ptrv
     ; FAST: [[GV:%[0-9]+]]:gpr(p0) = G_GLOBAL_VALUE @g_int
-    ; FAST: $rax = COPY [[GV]](p0)
-    ; FAST: RET 0, implicit $rax
+    ; FAST-NEXT: $rax = COPY [[GV]](p0)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: test_global_ptrv
     ; GREEDY: [[GV:%[0-9]+]]:gpr(p0) = G_GLOBAL_VALUE @g_int
-    ; GREEDY: $rax = COPY [[GV]](p0)
-    ; GREEDY: RET 0, implicit $rax
+    ; GREEDY-NEXT: $rax = COPY [[GV]](p0)
+    ; GREEDY-NEXT: RET 0, implicit $rax
     %0(p0) = G_GLOBAL_VALUE @g_int
     $rax = COPY %0(p0)
     RET 0, implicit $rax
@@ -1703,15 +1789,16 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_undef
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; FAST: $al = COPY [[DEF]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: [[DEF:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; FAST-NEXT: $al = COPY [[DEF]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_undef
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; GREEDY: $al = COPY [[DEF]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %0(s8) = G_IMPLICIT_DEF
-    $al = COPY %0(s8)
+    ; GREEDY: [[DEF:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: $al = COPY [[DEF]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %0(i8) = G_IMPLICIT_DEF
+    $al = COPY %0(i8)
     RET 0, implicit $al
 
 ...
@@ -1733,21 +1820,26 @@ body:             |
     liveins: $edi
 
     ; FAST-LABEL: name: test_undef2
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s8) = COPY $dil
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; FAST: [[ADD:%[0-9]+]]:gpr(s8) = G_ADD [[COPY]], [[DEF]]
-    ; FAST: $al = COPY [[ADD]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST: liveins: $edi
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i8) = COPY $dil
+    ; FAST-NEXT: [[DEF:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[ADD:%[0-9]+]]:gpr(i8) = G_ADD [[COPY]], [[DEF]]
+    ; FAST-NEXT: $al = COPY [[ADD]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: test_undef2
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s8) = COPY $dil
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s8) = G_IMPLICIT_DEF
-    ; GREEDY: [[ADD:%[0-9]+]]:gpr(s8) = G_ADD [[COPY]], [[DEF]]
-    ; GREEDY: $al = COPY [[ADD]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %0(s8) = COPY $dil
-    %1(s8) = G_IMPLICIT_DEF
-    %2(s8) = G_ADD %0, %1
-    $al = COPY %2(s8)
+    ; GREEDY: liveins: $edi
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i8) = COPY $dil
+    ; GREEDY-NEXT: [[DEF:%[0-9]+]]:gpr(i8) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[ADD:%[0-9]+]]:gpr(i8) = G_ADD [[COPY]], [[DEF]]
+    ; GREEDY-NEXT: $al = COPY [[ADD]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %0(i8) = COPY $dil
+    %1(i8) = G_IMPLICIT_DEF
+    %2(i8) = G_ADD %0, %1
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -1765,15 +1857,16 @@ constants:
 body:             |
   bb.1 (%ir-block.0):
     ; FAST-LABEL: name: test_undef3
-    ; FAST: [[DEF:%[0-9]+]]:vecr(s128) = G_IMPLICIT_DEF
-    ; FAST: $xmm0 = COPY [[DEF]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST: [[DEF:%[0-9]+]]:vecr(i128) = G_IMPLICIT_DEF
+    ; FAST-NEXT: $xmm0 = COPY [[DEF]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_undef3
-    ; GREEDY: [[DEF:%[0-9]+]]:vecr(s128) = G_IMPLICIT_DEF
-    ; GREEDY: $xmm0 = COPY [[DEF]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %1(s128) = G_IMPLICIT_DEF
-    $xmm0 = COPY %1(s128)
+    ; GREEDY: [[DEF:%[0-9]+]]:vecr(i128) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: $xmm0 = COPY [[DEF]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %1(i128) = G_IMPLICIT_DEF
+    $xmm0 = COPY %1(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -1797,29 +1890,32 @@ body:             |
     liveins: $xmm0
 
     ; FAST-LABEL: name: test_undef4
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; FAST: [[FADD:%[0-9]+]]:vecr(s32) = G_FADD [[TRUNC]], [[COPY1]]
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FADD]](s32)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST: liveins: $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; FAST-NEXT: [[FADD:%[0-9]+]]:vecr(f32) = G_FADD [[TRUNC]], [[DEF]]
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FADD]](f32)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_undef4
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[DEF:%[0-9]+]]:gpr(s32) = G_IMPLICIT_DEF
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s32) = COPY [[DEF]](s32)
-    ; GREEDY: [[FADD:%[0-9]+]]:vecr(s32) = G_FADD [[TRUNC]], [[COPY1]]
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FADD]](s32)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s32) = G_IMPLICIT_DEF
-    %3:_(s32) = G_FADD %0, %2
-    %4:_(s128) = G_ANYEXT %3(s32)
-    $xmm0 = COPY %4(s128)
+    ; GREEDY: liveins: $xmm0
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[DEF:%[0-9]+]]:vecr(f32) = G_IMPLICIT_DEF
+    ; GREEDY-NEXT: [[FADD:%[0-9]+]]:vecr(f32) = G_FADD [[TRUNC]], [[DEF]]
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FADD]](f32)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(f32) = G_IMPLICIT_DEF
+    %3:_(f32) = G_FADD %0, %2
+    %4:_(i128) = G_ANYEXT %3(f32)
+    $xmm0 = COPY %4(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -1840,57 +1936,68 @@ registers:
 body:             |
   ; FAST-LABEL: name: test_i32
   ; FAST: bb.0.entry:
-  ; FAST:   successors: %bb.1(0x40000000), %bb.2(0x40000000)
-  ; FAST:   liveins: $edi, $edx, $esi
-  ; FAST:   [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-  ; FAST:   [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-  ; FAST:   [[COPY2:%[0-9]+]]:gpr(s32) = COPY $edx
-  ; FAST:   [[C:%[0-9]+]]:gpr(s32) = G_CONSTANT i32 0
-  ; FAST:   [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(sgt), [[COPY]](s32), [[C]]
-  ; FAST:   [[TRUNC:%[0-9]+]]:gpr(s1) = G_TRUNC [[ICMP]](s8)
-  ; FAST:   G_BRCOND [[TRUNC]](s1), %bb.1
-  ; FAST:   G_BR %bb.2
-  ; FAST: bb.1.cond.true:
-  ; FAST:   successors: %bb.3(0x80000000)
-  ; FAST:   G_BR %bb.3
-  ; FAST: bb.2.cond.false:
-  ; FAST:   successors: %bb.3(0x80000000)
-  ; FAST: bb.3.cond.end:
-  ; FAST:   [[PHI:%[0-9]+]]:gpr(s32) = G_PHI [[COPY1]](s32), %bb.1, [[COPY2]](s32), %bb.2
-  ; FAST:   $eax = COPY [[PHI]](s32)
-  ; FAST:   RET 0, implicit $eax
+  ; FAST-NEXT:   successors: %bb.1(0x40000000), %bb.2(0x40000000)
+  ; FAST-NEXT:   liveins: $edi, $edx, $esi
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT:   [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+  ; FAST-NEXT:   [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+  ; FAST-NEXT:   [[COPY2:%[0-9]+]]:gpr(i32) = COPY $edx
+  ; FAST-NEXT:   [[C:%[0-9]+]]:gpr(i32) = G_CONSTANT i32 0
+  ; FAST-NEXT:   [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(sgt), [[COPY]](i32), [[C]]
+  ; FAST-NEXT:   [[TRUNC:%[0-9]+]]:gpr(i1) = G_TRUNC [[ICMP]](i8)
+  ; FAST-NEXT:   G_BRCOND [[TRUNC]](i1), %bb.1
+  ; FAST-NEXT:   G_BR %bb.2
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT: bb.1.cond.true:
+  ; FAST-NEXT:   successors: %bb.3(0x80000000)
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT:   G_BR %bb.3
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT: bb.2.cond.false:
+  ; FAST-NEXT:   successors: %bb.3(0x80000000)
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT: bb.3.cond.end:
+  ; FAST-NEXT:   [[PHI:%[0-9]+]]:gpr(i32) = G_PHI [[COPY1]](i32), %bb.1, [[COPY2]](i32), %bb.2
+  ; FAST-NEXT:   $eax = COPY [[PHI]](i32)
+  ; FAST-NEXT:   RET 0, implicit $eax
+  ;
   ; GREEDY-LABEL: name: test_i32
   ; GREEDY: bb.0.entry:
-  ; GREEDY:   successors: %bb.1(0x40000000), %bb.2(0x40000000)
-  ; GREEDY:   liveins: $edi, $edx, $esi
-  ; GREEDY:   [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-  ; GREEDY:   [[COPY1:%[0-9]+]]:gpr(s32) = COPY $esi
-  ; GREEDY:   [[COPY2:%[0-9]+]]:gpr(s32) = COPY $edx
-  ; GREEDY:   [[C:%[0-9]+]]:gpr(s32) = G_CONSTANT i32 0
-  ; GREEDY:   [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(sgt), [[COPY]](s32), [[C]]
-  ; GREEDY:   [[TRUNC:%[0-9]+]]:gpr(s1) = G_TRUNC [[ICMP]](s8)
-  ; GREEDY:   G_BRCOND [[TRUNC]](s1), %bb.1
-  ; GREEDY:   G_BR %bb.2
-  ; GREEDY: bb.1.cond.true:
-  ; GREEDY:   successors: %bb.3(0x80000000)
-  ; GREEDY:   G_BR %bb.3
-  ; GREEDY: bb.2.cond.false:
-  ; GREEDY:   successors: %bb.3(0x80000000)
-  ; GREEDY: bb.3.cond.end:
-  ; GREEDY:   [[PHI:%[0-9]+]]:gpr(s32) = G_PHI [[COPY1]](s32), %bb.1, [[COPY2]](s32), %bb.2
-  ; GREEDY:   $eax = COPY [[PHI]](s32)
-  ; GREEDY:   RET 0, implicit $eax
+  ; GREEDY-NEXT:   successors: %bb.1(0x40000000), %bb.2(0x40000000)
+  ; GREEDY-NEXT:   liveins: $edi, $edx, $esi
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT:   [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+  ; GREEDY-NEXT:   [[COPY1:%[0-9]+]]:gpr(i32) = COPY $esi
+  ; GREEDY-NEXT:   [[COPY2:%[0-9]+]]:gpr(i32) = COPY $edx
+  ; GREEDY-NEXT:   [[C:%[0-9]+]]:gpr(i32) = G_CONSTANT i32 0
+  ; GREEDY-NEXT:   [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(sgt), [[COPY]](i32), [[C]]
+  ; GREEDY-NEXT:   [[TRUNC:%[0-9]+]]:gpr(i1) = G_TRUNC [[ICMP]](i8)
+  ; GREEDY-NEXT:   G_BRCOND [[TRUNC]](i1), %bb.1
+  ; GREEDY-NEXT:   G_BR %bb.2
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT: bb.1.cond.true:
+  ; GREEDY-NEXT:   successors: %bb.3(0x80000000)
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT:   G_BR %bb.3
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT: bb.2.cond.false:
+  ; GREEDY-NEXT:   successors: %bb.3(0x80000000)
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT: bb.3.cond.end:
+  ; GREEDY-NEXT:   [[PHI:%[0-9]+]]:gpr(i32) = G_PHI [[COPY1]](i32), %bb.1, [[COPY2]](i32), %bb.2
+  ; GREEDY-NEXT:   $eax = COPY [[PHI]](i32)
+  ; GREEDY-NEXT:   RET 0, implicit $eax
   bb.0.entry:
     successors: %bb.1(0x40000000), %bb.2(0x40000000)
     liveins: $edi, $edx, $esi
 
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %2(s32) = COPY $edx
-    %3(s32) = G_CONSTANT i32 0
-    %6(s8) = G_ICMP intpred(sgt), %0(s32), %3
-    %4(s1) = G_TRUNC %6(s8)
-    G_BRCOND %4(s1), %bb.1
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %2(i32) = COPY $edx
+    %3(i32) = G_CONSTANT i32 0
+    %6(i8) = G_ICMP intpred(sgt), %0(i32), %3
+    %4(i1) = G_TRUNC %6(i8)
+    G_BRCOND %4(i1), %bb.1
     G_BR %bb.2
 
   bb.1.cond.true:
@@ -1902,8 +2009,8 @@ body:             |
     successors: %bb.3(0x80000000)
 
   bb.3.cond.end:
-    %5(s32) = G_PHI %1(s32), %bb.1, %2(s32), %bb.2
-    $eax = COPY %5(s32)
+    %5(i32) = G_PHI %1(i32), %bb.1, %2(i32), %bb.2
+    $eax = COPY %5(i32)
     RET 0, implicit $eax
 
 ...
@@ -1923,66 +2030,73 @@ registers:
 body:             |
   ; FAST-LABEL: name: test_float
   ; FAST: bb.0.entry:
-  ; FAST:   successors: %bb.2(0x40000000), %bb.1(0x40000000)
-  ; FAST:   liveins: $edi, $xmm0, $xmm1
-  ; FAST:   [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-  ; FAST:   [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm0
-  ; FAST:   [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-  ; FAST:   [[COPY2:%[0-9]+]]:vecr(s128) = COPY $xmm1
-  ; FAST:   [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY2]](s128)
-  ; FAST:   [[C:%[0-9]+]]:gpr(s32) = G_CONSTANT i32 0
-  ; FAST:   [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(sgt), [[COPY]](s32), [[C]]
-  ; FAST:   [[TRUNC2:%[0-9]+]]:gpr(s1) = G_TRUNC [[ICMP]](s8)
-  ; FAST:   G_BRCOND [[TRUNC2]](s1), %bb.2
-  ; FAST: bb.1.cond.false:
-  ; FAST:   successors: %bb.2(0x80000000)
-  ; FAST: bb.2.cond.end:
-  ; FAST:   [[PHI:%[0-9]+]]:vecr(s32) = G_PHI [[TRUNC1]](s32), %bb.1, [[TRUNC]](s32), %bb.0
-  ; FAST:   [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[PHI]](s32)
-  ; FAST:   $xmm0 = COPY [[ANYEXT]](s128)
-  ; FAST:   RET 0, implicit $xmm0
+  ; FAST-NEXT:   successors: %bb.2(0x40000000), %bb.1(0x40000000)
+  ; FAST-NEXT:   liveins: $edi, $xmm0, $xmm1
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT:   [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+  ; FAST-NEXT:   [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm0
+  ; FAST-NEXT:   [[TRUNC:%[0-9]+]]:vecr(i32) = G_TRUNC [[COPY1]](i128)
+  ; FAST-NEXT:   [[COPY2:%[0-9]+]]:vecr(i128) = COPY $xmm1
+  ; FAST-NEXT:   [[TRUNC1:%[0-9]+]]:vecr(i32) = G_TRUNC [[COPY2]](i128)
+  ; FAST-NEXT:   [[C:%[0-9]+]]:gpr(i32) = G_CONSTANT i32 0
+  ; FAST-NEXT:   [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(sgt), [[COPY]](i32), [[C]]
+  ; FAST-NEXT:   [[TRUNC2:%[0-9]+]]:gpr(i1) = G_TRUNC [[ICMP]](i8)
+  ; FAST-NEXT:   G_BRCOND [[TRUNC2]](i1), %bb.2
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT: bb.1.cond.false:
+  ; FAST-NEXT:   successors: %bb.2(0x80000000)
+  ; FAST-NEXT: {{  $}}
+  ; FAST-NEXT: bb.2.cond.end:
+  ; FAST-NEXT:   [[PHI:%[0-9]+]]:vecr(i32) = G_PHI [[TRUNC1]](i32), %bb.1, [[TRUNC]](i32), %bb.0
+  ; FAST-NEXT:   [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[PHI]](i32)
+  ; FAST-NEXT:   $xmm0 = COPY [[ANYEXT]](i128)
+  ; FAST-NEXT:   RET 0, implicit $xmm0
+  ;
   ; GREEDY-LABEL: name: test_float
   ; GREEDY: bb.0.entry:
-  ; GREEDY:   successors: %bb.2(0x40000000), %bb.1(0x40000000)
-  ; GREEDY:   liveins: $edi, $xmm0, $xmm1
-  ; GREEDY:   [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-  ; GREEDY:   [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm0
-  ; GREEDY:   [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-  ; GREEDY:   [[COPY2:%[0-9]+]]:vecr(s128) = COPY $xmm1
-  ; GREEDY:   [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY2]](s128)
-  ; GREEDY:   [[C:%[0-9]+]]:gpr(s32) = G_CONSTANT i32 0
-  ; GREEDY:   [[ICMP:%[0-9]+]]:gpr(s8) = G_ICMP intpred(sgt), [[COPY]](s32), [[C]]
-  ; GREEDY:   [[TRUNC2:%[0-9]+]]:gpr(s1) = G_TRUNC [[ICMP]](s8)
-  ; GREEDY:   G_BRCOND [[TRUNC2]](s1), %bb.2
-  ; GREEDY: bb.1.cond.false:
-  ; GREEDY:   successors: %bb.2(0x80000000)
-  ; GREEDY: bb.2.cond.end:
-  ; GREEDY:   [[PHI:%[0-9]+]]:vecr(s32) = G_PHI [[TRUNC1]](s32), %bb.1, [[TRUNC]](s32), %bb.0
-  ; GREEDY:   [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[PHI]](s32)
-  ; GREEDY:   $xmm0 = COPY [[ANYEXT]](s128)
-  ; GREEDY:   RET 0, implicit $xmm0
+  ; GREEDY-NEXT:   successors: %bb.2(0x40000000), %bb.1(0x40000000)
+  ; GREEDY-NEXT:   liveins: $edi, $xmm0, $xmm1
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT:   [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+  ; GREEDY-NEXT:   [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm0
+  ; GREEDY-NEXT:   [[TRUNC:%[0-9]+]]:vecr(i32) = G_TRUNC [[COPY1]](i128)
+  ; GREEDY-NEXT:   [[COPY2:%[0-9]+]]:vecr(i128) = COPY $xmm1
+  ; GREEDY-NEXT:   [[TRUNC1:%[0-9]+]]:vecr(i32) = G_TRUNC [[COPY2]](i128)
+  ; GREEDY-NEXT:   [[C:%[0-9]+]]:gpr(i32) = G_CONSTANT i32 0
+  ; GREEDY-NEXT:   [[ICMP:%[0-9]+]]:gpr(i8) = G_ICMP intpred(sgt), [[COPY]](i32), [[C]]
+  ; GREEDY-NEXT:   [[TRUNC2:%[0-9]+]]:gpr(i1) = G_TRUNC [[ICMP]](i8)
+  ; GREEDY-NEXT:   G_BRCOND [[TRUNC2]](i1), %bb.2
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT: bb.1.cond.false:
+  ; GREEDY-NEXT:   successors: %bb.2(0x80000000)
+  ; GREEDY-NEXT: {{  $}}
+  ; GREEDY-NEXT: bb.2.cond.end:
+  ; GREEDY-NEXT:   [[PHI:%[0-9]+]]:vecr(i32) = G_PHI [[TRUNC1]](i32), %bb.1, [[TRUNC]](i32), %bb.0
+  ; GREEDY-NEXT:   [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[PHI]](i32)
+  ; GREEDY-NEXT:   $xmm0 = COPY [[ANYEXT]](i128)
+  ; GREEDY-NEXT:   RET 0, implicit $xmm0
   bb.1.entry:
     successors: %bb.3(0x40000000), %bb.2(0x40000000)
     liveins: $edi, $xmm0, $xmm1
 
-    %0:_(s32) = COPY $edi
-    %3:_(s128) = COPY $xmm0
-    %1:_(s32) = G_TRUNC %3(s128)
-    %4:_(s128) = COPY $xmm1
-    %2:_(s32) = G_TRUNC %4(s128)
-    %5:_(s32) = G_CONSTANT i32 0
-    %9:_(s8) = G_ICMP intpred(sgt), %0(s32), %5
-    %6:_(s1) = G_TRUNC %9(s8)
-    G_BRCOND %6(s1), %bb.3
+    %0:_(i32) = COPY $edi
+    %3:_(i128) = COPY $xmm0
+    %1:_(i32) = G_TRUNC %3(i128)
+    %4:_(i128) = COPY $xmm1
+    %2:_(i32) = G_TRUNC %4(i128)
+    %5:_(i32) = G_CONSTANT i32 0
+    %9:_(i8) = G_ICMP intpred(sgt), %0(i32), %5
+    %6:_(i1) = G_TRUNC %9(i8)
+    G_BRCOND %6(i1), %bb.3
 
   bb.2.cond.false:
     successors: %bb.3(0x80000000)
 
 
   bb.3.cond.end:
-    %7:_(s32) = G_PHI %2(s32), %bb.2, %1(s32), %bb.1
-    %8:_(s128) = G_ANYEXT %7(s32)
-    $xmm0 = COPY %8(s128)
+    %7:_(i32) = G_PHI %2(i32), %bb.2, %1(i32), %bb.1
+    %8:_(i128) = G_ANYEXT %7(i32)
+    $xmm0 = COPY %8(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -1999,24 +2113,29 @@ body:             |
     liveins: $xmm0
 
     ; FAST-LABEL: name: test_fpext
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPEXT:%[0-9]+]]:vecr(s64) = G_FPEXT [[TRUNC]](s32)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FPEXT]](s64)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST: liveins: $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPEXT:%[0-9]+]]:vecr(f64) = G_FPEXT [[TRUNC]](f32)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FPEXT]](f64)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_fpext
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPEXT:%[0-9]+]]:vecr(s64) = G_FPEXT [[TRUNC]](s32)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FPEXT]](s64)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s64) = G_FPEXT %0(s32)
-    %3:_(s128) = G_ANYEXT %2(s64)
-    $xmm0 = COPY %3(s128)
+    ; GREEDY: liveins: $xmm0
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPEXT:%[0-9]+]]:vecr(f64) = G_FPEXT [[TRUNC]](f32)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FPEXT]](f64)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(f64) = G_FPEXT %0(f32)
+    %3:_(i128) = G_ANYEXT %2(f64)
+    $xmm0 = COPY %3(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -2036,25 +2155,28 @@ body:             |
 
     ; FAST-LABEL: name: test_fptrunc
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTRUNC:%[0-9]+]]:vecr(s32) = G_FPTRUNC [[TRUNC]](s64)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FPTRUNC]](s32)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTRUNC:%[0-9]+]]:vecr(f32) = G_FPTRUNC [[TRUNC]](f64)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FPTRUNC]](f32)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: test_fptrunc
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTRUNC:%[0-9]+]]:vecr(s32) = G_FPTRUNC [[TRUNC]](s64)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[FPTRUNC]](s32)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %2:_(s32) = G_FPTRUNC %0(s64)
-    %3:_(s128) = G_ANYEXT %2(s32)
-    $xmm0 = COPY %3(s128)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTRUNC:%[0-9]+]]:vecr(f32) = G_FPTRUNC [[TRUNC]](f64)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[FPTRUNC]](f32)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %2:_(f32) = G_FPTRUNC %0(f64)
+    %3:_(i128) = G_ANYEXT %2(f32)
+    $xmm0 = COPY %3(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -2068,13 +2190,14 @@ registers:
 body: |
   bb.0:
     ; FAST-LABEL: name: test_fconstant
-    ; FAST: [[C:%[0-9]+]]:vecr(s32) = G_FCONSTANT float 1.000000e+00
-    ; FAST: [[C1:%[0-9]+]]:vecr(s64) = G_FCONSTANT double 2.000000e+00
+    ; FAST: [[C:%[0-9]+]]:vecr(f32) = G_FCONSTANT float 1.000000e+00
+    ; FAST-NEXT: [[C1:%[0-9]+]]:vecr(f64) = G_FCONSTANT double 2.000000e+00
+    ;
     ; GREEDY-LABEL: name: test_fconstant
-    ; GREEDY: [[C:%[0-9]+]]:vecr(s32) = G_FCONSTANT float 1.000000e+00
-    ; GREEDY: [[C1:%[0-9]+]]:vecr(s64) = G_FCONSTANT double 2.000000e+00
-    %0(s32) = G_FCONSTANT float 1.0
-    %1(s64) = G_FCONSTANT double 2.0
+    ; GREEDY: [[C:%[0-9]+]]:vecr(f32) = G_FCONSTANT float 1.000000e+00
+    ; GREEDY-NEXT: [[C1:%[0-9]+]]:vecr(f64) = G_FCONSTANT double 2.000000e+00
+    %0(f32) = G_FCONSTANT float 1.0
+    %1(f64) = G_FCONSTANT double 2.0
 
 ...
 ---
@@ -2092,22 +2215,25 @@ body:             |
 
     ; FAST-LABEL: name: int32_to_float
     ; FAST: liveins: $edi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; FAST: [[SITOFP:%[0-9]+]]:vecr(s32) = G_SITOFP [[COPY]](s32)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; FAST-NEXT: [[SITOFP:%[0-9]+]]:vecr(f32) = G_SITOFP [[COPY]](i32)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: int32_to_float
     ; GREEDY: liveins: $edi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; GREEDY: [[SITOFP:%[0-9]+]]:vecr(s32) = G_SITOFP [[COPY]](s32)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %0:_(s32) = COPY $edi
-    %1:_(s32) = G_SITOFP %0(s32)
-    %2:_(s128) = G_ANYEXT %1(s32)
-    $xmm0 = COPY %2(s128)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; GREEDY-NEXT: [[SITOFP:%[0-9]+]]:vecr(f32) = G_SITOFP [[COPY]](i32)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %0:_(i32) = COPY $edi
+    %1:_(f32) = G_SITOFP %0(i32)
+    %2:_(i128) = G_ANYEXT %1(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -2126,22 +2252,25 @@ body:             |
 
     ; FAST-LABEL: name: int64_to_float
     ; FAST: liveins: $rdi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; FAST: [[SITOFP:%[0-9]+]]:vecr(s32) = G_SITOFP [[COPY]](s64)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; FAST-NEXT: [[SITOFP:%[0-9]+]]:vecr(f32) = G_SITOFP [[COPY]](i64)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: int64_to_float
     ; GREEDY: liveins: $rdi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; GREEDY: [[SITOFP:%[0-9]+]]:vecr(s32) = G_SITOFP [[COPY]](s64)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %0:_(s64) = COPY $rdi
-    %1:_(s32) = G_SITOFP %0(s64)
-    %2:_(s128) = G_ANYEXT %1(s32)
-    $xmm0 = COPY %2(s128)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; GREEDY-NEXT: [[SITOFP:%[0-9]+]]:vecr(f32) = G_SITOFP [[COPY]](i64)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %0:_(i64) = COPY $rdi
+    %1:_(f32) = G_SITOFP %0(i64)
+    %2:_(i128) = G_ANYEXT %1(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -2160,22 +2289,25 @@ body:             |
 
     ; FAST-LABEL: name: int32_to_double
     ; FAST: liveins: $edi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; FAST: [[SITOFP:%[0-9]+]]:vecr(s64) = G_SITOFP [[COPY]](s32)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; FAST-NEXT: [[SITOFP:%[0-9]+]]:vecr(f64) = G_SITOFP [[COPY]](i32)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: int32_to_double
     ; GREEDY: liveins: $edi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s32) = COPY $edi
-    ; GREEDY: [[SITOFP:%[0-9]+]]:vecr(s64) = G_SITOFP [[COPY]](s32)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %0:_(s32) = COPY $edi
-    %1:_(s64) = G_SITOFP %0(s32)
-    %2:_(s128) = G_ANYEXT %1(s64)
-    $xmm0 = COPY %2(s128)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i32) = COPY $edi
+    ; GREEDY-NEXT: [[SITOFP:%[0-9]+]]:vecr(f64) = G_SITOFP [[COPY]](i32)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %0:_(i32) = COPY $edi
+    %1:_(f64) = G_SITOFP %0(i32)
+    %2:_(i128) = G_ANYEXT %1(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -2194,22 +2326,25 @@ body:             |
 
     ; FAST-LABEL: name: int64_to_double
     ; FAST: liveins: $rdi
-    ; FAST: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; FAST: [[SITOFP:%[0-9]+]]:vecr(s64) = G_SITOFP [[COPY]](s64)
-    ; FAST: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; FAST: $xmm0 = COPY [[ANYEXT]](s128)
-    ; FAST: RET 0, implicit $xmm0
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; FAST-NEXT: [[SITOFP:%[0-9]+]]:vecr(f64) = G_SITOFP [[COPY]](i64)
+    ; FAST-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; FAST-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; FAST-NEXT: RET 0, implicit $xmm0
+    ;
     ; GREEDY-LABEL: name: int64_to_double
     ; GREEDY: liveins: $rdi
-    ; GREEDY: [[COPY:%[0-9]+]]:gpr(s64) = COPY $rdi
-    ; GREEDY: [[SITOFP:%[0-9]+]]:vecr(s64) = G_SITOFP [[COPY]](s64)
-    ; GREEDY: [[ANYEXT:%[0-9]+]]:vecr(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; GREEDY: $xmm0 = COPY [[ANYEXT]](s128)
-    ; GREEDY: RET 0, implicit $xmm0
-    %0:_(s64) = COPY $rdi
-    %1:_(s64) = G_SITOFP %0(s64)
-    %2:_(s128) = G_ANYEXT %1(s64)
-    $xmm0 = COPY %2(s128)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:gpr(i64) = COPY $rdi
+    ; GREEDY-NEXT: [[SITOFP:%[0-9]+]]:vecr(f64) = G_SITOFP [[COPY]](i64)
+    ; GREEDY-NEXT: [[ANYEXT:%[0-9]+]]:vecr(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; GREEDY-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; GREEDY-NEXT: RET 0, implicit $xmm0
+    %0:_(i64) = COPY $rdi
+    %1:_(f64) = G_SITOFP %0(i64)
+    %2:_(i128) = G_ANYEXT %1(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -2229,25 +2364,28 @@ body:             |
 
     ; FAST-LABEL: name: float_to_int8
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; FAST: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[FPTOSI]](s32)
-    ; FAST: $al = COPY [[TRUNC1]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[FPTOSI]](i32)
+    ; FAST-NEXT: $al = COPY [[TRUNC1]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: float_to_int8
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[FPTOSI]](s32)
-    ; GREEDY: $al = COPY [[TRUNC1]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %3:_(s32) = G_FPTOSI %0(s32)
-    %2:_(s8) = G_TRUNC %3(s32)
-    $al = COPY %2(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[FPTOSI]](i32)
+    ; GREEDY-NEXT: $al = COPY [[TRUNC1]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %3:_(i32) = G_FPTOSI %0(f32)
+    %2:_(i8) = G_TRUNC %3(i32)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -2267,25 +2405,28 @@ body:             |
 
     ; FAST-LABEL: name: float_to_int16
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; FAST: [[TRUNC1:%[0-9]+]]:gpr(s16) = G_TRUNC [[FPTOSI]](s32)
-    ; FAST: $ax = COPY [[TRUNC1]](s16)
-    ; FAST: RET 0, implicit $ax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i16) = G_TRUNC [[FPTOSI]](i32)
+    ; FAST-NEXT: $ax = COPY [[TRUNC1]](i16)
+    ; FAST-NEXT: RET 0, implicit $ax
+    ;
     ; GREEDY-LABEL: name: float_to_int16
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:gpr(s16) = G_TRUNC [[FPTOSI]](s32)
-    ; GREEDY: $ax = COPY [[TRUNC1]](s16)
-    ; GREEDY: RET 0, implicit $ax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %3:_(s32) = G_FPTOSI %0(s32)
-    %2:_(s16) = G_TRUNC %3(s32)
-    $ax = COPY %2(s16)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i16) = G_TRUNC [[FPTOSI]](i32)
+    ; GREEDY-NEXT: $ax = COPY [[TRUNC1]](i16)
+    ; GREEDY-NEXT: RET 0, implicit $ax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %3:_(i32) = G_FPTOSI %0(f32)
+    %2:_(i16) = G_TRUNC %3(i32)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -2304,22 +2445,25 @@ body:             |
 
     ; FAST-LABEL: name: float_to_int32
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; FAST: $eax = COPY [[FPTOSI]](s32)
-    ; FAST: RET 0, implicit $eax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; FAST-NEXT: $eax = COPY [[FPTOSI]](i32)
+    ; FAST-NEXT: RET 0, implicit $eax
+    ;
     ; GREEDY-LABEL: name: float_to_int32
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s32)
-    ; GREEDY: $eax = COPY [[FPTOSI]](s32)
-    ; GREEDY: RET 0, implicit $eax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s32) = G_FPTOSI %0(s32)
-    $eax = COPY %2(s32)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f32)
+    ; GREEDY-NEXT: $eax = COPY [[FPTOSI]](i32)
+    ; GREEDY-NEXT: RET 0, implicit $eax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(i32) = G_FPTOSI %0(f32)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -2338,22 +2482,25 @@ body:             |
 
     ; FAST-LABEL: name: float_to_int64
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s64) = G_FPTOSI [[TRUNC]](s32)
-    ; FAST: $rax = COPY [[FPTOSI]](s64)
-    ; FAST: RET 0, implicit $rax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i64) = G_FPTOSI [[TRUNC]](f32)
+    ; FAST-NEXT: $rax = COPY [[FPTOSI]](i64)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: float_to_int64
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s64) = G_FPTOSI [[TRUNC]](s32)
-    ; GREEDY: $rax = COPY [[FPTOSI]](s64)
-    ; GREEDY: RET 0, implicit $rax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %1(s128)
-    %2:_(s64) = G_FPTOSI %0(s32)
-    $rax = COPY %2(s64)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i64) = G_FPTOSI [[TRUNC]](f32)
+    ; GREEDY-NEXT: $rax = COPY [[FPTOSI]](i64)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %1(i128)
+    %2:_(i64) = G_FPTOSI %0(f32)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -2373,25 +2520,28 @@ body:             |
 
     ; FAST-LABEL: name: double_to_int8
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; FAST: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[FPTOSI]](s32)
-    ; FAST: $al = COPY [[TRUNC1]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[FPTOSI]](i32)
+    ; FAST-NEXT: $al = COPY [[TRUNC1]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: double_to_int8
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:gpr(s8) = G_TRUNC [[FPTOSI]](s32)
-    ; GREEDY: $al = COPY [[TRUNC1]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %3:_(s32) = G_FPTOSI %0(s64)
-    %2:_(s8) = G_TRUNC %3(s32)
-    $al = COPY %2(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i8) = G_TRUNC [[FPTOSI]](i32)
+    ; GREEDY-NEXT: $al = COPY [[TRUNC1]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %3:_(i32) = G_FPTOSI %0(f64)
+    %2:_(i8) = G_TRUNC %3(i32)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -2411,25 +2561,28 @@ body:             |
 
     ; FAST-LABEL: name: double_to_int16
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; FAST: [[TRUNC1:%[0-9]+]]:gpr(s16) = G_TRUNC [[FPTOSI]](s32)
-    ; FAST: $ax = COPY [[TRUNC1]](s16)
-    ; FAST: RET 0, implicit $ax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i16) = G_TRUNC [[FPTOSI]](i32)
+    ; FAST-NEXT: $ax = COPY [[TRUNC1]](i16)
+    ; FAST-NEXT: RET 0, implicit $ax
+    ;
     ; GREEDY-LABEL: name: double_to_int16
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:gpr(s16) = G_TRUNC [[FPTOSI]](s32)
-    ; GREEDY: $ax = COPY [[TRUNC1]](s16)
-    ; GREEDY: RET 0, implicit $ax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %3:_(s32) = G_FPTOSI %0(s64)
-    %2:_(s16) = G_TRUNC %3(s32)
-    $ax = COPY %2(s16)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:gpr(i16) = G_TRUNC [[FPTOSI]](i32)
+    ; GREEDY-NEXT: $ax = COPY [[TRUNC1]](i16)
+    ; GREEDY-NEXT: RET 0, implicit $ax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %3:_(i32) = G_FPTOSI %0(f64)
+    %2:_(i16) = G_TRUNC %3(i32)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -2448,22 +2601,25 @@ body:             |
 
     ; FAST-LABEL: name: double_to_int32
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; FAST: $eax = COPY [[FPTOSI]](s32)
-    ; FAST: RET 0, implicit $eax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; FAST-NEXT: $eax = COPY [[FPTOSI]](i32)
+    ; FAST-NEXT: RET 0, implicit $eax
+    ;
     ; GREEDY-LABEL: name: double_to_int32
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s32) = G_FPTOSI [[TRUNC]](s64)
-    ; GREEDY: $eax = COPY [[FPTOSI]](s32)
-    ; GREEDY: RET 0, implicit $eax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %2:_(s32) = G_FPTOSI %0(s64)
-    $eax = COPY %2(s32)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i32) = G_FPTOSI [[TRUNC]](f64)
+    ; GREEDY-NEXT: $eax = COPY [[FPTOSI]](i32)
+    ; GREEDY-NEXT: RET 0, implicit $eax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %2:_(i32) = G_FPTOSI %0(f64)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -2482,22 +2638,25 @@ body:             |
 
     ; FAST-LABEL: name: double_to_int64
     ; FAST: liveins: $xmm0
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[FPTOSI:%[0-9]+]]:gpr(s64) = G_FPTOSI [[TRUNC]](s64)
-    ; FAST: $rax = COPY [[FPTOSI]](s64)
-    ; FAST: RET 0, implicit $rax
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i64) = G_FPTOSI [[TRUNC]](f64)
+    ; FAST-NEXT: $rax = COPY [[FPTOSI]](i64)
+    ; FAST-NEXT: RET 0, implicit $rax
+    ;
     ; GREEDY-LABEL: name: double_to_int64
     ; GREEDY: liveins: $xmm0
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[FPTOSI:%[0-9]+]]:gpr(s64) = G_FPTOSI [[TRUNC]](s64)
-    ; GREEDY: $rax = COPY [[FPTOSI]](s64)
-    ; GREEDY: RET 0, implicit $rax
-    %1:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %1(s128)
-    %2:_(s64) = G_FPTOSI %0(s64)
-    $rax = COPY %2(s64)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[FPTOSI:%[0-9]+]]:gpr(i64) = G_FPTOSI [[TRUNC]](f64)
+    ; GREEDY-NEXT: $rax = COPY [[FPTOSI]](i64)
+    ; GREEDY-NEXT: RET 0, implicit $rax
+    %1:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %1(i128)
+    %2:_(i64) = G_FPTOSI %0(f64)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -2520,31 +2679,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_oeq
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oeq), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oeq), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_oeq
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oeq), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(oeq), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oeq), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(oeq), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2567,31 +2729,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_ogt
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ogt), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ogt), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_ogt
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ogt), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ogt), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ogt), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ogt), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2614,31 +2779,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_oge
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oge), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oge), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_oge
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oge), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(oge), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oge), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(oge), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2661,31 +2829,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_olt
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(olt), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(olt), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_olt
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(olt), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(olt), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(olt), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(olt), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2708,31 +2879,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_ole
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ole), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ole), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_ole
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ole), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ole), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ole), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ole), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2755,31 +2929,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_one
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(one), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(one), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_one
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(one), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(one), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(one), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(one), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2802,31 +2979,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_ord
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ord), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ord), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_ord
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ord), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ord), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ord), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ord), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2849,31 +3029,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_uno
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uno), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uno), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_uno
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uno), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(uno), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uno), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(uno), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2896,31 +3079,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_ueq
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ueq), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ueq), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_ueq
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ueq), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ueq), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ueq), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ueq), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2943,31 +3129,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_ugt
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ugt), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ugt), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_ugt
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ugt), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ugt), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ugt), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ugt), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -2990,31 +3179,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_uge
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uge), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uge), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_uge
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uge), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(uge), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uge), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(uge), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3037,31 +3229,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_ult
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ult), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ult), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_ult
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ult), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ult), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ult), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ult), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3084,31 +3279,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_ule
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ule), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ule), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_ule
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ule), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ule), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ule), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ule), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3131,31 +3329,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_float_une
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(une), [[TRUNC]](s32), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(une), [[TRUNC]](f32), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_float_une
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s32) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(une), [[TRUNC]](s32), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(une), %0(s32), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f32) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(une), [[TRUNC]](f32), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(une), %0(f32), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3178,31 +3379,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_oeq
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oeq), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oeq), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_oeq
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oeq), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(oeq), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oeq), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(oeq), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3225,31 +3429,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_ogt
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ogt), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ogt), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_ogt
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ogt), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ogt), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ogt), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ogt), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3272,31 +3479,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_oge
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oge), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oge), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_oge
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(oge), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(oge), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(oge), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(oge), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3319,31 +3529,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_olt
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(olt), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(olt), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_olt
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(olt), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(olt), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(olt), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(olt), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3366,31 +3579,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_ole
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ole), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ole), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_ole
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ole), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ole), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ole), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ole), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3413,31 +3629,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_one
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(one), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(one), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_one
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(one), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(one), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(one), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(one), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3460,31 +3679,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_ord
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ord), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ord), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_ord
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ord), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ord), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ord), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ord), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3507,31 +3729,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_uno
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uno), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uno), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_uno
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uno), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(uno), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uno), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(uno), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3554,31 +3779,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_ueq
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ueq), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ueq), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_ueq
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ueq), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ueq), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ueq), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ueq), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3601,31 +3829,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_ugt
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ugt), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ugt), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_ugt
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ugt), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ugt), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ugt), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ugt), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3648,31 +3879,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_uge
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uge), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uge), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_uge
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(uge), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(uge), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(uge), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(uge), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3695,31 +3929,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_ult
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ult), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ult), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_ult
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ult), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ult), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ult), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ult), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3742,31 +3979,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_ule
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ule), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ule), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_ule
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(ule), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(ule), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(ule), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(ule), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...
@@ -3789,31 +4029,34 @@ body:             |
 
     ; FAST-LABEL: name: fcmp_double_une
     ; FAST: liveins: $xmm0, $xmm1
-    ; FAST: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; FAST: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; FAST: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; FAST: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; FAST: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(une), [[TRUNC]](s64), [[TRUNC1]]
-    ; FAST: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; FAST: $al = COPY [[COPY2]](s8)
-    ; FAST: RET 0, implicit $al
+    ; FAST-NEXT: {{  $}}
+    ; FAST-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; FAST-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; FAST-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; FAST-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; FAST-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(une), [[TRUNC]](f64), [[TRUNC1]]
+    ; FAST-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; FAST-NEXT: $al = COPY [[COPY2]](i8)
+    ; FAST-NEXT: RET 0, implicit $al
+    ;
     ; GREEDY-LABEL: name: fcmp_double_une
     ; GREEDY: liveins: $xmm0, $xmm1
-    ; GREEDY: [[COPY:%[0-9]+]]:vecr(s128) = COPY $xmm0
-    ; GREEDY: [[TRUNC:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY]](s128)
-    ; GREEDY: [[COPY1:%[0-9]+]]:vecr(s128) = COPY $xmm1
-    ; GREEDY: [[TRUNC1:%[0-9]+]]:vecr(s64) = G_TRUNC [[COPY1]](s128)
-    ; GREEDY: [[FCMP:%[0-9]+]]:gpr(s8) = G_FCMP floatpred(une), [[TRUNC]](s64), [[TRUNC1]]
-    ; GREEDY: [[COPY2:%[0-9]+]]:gpr(s8) = COPY [[FCMP]](s8)
-    ; GREEDY: $al = COPY [[COPY2]](s8)
-    ; GREEDY: RET 0, implicit $al
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %6:_(s8) = G_FCMP floatpred(une), %0(s64), %1
-    %5:_(s8) = COPY %6(s8)
-    $al = COPY %5(s8)
+    ; GREEDY-NEXT: {{  $}}
+    ; GREEDY-NEXT: [[COPY:%[0-9]+]]:vecr(i128) = COPY $xmm0
+    ; GREEDY-NEXT: [[TRUNC:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY]](i128)
+    ; GREEDY-NEXT: [[COPY1:%[0-9]+]]:vecr(i128) = COPY $xmm1
+    ; GREEDY-NEXT: [[TRUNC1:%[0-9]+]]:vecr(f64) = G_TRUNC [[COPY1]](i128)
+    ; GREEDY-NEXT: [[FCMP:%[0-9]+]]:gpr(i8) = G_FCMP floatpred(une), [[TRUNC]](f64), [[TRUNC1]]
+    ; GREEDY-NEXT: [[COPY2:%[0-9]+]]:gpr(i8) = COPY [[FCMP]](i8)
+    ; GREEDY-NEXT: $al = COPY [[COPY2]](i8)
+    ; GREEDY-NEXT: RET 0, implicit $al
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %6:_(i8) = G_FCMP floatpred(une), %0(f64), %1
+    %5:_(i8) = COPY %6(i8)
+    $al = COPY %5(i8)
     RET 0, implicit $al
 
 ...

@@ -28,9 +28,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $al
 
-    %0(s8) = COPY $al
-    %1(s8) = G_CONSTANT i8 1
-    %2(s8) = G_ADD %0, %1
-    $al = COPY %2(s8)
+    %0(i8) = COPY $al
+    %1(i8) = G_CONSTANT i8 1
+    %2(i8) = G_ADD %0, %1
+    $al = COPY %2(i8)
 
 ...

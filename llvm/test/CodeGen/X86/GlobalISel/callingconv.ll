@@ -406,13 +406,9 @@ define void @test_variadic_call_2(ptr %addr_ptr, ptr %val_ptr) {
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %ecx
 ; X32-NEXT:    movl (%eax), %eax
-; X32-NEXT:    movl (%ecx), %edx
-; X32-NEXT:    movl 4(%ecx), %ecx
+; X32-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
 ; X32-NEXT:    movl %eax, (%esp)
-; X32-NEXT:    movl $4, %eax
-; X32-NEXT:    addl %esp, %eax
-; X32-NEXT:    movl %edx, {{[0-9]+}}(%esp)
-; X32-NEXT:    movl %ecx, 4(%eax)
+; X32-NEXT:    movsd %xmm0, {{[0-9]+}}(%esp)
 ; X32-NEXT:    calll variadic_callee
 ; X32-NEXT:    addl $12, %esp
 ; X32-NEXT:    .cfi_def_cfa_offset 4
@@ -423,8 +419,7 @@ define void @test_variadic_call_2(ptr %addr_ptr, ptr %val_ptr) {
 ; X64-NEXT:    pushq %rax
 ; X64-NEXT:    .cfi_def_cfa_offset 16
 ; X64-NEXT:    movq (%rdi), %rdi
-; X64-NEXT:    movq (%rsi), %rax
-; X64-NEXT:    movq %rax, %xmm0
+; X64-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
 ; X64-NEXT:    movb $1, %al
 ; X64-NEXT:    callq variadic_callee
 ; X64-NEXT:    popq %rax

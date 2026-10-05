@@ -56,11 +56,8 @@ define double @exp_f64(double %x) #0 {
 ; GISEL-X86-LABEL: exp_f64:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    subl $12, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstpl (%esp)
 ; GISEL-X86-NEXT:    calll exp
 ; GISEL-X86-NEXT:    addl $12, %esp
 ; GISEL-X86-NEXT:    retl
@@ -123,11 +120,8 @@ define double @exp2_f64(double %x) #0 {
 ; GISEL-X86-LABEL: exp2_f64:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    subl $12, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstpl (%esp)
 ; GISEL-X86-NEXT:    calll exp2
 ; GISEL-X86-NEXT:    addl $12, %esp
 ; GISEL-X86-NEXT:    retl
@@ -190,11 +184,8 @@ define double @log_f64(double %x) #0 {
 ; GISEL-X86-LABEL: log_f64:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    subl $12, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstpl (%esp)
 ; GISEL-X86-NEXT:    calll log
 ; GISEL-X86-NEXT:    addl $12, %esp
 ; GISEL-X86-NEXT:    retl
@@ -257,11 +248,8 @@ define double @log2_f64(double %x) #0 {
 ; GISEL-X86-LABEL: log2_f64:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    subl $12, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstpl (%esp)
 ; GISEL-X86-NEXT:    calll log2
 ; GISEL-X86-NEXT:    addl $12, %esp
 ; GISEL-X86-NEXT:    retl
@@ -324,11 +312,8 @@ define double @log10_f64(double %x) #0 {
 ; GISEL-X86-LABEL: log10_f64:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    subl $12, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstpl (%esp)
 ; GISEL-X86-NEXT:    calll log10
 ; GISEL-X86-NEXT:    addl $12, %esp
 ; GISEL-X86-NEXT:    retl
@@ -399,15 +384,9 @@ define double @pow_f64(double %x) #0 {
 ; GISEL-X86-LABEL: pow_f64:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    subl $28, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
-; GISEL-X86-NEXT:    movl $8, %edx
-; GISEL-X86-NEXT:    addl %esp, %edx
-; GISEL-X86-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
-; GISEL-X86-NEXT:    movl %eax, 4(%edx)
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstl (%esp)
+; GISEL-X86-NEXT:    fstpl {{[0-9]+}}(%esp)
 ; GISEL-X86-NEXT:    calll pow
 ; GISEL-X86-NEXT:    addl $28, %esp
 ; GISEL-X86-NEXT:    retl

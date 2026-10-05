@@ -93,7 +93,7 @@ struct X86OutgoingValueHandler : public CallLowering::OutgoingValueHandler {
                            MachinePointerInfo &MPO,
                            ISD::ArgFlagsTy Flags) override {
     LLT p0 = LLT::pointer(0, DL.getPointerSizeInBits(0));
-    LLT SType = LLT::scalar(DL.getPointerSizeInBits(0));
+    LLT SType = LLT::integer(DL.getPointerSizeInBits(0));
     auto SPReg =
         MIRBuilder.buildCopy(p0, STI.getRegisterInfo()->getStackRegister());
 
@@ -112,7 +112,7 @@ struct X86OutgoingValueHandler : public CallLowering::OutgoingValueHandler {
     Register ExtReg = extendRegister(ValVReg, VA);
     if ((VA.getLocReg() == X86::FP0 || VA.getLocReg() == X86::FP1) &&
         STI.getTargetLowering()->isScalarFPTypeInSSEReg(VA.getValVT()))
-      ExtReg = MIRBuilder.buildFPExt(LLT::scalar(80), ExtReg).getReg(0);
+      ExtReg = MIRBuilder.buildFPExt(LLT::x86fp80(), ExtReg).getReg(0);
     MIRBuilder.buildCopy(PhysReg, ExtReg);
   }
 

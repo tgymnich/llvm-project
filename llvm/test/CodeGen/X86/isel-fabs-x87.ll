@@ -19,7 +19,13 @@ define void @test_float_abs(ptr %argptr)   {
 ;
 ; GISEL-X64-ISEL-LABEL: test_float_abs:
 ; GISEL-X64-ISEL:       # %bb.0:
-; GISEL-X64-ISEL-NEXT:    andl $2147483647, (%rdi) # imm = 0x7FFFFFFF
+; GISEL-X64-ISEL-NEXT:    movl (%rdi), %eax
+; GISEL-X64-ISEL-NEXT:    movl %eax, -{{[0-9]+}}(%rsp)
+; GISEL-X64-ISEL-NEXT:    movl $2147483647, %eax # imm = 0x7FFFFFFF
+; GISEL-X64-ISEL-NEXT:    andl -{{[0-9]+}}(%rsp), %eax
+; GISEL-X64-ISEL-NEXT:    movl %eax, -{{[0-9]+}}(%rsp)
+; GISEL-X64-ISEL-NEXT:    movl -{{[0-9]+}}(%rsp), %eax
+; GISEL-X64-ISEL-NEXT:    movl %eax, (%rdi)
 ; GISEL-X64-ISEL-NEXT:    retq
 ;
 ; SDAG-X86-ISEL-LABEL: test_float_abs:
@@ -36,8 +42,18 @@ define void @test_float_abs(ptr %argptr)   {
 ;
 ; GISEL-X86-ISEL-LABEL: test_float_abs:
 ; GISEL-X86-ISEL:       # %bb.0:
+; GISEL-X86-ISEL-NEXT:    subl $8, %esp
+; GISEL-X86-ISEL-NEXT:    .cfi_def_cfa_offset 12
 ; GISEL-X86-ISEL-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; GISEL-X86-ISEL-NEXT:    andl $2147483647, (%eax) # imm = 0x7FFFFFFF
+; GISEL-X86-ISEL-NEXT:    movl (%eax), %ecx
+; GISEL-X86-ISEL-NEXT:    movl %ecx, (%esp)
+; GISEL-X86-ISEL-NEXT:    movl $2147483647, %ecx # imm = 0x7FFFFFFF
+; GISEL-X86-ISEL-NEXT:    andl (%esp), %ecx
+; GISEL-X86-ISEL-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
+; GISEL-X86-ISEL-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; GISEL-X86-ISEL-NEXT:    movl %ecx, (%eax)
+; GISEL-X86-ISEL-NEXT:    addl $8, %esp
+; GISEL-X86-ISEL-NEXT:    .cfi_def_cfa_offset 4
 ; GISEL-X86-ISEL-NEXT:    retl
      %arg = load  float, ptr %argptr
      %abs = tail call float @llvm.fabs.f32(float %arg)
@@ -58,8 +74,13 @@ define void @test_double_abs(ptr %argptr)  {
 ;
 ; GISEL-X64-ISEL-LABEL: test_double_abs:
 ; GISEL-X64-ISEL:       # %bb.0:
+; GISEL-X64-ISEL-NEXT:    movq (%rdi), %rax
+; GISEL-X64-ISEL-NEXT:    movq %rax, -{{[0-9]+}}(%rsp)
 ; GISEL-X64-ISEL-NEXT:    movabsq $9223372036854775807, %rax # imm = 0x7FFFFFFFFFFFFFFF
-; GISEL-X64-ISEL-NEXT:    andq %rax, (%rdi)
+; GISEL-X64-ISEL-NEXT:    andq -{{[0-9]+}}(%rsp), %rax
+; GISEL-X64-ISEL-NEXT:    movq %rax, -{{[0-9]+}}(%rsp)
+; GISEL-X64-ISEL-NEXT:    movq -{{[0-9]+}}(%rsp), %rax
+; GISEL-X64-ISEL-NEXT:    movq %rax, (%rdi)
 ; GISEL-X64-ISEL-NEXT:    retq
 ;
 ; X86-LABEL: test_double_abs:

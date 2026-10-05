@@ -9,13 +9,13 @@ name:            test_fold64
 body:             |
   bb.0:
     ; X86-32-LABEL: name: test_fold64
-    ; X86-32: [[DEF:%[0-9]+]]:_(s64) = IMPLICIT_DEF
-    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(s64) = G_CONSTANT_FOLD_BARRIER [[DEF]]
-    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY [[CONSTANT_FOLD_BARRIER]](s64)
-    ; X86-32-NEXT: RET 0, implicit [[COPY]](s64)
-    %0:_(s64) = IMPLICIT_DEF
-    %1:_(s64) = G_CONSTANT_FOLD_BARRIER %0
-    %2:_(s64) = COPY %1(s64)
+    ; X86-32: [[DEF:%[0-9]+]]:_(i64) = IMPLICIT_DEF
+    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(i64) = G_CONSTANT_FOLD_BARRIER [[DEF]]
+    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY [[CONSTANT_FOLD_BARRIER]](i64)
+    ; X86-32-NEXT: RET 0, implicit [[COPY]](i64)
+    %0:_(i64) = IMPLICIT_DEF
+    %1:_(i64) = G_CONSTANT_FOLD_BARRIER %0
+    %2:_(i64) = COPY %1(i64)
     RET 0, implicit %2
 
 ...
@@ -24,13 +24,13 @@ name:            test_fold32
 body:             |
   bb.0:
     ; X86-32-LABEL: name: test_fold32
-    ; X86-32: [[DEF:%[0-9]+]]:_(s32) = IMPLICIT_DEF
-    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(s32) = G_CONSTANT_FOLD_BARRIER [[DEF]]
-    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY [[CONSTANT_FOLD_BARRIER]](s32)
-    ; X86-32-NEXT: RET 0, implicit [[COPY]](s32)
-    %0:_(s32) = IMPLICIT_DEF
-    %1:_(s32) = G_CONSTANT_FOLD_BARRIER %0
-    %2:_(s32) = COPY %1(s32)
+    ; X86-32: [[DEF:%[0-9]+]]:_(i32) = IMPLICIT_DEF
+    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(i32) = G_CONSTANT_FOLD_BARRIER [[DEF]]
+    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY [[CONSTANT_FOLD_BARRIER]](i32)
+    ; X86-32-NEXT: RET 0, implicit [[COPY]](i32)
+    %0:_(i32) = IMPLICIT_DEF
+    %1:_(i32) = G_CONSTANT_FOLD_BARRIER %0
+    %2:_(i32) = COPY %1(i32)
     RET 0, implicit %2
 
 ...
@@ -39,13 +39,13 @@ name:            test_fold16
 body:             |
   bb.0:
     ; X86-32-LABEL: name: test_fold16
-    ; X86-32: [[DEF:%[0-9]+]]:_(s16) = IMPLICIT_DEF
-    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(s16) = G_CONSTANT_FOLD_BARRIER [[DEF]]
-    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(s16) = COPY [[CONSTANT_FOLD_BARRIER]](s16)
-    ; X86-32-NEXT: RET 0, implicit [[COPY]](s16)
-    %0:_(s16) = IMPLICIT_DEF
-    %1:_(s16) = G_CONSTANT_FOLD_BARRIER %0
-    %2:_(s16) = COPY %1(s16)
+    ; X86-32: [[DEF:%[0-9]+]]:_(i16) = IMPLICIT_DEF
+    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(i16) = G_CONSTANT_FOLD_BARRIER [[DEF]]
+    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(i16) = COPY [[CONSTANT_FOLD_BARRIER]](i16)
+    ; X86-32-NEXT: RET 0, implicit [[COPY]](i16)
+    %0:_(i16) = IMPLICIT_DEF
+    %1:_(i16) = G_CONSTANT_FOLD_BARRIER %0
+    %2:_(i16) = COPY %1(i16)
     RET 0, implicit %2
 
 ...
@@ -54,13 +54,13 @@ name:            test_fold8
 body:             |
   bb.0:
     ; X86-32-LABEL: name: test_fold8
-    ; X86-32: [[DEF:%[0-9]+]]:_(s8) = IMPLICIT_DEF
-    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(s8) = G_CONSTANT_FOLD_BARRIER [[DEF]]
-    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(s8) = COPY [[CONSTANT_FOLD_BARRIER]](s8)
-    ; X86-32-NEXT: RET 0, implicit [[COPY]](s8)
-    %0:_(s8) = IMPLICIT_DEF
-    %1:_(s8) = G_CONSTANT_FOLD_BARRIER %0
-    %2:_(s8) = COPY %1(s8)
+    ; X86-32: [[DEF:%[0-9]+]]:_(i8) = IMPLICIT_DEF
+    ; X86-32-NEXT: [[CONSTANT_FOLD_BARRIER:%[0-9]+]]:_(i8) = G_CONSTANT_FOLD_BARRIER [[DEF]]
+    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(i8) = COPY [[CONSTANT_FOLD_BARRIER]](i8)
+    ; X86-32-NEXT: RET 0, implicit [[COPY]](i8)
+    %0:_(i8) = IMPLICIT_DEF
+    %1:_(i8) = G_CONSTANT_FOLD_BARRIER %0
+    %2:_(i8) = COPY %1(i8)
     RET 0, implicit %2
 
 ...

@@ -26,13 +26,13 @@ body:             |
   bb.1.entry:
     ; CHECK-LABEL: name: inttoptr_p0_s32
     ; CHECK: [[FRAME_INDEX:%[0-9]+]]:_(p0) = G_FRAME_INDEX %fixed-stack.0
-    ; CHECK: [[LOAD:%[0-9]+]]:_(s32) = G_LOAD [[FRAME_INDEX]](p0) :: (invariant load (s32) from %fixed-stack.0, align 16)
-    ; CHECK: [[INTTOPTR:%[0-9]+]]:_(p0) = G_INTTOPTR [[LOAD]](s32)
-    ; CHECK: $eax = COPY [[INTTOPTR]](p0)
-    ; CHECK: RET 0, implicit $eax
+    ; CHECK-NEXT: [[LOAD:%[0-9]+]]:_(i32) = G_LOAD [[FRAME_INDEX]](p0) :: (invariant load (i32) from %fixed-stack.0, align 16)
+    ; CHECK-NEXT: [[INTTOPTR:%[0-9]+]]:_(p0) = G_INTTOPTR [[LOAD]](i32)
+    ; CHECK-NEXT: $eax = COPY [[INTTOPTR]](p0)
+    ; CHECK-NEXT: RET 0, implicit $eax
     %1:_(p0) = G_FRAME_INDEX %fixed-stack.0
-    %0:_(s32) = G_LOAD %1(p0) :: (invariant load (s32) from %fixed-stack.0, align 16)
-    %2:_(p0) = G_INTTOPTR %0(s32)
+    %0:_(i32) = G_LOAD %1(p0) :: (invariant load (i32) from %fixed-stack.0, align 16)
+    %2:_(p0) = G_INTTOPTR %0(i32)
     $eax = COPY %2(p0)
     RET 0, implicit $eax
 

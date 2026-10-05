@@ -5,12 +5,12 @@ define i16 @test_bitextract(b32 %src, i32 %off) {
   ; CHECK: bb.1 (%ir-block.0):
   ; CHECK-NEXT:   liveins: $edi, $esi
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:_(s32) = COPY $esi
-  ; CHECK-NEXT:   [[COPY2:%[0-9]+]]:_(s32) = COPY [[COPY1]](s32)
-  ; CHECK-NEXT:   [[LSHR:%[0-9]+]]:_(s32) = G_LSHR [[COPY]], [[COPY2]](s32)
-  ; CHECK-NEXT:   [[TRUNC:%[0-9]+]]:_(s16) = G_TRUNC [[LSHR]](s32)
-  ; CHECK-NEXT:   $ax = COPY [[TRUNC]](s16)
+  ; CHECK-NEXT:   [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:_(i32) = COPY $esi
+  ; CHECK-NEXT:   [[COPY2:%[0-9]+]]:_(i32) = COPY [[COPY1]](i32)
+  ; CHECK-NEXT:   [[LSHR:%[0-9]+]]:_(i32) = G_LSHR [[COPY]], [[COPY2]](i32)
+  ; CHECK-NEXT:   [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[LSHR]](i32)
+  ; CHECK-NEXT:   $ax = COPY [[TRUNC]](i16)
   ; CHECK-NEXT:   RET 0, implicit $ax
   %result = bitextract i16, b32 %src, i32 %off
   ret i16 %result
@@ -20,20 +20,20 @@ define b32 @test_bitinsert(b32 %base, i16 %val, i32 %off) {
   ; CHECK: bb.1 (%ir-block.0):
   ; CHECK-NEXT:   liveins: $edi, $edx, $esi
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:_(s32) = COPY $esi
-  ; CHECK-NEXT:   [[TRUNC:%[0-9]+]]:_(s16) = G_TRUNC [[COPY1]](s32)
-  ; CHECK-NEXT:   [[COPY2:%[0-9]+]]:_(s32) = COPY $edx
-  ; CHECK-NEXT:   [[COPY3:%[0-9]+]]:_(s32) = COPY [[COPY2]](s32)
-  ; CHECK-NEXT:   [[ZEXT:%[0-9]+]]:_(s32) = G_ZEXT [[TRUNC]](s16)
-  ; CHECK-NEXT:   [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 65535
-  ; CHECK-NEXT:   [[SHL:%[0-9]+]]:_(s32) = G_SHL [[C]], [[COPY3]](s32)
-  ; CHECK-NEXT:   [[C1:%[0-9]+]]:_(s32) = G_CONSTANT i32 -1
-  ; CHECK-NEXT:   [[XOR:%[0-9]+]]:_(s32) = G_XOR [[SHL]], [[C1]]
-  ; CHECK-NEXT:   [[AND:%[0-9]+]]:_(s32) = G_AND [[COPY]], [[XOR]]
-  ; CHECK-NEXT:   [[SHL1:%[0-9]+]]:_(s32) = G_SHL [[ZEXT]], [[COPY3]](s32)
-  ; CHECK-NEXT:   [[OR:%[0-9]+]]:_(s32) = G_OR [[AND]], [[SHL1]]
-  ; CHECK-NEXT:   $eax = COPY [[OR]](s32)
+  ; CHECK-NEXT:   [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+  ; CHECK-NEXT:   [[COPY1:%[0-9]+]]:_(i32) = COPY $esi
+  ; CHECK-NEXT:   [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY1]](i32)
+  ; CHECK-NEXT:   [[COPY2:%[0-9]+]]:_(i32) = COPY $edx
+  ; CHECK-NEXT:   [[COPY3:%[0-9]+]]:_(i32) = COPY [[COPY2]](i32)
+  ; CHECK-NEXT:   [[ZEXT:%[0-9]+]]:_(i32) = G_ZEXT [[TRUNC]](i16)
+  ; CHECK-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
+  ; CHECK-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[C]], [[COPY3]](i32)
+  ; CHECK-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 -1
+  ; CHECK-NEXT:   [[XOR:%[0-9]+]]:_(i32) = G_XOR [[SHL]], [[C1]]
+  ; CHECK-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[COPY]], [[XOR]]
+  ; CHECK-NEXT:   [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[ZEXT]], [[COPY3]](i32)
+  ; CHECK-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL1]]
+  ; CHECK-NEXT:   $eax = COPY [[OR]](i32)
   ; CHECK-NEXT:   RET 0, implicit $eax
   %result = bitinsert b32 %base, i16 %val, i32 %off
   ret b32 %result

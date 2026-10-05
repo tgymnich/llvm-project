@@ -34,11 +34,11 @@ body:             |
     ; ALL: [[COPY2:%[0-9]+]]:vr128 = COPY %2
     ; ALL: $xmm0 = COPY [[COPY2]]
     ; ALL: RET 0, implicit $xmm0
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %1(s128)
-    %2:vecr(s64) = G_FPEXT %0(s32)
-    %3:vecr(s128) = G_ANYEXT %2(s64)
-    $xmm0 = COPY %3(s128)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %1(i128)
+    %2:vecr(f64) = G_FPEXT %0(f32)
+    %3:vecr(i128) = G_ANYEXT %2(f64)
+    $xmm0 = COPY %3(i128)
     RET 0, implicit $xmm0
 
 ...

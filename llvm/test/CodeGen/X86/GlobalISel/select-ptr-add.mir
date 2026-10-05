@@ -28,8 +28,8 @@ body:             |
     ; CHECK: $rax = COPY [[LEA64r]]
     ; CHECK: RET 0, implicit $rax
     %0(p0) = COPY $rdi
-    %1(s64) = G_CONSTANT i64 20
-    %2(p0) = G_PTR_ADD %0, %1(s64)
+    %1(i64) = G_CONSTANT i64 20
+    %2(p0) = G_PTR_ADD %0, %1(i64)
     $rax = COPY %2(p0)
     RET 0, implicit $rax
 

@@ -4,10 +4,10 @@
 define <4 x i1> @foo() {
   ; CHECK-LABEL: name: foo
   ; CHECK: bb.1.entry:
-  ; CHECK:   [[DEF:%[0-9]+]]:_(<4 x s1>) = G_IMPLICIT_DEF
-  ; CHECK:   [[ANYEXT:%[0-9]+]]:_(<4 x s32>) = G_ANYEXT [[DEF]](<4 x s1>)
-  ; CHECK:   $xmm0 = COPY [[ANYEXT]](<4 x s32>)
-  ; CHECK:   RET 0, implicit $xmm0
+  ; CHECK-NEXT:   [[DEF:%[0-9]+]]:_(<4 x i1>) = G_IMPLICIT_DEF
+  ; CHECK-NEXT:   [[ANYEXT:%[0-9]+]]:_(<4 x i32>) = G_ANYEXT [[DEF]](<4 x i1>)
+  ; CHECK-NEXT:   $xmm0 = COPY [[ANYEXT]](<4 x i32>)
+  ; CHECK-NEXT:   RET 0, implicit $xmm0
 entry:
   ret <4 x i1> undef ;
 }

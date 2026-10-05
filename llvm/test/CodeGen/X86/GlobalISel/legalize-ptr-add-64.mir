@@ -22,13 +22,13 @@ body:             |
   bb.1 (%ir-block.0):
     ; X64-LABEL: name: test_gep_i64c
     ; X64: [[DEF:%[0-9]+]]:_(p0) = IMPLICIT_DEF
-    ; X64-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 20
-    ; X64-NEXT: [[PTR_ADD:%[0-9]+]]:_(p0) = G_PTR_ADD [[DEF]], [[C]](s64)
+    ; X64-NEXT: [[C:%[0-9]+]]:_(i64) = G_CONSTANT i64 20
+    ; X64-NEXT: [[PTR_ADD:%[0-9]+]]:_(p0) = G_PTR_ADD [[DEF]], [[C]](i64)
     ; X64-NEXT: G_STORE [[PTR_ADD]](p0), [[DEF]](p0) :: (store (p0) into %ir.addr)
     ; X64-NEXT: RET 0
     %0(p0) = IMPLICIT_DEF
-    %1(s64) = G_CONSTANT i64 20
-    %2(p0) = G_PTR_ADD %0, %1(s64)
+    %1(i64) = G_CONSTANT i64 20
+    %2(p0) = G_PTR_ADD %0, %1(i64)
     G_STORE %2, %0 :: (store (p0) into %ir.addr)
     RET 0
 ...
@@ -43,13 +43,13 @@ body:             |
   bb.1 (%ir-block.0):
     ; X64-LABEL: name: test_gep_i64
     ; X64: [[DEF:%[0-9]+]]:_(p0) = IMPLICIT_DEF
-    ; X64-NEXT: [[DEF1:%[0-9]+]]:_(s64) = IMPLICIT_DEF
-    ; X64-NEXT: [[PTR_ADD:%[0-9]+]]:_(p0) = G_PTR_ADD [[DEF]], [[DEF1]](s64)
+    ; X64-NEXT: [[DEF1:%[0-9]+]]:_(i64) = IMPLICIT_DEF
+    ; X64-NEXT: [[PTR_ADD:%[0-9]+]]:_(p0) = G_PTR_ADD [[DEF]], [[DEF1]](i64)
     ; X64-NEXT: G_STORE [[PTR_ADD]](p0), [[DEF]](p0) :: (store (p0) into %ir.addr)
     ; X64-NEXT: RET 0
     %0(p0) = IMPLICIT_DEF
-    %1(s64) = IMPLICIT_DEF
-    %2(p0) = G_PTR_ADD %0, %1(s64)
+    %1(i64) = IMPLICIT_DEF
+    %2(p0) = G_PTR_ADD %0, %1(i64)
     G_STORE %2, %0 :: (store (p0) into %ir.addr)
     RET 0
 ...

@@ -54,9 +54,9 @@ body:             |
     ; CHECK_PIC64-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY [[MOVSSrm_alt]]
     ; CHECK_PIC64-NEXT: $xmm0 = COPY [[COPY]]
     ; CHECK_PIC64-NEXT: RET 0, implicit $xmm0
-    %0:vecr(s32) = G_FCONSTANT float 5.500000e+00
-    %1:vecr(s128) = G_ANYEXT %0(s32)
-    $xmm0 = COPY %1(s128)
+    %0:vecr(f32) = G_FCONSTANT float 5.500000e+00
+    %1:vecr(i128) = G_ANYEXT %0(f32)
+    $xmm0 = COPY %1(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -101,9 +101,9 @@ body:             |
     ; CHECK_PIC64-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY [[MOVSDrm_alt]]
     ; CHECK_PIC64-NEXT: $xmm0 = COPY [[COPY]]
     ; CHECK_PIC64-NEXT: RET 0, implicit $xmm0
-    %0:vecr(s64) = G_FCONSTANT double 5.500000e+00
-    %1:vecr(s128) = G_ANYEXT %0(s64)
-    $xmm0 = COPY %1(s128)
+    %0:vecr(f64) = G_FCONSTANT double 5.500000e+00
+    %1:vecr(i128) = G_ANYEXT %0(f64)
+    $xmm0 = COPY %1(i128)
     RET 0, implicit $xmm0
 
 ...

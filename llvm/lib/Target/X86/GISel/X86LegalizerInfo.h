@@ -37,6 +37,8 @@ public:
                          MachineInstr &MI) const override;
 
 private:
+  bool legalizeBitcast(MachineInstr &MI, LegalizerHelper &Helper) const;
+
   bool legalizeBuildVector(MachineInstr &MI, MachineRegisterInfo &MRI,
                            LegalizerHelper &Helper) const;
 

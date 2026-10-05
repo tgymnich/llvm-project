@@ -21,9 +21,9 @@ body:             |
     ; CHECK-NOT: G_CONSTANT_FOLD_BARRIER
     ; CHECK-NEXT: $eax = COPY [[COPY]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0:gpr(s32) = COPY $edi
-    %1:gpr(s32) = G_CONSTANT_FOLD_BARRIER %0
-    $eax = COPY %1(s32)
+    %0:gpr(i32) = COPY $edi
+    %1:gpr(i32) = G_CONSTANT_FOLD_BARRIER %0
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 ...
 
@@ -47,9 +47,9 @@ body:             |
     ; CHECK-NOT: G_CONSTANT_FOLD_BARRIER
     ; CHECK-NEXT: $rax = COPY [[COPY]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %0:gpr(s64) = COPY $rdi
-    %1:gpr(s64) = G_CONSTANT_FOLD_BARRIER %0
-    $rax = COPY %1(s64)
+    %0:gpr(i64) = COPY $rdi
+    %1:gpr(i64) = G_CONSTANT_FOLD_BARRIER %0
+    $rax = COPY %1(i64)
     RET 0, implicit $rax
 ...
 
@@ -70,8 +70,8 @@ body:             |
     ; CHECK-NOT: G_CONSTANT_FOLD_BARRIER
     ; CHECK-NEXT: $xmm1 = COPY [[COPY]]
     ; CHECK-NEXT: RET 0, implicit $xmm1
-    %0:vecr(<4 x s32>) = COPY $xmm0
-    %1:vecr(<4 x s32>) = G_CONSTANT_FOLD_BARRIER %0
-    $xmm1 = COPY %1(<4 x s32>)
+    %0:vecr(<4 x i32>) = COPY $xmm0
+    %1:vecr(<4 x i32>) = G_CONSTANT_FOLD_BARRIER %0
+    $xmm1 = COPY %1(<4 x i32>)
     RET 0, implicit $xmm1
 ...

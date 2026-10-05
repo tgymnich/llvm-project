@@ -75,11 +75,11 @@ body:             |
     ; CHECK: [[COPY2:%[0-9]+]]:gr8 = COPY %3.sub_8bit
     ; CHECK: $al = COPY [[COPY2]]
     ; CHECK: RET 0, implicit $al
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %1(s128)
-    %3:gpr(s32) = G_FPTOSI %0(s32)
-    %2:gpr(s8) = G_TRUNC %3(s32)
-    $al = COPY %2(s8)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %1(i128)
+    %3:gpr(i32) = G_FPTOSI %0(f32)
+    %2:gpr(i8) = G_TRUNC %3(i32)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -106,11 +106,11 @@ body:             |
     ; CHECK: [[COPY2:%[0-9]+]]:gr16 = COPY %3.sub_16bit
     ; CHECK: $ax = COPY [[COPY2]]
     ; CHECK: RET 0, implicit $ax
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %1(s128)
-    %3:gpr(s32) = G_FPTOSI %0(s32)
-    %2:gpr(s16) = G_TRUNC %3(s32)
-    $ax = COPY %2(s16)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %1(i128)
+    %3:gpr(i32) = G_FPTOSI %0(f32)
+    %2:gpr(i16) = G_TRUNC %3(i32)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -135,10 +135,10 @@ body:             |
     ; CHECK: %2:gr32 = nofpexcept CVTTSS2SIrr [[COPY1]], implicit $mxcsr
     ; CHECK: $eax = COPY %2
     ; CHECK: RET 0, implicit $eax
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %1(s128)
-    %2:gpr(s32) = G_FPTOSI %0(s32)
-    $eax = COPY %2(s32)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %1(i128)
+    %2:gpr(i32) = G_FPTOSI %0(f32)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -163,10 +163,10 @@ body:             |
     ; CHECK: %2:gr64 = nofpexcept CVTTSS2SI64rr [[COPY1]], implicit $mxcsr
     ; CHECK: $rax = COPY %2
     ; CHECK: RET 0, implicit $rax
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %1(s128)
-    %2:gpr(s64) = G_FPTOSI %0(s32)
-    $rax = COPY %2(s64)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %1(i128)
+    %2:gpr(i64) = G_FPTOSI %0(f32)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -193,11 +193,11 @@ body:             |
     ; CHECK: [[COPY2:%[0-9]+]]:gr8 = COPY %3.sub_8bit
     ; CHECK: $al = COPY [[COPY2]]
     ; CHECK: RET 0, implicit $al
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s64) = G_TRUNC %1(s128)
-    %3:gpr(s32) = G_FPTOSI %0(s64)
-    %2:gpr(s8) = G_TRUNC %3(s32)
-    $al = COPY %2(s8)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f64) = G_TRUNC %1(i128)
+    %3:gpr(i32) = G_FPTOSI %0(f64)
+    %2:gpr(i8) = G_TRUNC %3(i32)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -224,11 +224,11 @@ body:             |
     ; CHECK: [[COPY2:%[0-9]+]]:gr16 = COPY %3.sub_16bit
     ; CHECK: $ax = COPY [[COPY2]]
     ; CHECK: RET 0, implicit $ax
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s64) = G_TRUNC %1(s128)
-    %3:gpr(s32) = G_FPTOSI %0(s64)
-    %2:gpr(s16) = G_TRUNC %3(s32)
-    $ax = COPY %2(s16)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f64) = G_TRUNC %1(i128)
+    %3:gpr(i32) = G_FPTOSI %0(f64)
+    %2:gpr(i16) = G_TRUNC %3(i32)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -253,10 +253,10 @@ body:             |
     ; CHECK: %2:gr32 = nofpexcept CVTTSD2SIrr [[COPY1]], implicit $mxcsr
     ; CHECK: $eax = COPY %2
     ; CHECK: RET 0, implicit $eax
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s64) = G_TRUNC %1(s128)
-    %2:gpr(s32) = G_FPTOSI %0(s64)
-    $eax = COPY %2(s32)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f64) = G_TRUNC %1(i128)
+    %2:gpr(i32) = G_FPTOSI %0(f64)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -281,10 +281,10 @@ body:             |
     ; CHECK: %2:gr64 = nofpexcept CVTTSD2SI64rr [[COPY1]], implicit $mxcsr
     ; CHECK: $rax = COPY %2
     ; CHECK: RET 0, implicit $rax
-    %1:vecr(s128) = COPY $xmm0
-    %0:vecr(s64) = G_TRUNC %1(s128)
-    %2:gpr(s64) = G_FPTOSI %0(s64)
-    $rax = COPY %2(s64)
+    %1:vecr(i128) = COPY $xmm0
+    %0:vecr(f64) = G_TRUNC %1(i128)
+    %2:gpr(i64) = G_FPTOSI %0(f64)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...

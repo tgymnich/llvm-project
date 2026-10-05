@@ -30,9 +30,9 @@ body:             |
     ; ALL-NEXT: [[VINSERTF32X4Zrri2:%[0-9]+]]:vr512 = VINSERTF32X4Zrri [[VINSERTF32X4Zrri1]], [[DEF]], 3
     ; ALL-NEXT: $zmm0 = COPY [[VINSERTF32X4Zrri2]]
     ; ALL-NEXT: RET 0, implicit $zmm0
-    %0(<4 x s32>) = IMPLICIT_DEF
-    %1(<16 x s32>) = G_CONCAT_VECTORS %0(<4 x s32>), %0(<4 x s32>), %0(<4 x s32>), %0(<4 x s32>)
-    $zmm0 = COPY %1(<16 x s32>)
+    %0(<4 x i32>) = IMPLICIT_DEF
+    %1(<16 x i32>) = G_CONCAT_VECTORS %0(<4 x i32>), %0(<4 x i32>), %0(<4 x i32>), %0(<4 x i32>)
+    $zmm0 = COPY %1(<16 x i32>)
     RET 0, implicit $zmm0
 
 ...
@@ -54,9 +54,9 @@ body:             |
     ; ALL-NEXT: [[VINSERTF64X4Zrri:%[0-9]+]]:vr512 = VINSERTF64X4Zrri [[INSERT_SUBREG]], [[DEF]], 1
     ; ALL-NEXT: $zmm0 = COPY [[VINSERTF64X4Zrri]]
     ; ALL-NEXT: RET 0, implicit $zmm0
-    %0(<8 x s32>) = IMPLICIT_DEF
-    %1(<16 x s32>) = G_CONCAT_VECTORS %0(<8 x s32>), %0(<8 x s32>)
-    $zmm0 = COPY %1(<16 x s32>)
+    %0(<8 x i32>) = IMPLICIT_DEF
+    %1(<16 x i32>) = G_CONCAT_VECTORS %0(<8 x i32>), %0(<8 x i32>)
+    $zmm0 = COPY %1(<16 x i32>)
     RET 0, implicit $zmm0
 
 ...

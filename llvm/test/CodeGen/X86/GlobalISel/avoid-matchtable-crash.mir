@@ -28,9 +28,9 @@ body:             |
     ; Make sure we check whether the first operand is a register and
     ; reject if it's not.
     ; CHECK: cannot select: G_INTRINSIC_W_SIDE_EFFECTS intrinsic(@llvm.x86.int)
-    %1:gpr(s32) = COPY $edi
-    %0:gpr(s8) = G_TRUNC %1(s32)
-    G_INTRINSIC_W_SIDE_EFFECTS intrinsic(@llvm.x86.int), %0(s8)
+    %1:gpr(i32) = COPY $edi
+    %0:gpr(i8) = G_TRUNC %1(i32)
+    G_INTRINSIC_W_SIDE_EFFECTS intrinsic(@llvm.x86.int), %0(i8)
     RET 0
 
 ...

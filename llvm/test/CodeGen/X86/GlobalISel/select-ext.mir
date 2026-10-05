@@ -72,10 +72,10 @@ body:             |
     ; X64-NEXT: [[AND8ri:%[0-9]+]]:gr8 = AND8ri [[COPY1]], 1, implicit-def $eflags
     ; X64-NEXT: $al = COPY [[AND8ri]]
     ; X64-NEXT: RET 0, implicit $al
-    %0(s32) = COPY $edi
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s8) = G_ZEXT %1(s1)
-    $al = COPY %2(s8)
+    %0(i32) = COPY $edi
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i8) = G_ZEXT %1(i1)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -109,10 +109,10 @@ body:             |
     ; X64-NEXT: [[AND16ri_:%[0-9]+]]:gr16 = AND16ri [[INSERT_SUBREG]], 1, implicit-def $eflags
     ; X64-NEXT: $ax = COPY [[AND16ri_]]
     ; X64-NEXT: RET 0, implicit $ax
-    %0(s32) = COPY $edi
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s16) = G_ZEXT %1(s1)
-    $ax = COPY %2(s16)
+    %0(i32) = COPY $edi
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i16) = G_ZEXT %1(i1)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -146,10 +146,10 @@ body:             |
     ; X64-NEXT: [[AND32ri_:%[0-9]+]]:gr32 = AND32ri [[INSERT_SUBREG]], 1, implicit-def $eflags
     ; X64-NEXT: $eax = COPY [[AND32ri_]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s32) = G_ZEXT %1(s1)
-    $eax = COPY %2(s32)
+    %0(i32) = COPY $edi
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i32) = G_ZEXT %1(i1)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -176,9 +176,9 @@ body:             |
     ; X64-NEXT: [[MOVZX32rr8_:%[0-9]+]]:gr32 = MOVZX32rr8 [[COPY]]
     ; X64-NEXT: $eax = COPY [[MOVZX32rr8_]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s8) = COPY $dil
-    %1(s32) = G_ZEXT %0(s8)
-    $eax = COPY %1(s32)
+    %0(i8) = COPY $dil
+    %1(i32) = G_ZEXT %0(i8)
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 
 ...
@@ -205,9 +205,9 @@ body:             |
     ; X64-NEXT: [[MOVZX32rr16_:%[0-9]+]]:gr32 = MOVZX32rr16 [[COPY]]
     ; X64-NEXT: $eax = COPY [[MOVZX32rr16_]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s16) = COPY $di
-    %1(s32) = G_ZEXT %0(s16)
-    $eax = COPY %1(s32)
+    %0(i16) = COPY $di
+    %1(i32) = G_ZEXT %0(i16)
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 
 ...
@@ -234,9 +234,9 @@ body:             |
     ; X64-NEXT: [[MOVSX32rr8_:%[0-9]+]]:gr32 = MOVSX32rr8 [[COPY]]
     ; X64-NEXT: $eax = COPY [[MOVSX32rr8_]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s8) = COPY $dil
-    %1(s32) = G_SEXT %0(s8)
-    $eax = COPY %1(s32)
+    %0(i8) = COPY $dil
+    %1(i32) = G_SEXT %0(i8)
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 
 ...
@@ -263,9 +263,9 @@ body:             |
     ; X64-NEXT: [[MOVSX32rr16_:%[0-9]+]]:gr32 = MOVSX32rr16 [[COPY]]
     ; X64-NEXT: $eax = COPY [[MOVSX32rr16_]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s16) = COPY $di
-    %1(s32) = G_SEXT %0(s16)
-    $eax = COPY %1(s32)
+    %0(i16) = COPY $di
+    %1(i32) = G_SEXT %0(i16)
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 
 ...
@@ -293,10 +293,10 @@ body:             |
     ; X64-NEXT: [[COPY1:%[0-9]+]]:gr8 = COPY [[COPY]].sub_8bit
     ; X64-NEXT: $al = COPY [[COPY1]]
     ; X64-NEXT: RET 0, implicit $al
-    %0(s32) = COPY $edi
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s8) = G_ANYEXT %1(s1)
-    $al = COPY %2(s8)
+    %0(i32) = COPY $edi
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i8) = G_ANYEXT %1(i1)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 ...
 ---
@@ -325,10 +325,10 @@ body:             |
     ; X64-NEXT: [[SUBREG_TO_REG:%[0-9]+]]:gr16 = SUBREG_TO_REG [[COPY1]], %subreg.sub_8bit
     ; X64-NEXT: $ax = COPY [[SUBREG_TO_REG]]
     ; X64-NEXT: RET 0, implicit $ax
-    %0(s32) = COPY $edi
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s16) = G_ANYEXT %1(s1)
-    $ax = COPY %2(s16)
+    %0(i32) = COPY $edi
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i16) = G_ANYEXT %1(i1)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 ...
 ---
@@ -357,10 +357,10 @@ body:             |
     ; X64-NEXT: [[SUBREG_TO_REG:%[0-9]+]]:gr32 = SUBREG_TO_REG [[COPY1]], %subreg.sub_8bit
     ; X64-NEXT: $eax = COPY [[SUBREG_TO_REG]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s32) = G_ANYEXT %1(s1)
-    $eax = COPY %2(s32)
+    %0(i32) = COPY $edi
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i32) = G_ANYEXT %1(i1)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 ...
 ---
@@ -392,10 +392,10 @@ body:             |
     ; X64-NEXT: [[COPY2:%[0-9]+]]:gr16 = COPY [[MOVZX32rr8_]].sub_16bit
     ; X64-NEXT: $ax = COPY [[COPY2]]
     ; X64-NEXT: RET 0, implicit $ax
-    %0(s32) = COPY $edi
-    %1(s8) = G_TRUNC %0(s32)
-    %2(s16) = G_ANYEXT %1(s8)
-    $ax = COPY %2(s16)
+    %0(i32) = COPY $edi
+    %1(i8) = G_TRUNC %0(i32)
+    %2(i16) = G_ANYEXT %1(i8)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 ...
 ---
@@ -425,10 +425,10 @@ body:             |
     ; X64-NEXT: [[MOVZX32rr8_:%[0-9]+]]:gr32 = MOVZX32rr8 [[COPY1]]
     ; X64-NEXT: $eax = COPY [[MOVZX32rr8_]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s8) = G_TRUNC %0(s32)
-    %2(s32) = G_ANYEXT %1(s8)
-    $eax = COPY %2(s32)
+    %0(i32) = COPY $edi
+    %1(i8) = G_TRUNC %0(i32)
+    %2(i32) = G_ANYEXT %1(i8)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 ...
 ---
@@ -459,9 +459,9 @@ body:             |
     ; X64-NEXT: [[INSERT_SUBREG:%[0-9]+]]:low32_addr_access_rbp = INSERT_SUBREG [[DEF]], [[COPY1]], %subreg.sub_16bit
     ; X64-NEXT: $eax = COPY [[INSERT_SUBREG]]
     ; X64-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s16) = G_TRUNC %0(s32)
-    %2(s32) = G_ANYEXT %1(s16)
-    $eax = COPY %2(s32)
+    %0(i32) = COPY $edi
+    %1(i16) = G_TRUNC %0(i32)
+    %2(i32) = G_ANYEXT %1(i16)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 ...

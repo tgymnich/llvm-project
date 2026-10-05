@@ -38,9 +38,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $zmm1
 
-    %0(<16 x s32>) = COPY $zmm1
-    %1(<4 x s32>) = G_EXTRACT %0(<16 x s32>), 0
-    $xmm0 = COPY %1(<4 x s32>)
+    %0(<16 x i32>) = COPY $zmm1
+    %1(<4 x i32>) = G_EXTRACT %0(<16 x i32>), 0
+    $xmm0 = COPY %1(<4 x i32>)
     RET 0, implicit $xmm0
 
 ...
@@ -64,9 +64,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $zmm1
 
-    %0(<16 x s32>) = COPY $zmm1
-    %1(<4 x s32>) = G_EXTRACT %0(<16 x s32>), 128
-    $xmm0 = COPY %1(<4 x s32>)
+    %0(<16 x i32>) = COPY $zmm1
+    %1(<4 x i32>) = G_EXTRACT %0(<16 x i32>), 128
+    $xmm0 = COPY %1(<4 x i32>)
     RET 0, implicit $xmm0
 
 ...
@@ -90,9 +90,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $zmm1
 
-    %0(<16 x s32>) = COPY $zmm1
-    %1(<8 x s32>) = G_EXTRACT %0(<16 x s32>), 0
-    $ymm0 = COPY %1(<8 x s32>)
+    %0(<16 x i32>) = COPY $zmm1
+    %1(<8 x i32>) = G_EXTRACT %0(<16 x i32>), 0
+    $ymm0 = COPY %1(<8 x i32>)
     RET 0, implicit $ymm0
 
 ...
@@ -116,9 +116,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $zmm1
 
-    %0(<16 x s32>) = COPY $zmm1
-    %1(<8 x s32>) = G_EXTRACT %0(<16 x s32>), 256
-    $ymm0 = COPY %1(<8 x s32>)
+    %0(<16 x i32>) = COPY $zmm1
+    %1(<8 x i32>) = G_EXTRACT %0(<16 x i32>), 256
+    $ymm0 = COPY %1(<8 x i32>)
     RET 0, implicit $ymm0
 
 ...

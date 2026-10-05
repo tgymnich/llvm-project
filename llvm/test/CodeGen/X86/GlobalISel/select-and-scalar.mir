@@ -48,10 +48,10 @@ body:             |
     ; ALL-NEXT: [[AND8rr:%[0-9]+]]:gr8 = AND8rr [[COPY]], [[COPY1]], implicit-def dead $eflags
     ; ALL-NEXT: $al = COPY [[AND8rr]]
     ; ALL-NEXT: RET 0, implicit $al
-    %0(s8) = COPY $dil
-    %1(s8) = COPY $sil
-    %2(s8) = G_AND %0, %1
-    $al = COPY %2(s8)
+    %0(i8) = COPY $dil
+    %1(i8) = COPY $sil
+    %2(i8) = G_AND %0, %1
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -80,10 +80,10 @@ body:             |
     ; ALL-NEXT: [[AND16rr:%[0-9]+]]:gr16 = AND16rr [[COPY]], [[COPY1]], implicit-def dead $eflags
     ; ALL-NEXT: $ax = COPY [[AND16rr]]
     ; ALL-NEXT: RET 0, implicit $ax
-    %0(s16) = COPY $di
-    %1(s16) = COPY $si
-    %2(s16) = G_AND %0, %1
-    $ax = COPY %2(s16)
+    %0(i16) = COPY $di
+    %1(i16) = COPY $si
+    %2(i16) = G_AND %0, %1
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -112,10 +112,10 @@ body:             |
     ; ALL-NEXT: [[AND32rr:%[0-9]+]]:gr32 = AND32rr [[COPY]], [[COPY1]], implicit-def dead $eflags
     ; ALL-NEXT: $eax = COPY [[AND32rr]]
     ; ALL-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %2(s32) = G_AND %0, %1
-    $eax = COPY %2(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %2(i32) = G_AND %0, %1
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -144,10 +144,10 @@ body:             |
     ; ALL-NEXT: [[AND64rr:%[0-9]+]]:gr64 = AND64rr [[COPY]], [[COPY1]], implicit-def dead $eflags
     ; ALL-NEXT: $rax = COPY [[AND64rr]]
     ; ALL-NEXT: RET 0, implicit $rax
-    %0(s64) = COPY $rdi
-    %1(s64) = COPY $rsi
-    %2(s64) = G_AND %0, %1
-    $rax = COPY %2(s64)
+    %0(i64) = COPY $rdi
+    %1(i64) = COPY $rsi
+    %2(i64) = G_AND %0, %1
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...

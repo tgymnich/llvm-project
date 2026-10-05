@@ -43,40 +43,40 @@ body:             |
     ; SSE2-LABEL: name: test_add_v32i8
     ; SSE2: liveins: $ymm0, $ymm1
     ; SSE2-NEXT: {{  $}}
-    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<32 x s8>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<32 x s8>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<16 x s8>), [[UV1:%[0-9]+]]:_(<16 x s8>) = G_UNMERGE_VALUES [[DEF]](<32 x s8>)
-    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<16 x s8>), [[UV3:%[0-9]+]]:_(<16 x s8>) = G_UNMERGE_VALUES [[DEF1]](<32 x s8>)
-    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<16 x s8>) = G_ADD [[UV]], [[UV2]]
-    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<16 x s8>) = G_ADD [[UV1]], [[UV3]]
-    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<32 x s8>) = G_CONCAT_VECTORS [[ADD]](<16 x s8>), [[ADD1]](<16 x s8>)
-    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<32 x s8>)
+    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<32 x i8>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<32 x i8>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<16 x i8>), [[UV1:%[0-9]+]]:_(<16 x i8>) = G_UNMERGE_VALUES [[DEF]](<32 x i8>)
+    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<16 x i8>), [[UV3:%[0-9]+]]:_(<16 x i8>) = G_UNMERGE_VALUES [[DEF1]](<32 x i8>)
+    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<16 x i8>) = G_ADD [[UV]], [[UV2]]
+    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<16 x i8>) = G_ADD [[UV1]], [[UV3]]
+    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<32 x i8>) = G_CONCAT_VECTORS [[ADD]](<16 x i8>), [[ADD1]](<16 x i8>)
+    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<32 x i8>)
     ; SSE2-NEXT: RET 0
     ;
     ; AVX1-LABEL: name: test_add_v32i8
     ; AVX1: liveins: $ymm0, $ymm1
     ; AVX1-NEXT: {{  $}}
-    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<32 x s8>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<32 x s8>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<16 x s8>), [[UV1:%[0-9]+]]:_(<16 x s8>) = G_UNMERGE_VALUES [[DEF]](<32 x s8>)
-    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<16 x s8>), [[UV3:%[0-9]+]]:_(<16 x s8>) = G_UNMERGE_VALUES [[DEF1]](<32 x s8>)
-    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<16 x s8>) = G_ADD [[UV]], [[UV2]]
-    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<16 x s8>) = G_ADD [[UV1]], [[UV3]]
-    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<32 x s8>) = G_CONCAT_VECTORS [[ADD]](<16 x s8>), [[ADD1]](<16 x s8>)
-    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<32 x s8>)
+    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<32 x i8>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<32 x i8>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<16 x i8>), [[UV1:%[0-9]+]]:_(<16 x i8>) = G_UNMERGE_VALUES [[DEF]](<32 x i8>)
+    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<16 x i8>), [[UV3:%[0-9]+]]:_(<16 x i8>) = G_UNMERGE_VALUES [[DEF1]](<32 x i8>)
+    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<16 x i8>) = G_ADD [[UV]], [[UV2]]
+    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<16 x i8>) = G_ADD [[UV1]], [[UV3]]
+    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<32 x i8>) = G_CONCAT_VECTORS [[ADD]](<16 x i8>), [[ADD1]](<16 x i8>)
+    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<32 x i8>)
     ; AVX1-NEXT: RET 0
     ;
     ; AVX2-LABEL: name: test_add_v32i8
     ; AVX2: liveins: $ymm0, $ymm1
     ; AVX2-NEXT: {{  $}}
-    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<32 x s8>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<32 x s8>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<32 x s8>) = G_ADD [[DEF]], [[DEF1]]
-    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<32 x s8>)
+    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<32 x i8>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<32 x i8>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<32 x i8>) = G_ADD [[DEF]], [[DEF1]]
+    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<32 x i8>)
     ; AVX2-NEXT: RET 0
-    %0(<32 x s8>) = IMPLICIT_DEF
-    %1(<32 x s8>) = IMPLICIT_DEF
-    %2(<32 x s8>) = G_ADD %0, %1
+    %0(<32 x i8>) = IMPLICIT_DEF
+    %1(<32 x i8>) = IMPLICIT_DEF
+    %2(<32 x i8>) = G_ADD %0, %1
     $ymm0 = COPY %2
     RET 0
 
@@ -97,40 +97,40 @@ body:             |
     ; SSE2-LABEL: name: test_add_v16i16
     ; SSE2: liveins: $ymm0, $ymm1
     ; SSE2-NEXT: {{  $}}
-    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<16 x s16>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<16 x s16>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<8 x s16>), [[UV1:%[0-9]+]]:_(<8 x s16>) = G_UNMERGE_VALUES [[DEF]](<16 x s16>)
-    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<8 x s16>), [[UV3:%[0-9]+]]:_(<8 x s16>) = G_UNMERGE_VALUES [[DEF1]](<16 x s16>)
-    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<8 x s16>) = G_ADD [[UV]], [[UV2]]
-    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<8 x s16>) = G_ADD [[UV1]], [[UV3]]
-    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<16 x s16>) = G_CONCAT_VECTORS [[ADD]](<8 x s16>), [[ADD1]](<8 x s16>)
-    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<16 x s16>)
+    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<16 x i16>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<16 x i16>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<8 x i16>), [[UV1:%[0-9]+]]:_(<8 x i16>) = G_UNMERGE_VALUES [[DEF]](<16 x i16>)
+    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<8 x i16>), [[UV3:%[0-9]+]]:_(<8 x i16>) = G_UNMERGE_VALUES [[DEF1]](<16 x i16>)
+    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<8 x i16>) = G_ADD [[UV]], [[UV2]]
+    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<8 x i16>) = G_ADD [[UV1]], [[UV3]]
+    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<16 x i16>) = G_CONCAT_VECTORS [[ADD]](<8 x i16>), [[ADD1]](<8 x i16>)
+    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<16 x i16>)
     ; SSE2-NEXT: RET 0
     ;
     ; AVX1-LABEL: name: test_add_v16i16
     ; AVX1: liveins: $ymm0, $ymm1
     ; AVX1-NEXT: {{  $}}
-    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<16 x s16>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<16 x s16>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<8 x s16>), [[UV1:%[0-9]+]]:_(<8 x s16>) = G_UNMERGE_VALUES [[DEF]](<16 x s16>)
-    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<8 x s16>), [[UV3:%[0-9]+]]:_(<8 x s16>) = G_UNMERGE_VALUES [[DEF1]](<16 x s16>)
-    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<8 x s16>) = G_ADD [[UV]], [[UV2]]
-    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<8 x s16>) = G_ADD [[UV1]], [[UV3]]
-    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<16 x s16>) = G_CONCAT_VECTORS [[ADD]](<8 x s16>), [[ADD1]](<8 x s16>)
-    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<16 x s16>)
+    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<16 x i16>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<16 x i16>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<8 x i16>), [[UV1:%[0-9]+]]:_(<8 x i16>) = G_UNMERGE_VALUES [[DEF]](<16 x i16>)
+    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<8 x i16>), [[UV3:%[0-9]+]]:_(<8 x i16>) = G_UNMERGE_VALUES [[DEF1]](<16 x i16>)
+    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<8 x i16>) = G_ADD [[UV]], [[UV2]]
+    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<8 x i16>) = G_ADD [[UV1]], [[UV3]]
+    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<16 x i16>) = G_CONCAT_VECTORS [[ADD]](<8 x i16>), [[ADD1]](<8 x i16>)
+    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<16 x i16>)
     ; AVX1-NEXT: RET 0
     ;
     ; AVX2-LABEL: name: test_add_v16i16
     ; AVX2: liveins: $ymm0, $ymm1
     ; AVX2-NEXT: {{  $}}
-    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<16 x s16>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<16 x s16>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<16 x s16>) = G_ADD [[DEF]], [[DEF1]]
-    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<16 x s16>)
+    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<16 x i16>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<16 x i16>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<16 x i16>) = G_ADD [[DEF]], [[DEF1]]
+    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<16 x i16>)
     ; AVX2-NEXT: RET 0
-    %0(<16 x s16>) = IMPLICIT_DEF
-    %1(<16 x s16>) = IMPLICIT_DEF
-    %2(<16 x s16>) = G_ADD %0, %1
+    %0(<16 x i16>) = IMPLICIT_DEF
+    %1(<16 x i16>) = IMPLICIT_DEF
+    %2(<16 x i16>) = G_ADD %0, %1
     $ymm0 = COPY %2
     RET 0
 
@@ -151,40 +151,40 @@ body:             |
     ; SSE2-LABEL: name: test_add_v8i32
     ; SSE2: liveins: $ymm0, $ymm1
     ; SSE2-NEXT: {{  $}}
-    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<8 x s32>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<8 x s32>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<4 x s32>), [[UV1:%[0-9]+]]:_(<4 x s32>) = G_UNMERGE_VALUES [[DEF]](<8 x s32>)
-    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<4 x s32>), [[UV3:%[0-9]+]]:_(<4 x s32>) = G_UNMERGE_VALUES [[DEF1]](<8 x s32>)
-    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<4 x s32>) = G_ADD [[UV]], [[UV2]]
-    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<4 x s32>) = G_ADD [[UV1]], [[UV3]]
-    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<8 x s32>) = G_CONCAT_VECTORS [[ADD]](<4 x s32>), [[ADD1]](<4 x s32>)
-    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<8 x s32>)
+    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<8 x i32>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<8 x i32>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<4 x i32>), [[UV1:%[0-9]+]]:_(<4 x i32>) = G_UNMERGE_VALUES [[DEF]](<8 x i32>)
+    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<4 x i32>), [[UV3:%[0-9]+]]:_(<4 x i32>) = G_UNMERGE_VALUES [[DEF1]](<8 x i32>)
+    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<4 x i32>) = G_ADD [[UV]], [[UV2]]
+    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<4 x i32>) = G_ADD [[UV1]], [[UV3]]
+    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<8 x i32>) = G_CONCAT_VECTORS [[ADD]](<4 x i32>), [[ADD1]](<4 x i32>)
+    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<8 x i32>)
     ; SSE2-NEXT: RET 0
     ;
     ; AVX1-LABEL: name: test_add_v8i32
     ; AVX1: liveins: $ymm0, $ymm1
     ; AVX1-NEXT: {{  $}}
-    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<8 x s32>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<8 x s32>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<4 x s32>), [[UV1:%[0-9]+]]:_(<4 x s32>) = G_UNMERGE_VALUES [[DEF]](<8 x s32>)
-    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<4 x s32>), [[UV3:%[0-9]+]]:_(<4 x s32>) = G_UNMERGE_VALUES [[DEF1]](<8 x s32>)
-    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<4 x s32>) = G_ADD [[UV]], [[UV2]]
-    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<4 x s32>) = G_ADD [[UV1]], [[UV3]]
-    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<8 x s32>) = G_CONCAT_VECTORS [[ADD]](<4 x s32>), [[ADD1]](<4 x s32>)
-    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<8 x s32>)
+    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<8 x i32>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<8 x i32>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<4 x i32>), [[UV1:%[0-9]+]]:_(<4 x i32>) = G_UNMERGE_VALUES [[DEF]](<8 x i32>)
+    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<4 x i32>), [[UV3:%[0-9]+]]:_(<4 x i32>) = G_UNMERGE_VALUES [[DEF1]](<8 x i32>)
+    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<4 x i32>) = G_ADD [[UV]], [[UV2]]
+    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<4 x i32>) = G_ADD [[UV1]], [[UV3]]
+    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<8 x i32>) = G_CONCAT_VECTORS [[ADD]](<4 x i32>), [[ADD1]](<4 x i32>)
+    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<8 x i32>)
     ; AVX1-NEXT: RET 0
     ;
     ; AVX2-LABEL: name: test_add_v8i32
     ; AVX2: liveins: $ymm0, $ymm1
     ; AVX2-NEXT: {{  $}}
-    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<8 x s32>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<8 x s32>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<8 x s32>) = G_ADD [[DEF]], [[DEF1]]
-    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<8 x s32>)
+    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<8 x i32>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<8 x i32>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<8 x i32>) = G_ADD [[DEF]], [[DEF1]]
+    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<8 x i32>)
     ; AVX2-NEXT: RET 0
-    %0(<8 x s32>) = IMPLICIT_DEF
-    %1(<8 x s32>) = IMPLICIT_DEF
-    %2(<8 x s32>) = G_ADD %0, %1
+    %0(<8 x i32>) = IMPLICIT_DEF
+    %1(<8 x i32>) = IMPLICIT_DEF
+    %2(<8 x i32>) = G_ADD %0, %1
     $ymm0 = COPY %2
     RET 0
 
@@ -205,40 +205,40 @@ body:             |
     ; SSE2-LABEL: name: test_add_v4i64
     ; SSE2: liveins: $ymm0, $ymm1
     ; SSE2-NEXT: {{  $}}
-    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<4 x s64>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<4 x s64>) = IMPLICIT_DEF
-    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<2 x s64>), [[UV1:%[0-9]+]]:_(<2 x s64>) = G_UNMERGE_VALUES [[DEF]](<4 x s64>)
-    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<2 x s64>), [[UV3:%[0-9]+]]:_(<2 x s64>) = G_UNMERGE_VALUES [[DEF1]](<4 x s64>)
-    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<2 x s64>) = G_ADD [[UV]], [[UV2]]
-    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<2 x s64>) = G_ADD [[UV1]], [[UV3]]
-    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<4 x s64>) = G_CONCAT_VECTORS [[ADD]](<2 x s64>), [[ADD1]](<2 x s64>)
-    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<4 x s64>)
+    ; SSE2-NEXT: [[DEF:%[0-9]+]]:_(<4 x i64>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[DEF1:%[0-9]+]]:_(<4 x i64>) = IMPLICIT_DEF
+    ; SSE2-NEXT: [[UV:%[0-9]+]]:_(<2 x i64>), [[UV1:%[0-9]+]]:_(<2 x i64>) = G_UNMERGE_VALUES [[DEF]](<4 x i64>)
+    ; SSE2-NEXT: [[UV2:%[0-9]+]]:_(<2 x i64>), [[UV3:%[0-9]+]]:_(<2 x i64>) = G_UNMERGE_VALUES [[DEF1]](<4 x i64>)
+    ; SSE2-NEXT: [[ADD:%[0-9]+]]:_(<2 x i64>) = G_ADD [[UV]], [[UV2]]
+    ; SSE2-NEXT: [[ADD1:%[0-9]+]]:_(<2 x i64>) = G_ADD [[UV1]], [[UV3]]
+    ; SSE2-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<4 x i64>) = G_CONCAT_VECTORS [[ADD]](<2 x i64>), [[ADD1]](<2 x i64>)
+    ; SSE2-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<4 x i64>)
     ; SSE2-NEXT: RET 0
     ;
     ; AVX1-LABEL: name: test_add_v4i64
     ; AVX1: liveins: $ymm0, $ymm1
     ; AVX1-NEXT: {{  $}}
-    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<4 x s64>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<4 x s64>) = IMPLICIT_DEF
-    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<2 x s64>), [[UV1:%[0-9]+]]:_(<2 x s64>) = G_UNMERGE_VALUES [[DEF]](<4 x s64>)
-    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<2 x s64>), [[UV3:%[0-9]+]]:_(<2 x s64>) = G_UNMERGE_VALUES [[DEF1]](<4 x s64>)
-    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<2 x s64>) = G_ADD [[UV]], [[UV2]]
-    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<2 x s64>) = G_ADD [[UV1]], [[UV3]]
-    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<4 x s64>) = G_CONCAT_VECTORS [[ADD]](<2 x s64>), [[ADD1]](<2 x s64>)
-    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<4 x s64>)
+    ; AVX1-NEXT: [[DEF:%[0-9]+]]:_(<4 x i64>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[DEF1:%[0-9]+]]:_(<4 x i64>) = IMPLICIT_DEF
+    ; AVX1-NEXT: [[UV:%[0-9]+]]:_(<2 x i64>), [[UV1:%[0-9]+]]:_(<2 x i64>) = G_UNMERGE_VALUES [[DEF]](<4 x i64>)
+    ; AVX1-NEXT: [[UV2:%[0-9]+]]:_(<2 x i64>), [[UV3:%[0-9]+]]:_(<2 x i64>) = G_UNMERGE_VALUES [[DEF1]](<4 x i64>)
+    ; AVX1-NEXT: [[ADD:%[0-9]+]]:_(<2 x i64>) = G_ADD [[UV]], [[UV2]]
+    ; AVX1-NEXT: [[ADD1:%[0-9]+]]:_(<2 x i64>) = G_ADD [[UV1]], [[UV3]]
+    ; AVX1-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<4 x i64>) = G_CONCAT_VECTORS [[ADD]](<2 x i64>), [[ADD1]](<2 x i64>)
+    ; AVX1-NEXT: $ymm0 = COPY [[CONCAT_VECTORS]](<4 x i64>)
     ; AVX1-NEXT: RET 0
     ;
     ; AVX2-LABEL: name: test_add_v4i64
     ; AVX2: liveins: $ymm0, $ymm1
     ; AVX2-NEXT: {{  $}}
-    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<4 x s64>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<4 x s64>) = IMPLICIT_DEF
-    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<4 x s64>) = G_ADD [[DEF]], [[DEF1]]
-    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<4 x s64>)
+    ; AVX2-NEXT: [[DEF:%[0-9]+]]:_(<4 x i64>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[DEF1:%[0-9]+]]:_(<4 x i64>) = IMPLICIT_DEF
+    ; AVX2-NEXT: [[ADD:%[0-9]+]]:_(<4 x i64>) = G_ADD [[DEF]], [[DEF1]]
+    ; AVX2-NEXT: $ymm0 = COPY [[ADD]](<4 x i64>)
     ; AVX2-NEXT: RET 0
-    %0(<4 x s64>) = IMPLICIT_DEF
-    %1(<4 x s64>) = IMPLICIT_DEF
-    %2(<4 x s64>) = G_ADD %0, %1
+    %0(<4 x i64>) = IMPLICIT_DEF
+    %1(<4 x i64>) = IMPLICIT_DEF
+    %2(<4 x i64>) = G_ADD %0, %1
     $ymm0 = COPY %2
     RET 0
 

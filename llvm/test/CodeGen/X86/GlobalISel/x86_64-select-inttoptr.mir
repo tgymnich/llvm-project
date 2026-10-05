@@ -28,8 +28,8 @@ body:             |
     ; CHECK: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
     ; CHECK: $rax = COPY [[COPY]]
     ; CHECK: RET 0, implicit $rax
-    %0:gpr(s64) = COPY $rdi
-    %1:gpr(p0) = G_INTTOPTR %0(s64)
+    %0:gpr(i64) = COPY $rdi
+    %1:gpr(p0) = G_INTTOPTR %0(i64)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 

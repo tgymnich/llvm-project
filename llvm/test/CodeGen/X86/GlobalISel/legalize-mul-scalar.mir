@@ -48,20 +48,20 @@ body:             |
   bb.1 (%ir-block.0):
 
     ; CHECK-LABEL: name: test_mul_i1
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edx
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s8) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(s8) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(s8) = G_MUL [[TRUNC]], [[TRUNC1]]
+    ; CHECK: [[COPY:%[0-9]+]]:_(i32) = COPY $edx
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i8) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(i8) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(i8) = G_MUL [[TRUNC]], [[TRUNC1]]
     ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(p0) = G_IMPLICIT_DEF
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s8) = G_CONSTANT i8 1
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s8) = G_AND [[MUL]], [[C]]
-    ; CHECK-NEXT: G_STORE [[AND]](s8), [[DEF]](p0) :: (store (s8))
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i8) = G_CONSTANT i8 1
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i8) = G_AND [[MUL]], [[C]]
+    ; CHECK-NEXT: G_STORE [[AND]](i8), [[DEF]](p0) :: (store (i8))
     ; CHECK-NEXT: RET 0
-    %0(s32) = COPY $edx
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s1) = G_MUL %1, %1
+    %0(i32) = COPY $edx
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i1) = G_MUL %1, %1
     %3:_(p0) = G_IMPLICIT_DEF
-    G_STORE %2, %3 :: (store (s1))
+    G_STORE %2, %3 :: (store (i1))
     RET 0
 ...
 ---
@@ -80,15 +80,15 @@ body:             |
     ; CHECK-LABEL: name: test_mul_i8
     ; CHECK: liveins: $edi, $esi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s8) = COPY $dl
-    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(s8) = COPY $sil
-    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(s8) = G_MUL [[COPY]], [[COPY1]]
-    ; CHECK-NEXT: $al = COPY [[MUL]](s8)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i8) = COPY $dl
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i8) = COPY $sil
+    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(i8) = G_MUL [[COPY]], [[COPY1]]
+    ; CHECK-NEXT: $al = COPY [[MUL]](i8)
     ; CHECK-NEXT: RET 0, implicit $al
-    %0(s8) = COPY $dl
-    %1(s8) = COPY $sil
-    %2(s8) = G_MUL %0, %1
-    $al = COPY %2(s8)
+    %0(i8) = COPY $dl
+    %1(i8) = COPY $sil
+    %2(i8) = G_MUL %0, %1
+    $al = COPY %2(i8)
     RET 0, implicit $al
 ...
 ---
@@ -107,15 +107,15 @@ body:             |
     ; CHECK-LABEL: name: test_mul_i16
     ; CHECK: liveins: $edi, $esi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s16) = COPY $di
-    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(s16) = COPY $si
-    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(s16) = G_MUL [[COPY]], [[COPY1]]
-    ; CHECK-NEXT: $ax = COPY [[MUL]](s16)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i16) = COPY $di
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i16) = COPY $si
+    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(i16) = G_MUL [[COPY]], [[COPY1]]
+    ; CHECK-NEXT: $ax = COPY [[MUL]](i16)
     ; CHECK-NEXT: RET 0, implicit $ax
-    %0(s16) = COPY $di
-    %1(s16) = COPY $si
-    %2(s16) = G_MUL %0, %1
-    $ax = COPY %2(s16)
+    %0(i16) = COPY $di
+    %1(i16) = COPY $si
+    %2(i16) = G_MUL %0, %1
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 ...
 ---
@@ -131,14 +131,14 @@ body:             |
   bb.1 (%ir-block.0):
 
     ; CHECK-LABEL: name: test_mul_i27
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edx
-    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(s32) = G_MUL [[COPY]], [[COPY]]
-    ; CHECK-NEXT: $eax = COPY [[MUL]](s32)
+    ; CHECK: [[COPY:%[0-9]+]]:_(i32) = COPY $edx
+    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(i32) = G_MUL [[COPY]], [[COPY]]
+    ; CHECK-NEXT: $eax = COPY [[MUL]](i32)
     ; CHECK-NEXT: RET 0
-    %0(s32) = COPY $edx
-    %1(s27) = G_TRUNC %0(s32)
-    %2(s27) = G_MUL %1, %1
-    %3:_(s32) = G_ANYEXT %2
+    %0(i32) = COPY $edx
+    %1(i27) = G_TRUNC %0(i32)
+    %2(i27) = G_MUL %1, %1
+    %3:_(i32) = G_ANYEXT %2
     $eax = COPY %3
     RET 0
 ...
@@ -159,15 +159,15 @@ body:             |
     ; CHECK-LABEL: name: test_mul_i32
     ; CHECK: liveins: $edi, $esi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $esi
-    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(s32) = G_MUL [[COPY]], [[COPY1]]
-    ; CHECK-NEXT: $eax = COPY [[MUL]](s32)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i32) = COPY $esi
+    ; CHECK-NEXT: [[MUL:%[0-9]+]]:_(i32) = G_MUL [[COPY]], [[COPY1]]
+    ; CHECK-NEXT: $eax = COPY [[MUL]](i32)
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %2(s32) = G_MUL %0, %1
-    $eax = COPY %2(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %2(i32) = G_MUL %0, %1
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 ...
 ---
@@ -186,30 +186,30 @@ body:             |
     ; X64-LABEL: name: test_mul_i42
     ; X64: liveins: $rdi, $rsi
     ; X64-NEXT: {{  $}}
-    ; X64-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $rdx
-    ; X64-NEXT: [[MUL:%[0-9]+]]:_(s64) = G_MUL [[COPY]], [[COPY]]
-    ; X64-NEXT: $rax = COPY [[MUL]](s64)
+    ; X64-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rdx
+    ; X64-NEXT: [[MUL:%[0-9]+]]:_(i64) = G_MUL [[COPY]], [[COPY]]
+    ; X64-NEXT: $rax = COPY [[MUL]](i64)
     ; X64-NEXT: RET 0
     ;
     ; X86-LABEL: name: test_mul_i42
     ; X86: liveins: $rdi, $rsi
     ; X86-NEXT: {{  $}}
-    ; X86-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $rdx
-    ; X86-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY]](s64)
-    ; X86-NEXT: [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY]](s64)
-    ; X86-NEXT: [[MUL:%[0-9]+]]:_(s32) = G_MUL [[UV]], [[UV2]]
-    ; X86-NEXT: [[UMULH:%[0-9]+]]:_(s32) = G_UMULH [[UV]], [[UV2]]
-    ; X86-NEXT: [[MUL1:%[0-9]+]]:_(s32) = G_MUL [[UV]], [[UV3]]
-    ; X86-NEXT: [[MUL2:%[0-9]+]]:_(s32) = G_MUL [[UV1]], [[UV2]]
-    ; X86-NEXT: [[ADD:%[0-9]+]]:_(s32) = G_ADD [[UMULH]], [[MUL1]]
-    ; X86-NEXT: [[ADD1:%[0-9]+]]:_(s32) = G_ADD [[ADD]], [[MUL2]]
-    ; X86-NEXT: [[MV:%[0-9]+]]:_(s64) = G_MERGE_VALUES [[MUL]](s32), [[ADD1]](s32)
-    ; X86-NEXT: $rax = COPY [[MV]](s64)
+    ; X86-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rdx
+    ; X86-NEXT: [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY]](i64)
+    ; X86-NEXT: [[UV2:%[0-9]+]]:_(i32), [[UV3:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY]](i64)
+    ; X86-NEXT: [[MUL:%[0-9]+]]:_(i32) = G_MUL [[UV]], [[UV2]]
+    ; X86-NEXT: [[UMULH:%[0-9]+]]:_(i32) = G_UMULH [[UV]], [[UV2]]
+    ; X86-NEXT: [[MUL1:%[0-9]+]]:_(i32) = G_MUL [[UV]], [[UV3]]
+    ; X86-NEXT: [[MUL2:%[0-9]+]]:_(i32) = G_MUL [[UV1]], [[UV2]]
+    ; X86-NEXT: [[ADD:%[0-9]+]]:_(i32) = G_ADD [[UMULH]], [[MUL1]]
+    ; X86-NEXT: [[ADD1:%[0-9]+]]:_(i32) = G_ADD [[ADD]], [[MUL2]]
+    ; X86-NEXT: [[MV:%[0-9]+]]:_(i64) = G_MERGE_VALUES [[MUL]](i32), [[ADD1]](i32)
+    ; X86-NEXT: $rax = COPY [[MV]](i64)
     ; X86-NEXT: RET 0
-    %0(s64) = COPY $rdx
-    %1(s42) = G_TRUNC %0(s64)
-    %2(s42) = G_MUL %1, %1
-    %3:_(s64) = G_ANYEXT %2
+    %0(i64) = COPY $rdx
+    %1(i42) = G_TRUNC %0(i64)
+    %2(i42) = G_MUL %1, %1
+    %3:_(i64) = G_ANYEXT %2
     $rax = COPY %3
     RET 0
 ...
@@ -229,31 +229,31 @@ body:             |
     ; X64-LABEL: name: test_mul_i64
     ; X64: liveins: $rdi, $rsi
     ; X64-NEXT: {{  $}}
-    ; X64-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $rdi
-    ; X64-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $rsi
-    ; X64-NEXT: [[MUL:%[0-9]+]]:_(s64) = G_MUL [[COPY]], [[COPY1]]
-    ; X64-NEXT: $rax = COPY [[MUL]](s64)
+    ; X64-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rdi
+    ; X64-NEXT: [[COPY1:%[0-9]+]]:_(i64) = COPY $rsi
+    ; X64-NEXT: [[MUL:%[0-9]+]]:_(i64) = G_MUL [[COPY]], [[COPY1]]
+    ; X64-NEXT: $rax = COPY [[MUL]](i64)
     ; X64-NEXT: RET 0, implicit $rax
     ;
     ; X86-LABEL: name: test_mul_i64
     ; X86: liveins: $rdi, $rsi
     ; X86-NEXT: {{  $}}
-    ; X86-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $rdi
-    ; X86-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $rsi
-    ; X86-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY]](s64)
-    ; X86-NEXT: [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](s64)
-    ; X86-NEXT: [[MUL:%[0-9]+]]:_(s32) = G_MUL [[UV]], [[UV2]]
-    ; X86-NEXT: [[UMULH:%[0-9]+]]:_(s32) = G_UMULH [[UV]], [[UV2]]
-    ; X86-NEXT: [[MUL1:%[0-9]+]]:_(s32) = G_MUL [[UV]], [[UV3]]
-    ; X86-NEXT: [[MUL2:%[0-9]+]]:_(s32) = G_MUL [[UV1]], [[UV2]]
-    ; X86-NEXT: [[ADD:%[0-9]+]]:_(s32) = G_ADD [[UMULH]], [[MUL1]]
-    ; X86-NEXT: [[ADD1:%[0-9]+]]:_(s32) = G_ADD [[ADD]], [[MUL2]]
-    ; X86-NEXT: [[MV:%[0-9]+]]:_(s64) = G_MERGE_VALUES [[MUL]](s32), [[ADD1]](s32)
-    ; X86-NEXT: $rax = COPY [[MV]](s64)
+    ; X86-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rdi
+    ; X86-NEXT: [[COPY1:%[0-9]+]]:_(i64) = COPY $rsi
+    ; X86-NEXT: [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY]](i64)
+    ; X86-NEXT: [[UV2:%[0-9]+]]:_(i32), [[UV3:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY1]](i64)
+    ; X86-NEXT: [[MUL:%[0-9]+]]:_(i32) = G_MUL [[UV]], [[UV2]]
+    ; X86-NEXT: [[UMULH:%[0-9]+]]:_(i32) = G_UMULH [[UV]], [[UV2]]
+    ; X86-NEXT: [[MUL1:%[0-9]+]]:_(i32) = G_MUL [[UV]], [[UV3]]
+    ; X86-NEXT: [[MUL2:%[0-9]+]]:_(i32) = G_MUL [[UV1]], [[UV2]]
+    ; X86-NEXT: [[ADD:%[0-9]+]]:_(i32) = G_ADD [[UMULH]], [[MUL1]]
+    ; X86-NEXT: [[ADD1:%[0-9]+]]:_(i32) = G_ADD [[ADD]], [[MUL2]]
+    ; X86-NEXT: [[MV:%[0-9]+]]:_(i64) = G_MERGE_VALUES [[MUL]](i32), [[ADD1]](i32)
+    ; X86-NEXT: $rax = COPY [[MV]](i64)
     ; X86-NEXT: RET 0, implicit $rax
-    %0(s64) = COPY $rdi
-    %1(s64) = COPY $rsi
-    %2(s64) = G_MUL %0, %1
-    $rax = COPY %2(s64)
+    %0(i64) = COPY $rdi
+    %1(i64) = COPY $rsi
+    %2(i64) = G_MUL %0, %1
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 ...

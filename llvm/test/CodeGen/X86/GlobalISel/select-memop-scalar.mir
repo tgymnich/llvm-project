@@ -112,28 +112,39 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_i8
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s8) from %ir.p1)
-    ; SSE: $al = COPY [[MOV8rm]]
-    ; SSE: RET 0, implicit $al
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i8) from %ir.p1)
+    ; SSE-NEXT: $al = COPY [[MOV8rm]]
+    ; SSE-NEXT: RET 0, implicit $al
+    ;
     ; AVX-LABEL: name: test_load_i8
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s8) from %ir.p1)
-    ; AVX: $al = COPY [[MOV8rm]]
-    ; AVX: RET 0, implicit $al
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i8) from %ir.p1)
+    ; AVX-NEXT: $al = COPY [[MOV8rm]]
+    ; AVX-NEXT: RET 0, implicit $al
+    ;
     ; AVX512F-LABEL: name: test_load_i8
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s8) from %ir.p1)
-    ; AVX512F: $al = COPY [[MOV8rm]]
-    ; AVX512F: RET 0, implicit $al
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i8) from %ir.p1)
+    ; AVX512F-NEXT: $al = COPY [[MOV8rm]]
+    ; AVX512F-NEXT: RET 0, implicit $al
+    ;
     ; AVX512VL-LABEL: name: test_load_i8
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s8) from %ir.p1)
-    ; AVX512VL: $al = COPY [[MOV8rm]]
-    ; AVX512VL: RET 0, implicit $al
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV8rm:%[0-9]+]]:gr8 = MOV8rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i8) from %ir.p1)
+    ; AVX512VL-NEXT: $al = COPY [[MOV8rm]]
+    ; AVX512VL-NEXT: RET 0, implicit $al
     %0(p0) = COPY $rdi
-    %1(s8) = G_LOAD %0(p0) :: (load (s8) from %ir.p1)
-    $al = COPY %1(s8)
+    %1(i8) = G_LOAD %0(p0) :: (load (i8) from %ir.p1)
+    $al = COPY %1(i8)
     RET 0, implicit $al
 
 ...
@@ -150,28 +161,39 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_i16
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s16) from %ir.p1)
-    ; SSE: $ax = COPY [[MOV16rm]]
-    ; SSE: RET 0, implicit $ax
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i16) from %ir.p1)
+    ; SSE-NEXT: $ax = COPY [[MOV16rm]]
+    ; SSE-NEXT: RET 0, implicit $ax
+    ;
     ; AVX-LABEL: name: test_load_i16
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s16) from %ir.p1)
-    ; AVX: $ax = COPY [[MOV16rm]]
-    ; AVX: RET 0, implicit $ax
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i16) from %ir.p1)
+    ; AVX-NEXT: $ax = COPY [[MOV16rm]]
+    ; AVX-NEXT: RET 0, implicit $ax
+    ;
     ; AVX512F-LABEL: name: test_load_i16
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s16) from %ir.p1)
-    ; AVX512F: $ax = COPY [[MOV16rm]]
-    ; AVX512F: RET 0, implicit $ax
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i16) from %ir.p1)
+    ; AVX512F-NEXT: $ax = COPY [[MOV16rm]]
+    ; AVX512F-NEXT: RET 0, implicit $ax
+    ;
     ; AVX512VL-LABEL: name: test_load_i16
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s16) from %ir.p1)
-    ; AVX512VL: $ax = COPY [[MOV16rm]]
-    ; AVX512VL: RET 0, implicit $ax
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV16rm:%[0-9]+]]:gr16 = MOV16rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i16) from %ir.p1)
+    ; AVX512VL-NEXT: $ax = COPY [[MOV16rm]]
+    ; AVX512VL-NEXT: RET 0, implicit $ax
     %0(p0) = COPY $rdi
-    %1(s16) = G_LOAD %0(p0) :: (load (s16) from %ir.p1)
-    $ax = COPY %1(s16)
+    %1(i16) = G_LOAD %0(p0) :: (load (i16) from %ir.p1)
+    $ax = COPY %1(i16)
     RET 0, implicit $ax
 
 ...
@@ -188,28 +210,39 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_i32
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; SSE: $eax = COPY [[MOV32rm]]
-    ; SSE: RET 0, implicit $eax
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; SSE-NEXT: $eax = COPY [[MOV32rm]]
+    ; SSE-NEXT: RET 0, implicit $eax
+    ;
     ; AVX-LABEL: name: test_load_i32
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX: $eax = COPY [[MOV32rm]]
-    ; AVX: RET 0, implicit $eax
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX-NEXT: RET 0, implicit $eax
+    ;
     ; AVX512F-LABEL: name: test_load_i32
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX512F: $eax = COPY [[MOV32rm]]
-    ; AVX512F: RET 0, implicit $eax
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX512F-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX512F-NEXT: RET 0, implicit $eax
+    ;
     ; AVX512VL-LABEL: name: test_load_i32
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX512VL: $eax = COPY [[MOV32rm]]
-    ; AVX512VL: RET 0, implicit $eax
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX512VL-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX512VL-NEXT: RET 0, implicit $eax
     %0(p0) = COPY $rdi
-    %1(s32) = G_LOAD %0(p0) :: (load (s32) from %ir.p1)
-    $eax = COPY %1(s32)
+    %1(i32) = G_LOAD %0(p0) :: (load (i32) from %ir.p1)
+    $eax = COPY %1(i32)
     RET 0, implicit $eax
 
 ...
@@ -226,28 +259,39 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_i64
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; SSE: $rax = COPY [[MOV64rm]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; SSE-NEXT: $rax = COPY [[MOV64rm]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_load_i64
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX: $rax = COPY [[MOV64rm]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX-NEXT: $rax = COPY [[MOV64rm]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_load_i64
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX512F: $rax = COPY [[MOV64rm]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX512F-NEXT: $rax = COPY [[MOV64rm]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_load_i64
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX512VL: $rax = COPY [[MOV64rm]]
-    ; AVX512VL: RET 0, implicit $rax
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX512VL-NEXT: $rax = COPY [[MOV64rm]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
     %0(p0) = COPY $rdi
-    %1(s64) = G_LOAD %0(p0) :: (load (s64) from %ir.p1)
-    $rax = COPY %1(s64)
+    %1(i64) = G_LOAD %0(p0) :: (load (i64) from %ir.p1)
+    $rax = COPY %1(i64)
     RET 0, implicit $rax
 
 ...
@@ -266,38 +310,49 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_float
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; SSE: [[COPY1:%[0-9]+]]:fr32 = COPY [[MOV32rm]]
-    ; SSE: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; SSE: $xmm0 = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $xmm0
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; SSE-NEXT: [[MOVDI2SSrr:%[0-9]+]]:fr32 = MOVDI2SSrr [[MOV32rm]]
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[MOVDI2SSrr]]
+    ; SSE-NEXT: $xmm0 = COPY [[COPY1]]
+    ; SSE-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX-LABEL: name: test_load_float
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX: [[COPY1:%[0-9]+]]:fr32 = COPY [[MOV32rm]]
-    ; AVX: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; AVX: $xmm0 = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $xmm0
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX-NEXT: [[VMOVDI2SSrr:%[0-9]+]]:fr32 = VMOVDI2SSrr [[MOV32rm]]
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[VMOVDI2SSrr]]
+    ; AVX-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512F-LABEL: name: test_load_float
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr32x = COPY [[MOV32rm]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512F: $xmm0 = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $xmm0
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX512F-NEXT: [[VMOVDI2SSZrr:%[0-9]+]]:fr32x = VMOVDI2SSZrr [[MOV32rm]]
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOVDI2SSZrr]]
+    ; AVX512F-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512F-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512VL-LABEL: name: test_load_float
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr32x = COPY [[MOV32rm]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512VL: $xmm0 = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $xmm0
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX512VL-NEXT: [[VMOVDI2SSZrr:%[0-9]+]]:fr32x = VMOVDI2SSZrr [[MOV32rm]]
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOVDI2SSZrr]]
+    ; AVX512VL-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512VL-NEXT: RET 0, implicit $xmm0
     %0:gpr(p0) = COPY $rdi
-    %1:gpr(s32) = G_LOAD %0(p0) :: (load (s32) from %ir.p1)
-    %3:vecr(s32) = COPY %1(s32)
-    %2:vecr(s128) = G_ANYEXT %3(s32)
-    $xmm0 = COPY %2(s128)
+    %1:gpr(i32) = G_LOAD %0(p0) :: (load (i32) from %ir.p1)
+    %3:vecr(f32) = G_BITCAST %1(i32)
+    %2:vecr(i128) = G_ANYEXT %3(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -316,38 +371,49 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_float_vecreg
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; SSE: [[COPY1:%[0-9]+]]:fr32 = COPY [[MOV32rm]]
-    ; SSE: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; SSE: $xmm0 = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $xmm0
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; SSE-NEXT: [[MOVDI2SSrr:%[0-9]+]]:fr32 = MOVDI2SSrr [[MOV32rm]]
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[MOVDI2SSrr]]
+    ; SSE-NEXT: $xmm0 = COPY [[COPY1]]
+    ; SSE-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX-LABEL: name: test_load_float_vecreg
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX: [[COPY1:%[0-9]+]]:fr32 = COPY [[MOV32rm]]
-    ; AVX: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; AVX: $xmm0 = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $xmm0
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX-NEXT: [[VMOVDI2SSrr:%[0-9]+]]:fr32 = VMOVDI2SSrr [[MOV32rm]]
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[VMOVDI2SSrr]]
+    ; AVX-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512F-LABEL: name: test_load_float_vecreg
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr32x = COPY [[MOV32rm]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512F: $xmm0 = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $xmm0
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX512F-NEXT: [[VMOVDI2SSZrr:%[0-9]+]]:fr32x = VMOVDI2SSZrr [[MOV32rm]]
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOVDI2SSZrr]]
+    ; AVX512F-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512F-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512VL-LABEL: name: test_load_float_vecreg
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.p1)
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr32x = COPY [[MOV32rm]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512VL: $xmm0 = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $xmm0
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.p1)
+    ; AVX512VL-NEXT: [[VMOVDI2SSZrr:%[0-9]+]]:fr32x = VMOVDI2SSZrr [[MOV32rm]]
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOVDI2SSZrr]]
+    ; AVX512VL-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512VL-NEXT: RET 0, implicit $xmm0
     %0:gpr(p0) = COPY $rdi
-    %1:gpr(s32) = G_LOAD %0(p0) :: (load (s32) from %ir.p1)
-    %3:vecr(s32) = COPY %1(s32)
-    %2:vecr(s128) = G_ANYEXT %3(s32)
-    $xmm0 = COPY %2(s128)
+    %1:gpr(i32) = G_LOAD %0(p0) :: (load (i32) from %ir.p1)
+    %3:vecr(f32) = G_BITCAST %1(i32)
+    %2:vecr(i128) = G_ANYEXT %3(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -366,38 +432,49 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_double
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; SSE: [[COPY1:%[0-9]+]]:fr64 = COPY [[MOV64rm]]
-    ; SSE: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; SSE: $xmm0 = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $xmm0
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; SSE-NEXT: [[MOV64toSDrr:%[0-9]+]]:fr64 = MOV64toSDrr [[MOV64rm]]
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[MOV64toSDrr]]
+    ; SSE-NEXT: $xmm0 = COPY [[COPY1]]
+    ; SSE-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX-LABEL: name: test_load_double
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX: [[COPY1:%[0-9]+]]:fr64 = COPY [[MOV64rm]]
-    ; AVX: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; AVX: $xmm0 = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $xmm0
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX-NEXT: [[VMOV64toSDrr:%[0-9]+]]:fr64 = VMOV64toSDrr [[MOV64rm]]
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[VMOV64toSDrr]]
+    ; AVX-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512F-LABEL: name: test_load_double
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr64x = COPY [[MOV64rm]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512F: $xmm0 = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $xmm0
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX512F-NEXT: [[VMOV64toSDZrr:%[0-9]+]]:fr64x = VMOV64toSDZrr [[MOV64rm]]
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOV64toSDZrr]]
+    ; AVX512F-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512F-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512VL-LABEL: name: test_load_double
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr64x = COPY [[MOV64rm]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512VL: $xmm0 = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $xmm0
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX512VL-NEXT: [[VMOV64toSDZrr:%[0-9]+]]:fr64x = VMOV64toSDZrr [[MOV64rm]]
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOV64toSDZrr]]
+    ; AVX512VL-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512VL-NEXT: RET 0, implicit $xmm0
     %0:gpr(p0) = COPY $rdi
-    %1:gpr(s64) = G_LOAD %0(p0) :: (load (s64) from %ir.p1)
-    %3:vecr(s64) = COPY %1(s64)
-    %2:vecr(s128) = G_ANYEXT %3(s64)
-    $xmm0 = COPY %2(s128)
+    %1:gpr(i64) = G_LOAD %0(p0) :: (load (i64) from %ir.p1)
+    %3:vecr(f64) = G_BITCAST %1(i64)
+    %2:vecr(i128) = G_ANYEXT %3(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -416,38 +493,49 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_double_vecreg
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; SSE: [[COPY1:%[0-9]+]]:fr64 = COPY [[MOV64rm]]
-    ; SSE: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; SSE: $xmm0 = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $xmm0
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; SSE-NEXT: [[MOV64toSDrr:%[0-9]+]]:fr64 = MOV64toSDrr [[MOV64rm]]
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[MOV64toSDrr]]
+    ; SSE-NEXT: $xmm0 = COPY [[COPY1]]
+    ; SSE-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX-LABEL: name: test_load_double_vecreg
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX: [[COPY1:%[0-9]+]]:fr64 = COPY [[MOV64rm]]
-    ; AVX: [[COPY2:%[0-9]+]]:vr128 = COPY [[COPY1]]
-    ; AVX: $xmm0 = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $xmm0
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX-NEXT: [[VMOV64toSDrr:%[0-9]+]]:fr64 = VMOV64toSDrr [[MOV64rm]]
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:vr128 = COPY [[VMOV64toSDrr]]
+    ; AVX-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512F-LABEL: name: test_load_double_vecreg
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr64x = COPY [[MOV64rm]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512F: $xmm0 = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $xmm0
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX512F-NEXT: [[VMOV64toSDZrr:%[0-9]+]]:fr64x = VMOV64toSDZrr [[MOV64rm]]
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOV64toSDZrr]]
+    ; AVX512F-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512F-NEXT: RET 0, implicit $xmm0
+    ;
     ; AVX512VL-LABEL: name: test_load_double_vecreg
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (s64) from %ir.p1)
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr64x = COPY [[MOV64rm]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:vr128x = COPY [[COPY1]]
-    ; AVX512VL: $xmm0 = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $xmm0
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (i64) from %ir.p1)
+    ; AVX512VL-NEXT: [[VMOV64toSDZrr:%[0-9]+]]:fr64x = VMOV64toSDZrr [[MOV64rm]]
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:vr128x = COPY [[VMOV64toSDZrr]]
+    ; AVX512VL-NEXT: $xmm0 = COPY [[COPY1]]
+    ; AVX512VL-NEXT: RET 0, implicit $xmm0
     %0:gpr(p0) = COPY $rdi
-    %1:gpr(s64) = G_LOAD %0(p0) :: (load (s64) from %ir.p1)
-    %3:vecr(s64) = COPY %1(s64)
-    %2:vecr(s128) = G_ANYEXT %3(s64)
-    $xmm0 = COPY %2(s128)
+    %1:gpr(i64) = G_LOAD %0(p0) :: (load (i64) from %ir.p1)
+    %3:vecr(f64) = G_BITCAST %1(i64)
+    %2:vecr(i128) = G_ANYEXT %3(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -464,32 +552,43 @@ body:             |
     liveins: $edi, $rsi
 
     ; SSE-LABEL: name: test_store_i32
-    ; SSE: [[COPY:%[0-9]+]]:gr32 = COPY $edi
-    ; SSE: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; SSE: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s32) into %ir.p1)
-    ; SSE: $rax = COPY [[COPY1]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $edi, $rsi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr32 = COPY $edi
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; SSE-NEXT: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i32) into %ir.p1)
+    ; SSE-NEXT: $rax = COPY [[COPY1]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_store_i32
-    ; AVX: [[COPY:%[0-9]+]]:gr32 = COPY $edi
-    ; AVX: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s32) into %ir.p1)
-    ; AVX: $rax = COPY [[COPY1]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $edi, $rsi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr32 = COPY $edi
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX-NEXT: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i32) into %ir.p1)
+    ; AVX-NEXT: $rax = COPY [[COPY1]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_store_i32
-    ; AVX512F: [[COPY:%[0-9]+]]:gr32 = COPY $edi
-    ; AVX512F: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX512F: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s32) into %ir.p1)
-    ; AVX512F: $rax = COPY [[COPY1]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $edi, $rsi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr32 = COPY $edi
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX512F-NEXT: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i32) into %ir.p1)
+    ; AVX512F-NEXT: $rax = COPY [[COPY1]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_store_i32
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr32 = COPY $edi
-    ; AVX512VL: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX512VL: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s32) into %ir.p1)
-    ; AVX512VL: $rax = COPY [[COPY1]]
-    ; AVX512VL: RET 0, implicit $rax
-    %0(s32) = COPY $edi
+    ; AVX512VL: liveins: $edi, $rsi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr32 = COPY $edi
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX512VL-NEXT: MOV32mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i32) into %ir.p1)
+    ; AVX512VL-NEXT: $rax = COPY [[COPY1]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
+    %0(i32) = COPY $edi
     %1(p0) = COPY $rsi
-    G_STORE %0(s32), %1(p0) :: (store (s32) into %ir.p1)
+    G_STORE %0(i32), %1(p0) :: (store (i32) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -507,32 +606,43 @@ body:             |
     liveins: $rdi, $rsi
 
     ; SSE-LABEL: name: test_store_i64
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; SSE: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s64) into %ir.p1)
-    ; SSE: $rax = COPY [[COPY1]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $rdi, $rsi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; SSE-NEXT: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i64) into %ir.p1)
+    ; SSE-NEXT: $rax = COPY [[COPY1]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_store_i64
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s64) into %ir.p1)
-    ; AVX: $rax = COPY [[COPY1]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $rdi, $rsi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX-NEXT: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i64) into %ir.p1)
+    ; AVX-NEXT: $rax = COPY [[COPY1]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_store_i64
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX512F: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s64) into %ir.p1)
-    ; AVX512F: $rax = COPY [[COPY1]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $rdi, $rsi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX512F-NEXT: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i64) into %ir.p1)
+    ; AVX512F-NEXT: $rax = COPY [[COPY1]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_store_i64
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX512VL: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (s64) into %ir.p1)
-    ; AVX512VL: $rax = COPY [[COPY1]]
-    ; AVX512VL: RET 0, implicit $rax
-    %0(s64) = COPY $rdi
+    ; AVX512VL: liveins: $rdi, $rsi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX512VL-NEXT: MOV64mr [[COPY1]], 1, $noreg, 0, $noreg, [[COPY]] :: (store (i64) into %ir.p1)
+    ; AVX512VL-NEXT: $rax = COPY [[COPY1]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
+    %0(i64) = COPY $rdi
     %1(p0) = COPY $rsi
-    G_STORE %0(s64), %1(p0) :: (store (s64) into %ir.p1)
+    G_STORE %0(i64), %1(p0) :: (store (i64) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -552,42 +662,53 @@ body:             |
     liveins: $rdi, $xmm0
 
     ; SSE-LABEL: name: test_store_float
-    ; SSE: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; SSE: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
-    ; SSE: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; SSE: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; SSE: $rax = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $rdi, $xmm0
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
+    ; SSE-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOVSS2DIrr:%[0-9]+]]:gr32 = MOVSS2DIrr [[COPY1]]
+    ; SSE-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[MOVSS2DIrr]] :: (store (i32) into %ir.p1)
+    ; SSE-NEXT: $rax = COPY [[COPY2]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_store_float
-    ; AVX: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; AVX: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
-    ; AVX: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; AVX: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; AVX: $rax = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $rdi, $xmm0
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
+    ; AVX-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[VMOVSS2DIrr:%[0-9]+]]:gr32 = VMOVSS2DIrr [[COPY1]]
+    ; AVX-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSS2DIrr]] :: (store (i32) into %ir.p1)
+    ; AVX-NEXT: $rax = COPY [[COPY2]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_store_float
-    ; AVX512F: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; AVX512F: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; AVX512F: $rax = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $rdi, $xmm0
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
+    ; AVX512F-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[VMOVSS2DIZrr:%[0-9]+]]:gr32 = VMOVSS2DIZrr [[COPY1]]
+    ; AVX512F-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSS2DIZrr]] :: (store (i32) into %ir.p1)
+    ; AVX512F-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_store_float
-    ; AVX512VL: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; AVX512VL: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; AVX512VL: $rax = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $rax
-    %2:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %2(s128)
+    ; AVX512VL: liveins: $rdi, $xmm0
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
+    ; AVX512VL-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[VMOVSS2DIZrr:%[0-9]+]]:gr32 = VMOVSS2DIZrr [[COPY1]]
+    ; AVX512VL-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSS2DIZrr]] :: (store (i32) into %ir.p1)
+    ; AVX512VL-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
+    %2:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %2(i128)
     %1:gpr(p0) = COPY $rdi
-    %3:gpr(s32) = COPY %0(s32)
-    G_STORE %3(s32), %1(p0) :: (store (s32) into %ir.p1)
+    %3:gpr(i32) = G_BITCAST %0(f32)
+    G_STORE %3(i32), %1(p0) :: (store (i32) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -607,42 +728,53 @@ body:             |
     liveins: $rdi, $xmm0
 
     ; SSE-LABEL: name: test_store_float_vec
-    ; SSE: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; SSE: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
-    ; SSE: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; SSE: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; SSE: $rax = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $rdi, $xmm0
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
+    ; SSE-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOVSS2DIrr:%[0-9]+]]:gr32 = MOVSS2DIrr [[COPY1]]
+    ; SSE-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[MOVSS2DIrr]] :: (store (i32) into %ir.p1)
+    ; SSE-NEXT: $rax = COPY [[COPY2]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_store_float_vec
-    ; AVX: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; AVX: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
-    ; AVX: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; AVX: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; AVX: $rax = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $rdi, $xmm0
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:fr32 = COPY [[COPY]]
+    ; AVX-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[VMOVSS2DIrr:%[0-9]+]]:gr32 = VMOVSS2DIrr [[COPY1]]
+    ; AVX-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSS2DIrr]] :: (store (i32) into %ir.p1)
+    ; AVX-NEXT: $rax = COPY [[COPY2]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_store_float_vec
-    ; AVX512F: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; AVX512F: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; AVX512F: $rax = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $rdi, $xmm0
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
+    ; AVX512F-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[VMOVSS2DIZrr:%[0-9]+]]:gr32 = VMOVSS2DIZrr [[COPY1]]
+    ; AVX512F-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSS2DIZrr]] :: (store (i32) into %ir.p1)
+    ; AVX512F-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_store_float_vec
-    ; AVX512VL: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY3:%[0-9]+]]:gr32 = COPY [[COPY1]]
-    ; AVX512VL: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s32) into %ir.p1)
-    ; AVX512VL: $rax = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $rax
-    %2:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %2(s128)
+    ; AVX512VL: liveins: $rdi, $xmm0
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:fr32x = COPY [[COPY]]
+    ; AVX512VL-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[VMOVSS2DIZrr:%[0-9]+]]:gr32 = VMOVSS2DIZrr [[COPY1]]
+    ; AVX512VL-NEXT: MOV32mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSS2DIZrr]] :: (store (i32) into %ir.p1)
+    ; AVX512VL-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
+    %2:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %2(i128)
     %1:gpr(p0) = COPY $rdi
-    %3:gpr(s32) = COPY %0(s32)
-    G_STORE %3(s32), %1(p0) :: (store (s32) into %ir.p1)
+    %3:gpr(i32) = G_BITCAST %0(f32)
+    G_STORE %3(i32), %1(p0) :: (store (i32) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -663,42 +795,53 @@ body:             |
     liveins: $rdi, $xmm0
 
     ; SSE-LABEL: name: test_store_double
-    ; SSE: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; SSE: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
-    ; SSE: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; SSE: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; SSE: $rax = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $rdi, $xmm0
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
+    ; SSE-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOVSDto64rr:%[0-9]+]]:gr64 = MOVSDto64rr [[COPY1]]
+    ; SSE-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[MOVSDto64rr]] :: (store (i64) into %ir.p1)
+    ; SSE-NEXT: $rax = COPY [[COPY2]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_store_double
-    ; AVX: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; AVX: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
-    ; AVX: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; AVX: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; AVX: $rax = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $rdi, $xmm0
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
+    ; AVX-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[VMOVSDto64rr:%[0-9]+]]:gr64 = VMOVSDto64rr [[COPY1]]
+    ; AVX-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSDto64rr]] :: (store (i64) into %ir.p1)
+    ; AVX-NEXT: $rax = COPY [[COPY2]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_store_double
-    ; AVX512F: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; AVX512F: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; AVX512F: $rax = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $rdi, $xmm0
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
+    ; AVX512F-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[VMOVSDto64Zrr:%[0-9]+]]:gr64 = VMOVSDto64Zrr [[COPY1]]
+    ; AVX512F-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSDto64Zrr]] :: (store (i64) into %ir.p1)
+    ; AVX512F-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_store_double
-    ; AVX512VL: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; AVX512VL: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; AVX512VL: $rax = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $rax
-    %2:vecr(s128) = COPY $xmm0
-    %0:vecr(s64) = G_TRUNC %2(s128)
+    ; AVX512VL: liveins: $rdi, $xmm0
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
+    ; AVX512VL-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[VMOVSDto64Zrr:%[0-9]+]]:gr64 = VMOVSDto64Zrr [[COPY1]]
+    ; AVX512VL-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSDto64Zrr]] :: (store (i64) into %ir.p1)
+    ; AVX512VL-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
+    %2:vecr(i128) = COPY $xmm0
+    %0:vecr(f64) = G_TRUNC %2(i128)
     %1:gpr(p0) = COPY $rdi
-    %3:gpr(s64) = COPY %0(s64)
-    G_STORE %3(s64), %1(p0) :: (store (s64) into %ir.p1)
+    %3:gpr(i64) = G_BITCAST %0(f64)
+    G_STORE %3(i64), %1(p0) :: (store (i64) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -718,42 +861,53 @@ body:             |
     liveins: $rdi, $xmm0
 
     ; SSE-LABEL: name: test_store_double_vec
-    ; SSE: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; SSE: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
-    ; SSE: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; SSE: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; SSE: $rax = COPY [[COPY2]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $rdi, $xmm0
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
+    ; SSE-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOVSDto64rr:%[0-9]+]]:gr64 = MOVSDto64rr [[COPY1]]
+    ; SSE-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[MOVSDto64rr]] :: (store (i64) into %ir.p1)
+    ; SSE-NEXT: $rax = COPY [[COPY2]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_store_double_vec
-    ; AVX: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
-    ; AVX: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
-    ; AVX: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; AVX: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; AVX: $rax = COPY [[COPY2]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $rdi, $xmm0
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:vr128 = COPY $xmm0
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:fr64 = COPY [[COPY]]
+    ; AVX-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[VMOVSDto64rr:%[0-9]+]]:gr64 = VMOVSDto64rr [[COPY1]]
+    ; AVX-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSDto64rr]] :: (store (i64) into %ir.p1)
+    ; AVX-NEXT: $rax = COPY [[COPY2]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_store_double_vec
-    ; AVX512F: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512F: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
-    ; AVX512F: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; AVX512F: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; AVX512F: $rax = COPY [[COPY2]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $rdi, $xmm0
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
+    ; AVX512F-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[VMOVSDto64Zrr:%[0-9]+]]:gr64 = VMOVSDto64Zrr [[COPY1]]
+    ; AVX512F-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSDto64Zrr]] :: (store (i64) into %ir.p1)
+    ; AVX512F-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_store_double_vec
-    ; AVX512VL: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
-    ; AVX512VL: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
-    ; AVX512VL: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY3:%[0-9]+]]:gr64 = COPY [[COPY1]]
-    ; AVX512VL: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[COPY3]] :: (store (s64) into %ir.p1)
-    ; AVX512VL: $rax = COPY [[COPY2]]
-    ; AVX512VL: RET 0, implicit $rax
-    %2:vecr(s128) = COPY $xmm0
-    %0:vecr(s64) = G_TRUNC %2(s128)
+    ; AVX512VL: liveins: $rdi, $xmm0
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:vr128x = COPY $xmm0
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:fr64x = COPY [[COPY]]
+    ; AVX512VL-NEXT: [[COPY2:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[VMOVSDto64Zrr:%[0-9]+]]:gr64 = VMOVSDto64Zrr [[COPY1]]
+    ; AVX512VL-NEXT: MOV64mr [[COPY2]], 1, $noreg, 0, $noreg, [[VMOVSDto64Zrr]] :: (store (i64) into %ir.p1)
+    ; AVX512VL-NEXT: $rax = COPY [[COPY2]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
+    %2:vecr(i128) = COPY $xmm0
+    %0:vecr(f64) = G_TRUNC %2(i128)
     %1:gpr(p0) = COPY $rdi
-    %3:gpr(s64) = COPY %0(s64)
-    G_STORE %3(s64), %1(p0) :: (store (s64) into %ir.p1)
+    %3:gpr(i64) = G_BITCAST %0(f64)
+    G_STORE %3(i64), %1(p0) :: (store (i64) into %ir.p1)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 
@@ -772,25 +926,36 @@ body:             |
     liveins: $rdi
 
     ; SSE-LABEL: name: test_load_ptr
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
-    ; SSE: $rax = COPY [[MOV64rm]]
-    ; SSE: RET 0, implicit $rax
+    ; SSE: liveins: $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
+    ; SSE-NEXT: $rax = COPY [[MOV64rm]]
+    ; SSE-NEXT: RET 0, implicit $rax
+    ;
     ; AVX-LABEL: name: test_load_ptr
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
-    ; AVX: $rax = COPY [[MOV64rm]]
-    ; AVX: RET 0, implicit $rax
+    ; AVX: liveins: $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
+    ; AVX-NEXT: $rax = COPY [[MOV64rm]]
+    ; AVX-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512F-LABEL: name: test_load_ptr
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
-    ; AVX512F: $rax = COPY [[MOV64rm]]
-    ; AVX512F: RET 0, implicit $rax
+    ; AVX512F: liveins: $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
+    ; AVX512F-NEXT: $rax = COPY [[MOV64rm]]
+    ; AVX512F-NEXT: RET 0, implicit $rax
+    ;
     ; AVX512VL-LABEL: name: test_load_ptr
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
-    ; AVX512VL: $rax = COPY [[MOV64rm]]
-    ; AVX512VL: RET 0, implicit $rax
+    ; AVX512VL: liveins: $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[MOV64rm:%[0-9]+]]:gr64 = MOV64rm [[COPY]], 1, $noreg, 0, $noreg :: (load (p0) from %ir.ptr1)
+    ; AVX512VL-NEXT: $rax = COPY [[MOV64rm]]
+    ; AVX512VL-NEXT: RET 0, implicit $rax
     %0(p0) = COPY $rdi
     %1(p0) = G_LOAD %0(p0) :: (load (p0) from %ir.ptr1)
     $rax = COPY %1(p0)
@@ -811,25 +976,36 @@ body:             |
     liveins: $rdi, $rsi
 
     ; SSE-LABEL: name: test_store_ptr
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; SSE: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
-    ; SSE: RET 0
+    ; SSE: liveins: $rdi, $rsi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; SSE-NEXT: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
+    ; SSE-NEXT: RET 0
+    ;
     ; AVX-LABEL: name: test_store_ptr
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
-    ; AVX: RET 0
+    ; AVX: liveins: $rdi, $rsi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX-NEXT: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
+    ; AVX-NEXT: RET 0
+    ;
     ; AVX512F-LABEL: name: test_store_ptr
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX512F: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
-    ; AVX512F: RET 0
+    ; AVX512F: liveins: $rdi, $rsi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX512F-NEXT: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
+    ; AVX512F-NEXT: RET 0
+    ;
     ; AVX512VL-LABEL: name: test_store_ptr
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
-    ; AVX512VL: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
-    ; AVX512VL: RET 0
+    ; AVX512VL: liveins: $rdi, $rsi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:gr64 = COPY $rsi
+    ; AVX512VL-NEXT: MOV64mr [[COPY]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (p0) into %ir.ptr1)
+    ; AVX512VL-NEXT: RET 0
     %0(p0) = COPY $rdi
     %1(p0) = COPY $rsi
     G_STORE %1(p0), %0(p0) :: (store (p0) into %ir.ptr1)
@@ -852,40 +1028,51 @@ body:             |
     liveins: $esi, $rdi
 
     ; SSE-LABEL: name: test_gep_folding
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; SSE: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; SSE: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (s32) from %ir.arrayidx)
-    ; SSE: $eax = COPY [[MOV32rm]]
-    ; SSE: RET 0, implicit $eax
+    ; SSE: liveins: $esi, $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; SSE-NEXT: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; SSE-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (i32) from %ir.arrayidx)
+    ; SSE-NEXT: $eax = COPY [[MOV32rm]]
+    ; SSE-NEXT: RET 0, implicit $eax
+    ;
     ; AVX-LABEL: name: test_gep_folding
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; AVX: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; AVX: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (s32) from %ir.arrayidx)
-    ; AVX: $eax = COPY [[MOV32rm]]
-    ; AVX: RET 0, implicit $eax
+    ; AVX: liveins: $esi, $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; AVX-NEXT: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; AVX-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (i32) from %ir.arrayidx)
+    ; AVX-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX-NEXT: RET 0, implicit $eax
+    ;
     ; AVX512F-LABEL: name: test_gep_folding
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; AVX512F: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; AVX512F: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (s32) from %ir.arrayidx)
-    ; AVX512F: $eax = COPY [[MOV32rm]]
-    ; AVX512F: RET 0, implicit $eax
+    ; AVX512F: liveins: $esi, $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; AVX512F-NEXT: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; AVX512F-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (i32) from %ir.arrayidx)
+    ; AVX512F-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX512F-NEXT: RET 0, implicit $eax
+    ;
     ; AVX512VL-LABEL: name: test_gep_folding
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; AVX512VL: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; AVX512VL: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (s32) from %ir.arrayidx)
-    ; AVX512VL: $eax = COPY [[MOV32rm]]
-    ; AVX512VL: RET 0, implicit $eax
+    ; AVX512VL: liveins: $esi, $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; AVX512VL-NEXT: MOV32mr [[COPY]], 1, $noreg, 20, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; AVX512VL-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[COPY]], 1, $noreg, 20, $noreg :: (load (i32) from %ir.arrayidx)
+    ; AVX512VL-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX512VL-NEXT: RET 0, implicit $eax
     %0(p0) = COPY $rdi
-    %1(s32) = COPY $esi
-    %2(s64) = G_CONSTANT i64 20
-    %3(p0) = G_PTR_ADD %0, %2(s64)
-    G_STORE %1(s32), %3(p0) :: (store (s32) into %ir.arrayidx)
-    %4(s32) = G_LOAD %3(p0) :: (load (s32) from %ir.arrayidx)
-    $eax = COPY %4(s32)
+    %1(i32) = COPY $esi
+    %2(i64) = G_CONSTANT i64 20
+    %3(p0) = G_PTR_ADD %0, %2(i64)
+    G_STORE %1(i32), %3(p0) :: (store (i32) into %ir.arrayidx)
+    %4(i32) = G_LOAD %3(p0) :: (load (i32) from %ir.arrayidx)
+    $eax = COPY %4(i32)
     RET 0, implicit $eax
 
 ...
@@ -905,48 +1092,59 @@ body:             |
     liveins: $esi, $rdi
 
     ; SSE-LABEL: name: test_gep_folding_largeGepIndex
-    ; SSE: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; SSE: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; SSE: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
-    ; SSE: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
-    ; SSE: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; SSE: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.arrayidx)
-    ; SSE: $eax = COPY [[MOV32rm]]
-    ; SSE: RET 0, implicit $eax
+    ; SSE: liveins: $esi, $rdi
+    ; SSE-NEXT: {{  $}}
+    ; SSE-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; SSE-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; SSE-NEXT: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
+    ; SSE-NEXT: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
+    ; SSE-NEXT: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; SSE-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.arrayidx)
+    ; SSE-NEXT: $eax = COPY [[MOV32rm]]
+    ; SSE-NEXT: RET 0, implicit $eax
+    ;
     ; AVX-LABEL: name: test_gep_folding_largeGepIndex
-    ; AVX: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; AVX: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
-    ; AVX: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
-    ; AVX: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; AVX: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.arrayidx)
-    ; AVX: $eax = COPY [[MOV32rm]]
-    ; AVX: RET 0, implicit $eax
+    ; AVX: liveins: $esi, $rdi
+    ; AVX-NEXT: {{  $}}
+    ; AVX-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; AVX-NEXT: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
+    ; AVX-NEXT: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
+    ; AVX-NEXT: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; AVX-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.arrayidx)
+    ; AVX-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX-NEXT: RET 0, implicit $eax
+    ;
     ; AVX512F-LABEL: name: test_gep_folding_largeGepIndex
-    ; AVX512F: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512F: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; AVX512F: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
-    ; AVX512F: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
-    ; AVX512F: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; AVX512F: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.arrayidx)
-    ; AVX512F: $eax = COPY [[MOV32rm]]
-    ; AVX512F: RET 0, implicit $eax
+    ; AVX512F: liveins: $esi, $rdi
+    ; AVX512F-NEXT: {{  $}}
+    ; AVX512F-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512F-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; AVX512F-NEXT: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
+    ; AVX512F-NEXT: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
+    ; AVX512F-NEXT: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; AVX512F-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.arrayidx)
+    ; AVX512F-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX512F-NEXT: RET 0, implicit $eax
+    ;
     ; AVX512VL-LABEL: name: test_gep_folding_largeGepIndex
-    ; AVX512VL: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
-    ; AVX512VL: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
-    ; AVX512VL: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
-    ; AVX512VL: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
-    ; AVX512VL: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (s32) into %ir.arrayidx)
-    ; AVX512VL: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (s32) from %ir.arrayidx)
-    ; AVX512VL: $eax = COPY [[MOV32rm]]
-    ; AVX512VL: RET 0, implicit $eax
+    ; AVX512VL: liveins: $esi, $rdi
+    ; AVX512VL-NEXT: {{  $}}
+    ; AVX512VL-NEXT: [[COPY:%[0-9]+]]:gr64 = COPY $rdi
+    ; AVX512VL-NEXT: [[COPY1:%[0-9]+]]:gr32 = COPY $esi
+    ; AVX512VL-NEXT: [[MOV64ri:%[0-9]+]]:gr64_nosp = MOV64ri 228719476720
+    ; AVX512VL-NEXT: [[LEA64r:%[0-9]+]]:gr64 = LEA64r [[COPY]], 1, [[MOV64ri]], 0, $noreg
+    ; AVX512VL-NEXT: MOV32mr [[LEA64r]], 1, $noreg, 0, $noreg, [[COPY1]] :: (store (i32) into %ir.arrayidx)
+    ; AVX512VL-NEXT: [[MOV32rm:%[0-9]+]]:gr32 = MOV32rm [[LEA64r]], 1, $noreg, 0, $noreg :: (load (i32) from %ir.arrayidx)
+    ; AVX512VL-NEXT: $eax = COPY [[MOV32rm]]
+    ; AVX512VL-NEXT: RET 0, implicit $eax
     %0(p0) = COPY $rdi
-    %1(s32) = COPY $esi
-    %2(s64) = G_CONSTANT i64 228719476720
-    %3(p0) = G_PTR_ADD %0, %2(s64)
-    G_STORE %1(s32), %3(p0) :: (store (s32) into %ir.arrayidx)
-    %4(s32) = G_LOAD %3(p0) :: (load (s32) from %ir.arrayidx)
-    $eax = COPY %4(s32)
+    %1(i32) = COPY $esi
+    %2(i64) = G_CONSTANT i64 228719476720
+    %3(p0) = G_PTR_ADD %0, %2(i64)
+    G_STORE %1(i32), %3(p0) :: (store (i32) into %ir.arrayidx)
+    %4(i32) = G_LOAD %3(p0) :: (load (i32) from %ir.arrayidx)
+    $eax = COPY %4(i32)
     RET 0, implicit $eax
 
 ...

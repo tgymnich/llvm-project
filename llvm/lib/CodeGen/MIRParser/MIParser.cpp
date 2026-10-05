@@ -2051,6 +2051,7 @@ bool MIParser::parseLowLevelType(StringRef::iterator Loc, LLT &Ty) {
       return error("invalid size for bfloat");
 
     Ty = Token.range().starts_with("bf") ? LLT::bfloat16()
+         : ScalarSize == 80              ? LLT::x86fp80()
                                          : LLT::floatIEEE(ScalarSize);
     lex();
     return false;
@@ -2121,7 +2122,7 @@ bool MIParser::parseLowLevelType(StringRef::iterator Loc, LLT &Ty) {
     auto ScalarSize = APSInt(VectorTyDigits).getZExtValue();
     if (!verifyScalarSize(ScalarSize))
       return error("invalid size for float element in vector");
-    Ty = LLT::floatIEEE(ScalarSize);
+    Ty = ScalarSize == 80 ? LLT::x86fp80() : LLT::floatIEEE(ScalarSize);
   } else if (Token.range().starts_with("bf")) {
     auto ScalarSize = APSInt(VectorTyDigits).getZExtValue();
     if (!verifyScalarSize(ScalarSize))

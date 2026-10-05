@@ -196,6 +196,8 @@ X86TargetMachine::X86TargetMachine(const Target &T, const Triple &TT,
     this->Options.NoTrapAfterNoreturn = TT.isOSBinFormatMachO();
   }
 
+  LLT::setUseExtended(true);
+
   setMachineOutliner(true);
 
   // x86 supports the debug entry values.

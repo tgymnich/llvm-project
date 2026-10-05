@@ -62,7 +62,7 @@ define double @test_fsub_f64(double %arg1, double %arg2) {
 ; GISEL-X86-LABEL: test_fsub_f64:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
-; GISEL-X86-NEXT:    fsubl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fsubrl {{[0-9]+}}(%esp)
 ; GISEL-X86-NEXT:    retl
 ;
 ; SSE-LABEL: test_fsub_f64:

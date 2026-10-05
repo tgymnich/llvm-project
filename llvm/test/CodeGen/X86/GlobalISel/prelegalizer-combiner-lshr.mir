@@ -10,12 +10,12 @@ body:             |
     ; CHECK-LABEL: name: lshr_of_vec_zero
     ; CHECK: liveins: $xmm0
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(<8 x s16>) = COPY $xmm0
-    ; CHECK-NEXT: $xmm0 = COPY [[COPY]](<8 x s16>)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(<8 x i16>) = COPY $xmm0
+    ; CHECK-NEXT: $xmm0 = COPY [[COPY]](<8 x i16>)
     ; CHECK-NEXT: RET implicit $xmm0
-    %0:_(<8 x s16>) = COPY $xmm0
-    %5:_(s16) = G_CONSTANT i16 0
-    %zero_vec:_(<8 x s16>) = G_BUILD_VECTOR %5(s16), %5(s16), %5(s16), %5(s16), %5(s16), %5(s16), %5(s16), %5(s16)
+    %0:_(<8 x i16>) = COPY $xmm0
+    %5:_(i16) = G_CONSTANT i16 0
+    %zero_vec:_(<8 x s16>) = G_BUILD_VECTOR %5(i16), %5(i16), %5(i16), %5(i16), %5(i16), %5(i16), %5(i16), %5(i16)
     %shift:_(<8 x s16>) = G_LSHR %0, %zero_vec(<8 x s16>)
     $xmm0 = COPY %shift(<8 x s16>)
     RET implicit $xmm0

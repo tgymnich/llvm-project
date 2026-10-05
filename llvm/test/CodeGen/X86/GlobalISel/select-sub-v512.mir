@@ -44,10 +44,10 @@ body:             |
     ; ALL: [[VPSUBBZrr:%[0-9]+]]:vr512 = VPSUBBZrr [[COPY]], [[COPY1]]
     ; ALL: $zmm0 = COPY [[VPSUBBZrr]]
     ; ALL: RET 0, implicit $zmm0
-    %0(<64 x s8>) = COPY $zmm0
-    %1(<64 x s8>) = COPY $zmm1
-    %2(<64 x s8>) = G_SUB %0, %1
-    $zmm0 = COPY %2(<64 x s8>)
+    %0(<64 x i8>) = COPY $zmm0
+    %1(<64 x i8>) = COPY $zmm1
+    %2(<64 x i8>) = G_SUB %0, %1
+    $zmm0 = COPY %2(<64 x i8>)
     RET 0, implicit $zmm0
 
 ...
@@ -70,10 +70,10 @@ body:             |
     ; ALL: [[VPSUBWZrr:%[0-9]+]]:vr512 = VPSUBWZrr [[COPY]], [[COPY1]]
     ; ALL: $zmm0 = COPY [[VPSUBWZrr]]
     ; ALL: RET 0, implicit $zmm0
-    %0(<32 x s16>) = COPY $zmm0
-    %1(<32 x s16>) = COPY $zmm1
-    %2(<32 x s16>) = G_SUB %0, %1
-    $zmm0 = COPY %2(<32 x s16>)
+    %0(<32 x i16>) = COPY $zmm0
+    %1(<32 x i16>) = COPY $zmm1
+    %2(<32 x i16>) = G_SUB %0, %1
+    $zmm0 = COPY %2(<32 x i16>)
     RET 0, implicit $zmm0
 
 ...
@@ -96,10 +96,10 @@ body:             |
     ; ALL: [[VPSUBDZrr:%[0-9]+]]:vr512 = VPSUBDZrr [[COPY]], [[COPY1]]
     ; ALL: $zmm0 = COPY [[VPSUBDZrr]]
     ; ALL: RET 0, implicit $zmm0
-    %0(<16 x s32>) = COPY $zmm0
-    %1(<16 x s32>) = COPY $zmm1
-    %2(<16 x s32>) = G_SUB %0, %1
-    $zmm0 = COPY %2(<16 x s32>)
+    %0(<16 x i32>) = COPY $zmm0
+    %1(<16 x i32>) = COPY $zmm1
+    %2(<16 x i32>) = G_SUB %0, %1
+    $zmm0 = COPY %2(<16 x i32>)
     RET 0, implicit $zmm0
 
 ...
@@ -122,10 +122,10 @@ body:             |
     ; ALL: [[VPSUBQZrr:%[0-9]+]]:vr512 = VPSUBQZrr [[COPY]], [[COPY1]]
     ; ALL: $zmm0 = COPY [[VPSUBQZrr]]
     ; ALL: RET 0, implicit $zmm0
-    %0(<8 x s64>) = COPY $zmm0
-    %1(<8 x s64>) = COPY $zmm1
-    %2(<8 x s64>) = G_SUB %0, %1
-    $zmm0 = COPY %2(<8 x s64>)
+    %0(<8 x i64>) = COPY $zmm0
+    %1(<8 x i64>) = COPY $zmm1
+    %2(<8 x i64>) = G_SUB %0, %1
+    $zmm0 = COPY %2(<8 x i64>)
     RET 0, implicit $zmm0
 
 ...

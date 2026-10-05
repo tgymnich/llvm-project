@@ -48,17 +48,17 @@ define x86_fp80 @fpext_float_to_x86_fp80(float %f) nounwind {
 ; FASTSDAG-X86-NEXT:    flds {{[0-9]+}}(%esp)
 ; FASTSDAG-X86-NEXT:    retl
 ;
-; FASTSDAG-SSE-LABEL: fpext_float_to_x86_fp80:
-; FASTSDAG-SSE:       # %bb.0:
-; FASTSDAG-SSE-NEXT:    movss %xmm0, -{{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    flds -{{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    retq
+; SSE-LABEL: fpext_float_to_x86_fp80:
+; SSE:       # %bb.0:
+; SSE-NEXT:    movss %xmm0, -{{[0-9]+}}(%rsp)
+; SSE-NEXT:    flds -{{[0-9]+}}(%rsp)
+; SSE-NEXT:    retq
 ;
-; FASTSDAG-AVX-LABEL: fpext_float_to_x86_fp80:
-; FASTSDAG-AVX:       # %bb.0:
-; FASTSDAG-AVX-NEXT:    vmovss %xmm0, -{{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    flds -{{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    retq
+; AVX-LABEL: fpext_float_to_x86_fp80:
+; AVX:       # %bb.0:
+; AVX-NEXT:    vmovss %xmm0, -{{[0-9]+}}(%rsp)
+; AVX-NEXT:    flds -{{[0-9]+}}(%rsp)
+; AVX-NEXT:    retq
 ;
 ; GLOBAL-X86-LABEL: fpext_float_to_x86_fp80:
 ; GLOBAL-X86:       # %bb.0:
@@ -68,20 +68,6 @@ define x86_fp80 @fpext_float_to_x86_fp80(float %f) nounwind {
 ; GLOBAL-X86-NEXT:    flds (%esp)
 ; GLOBAL-X86-NEXT:    popl %eax
 ; GLOBAL-X86-NEXT:    retl
-;
-; GLOBAL-SSE-LABEL: fpext_float_to_x86_fp80:
-; GLOBAL-SSE:       # %bb.0:
-; GLOBAL-SSE-NEXT:    movd %xmm0, %eax
-; GLOBAL-SSE-NEXT:    movl %eax, -{{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    flds -{{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    retq
-;
-; GLOBAL-AVX-LABEL: fpext_float_to_x86_fp80:
-; GLOBAL-AVX:       # %bb.0:
-; GLOBAL-AVX-NEXT:    vmovd %xmm0, %eax
-; GLOBAL-AVX-NEXT:    movl %eax, -{{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    flds -{{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    retq
   %1 = fpext float %f to x86_fp80
   ret x86_fp80 %1
 }
@@ -92,17 +78,17 @@ define x86_fp80 @fpext_double_to_x86_fp80(double %d) nounwind {
 ; FASTSDAG-X86-NEXT:    fldl {{[0-9]+}}(%esp)
 ; FASTSDAG-X86-NEXT:    retl
 ;
-; FASTSDAG-SSE-LABEL: fpext_double_to_x86_fp80:
-; FASTSDAG-SSE:       # %bb.0:
-; FASTSDAG-SSE-NEXT:    movsd %xmm0, -{{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    fldl -{{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    retq
+; SSE-LABEL: fpext_double_to_x86_fp80:
+; SSE:       # %bb.0:
+; SSE-NEXT:    movsd %xmm0, -{{[0-9]+}}(%rsp)
+; SSE-NEXT:    fldl -{{[0-9]+}}(%rsp)
+; SSE-NEXT:    retq
 ;
-; FASTSDAG-AVX-LABEL: fpext_double_to_x86_fp80:
-; FASTSDAG-AVX:       # %bb.0:
-; FASTSDAG-AVX-NEXT:    vmovsd %xmm0, -{{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    fldl -{{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    retq
+; AVX-LABEL: fpext_double_to_x86_fp80:
+; AVX:       # %bb.0:
+; AVX-NEXT:    vmovsd %xmm0, -{{[0-9]+}}(%rsp)
+; AVX-NEXT:    fldl -{{[0-9]+}}(%rsp)
+; AVX-NEXT:    retq
 ;
 ; GLOBAL-X86-LABEL: fpext_double_to_x86_fp80:
 ; GLOBAL-X86:       # %bb.0:
@@ -110,30 +96,12 @@ define x86_fp80 @fpext_double_to_x86_fp80(double %d) nounwind {
 ; GLOBAL-X86-NEXT:    movl %esp, %ebp
 ; GLOBAL-X86-NEXT:    andl $-8, %esp
 ; GLOBAL-X86-NEXT:    subl $8, %esp
-; GLOBAL-X86-NEXT:    leal 8(%ebp), %eax
-; GLOBAL-X86-NEXT:    movl 8(%ebp), %ecx
-; GLOBAL-X86-NEXT:    movl 4(%eax), %eax
-; GLOBAL-X86-NEXT:    movl %esp, %edx
-; GLOBAL-X86-NEXT:    movl %ecx, (%esp)
-; GLOBAL-X86-NEXT:    movl %eax, 4(%edx)
+; GLOBAL-X86-NEXT:    fldl 8(%ebp)
+; GLOBAL-X86-NEXT:    fstpl (%esp)
 ; GLOBAL-X86-NEXT:    fldl (%esp)
 ; GLOBAL-X86-NEXT:    movl %ebp, %esp
 ; GLOBAL-X86-NEXT:    popl %ebp
 ; GLOBAL-X86-NEXT:    retl
-;
-; GLOBAL-SSE-LABEL: fpext_double_to_x86_fp80:
-; GLOBAL-SSE:       # %bb.0:
-; GLOBAL-SSE-NEXT:    movq %xmm0, %rax
-; GLOBAL-SSE-NEXT:    movq %rax, -{{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    fldl -{{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    retq
-;
-; GLOBAL-AVX-LABEL: fpext_double_to_x86_fp80:
-; GLOBAL-AVX:       # %bb.0:
-; GLOBAL-AVX-NEXT:    vmovq %xmm0, %rax
-; GLOBAL-AVX-NEXT:    movq %rax, -{{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    fldl -{{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    retq
   %1 = fpext double %d to x86_fp80
   ret x86_fp80 %1
 }
@@ -171,35 +139,19 @@ define float @fptrunc_x86_fp80_to_float(x86_fp80 %x) nounwind {
 ; X86-NEXT:    popl %eax
 ; X86-NEXT:    retl
 ;
-; FASTSDAG-SSE-LABEL: fptrunc_x86_fp80_to_float:
-; FASTSDAG-SSE:       # %bb.0:
-; FASTSDAG-SSE-NEXT:    fldt {{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    fstps -{{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
-; FASTSDAG-SSE-NEXT:    retq
+; SSE-LABEL: fptrunc_x86_fp80_to_float:
+; SSE:       # %bb.0:
+; SSE-NEXT:    fldt {{[0-9]+}}(%rsp)
+; SSE-NEXT:    fstps -{{[0-9]+}}(%rsp)
+; SSE-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; SSE-NEXT:    retq
 ;
-; FASTSDAG-AVX-LABEL: fptrunc_x86_fp80_to_float:
-; FASTSDAG-AVX:       # %bb.0:
-; FASTSDAG-AVX-NEXT:    fldt {{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    fstps -{{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
-; FASTSDAG-AVX-NEXT:    retq
-;
-; GLOBAL-SSE-LABEL: fptrunc_x86_fp80_to_float:
-; GLOBAL-SSE:       # %bb.0:
-; GLOBAL-SSE-NEXT:    fldt {{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    fstps -{{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    movl -{{[0-9]+}}(%rsp), %eax
-; GLOBAL-SSE-NEXT:    movd %eax, %xmm0
-; GLOBAL-SSE-NEXT:    retq
-;
-; GLOBAL-AVX-LABEL: fptrunc_x86_fp80_to_float:
-; GLOBAL-AVX:       # %bb.0:
-; GLOBAL-AVX-NEXT:    fldt {{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    fstps -{{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    movl -{{[0-9]+}}(%rsp), %eax
-; GLOBAL-AVX-NEXT:    vmovd %eax, %xmm0
-; GLOBAL-AVX-NEXT:    retq
+; AVX-LABEL: fptrunc_x86_fp80_to_float:
+; AVX:       # %bb.0:
+; AVX-NEXT:    fldt {{[0-9]+}}(%rsp)
+; AVX-NEXT:    fstps -{{[0-9]+}}(%rsp)
+; AVX-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; AVX-NEXT:    retq
   %1 = fptrunc x86_fp80 %x to float
   ret float %1
 }
@@ -218,35 +170,19 @@ define double @fptrunc_x86_fp80_to_double(x86_fp80 %x) nounwind {
 ; X86-NEXT:    popl %ebp
 ; X86-NEXT:    retl
 ;
-; FASTSDAG-SSE-LABEL: fptrunc_x86_fp80_to_double:
-; FASTSDAG-SSE:       # %bb.0:
-; FASTSDAG-SSE-NEXT:    fldt {{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    fstpl -{{[0-9]+}}(%rsp)
-; FASTSDAG-SSE-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
-; FASTSDAG-SSE-NEXT:    retq
+; SSE-LABEL: fptrunc_x86_fp80_to_double:
+; SSE:       # %bb.0:
+; SSE-NEXT:    fldt {{[0-9]+}}(%rsp)
+; SSE-NEXT:    fstpl -{{[0-9]+}}(%rsp)
+; SSE-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
+; SSE-NEXT:    retq
 ;
-; FASTSDAG-AVX-LABEL: fptrunc_x86_fp80_to_double:
-; FASTSDAG-AVX:       # %bb.0:
-; FASTSDAG-AVX-NEXT:    fldt {{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    fstpl -{{[0-9]+}}(%rsp)
-; FASTSDAG-AVX-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
-; FASTSDAG-AVX-NEXT:    retq
-;
-; GLOBAL-SSE-LABEL: fptrunc_x86_fp80_to_double:
-; GLOBAL-SSE:       # %bb.0:
-; GLOBAL-SSE-NEXT:    fldt {{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    fstpl -{{[0-9]+}}(%rsp)
-; GLOBAL-SSE-NEXT:    movq -{{[0-9]+}}(%rsp), %rax
-; GLOBAL-SSE-NEXT:    movq %rax, %xmm0
-; GLOBAL-SSE-NEXT:    retq
-;
-; GLOBAL-AVX-LABEL: fptrunc_x86_fp80_to_double:
-; GLOBAL-AVX:       # %bb.0:
-; GLOBAL-AVX-NEXT:    fldt {{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    fstpl -{{[0-9]+}}(%rsp)
-; GLOBAL-AVX-NEXT:    movq -{{[0-9]+}}(%rsp), %rax
-; GLOBAL-AVX-NEXT:    vmovq %rax, %xmm0
-; GLOBAL-AVX-NEXT:    retq
+; AVX-LABEL: fptrunc_x86_fp80_to_double:
+; AVX:       # %bb.0:
+; AVX-NEXT:    fldt {{[0-9]+}}(%rsp)
+; AVX-NEXT:    fstpl -{{[0-9]+}}(%rsp)
+; AVX-NEXT:    vmovsd {{.*#+}} xmm0 = mem[0],zero
+; AVX-NEXT:    retq
   %1 = fptrunc x86_fp80 %x to double
   ret double %1
 }
@@ -254,6 +190,10 @@ define double @fptrunc_x86_fp80_to_double(x86_fp80 %x) nounwind {
 ; FAST-AVX: {{.*}}
 ; FAST-SSE: {{.*}}
 ; FAST-X86: {{.*}}
+; FASTSDAG-AVX: {{.*}}
+; FASTSDAG-SSE: {{.*}}
+; GLOBAL-AVX: {{.*}}
+; GLOBAL-SSE: {{.*}}
 ; SDAG-AVX: {{.*}}
 ; SDAG-SSE: {{.*}}
 ; SDAG-X86: {{.*}}

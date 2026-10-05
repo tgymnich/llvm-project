@@ -10,18 +10,19 @@ name:            test_anyext16
 body:             |
   bb.1:
     ; X86-32-LABEL: name: test_anyext16
-    ; X86-32: [[DEF:%[0-9]+]]:_(s16) = IMPLICIT_DEF
-    ; X86-32-NEXT: [[ANYEXT:%[0-9]+]]:_(s32) = G_ANYEXT [[DEF]](s16)
-    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY [[ANYEXT]](s32)
-    ; X86-32-NEXT: RET 0, implicit [[COPY]](s32)
+    ; X86-32: [[DEF:%[0-9]+]]:_(i16) = IMPLICIT_DEF
+    ; X86-32-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[DEF]](i16)
+    ; X86-32-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY [[ANYEXT]](i32)
+    ; X86-32-NEXT: RET 0, implicit [[COPY]](i32)
+    ;
     ; X86-64-LABEL: name: test_anyext16
-    ; X86-64: [[DEF:%[0-9]+]]:_(s16) = IMPLICIT_DEF
-    ; X86-64-NEXT: [[ANYEXT:%[0-9]+]]:_(s32) = G_ANYEXT [[DEF]](s16)
-    ; X86-64-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY [[ANYEXT]](s32)
-    ; X86-64-NEXT: RET 0, implicit [[COPY]](s32)
-    %0:_(s16) = IMPLICIT_DEF
-    %1:_(s32) = G_ANYEXT %0
-    %2:_(s32) = COPY %1(s32)
+    ; X86-64: [[DEF:%[0-9]+]]:_(i16) = IMPLICIT_DEF
+    ; X86-64-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[DEF]](i16)
+    ; X86-64-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY [[ANYEXT]](i32)
+    ; X86-64-NEXT: RET 0, implicit [[COPY]](i32)
+    %0:_(i16) = IMPLICIT_DEF
+    %1:_(i32) = G_ANYEXT %0
+    %2:_(i32) = COPY %1(i32)
     RET 0, implicit %2
 
 ...

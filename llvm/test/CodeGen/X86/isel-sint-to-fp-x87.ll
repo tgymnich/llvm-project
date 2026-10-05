@@ -256,16 +256,29 @@ define void @test_int8to_double(i8 %x, ptr %p) nounwind {
 ; GISEL-X64-NEXT:    fstpl (%rsi)
 ; GISEL-X64-NEXT:    retq
 ;
-; X86-LABEL: test_int8to_double:
-; X86:       # %bb.0: # %entry
-; X86-NEXT:    pushl %eax
-; X86-NEXT:    movsbl {{[0-9]+}}(%esp), %eax
-; X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; X86-NEXT:    movw %ax, {{[0-9]+}}(%esp)
-; X86-NEXT:    filds {{[0-9]+}}(%esp)
-; X86-NEXT:    fstpl (%ecx)
-; X86-NEXT:    popl %eax
-; X86-NEXT:    retl
+; SDAG-X86-LABEL: test_int8to_double:
+; SDAG-X86:       # %bb.0: # %entry
+; SDAG-X86-NEXT:    pushl %eax
+; SDAG-X86-NEXT:    movsbl {{[0-9]+}}(%esp), %eax
+; SDAG-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; SDAG-X86-NEXT:    movw %ax, {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    filds {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    fstpl (%ecx)
+; SDAG-X86-NEXT:    popl %eax
+; SDAG-X86-NEXT:    retl
+;
+; GISEL-X86-LABEL: test_int8to_double:
+; GISEL-X86:       # %bb.0: # %entry
+; GISEL-X86-NEXT:    pushl %eax
+; GISEL-X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; GISEL-X86-NEXT:    shlw $8, %ax
+; GISEL-X86-NEXT:    sarw $8, %ax
+; GISEL-X86-NEXT:    movw %ax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    filds {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstpl (%ecx)
+; GISEL-X86-NEXT:    popl %eax
+; GISEL-X86-NEXT:    retl
 entry:
   %conv = sitofp i8 %x to double
   store double %conv, ptr %p, align 4
@@ -280,16 +293,27 @@ define void @test_int16_to_double(i16 %x, ptr %p) nounwind {
 ; X64-NEXT:    fstpl (%rsi)
 ; X64-NEXT:    retq
 ;
-; X86-LABEL: test_int16_to_double:
-; X86:       # %bb.0: # %entry
-; X86-NEXT:    pushl %eax
-; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; X86-NEXT:    movzwl {{[0-9]+}}(%esp), %ecx
-; X86-NEXT:    movw %cx, {{[0-9]+}}(%esp)
-; X86-NEXT:    filds {{[0-9]+}}(%esp)
-; X86-NEXT:    fstpl (%eax)
-; X86-NEXT:    popl %eax
-; X86-NEXT:    retl
+; SDAG-X86-LABEL: test_int16_to_double:
+; SDAG-X86:       # %bb.0: # %entry
+; SDAG-X86-NEXT:    pushl %eax
+; SDAG-X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
+; SDAG-X86-NEXT:    movzwl {{[0-9]+}}(%esp), %ecx
+; SDAG-X86-NEXT:    movw %cx, {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    filds {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    fstpl (%eax)
+; SDAG-X86-NEXT:    popl %eax
+; SDAG-X86-NEXT:    retl
+;
+; GISEL-X86-LABEL: test_int16_to_double:
+; GISEL-X86:       # %bb.0: # %entry
+; GISEL-X86-NEXT:    pushl %eax
+; GISEL-X86-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; GISEL-X86-NEXT:    movw %ax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    filds {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fstpl (%ecx)
+; GISEL-X86-NEXT:    popl %eax
+; GISEL-X86-NEXT:    retl
 entry:
   %conv = sitofp i16 %x to double
   store double %conv, ptr %p, align 4
@@ -304,16 +328,27 @@ define void @test_int32_to_double(i32 %x, ptr %p) nounwind {
 ; X64-NEXT:    fstpl (%rsi)
 ; X64-NEXT:    retq
 ;
-; X86-LABEL: test_int32_to_double:
-; X86:       # %bb.0: # %entry
-; X86-NEXT:    pushl %eax
-; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; X86-NEXT:    movl %ecx, (%esp)
-; X86-NEXT:    fildl (%esp)
-; X86-NEXT:    fstpl (%eax)
-; X86-NEXT:    popl %eax
-; X86-NEXT:    retl
+; SDAG-X86-LABEL: test_int32_to_double:
+; SDAG-X86:       # %bb.0: # %entry
+; SDAG-X86-NEXT:    pushl %eax
+; SDAG-X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
+; SDAG-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; SDAG-X86-NEXT:    movl %ecx, (%esp)
+; SDAG-X86-NEXT:    fildl (%esp)
+; SDAG-X86-NEXT:    fstpl (%eax)
+; SDAG-X86-NEXT:    popl %eax
+; SDAG-X86-NEXT:    retl
+;
+; GISEL-X86-LABEL: test_int32_to_double:
+; GISEL-X86:       # %bb.0: # %entry
+; GISEL-X86-NEXT:    pushl %eax
+; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; GISEL-X86-NEXT:    movl %eax, (%esp)
+; GISEL-X86-NEXT:    fildl (%esp)
+; GISEL-X86-NEXT:    fstpl (%ecx)
+; GISEL-X86-NEXT:    popl %eax
+; GISEL-X86-NEXT:    retl
 entry:
   %conv = sitofp i32 %x to double
   store double %conv, ptr %p, align 4

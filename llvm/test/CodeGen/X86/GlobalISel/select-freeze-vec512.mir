@@ -16,8 +16,8 @@ body:             |
     ; CHECK-NOT: G_FREEZE
     ; CHECK-NEXT: $zmm1 = COPY [[COPY]]
     ; CHECK-NEXT: RET 0, implicit $zmm1
-    %0:vecr(<8 x s64>) = COPY $zmm0
-    %1:vecr(<8 x s64>) = G_FREEZE %0
-    $zmm1 = COPY %1(<8 x s64>)
+    %0:vecr(<8 x i64>) = COPY $zmm0
+    %1:vecr(<8 x i64>) = G_FREEZE %0
+    $zmm1 = COPY %1(<8 x i64>)
     RET 0, implicit $zmm1
 ...

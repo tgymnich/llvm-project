@@ -17,6 +17,7 @@
 #include "llvm/CodeGen/GlobalISel/LegalizerHelper.h"
 #include "llvm/CodeGen/GlobalISel/MIPatternMatch.h"
 #include "llvm/CodeGen/GlobalISel/MachineIRBuilder.h"
+#include "llvm/CodeGen/LowLevelTypeUtils.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/TargetOpcodes.h"
@@ -80,6 +81,36 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
   const LLT v16s32 = LLT::fixed_vector(16, 32);
   const LLT v8s64 = LLT::fixed_vector(8, 64);
 
+  const LLT i1 = LLT::integer(1);
+  const LLT i8 = LLT::integer(8);
+  const LLT i16 = LLT::integer(16);
+  const LLT i32 = LLT::integer(32);
+  const LLT i64 = LLT::integer(64);
+  const LLT v16i8 = LLT::fixed_vector(16, i8);
+  const LLT v8i16 = LLT::fixed_vector(8, i16);
+  const LLT v4i32 = LLT::fixed_vector(4, i32);
+  const LLT v2i64 = LLT::fixed_vector(2, i64);
+  const LLT v32i8 = LLT::fixed_vector(32, i8);
+  const LLT v16i16 = LLT::fixed_vector(16, i16);
+  const LLT v8i32 = LLT::fixed_vector(8, i32);
+  const LLT v4i64 = LLT::fixed_vector(4, i64);
+  const LLT v64i8 = LLT::fixed_vector(64, i8);
+  const LLT v32i16 = LLT::fixed_vector(32, i16);
+  const LLT v16i32 = LLT::fixed_vector(16, i32);
+  const LLT v8i64 = LLT::fixed_vector(8, i64);
+  const LLT iMaxScalar = Is64Bit ? i64 : i32;
+
+  const LLT f16 = LLT::float16();
+  const LLT f32 = LLT::float32();
+  const LLT f64 = LLT::float64();
+  const LLT f80 = LLT::x86fp80();
+  const LLT v4f32 = LLT::fixed_vector(4, f32);
+  const LLT v8f32 = LLT::fixed_vector(8, f32);
+  const LLT v16f32 = LLT::fixed_vector(16, f32);
+  const LLT v2f64 = LLT::fixed_vector(2, f64);
+  const LLT v4f64 = LLT::fixed_vector(4, f64);
+  const LLT v8f64 = LLT::fixed_vector(8, f64);
+
   const LLT s8MaxVector = HasAVX512 ? v64s8 : HasAVX ? v32s8 : v16s8;
   const LLT s16MaxVector = HasAVX512 ? v32s16 : HasAVX ? v16s16 : v8s16;
   const LLT s32MaxVector = HasAVX512 ? v16s32 : HasAVX ? v8s32 : v4s32;
@@ -112,15 +143,15 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
       .scalarizeIf(scalarOrEltWiderThan(0, 64), 0);
 
   getActionDefinitionsBuilder(G_CONSTANT)
-      .legalFor({p0, s8, s16, s32})
-      .legalFor(Is64Bit, {s64})
+      .legalFor({p0, i8, i16, i32})
+      .legalFor(Is64Bit, {i64})
       .widenScalarToNextPow2(0, /*Min=*/8)
-      .clampScalar(0, s8, sMaxScalar);
+      .clampScalar(0, i8, iMaxScalar);
 
   getActionDefinitionsBuilder({G_LROUND, G_LLROUND})
-      .widenScalarIf(typeIs(1, s16),
+      .widenScalarIf(typeIs(1, f16),
                      [=](const LegalityQuery &) {
-                       return std::pair<unsigned, LLT>(1, s32);
+                       return std::pair<unsigned, LLT>(1, f32);
                      })
       .libcall();
 
@@ -131,18 +162,18 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
       .libcall();
 
   getActionDefinitionsBuilder(G_FNEG)
-      .legalFor(UseX87 && !HasSSE1, {s32})
-      .legalFor(UseX87 && !HasSSE2, {s64})
-      .legalFor(UseX87, {s80})
+      .legalFor(UseX87 && !HasSSE1, {f32})
+      .legalFor(UseX87 && !HasSSE2, {f64})
+      .legalFor(UseX87, {f80})
       .lower();
 
   getActionDefinitionsBuilder(G_FSQRT)
-      .legalFor(HasSSE1 || UseX87, {s32})
-      .legalFor(HasSSE2 || UseX87, {s64})
-      .legalFor(UseX87, {s80});
+      .legalFor(HasSSE1 || UseX87, {f32})
+      .legalFor(HasSSE2 || UseX87, {f64})
+      .legalFor(UseX87, {f80});
 
   getActionDefinitionsBuilder({G_GET_ROUNDING, G_SET_ROUNDING})
-      .customFor({s32});
+      .customFor({i32});
 
   // merge/unmerge
   for (unsigned Op : {G_MERGE_VALUES, G_UNMERGE_VALUES}) {
@@ -153,6 +184,9 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
         .widenScalarToNextPow2(BigTyIdx, /*Min=*/16)
         .minScalar(LitTyIdx, s8)
         .minScalar(BigTyIdx, s32)
+        .lowerIf([=](const LegalityQuery &Q) {
+          return Q.Types[BigTyIdx].isFloat() && Q.Types[LitTyIdx].isInteger();
+        })
         .legalIf([=](const LegalityQuery &Q) {
           switch (Q.Types[BigTyIdx].getSizeInBits()) {
           case 16:
@@ -185,158 +219,158 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
 
   // integer addition/subtraction
   getActionDefinitionsBuilder({G_ADD, G_SUB})
-      .legalFor({s8, s16, s32})
-      .legalFor(Is64Bit, {s64})
-      .legalFor(HasSSE2, {v16s8, v8s16, v4s32, v2s64})
-      .legalFor(HasAVX2, {v32s8, v16s16, v8s32, v4s64})
-      .legalFor(HasAVX512, {v16s32, v8s64})
-      .legalFor(HasBWI, {v64s8, v32s16})
-      .clampMinNumElements(0, s8, 16)
-      .clampMinNumElements(0, s16, 8)
-      .clampMinNumElements(0, s32, 4)
-      .clampMinNumElements(0, s64, 2)
-      .clampMaxNumElements(0, s8, HasBWI ? 64 : (HasAVX2 ? 32 : 16))
-      .clampMaxNumElements(0, s16, HasBWI ? 32 : (HasAVX2 ? 16 : 8))
-      .clampMaxNumElements(0, s32, HasAVX512 ? 16 : (HasAVX2 ? 8 : 4))
-      .clampMaxNumElements(0, s64, HasAVX512 ? 8 : (HasAVX2 ? 4 : 2))
+      .legalFor({i8, i16, i32})
+      .legalFor(Is64Bit, {i64})
+      .legalFor(HasSSE2, {v16i8, v8i16, v4i32, v2i64})
+      .legalFor(HasAVX2, {v32i8, v16i16, v8i32, v4i64})
+      .legalFor(HasAVX512, {v16i32, v8i64})
+      .legalFor(HasBWI, {v64i8, v32i16})
+      .clampMinNumElements(0, i8, 16)
+      .clampMinNumElements(0, i16, 8)
+      .clampMinNumElements(0, i32, 4)
+      .clampMinNumElements(0, i64, 2)
+      .clampMaxNumElements(0, i8, HasBWI ? 64 : (HasAVX2 ? 32 : 16))
+      .clampMaxNumElements(0, i16, HasBWI ? 32 : (HasAVX2 ? 16 : 8))
+      .clampMaxNumElements(0, i32, HasAVX512 ? 16 : (HasAVX2 ? 8 : 4))
+      .clampMaxNumElements(0, i64, HasAVX512 ? 8 : (HasAVX2 ? 4 : 2))
       .widenScalarToNextPow2(0, /*Min=*/32)
-      .clampScalar(0, s8, sMaxScalar)
+      .clampScalar(0, i8, iMaxScalar)
       .scalarize(0);
 
   getActionDefinitionsBuilder({G_UADDE, G_UADDO, G_USUBE, G_USUBO})
-      .legalFor({{s8, s8}, {s16, s8}, {s32, s8}})
-      .legalFor(Is64Bit, {{s64, s8}})
+      .legalFor({{i8, i8}, {i16, i8}, {i32, i8}})
+      .legalFor(Is64Bit, {{i64, i8}})
       .widenScalarToNextPow2(0, /*Min=*/32)
-      .clampScalar(0, s8, sMaxScalar)
-      .clampScalar(1, s8, s8)
+      .clampScalar(0, i8, iMaxScalar)
+      .clampScalar(1, i8, i8)
       .scalarize(0);
 
   // integer multiply
   getActionDefinitionsBuilder(G_MUL)
-      .legalFor({s8, s16, s32})
-      .legalFor(Is64Bit, {s64})
-      .legalFor(HasSSE2, {v8s16})
-      .legalFor(HasSSE41, {v4s32})
-      .legalFor(HasAVX2, {v16s16, v8s32})
-      .legalFor(HasAVX512, {v16s32})
-      .legalFor(HasDQI, {v8s64})
-      .legalFor(HasDQI && HasVLX, {v2s64, v4s64})
-      .legalFor(HasBWI, {v32s16})
-      .clampMinNumElements(0, s16, 8)
-      .clampMinNumElements(0, s32, 4)
-      .clampMinNumElements(0, s64, HasVLX ? 2 : 8)
-      .clampMaxNumElements(0, s16, HasBWI ? 32 : (HasAVX2 ? 16 : 8))
-      .clampMaxNumElements(0, s32, HasAVX512 ? 16 : (HasAVX2 ? 8 : 4))
-      .clampMaxNumElements(0, s64, 8)
+      .legalFor({i8, i16, i32})
+      .legalFor(Is64Bit, {i64})
+      .legalFor(HasSSE2, {v8i16})
+      .legalFor(HasSSE41, {v4i32})
+      .legalFor(HasAVX2, {v16i16, v8i32})
+      .legalFor(HasAVX512, {v16i32})
+      .legalFor(HasDQI, {v8i64})
+      .legalFor(HasDQI && HasVLX, {v2i64, v4i64})
+      .legalFor(HasBWI, {v32i16})
+      .clampMinNumElements(0, i16, 8)
+      .clampMinNumElements(0, i32, 4)
+      .clampMinNumElements(0, i64, HasVLX ? 2 : 8)
+      .clampMaxNumElements(0, i16, HasBWI ? 32 : (HasAVX2 ? 16 : 8))
+      .clampMaxNumElements(0, i32, HasAVX512 ? 16 : (HasAVX2 ? 8 : 4))
+      .clampMaxNumElements(0, i64, 8)
       .widenScalarToNextPow2(0, /*Min=*/32)
-      .clampScalar(0, s8, sMaxScalar)
+      .clampScalar(0, i8, iMaxScalar)
       .scalarize(0);
 
   getActionDefinitionsBuilder({G_SMULH, G_UMULH})
-      .legalFor({s8, s16, s32})
-      .legalFor(Is64Bit, {s64})
+      .legalFor({i8, i16, i32})
+      .legalFor(Is64Bit, {i64})
       .widenScalarToNextPow2(0, /*Min=*/32)
-      .clampScalar(0, s8, sMaxScalar)
+      .clampScalar(0, i8, iMaxScalar)
       .scalarize(0);
 
   // integer divisions
   getActionDefinitionsBuilder({G_SDIV, G_SREM, G_UDIV, G_UREM})
-      .legalFor({s8, s16, s32})
-      .legalFor(Is64Bit, {s64})
-      .libcallFor({s64})
-      .clampScalar(0, s8, sMaxScalar);
+      .legalFor({i8, i16, i32})
+      .legalFor(Is64Bit, {i64})
+      .libcallFor({i64})
+      .clampScalar(0, i8, iMaxScalar);
 
   // integer shifts
   getActionDefinitionsBuilder({G_SHL, G_LSHR, G_ASHR})
-      .legalFor({{s8, s8}, {s16, s8}, {s32, s8}})
-      .legalFor(Is64Bit, {{s64, s8}})
-      .clampScalar(0, s8, sMaxScalar)
-      .clampScalar(1, s8, s8);
+      .legalFor({{i8, i8}, {i16, i8}, {i32, i8}})
+      .legalFor(Is64Bit, {{i64, i8}})
+      .clampScalar(0, i8, iMaxScalar)
+      .clampScalar(1, i8, i8);
 
   // integer logic
   getActionDefinitionsBuilder({G_AND, G_OR, G_XOR})
-      .legalFor({s8, s16, s32})
-      .legalFor(Is64Bit, {s64})
-      .legalFor(HasSSE2, {v16s8, v8s16, v4s32, v2s64})
-      .legalFor(HasAVX, {v32s8, v16s16, v8s32, v4s64})
-      .legalFor(HasAVX512, {v64s8, v32s16, v16s32, v8s64})
-      .clampNumElements(0, v16s8, s8MaxVector)
-      .clampNumElements(0, v8s16, s16MaxVector)
-      .clampNumElements(0, v4s32, s32MaxVector)
-      .clampNumElements(0, v2s64, s64MaxVector)
+      .legalFor({i8, i16, i32})
+      .legalFor(Is64Bit, {i64})
+      .legalFor(HasSSE2, {v16i8, v8i16, v4i32, v2i64})
+      .legalFor(HasAVX, {v32i8, v16i16, v8i32, v4i64})
+      .legalFor(HasAVX512, {v64i8, v32i16, v16i32, v8i64})
+      .clampNumElements(0, v16i8, s8MaxVector)
+      .clampNumElements(0, v8i16, s16MaxVector)
+      .clampNumElements(0, v4i32, s32MaxVector)
+      .clampNumElements(0, v2i64, s64MaxVector)
       .widenScalarToNextPow2(0, /*Min=*/32)
-      .clampScalar(0, s8, sMaxScalar)
+      .clampScalar(0, i8, iMaxScalar)
       .scalarize(0);
 
   // integer comparison
-  const std::initializer_list<LLT> IntTypes32 = {s8, s16, s32, p0};
-  const std::initializer_list<LLT> IntTypes64 = {s8, s16, s32, s64, p0};
+  const std::initializer_list<LLT> IntTypes32 = {i8, i16, i32, p0};
+  const std::initializer_list<LLT> IntTypes64 = {i8, i16, i32, i64, p0};
 
   getActionDefinitionsBuilder(G_ICMP)
-      .legalForCartesianProduct({s8}, Is64Bit ? IntTypes64 : IntTypes32)
-      .clampScalar(0, s8, s8)
+      .legalForCartesianProduct({i8}, Is64Bit ? IntTypes64 : IntTypes32)
+      .clampScalar(0, i8, i8)
       .widenScalarToNextPow2(1, /*Min=*/8)
-      .clampScalar(1, s8, sMaxScalar);
+      .clampScalar(1, i8, iMaxScalar);
 
   // bswap
   getActionDefinitionsBuilder(G_BSWAP)
-      .legalFor({s32})
-      .legalFor(Is64Bit, {s64})
+      .legalFor({i32})
+      .legalFor(Is64Bit, {i64})
       .widenScalarToNextPow2(0, /*Min=*/32)
-      .clampScalar(0, s32, sMaxScalar);
+      .clampScalar(0, i32, iMaxScalar);
 
   // popcount
   getActionDefinitionsBuilder(G_CTPOP)
-      .legalFor(HasPOPCNT, {{s16, s16}, {s32, s32}})
-      .legalFor(HasPOPCNT && Is64Bit, {{s64, s64}})
+      .legalFor(HasPOPCNT, {{i16, i16}, {i32, i32}})
+      .legalFor(HasPOPCNT && Is64Bit, {{i64, i64}})
       .widenScalarToNextPow2(1, /*Min=*/16)
-      .clampScalar(1, s16, sMaxScalar)
+      .clampScalar(1, i16, iMaxScalar)
       .scalarSameSizeAs(0, 1);
 
   // count leading zeros (LZCNT)
   getActionDefinitionsBuilder(G_CTLZ)
-      .legalFor(HasLZCNT, {{s16, s16}, {s32, s32}})
-      .legalFor(HasLZCNT && Is64Bit, {{s64, s64}})
+      .legalFor(HasLZCNT, {{i16, i16}, {i32, i32}})
+      .legalFor(HasLZCNT && Is64Bit, {{i64, i64}})
       .widenScalarToNextPow2(1, /*Min=*/16)
-      .clampScalar(1, s16, sMaxScalar)
+      .clampScalar(1, i16, iMaxScalar)
       .scalarSameSizeAs(0, 1);
 
   // count trailing zeros
   getActionDefinitionsBuilder(G_CTTZ_ZERO_POISON)
-      .legalFor({{s16, s16}, {s32, s32}})
-      .legalFor(Is64Bit, {{s64, s64}})
+      .legalFor({{i16, i16}, {i32, i32}})
+      .legalFor(Is64Bit, {{i64, i64}})
       .widenScalarToNextPow2(1, /*Min=*/16)
-      .clampScalar(1, s16, sMaxScalar)
+      .clampScalar(1, i16, iMaxScalar)
       .scalarSameSizeAs(0, 1);
 
   getActionDefinitionsBuilder(G_CTTZ)
-      .legalFor(HasBMI, {{s16, s16}, {s32, s32}})
-      .legalFor(HasBMI && Is64Bit, {{s64, s64}})
+      .legalFor(HasBMI, {{i16, i16}, {i32, i32}})
+      .legalFor(HasBMI && Is64Bit, {{i64, i64}})
       .widenScalarToNextPow2(1, /*Min=*/16)
-      .clampScalar(1, s16, sMaxScalar)
+      .clampScalar(1, i16, iMaxScalar)
       .scalarSameSizeAs(0, 1);
 
   getActionDefinitionsBuilder(G_BR).alwaysLegal();
-  getActionDefinitionsBuilder(G_BRCOND).legalFor({s1});
+  getActionDefinitionsBuilder(G_BRCOND).legalFor({i1});
 
   // pointer handling
-  const std::initializer_list<LLT> PtrTypes32 = {s1, s8, s16, s32};
-  const std::initializer_list<LLT> PtrTypes64 = {s1, s8, s16, s32, s64};
+  const std::initializer_list<LLT> PtrTypes32 = {i1, i8, i16, i32};
+  const std::initializer_list<LLT> PtrTypes64 = {i1, i8, i16, i32, i64};
 
   getActionDefinitionsBuilder(G_PTRTOINT)
       .legalForCartesianProduct(Is64Bit ? PtrTypes64 : PtrTypes32, {p0})
-      .maxScalar(0, sMaxScalar)
+      .maxScalar(0, iMaxScalar)
       .widenScalarToNextPow2(0, /*Min*/ 8);
 
-  getActionDefinitionsBuilder(G_INTTOPTR).legalFor({{p0, sMaxScalar}});
+  getActionDefinitionsBuilder(G_INTTOPTR).legalFor({{p0, iMaxScalar}});
 
   getActionDefinitionsBuilder(G_CONSTANT_POOL).legalFor({p0});
 
   getActionDefinitionsBuilder(G_PTR_ADD)
-      .legalFor({{p0, s32}})
-      .legalFor(Is64Bit, {{p0, s64}})
+      .legalFor({{p0, i32}})
+      .legalFor(Is64Bit, {{p0, i64}})
       .widenScalarToNextPow2(1, /*Min*/ 32)
-      .clampScalar(1, s32, sMaxScalar);
+      .clampScalar(1, i32, iMaxScalar);
 
   getActionDefinitionsBuilder(G_FRAME_INDEX).legalFor({p0});
 
@@ -354,6 +388,9 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
     if (Is64Bit)
       Action.legalForTypesWithMemDesc(
           {{s64, p0, s64, 1}, {v2s32, p0, v2s32, 1}});
+
+    if (HasSSE2 || UseX87)
+      Action.legalForTypesWithMemDesc({{f64, p0, f64, 1}});
 
     if (HasSSE1)
       Action.legalForTypesWithMemDesc({{v4s32, p0, v4s32, 1}});
@@ -406,7 +443,7 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
   for (unsigned Op : {G_FPEXTLOAD, G_FPTRUNCSTORE}) {
     auto &Action = getActionDefinitionsBuilder(Op);
     Action.legalForTypesWithMemDesc(
-        UseX87, {{s80, p0, s32, 1}, {s80, p0, s64, 1}, {s64, p0, s32, 1}});
+        UseX87, {{f80, p0, f32, 1}, {f80, p0, f64, 1}, {f64, p0, f32, 1}});
   }
 
   // sext, zext, and anyext
@@ -420,12 +457,12 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
       .scalarize(0);
 
   getActionDefinitionsBuilder({G_SEXT, G_ZEXT})
-      .legalFor({s8, s16, s32})
-      .legalFor(Is64Bit, {s64})
+      .legalFor({i8, i16, i32})
+      .legalFor(Is64Bit, {i64})
       .widenScalarToNextPow2(0, /*Min=*/8)
-      .clampScalar(0, s8, sMaxScalar)
+      .clampScalar(0, i8, iMaxScalar)
       .widenScalarToNextPow2(1, /*Min=*/8)
-      .clampScalar(1, s8, sMaxScalar)
+      .clampScalar(1, i8, iMaxScalar)
       .scalarize(0);
 
   getActionDefinitionsBuilder(G_TRUNC).legalForCartesianProduct(
@@ -435,101 +472,101 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
 
   // fp constants
   getActionDefinitionsBuilder(G_FCONSTANT)
-      .legalFor({s32, s64})
-      .legalFor(UseX87, {s80});
+      .legalFor({f32, f64})
+      .legalFor(UseX87, {f80});
 
   // fp arithmetic
   getActionDefinitionsBuilder({G_FADD, G_FSUB, G_FMUL, G_FDIV})
-      .legalFor({s32, s64})
-      .legalFor(HasSSE1, {v4s32})
-      .legalFor(HasSSE2, {v2s64})
-      .legalFor(HasAVX, {v8s32, v4s64})
-      .legalFor(HasAVX512, {v16s32, v8s64})
-      .legalFor(UseX87, {s80});
+      .legalFor({f32, f64})
+      .legalFor(HasSSE1, {v4f32})
+      .legalFor(HasSSE2, {v2f64})
+      .legalFor(HasAVX, {v8f32, v4f64})
+      .legalFor(HasAVX512, {v16f32, v8f64})
+      .legalFor(UseX87, {f80});
 
   getActionDefinitionsBuilder(G_FABS)
-      .legalFor(UseX87, {s80})
-      .legalFor(UseX87 && !Is64Bit, {s64})
+      .legalFor(UseX87, {f80})
+      .legalFor(UseX87 && !Is64Bit, {f64})
       .lower();
 
   // fp comparison
   getActionDefinitionsBuilder(G_FCMP)
-      .legalFor(HasSSE1 || UseX87, {s8, s32})
-      .legalFor(HasSSE2 || UseX87, {s8, s64})
-      .legalFor(UseX87, {s8, s80})
-      .clampScalar(0, s8, s8)
-      .clampScalar(1, s32, HasSSE2 ? s64 : s32)
+      .legalFor(HasSSE1 || UseX87, {{i8, f32}})
+      .legalFor(HasSSE2 || UseX87, {{i8, f64}})
+      .legalFor(UseX87, {{i8, f80}})
+      .clampScalar(0, i8, i8)
+      .clampScalar(1, f32, HasSSE2 ? f64 : f32)
       .widenScalarToNextPow2(1);
 
   // fp conversions
   getActionDefinitionsBuilder(G_FPEXT)
-      .legalFor(HasSSE2, {{s64, s32}})
-      .legalFor(HasAVX, {{v4s64, v4s32}})
-      .legalFor(HasAVX512, {{v8s64, v8s32}})
-      .lowerFor(UseX87, {{s64, s32}, {s80, s32}, {s80, s64}})
+      .legalFor(HasSSE2, {{f64, f32}})
+      .legalFor(HasAVX, {{v4f64, v4f32}})
+      .legalFor(HasAVX512, {{v8f64, v8f32}})
+      .lowerFor(UseX87, {{f64, f32}, {f80, f32}, {f80, f64}})
       .libcall();
 
   getActionDefinitionsBuilder(G_FPTRUNC)
-      .legalFor(HasSSE2, {{s32, s64}})
-      .legalFor(HasAVX, {{v4s32, v4s64}})
-      .legalFor(HasAVX512, {{v8s32, v8s64}})
-      .lowerFor(UseX87, {{s32, s64}, {s32, s80}, {s64, s80}});
+      .legalFor(HasSSE2, {{f32, f64}})
+      .legalFor(HasAVX, {{v4f32, v4f64}})
+      .legalFor(HasAVX512, {{v8f32, v8f64}})
+      .lowerFor(UseX87, {{f32, f64}, {f32, f80}, {f64, f80}});
 
   getActionDefinitionsBuilder(G_SITOFP)
-      .legalFor(HasSSE1, {{s32, s32}})
-      .legalFor(HasSSE1 && Is64Bit, {{s32, s64}})
-      .legalFor(HasSSE2, {{s64, s32}})
-      .legalFor(HasSSE2 && Is64Bit, {{s64, s64}})
-      .clampScalar(1, (UseX87 && !HasSSE1) ? s16 : s32, sMaxScalar)
+      .legalFor(HasSSE1, {{f32, i32}})
+      .legalFor(HasSSE1 && Is64Bit, {{f32, i64}})
+      .legalFor(HasSSE2, {{f64, i32}})
+      .legalFor(HasSSE2 && Is64Bit, {{f64, i64}})
+      .clampScalar(1, (UseX87 && !HasSSE1) ? i16 : i32, iMaxScalar)
       .widenScalarToNextPow2(1)
-      .customForCartesianProduct(UseX87, {s32, s64, s80}, {s16, s32, s64})
-      .clampScalar(0, s32, HasSSE2 ? s64 : s32)
+      .customForCartesianProduct(UseX87, {f32, f64, f80}, {i16, i32, i64})
+      .clampScalar(0, f32, HasSSE2 ? f64 : f32)
       .widenScalarToNextPow2(0);
 
   getActionDefinitionsBuilder(G_FPTOSI)
-      .legalFor(HasSSE1, {{s32, s32}})
-      .legalFor(HasSSE1 && Is64Bit, {{s64, s32}})
-      .legalFor(HasSSE2, {{s32, s64}})
-      .legalFor(HasSSE2 && Is64Bit, {{s64, s64}})
-      .clampScalar(0, (UseX87 && !HasSSE1) ? s16 : s32, sMaxScalar)
+      .legalFor(HasSSE1, {{i32, f32}})
+      .legalFor(HasSSE1 && Is64Bit, {{i64, f32}})
+      .legalFor(HasSSE2, {{i32, f64}})
+      .legalFor(HasSSE2 && Is64Bit, {{i64, f64}})
+      .clampScalar(0, (UseX87 && !HasSSE1) ? i16 : i32, iMaxScalar)
       .widenScalarToNextPow2(0)
-      .customForCartesianProduct(UseX87, {s16, s32, s64}, {s32, s64, s80})
-      .clampScalar(1, s32, HasSSE2 ? s64 : s32)
+      .customForCartesianProduct(UseX87, {i16, i32, i64}, {f32, f64, f80})
+      .clampScalar(1, f32, HasSSE2 ? f64 : f32)
       .widenScalarToNextPow2(1);
 
   // For G_UITOFP and G_FPTOUI without AVX512, we have to custom legalize types
-  // <= s32 manually. Otherwise, in custom handler there is no way to
-  // understand whether s32 is an original type and we need to promote it to
-  // s64 or s32 is obtained after widening and we shouldn't widen it to s64.
+  // <= i32 manually. Otherwise, in custom handler there is no way to
+  // understand whether i32 is an original type and we need to promote it to
+  // i64 or i32 is obtained after widening and we shouldn't widen it to i64.
   //
   // For AVX512 we simply widen types as there is direct mapping from opcodes
   // to asm instructions.
   getActionDefinitionsBuilder(G_UITOFP)
-      .legalFor(HasAVX512, {{s32, s32}, {s32, s64}, {s64, s32}, {s64, s64}})
+      .legalFor(HasAVX512, {{f32, i32}, {f32, i64}, {f64, i32}, {f64, i64}})
       .customIf([=](const LegalityQuery &Query) {
         return !HasAVX512 &&
-               ((HasSSE1 && typeIs(0, s32)(Query)) ||
-                (HasSSE2 && typeIs(0, s64)(Query))) &&
+               ((HasSSE1 && typeIs(0, f32)(Query)) ||
+                (HasSSE2 && typeIs(0, f64)(Query))) &&
                scalarNarrowerThan(1, Is64Bit ? 64 : 32)(Query);
       })
       .lowerIf([=](const LegalityQuery &Query) {
-        // Lower conversions from s64
+        // Lower conversions from i64
         return !HasAVX512 &&
-               ((HasSSE1 && typeIs(0, s32)(Query)) ||
-                (HasSSE2 && typeIs(0, s64)(Query))) &&
-               (Is64Bit && typeIs(1, s64)(Query));
+               ((HasSSE1 && typeIs(0, f32)(Query)) ||
+                (HasSSE2 && typeIs(0, f64)(Query))) &&
+               (Is64Bit && typeIs(1, i64)(Query));
       })
-      .clampScalar(0, s32, HasSSE2 ? s64 : s32)
+      .clampScalar(0, f32, HasSSE2 ? f64 : f32)
       .widenScalarToNextPow2(0)
-      .clampScalar(1, s32, sMaxScalar)
+      .clampScalar(1, i32, iMaxScalar)
       .widenScalarToNextPow2(1);
 
   getActionDefinitionsBuilder(G_FPTOUI)
-      .legalFor(HasAVX512, {{s32, s32}, {s32, s64}, {s64, s32}, {s64, s64}})
+      .legalFor(HasAVX512, {{i32, f32}, {i32, f64}, {i64, f32}, {i64, f64}})
       .customIf([=](const LegalityQuery &Query) {
         return !HasAVX512 &&
-               ((HasSSE1 && typeIs(1, s32)(Query)) ||
-                (HasSSE2 && typeIs(1, s64)(Query))) &&
+               ((HasSSE1 && typeIs(1, f32)(Query)) ||
+                (HasSSE2 && typeIs(1, f64)(Query))) &&
                scalarNarrowerThan(0, Is64Bit ? 64 : 32)(Query);
       })
       // TODO: replace with customized legalization using
@@ -538,14 +575,26 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
       // support of G_BUILD_VECTOR/G_INSERT_VECTOR_ELT is required beforehand.
       .lowerIf([=](const LegalityQuery &Query) {
         return !HasAVX512 &&
-               ((HasSSE1 && typeIs(1, s32)(Query)) ||
-                (HasSSE2 && typeIs(1, s64)(Query))) &&
-               (Is64Bit && typeIs(0, s64)(Query));
+               ((HasSSE1 && typeIs(1, f32)(Query)) ||
+                (HasSSE2 && typeIs(1, f64)(Query))) &&
+               (Is64Bit && typeIs(0, i64)(Query));
       })
-      .clampScalar(0, s32, sMaxScalar)
+      .clampScalar(0, i32, iMaxScalar)
       .widenScalarToNextPow2(0)
-      .clampScalar(1, s32, HasSSE2 ? s64 : s32)
+      .clampScalar(1, f32, HasSSE2 ? f64 : f32)
       .widenScalarToNextPow2(1);
+
+  auto &Bitcast = getActionDefinitionsBuilder(G_BITCAST);
+  Bitcast.legalForCartesianProduct({s16})
+      .legalFor(HasSSE1, {{s32, s32}})
+      .legalFor(HasSSE2 && Is64Bit, {{s64, s64}})
+      .customFor({{s32, s32}, {s64, s64}});
+  if (HasSSE2)
+    Bitcast.legalForCartesianProduct({s128, v16s8, v8s16, v4s32, v2s64});
+  if (HasAVX)
+    Bitcast.legalForCartesianProduct({v32s8, v16s16, v8s32, v4s64});
+  if (HasAVX512)
+    Bitcast.legalForCartesianProduct({v64s8, v32s16, v16s32, v8s64});
 
   // vector ops
   getActionDefinitionsBuilder(G_BUILD_VECTOR)
@@ -598,6 +647,13 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
 
   // todo: vectors and address spaces
   getActionDefinitionsBuilder(G_SELECT)
+      .bitcastIf(
+          [](const LegalityQuery &Query) {
+            return Query.Types[0].isFloat(32) || Query.Types[0].isFloat(64);
+          },
+          [](const LegalityQuery &Query) {
+            return std::pair(0, LLT::integer(Query.Types[0].getSizeInBits()));
+          })
       .legalFor({{s16, s32}, {s32, s32}, {p0, s32}})
       .legalFor(!HasCMOV, {{s8, s32}})
       .legalFor(Is64Bit, {{s64, s32}})
@@ -619,7 +675,7 @@ X86LegalizerInfo::X86LegalizerInfo(const X86Subtarget &STI,
 
   getActionDefinitionsBuilder({G_INTRINSIC_ROUNDEVEN, G_INTRINSIC_TRUNC})
       .scalarize(0)
-      .minScalar(0, LLT::scalar(32))
+      .minScalar(0, LLT::float32())
       .libcall();
 
   getActionDefinitionsBuilder({G_INTRINSIC, G_INTRINSIC_W_SIDE_EFFECTS})
@@ -638,6 +694,8 @@ bool X86LegalizerInfo::legalizeCustom(LegalizerHelper &Helper, MachineInstr &MI,
   default:
     // No idea what to do.
     return false;
+  case TargetOpcode::G_BITCAST:
+    return legalizeBitcast(MI, Helper);
   case TargetOpcode::G_BUILD_VECTOR:
     return legalizeBuildVector(MI, MRI, Helper);
   case TargetOpcode::G_FPTOUI:
@@ -716,6 +774,20 @@ bool X86LegalizerInfo::legalizeFPTOSI(MachineInstr &MI,
   return true;
 }
 
+bool X86LegalizerInfo::legalizeBitcast(MachineInstr &MI,
+                                       LegalizerHelper &Helper) const {
+  auto [Dst, DstTy, Src, SrcTy] = MI.getFirst2RegLLTs();
+  MachineIRBuilder &B = Helper.MIRBuilder;
+  MachinePointerInfo PtrInfo;
+  Align Alignment = Helper.getStackTemporaryAlignment(SrcTy);
+  auto Slot =
+      Helper.createStackTemporary(SrcTy.getSizeInBytes(), Alignment, PtrInfo);
+  B.buildStore(Src, Slot, PtrInfo, Alignment);
+  B.buildLoad(Dst, Slot, PtrInfo, Alignment);
+  MI.eraseFromParent();
+  return true;
+}
+
 bool X86LegalizerInfo::legalizeBuildVector(MachineInstr &MI,
                                            MachineRegisterInfo &MRI,
                                            LegalizerHelper &Helper) const {
@@ -725,7 +797,6 @@ bool X86LegalizerInfo::legalizeBuildVector(MachineInstr &MI,
   LLT DstTy = MRI.getType(Dst);
   MachineFunction &MF = MIRBuilder.getMF();
   LLVMContext &Ctx = MF.getFunction().getContext();
-  uint64_t DstTySize = DstTy.getScalarSizeInBits();
 
   SmallVector<Constant *, 4> CstIdxs;
   for (unsigned i = 0; i < BuildVector.getNumSources(); ++i) {
@@ -744,7 +815,9 @@ bool X86LegalizerInfo::legalizeBuildVector(MachineInstr &MI,
     }
 
     if (getOpcodeDef<GImplicitDef>(Source, MRI)) {
-      CstIdxs.emplace_back(UndefValue::get(Type::getIntNTy(Ctx, DstTySize)));
+      Type *ElementTy =
+          EVT(getMVTForLLT(DstTy.getElementType())).getTypeForEVT(Ctx);
+      CstIdxs.emplace_back(UndefValue::get(ElementTy));
       continue;
     }
     return false;
@@ -773,12 +846,12 @@ bool X86LegalizerInfo::legalizeFPTOUI(MachineInstr &MI,
   MachineIRBuilder &MIRBuilder = Helper.MIRBuilder;
   auto [Dst, DstTy, Src, SrcTy] = MI.getFirst2RegLLTs();
   unsigned DstSizeInBits = DstTy.getScalarSizeInBits();
-  const LLT s32 = LLT::scalar(32);
-  const LLT s64 = LLT::scalar(64);
+  const LLT i32 = LLT::integer(32);
+  const LLT i64 = LLT::integer(64);
 
   // Simply reuse FPTOSI when it is possible to widen the type
   if (DstSizeInBits <= 32) {
-    auto Casted = MIRBuilder.buildFPTOSI(DstTy == s32 ? s64 : s32, Src);
+    auto Casted = MIRBuilder.buildFPTOSI(DstTy == i32 ? i64 : i32, Src);
     MIRBuilder.buildTrunc(Dst, Casted);
     MI.eraseFromParent();
     return true;
@@ -792,12 +865,12 @@ bool X86LegalizerInfo::legalizeUITOFP(MachineInstr &MI,
                                       LegalizerHelper &Helper) const {
   MachineIRBuilder &MIRBuilder = Helper.MIRBuilder;
   auto [Dst, DstTy, Src, SrcTy] = MI.getFirst2RegLLTs();
-  const LLT s32 = LLT::scalar(32);
-  const LLT s64 = LLT::scalar(64);
+  const LLT i32 = LLT::integer(32);
+  const LLT i64 = LLT::integer(64);
 
   // Simply reuse SITOFP when it is possible to widen the type
   if (SrcTy.getSizeInBits() <= 32) {
-    auto Ext = MIRBuilder.buildZExt(SrcTy == s32 ? s64 : s32, Src);
+    auto Ext = MIRBuilder.buildZExt(SrcTy == i32 ? i64 : i32, Src);
     MIRBuilder.buildSITOFP(Dst, Ext);
     MI.eraseFromParent();
     return true;
@@ -851,9 +924,9 @@ bool X86LegalizerInfo::legalizeGETROUNDING(MachineInstr &MI,
   MachineFunction &MF = MIRBuilder.getMF();
   Register Dst = MI.getOperand(0).getReg();
   LLT DstTy = MRI.getType(Dst);
-  const LLT s8 = LLT::scalar(8);
-  const LLT s16 = LLT::scalar(16);
-  const LLT s32 = LLT::scalar(32);
+  const LLT i8 = LLT::integer(8);
+  const LLT i16 = LLT::integer(16);
+  const LLT i32 = LLT::integer(32);
 
   // Save FP Control Word to stack slot
   int MemSize = 2;
@@ -876,20 +949,20 @@ bool X86LegalizerInfo::legalizeGETROUNDING(MachineInstr &MI,
                                          MemSize, Alignment);
 
   auto CWD32 =
-      MIRBuilder.buildZExt(s32, MIRBuilder.buildLoad(s16, StackPtr, *LoadMMO));
+      MIRBuilder.buildZExt(i32, MIRBuilder.buildLoad(i16, StackPtr, *LoadMMO));
   auto Shifted8 = MIRBuilder.buildTrunc(
-      s8, MIRBuilder.buildLShr(s32, CWD32, MIRBuilder.buildConstant(s8, 9)));
+      i8, MIRBuilder.buildLShr(i32, CWD32, MIRBuilder.buildConstant(i8, 9)));
   auto Masked32 = MIRBuilder.buildZExt(
-      s32, MIRBuilder.buildAnd(s8, Shifted8, MIRBuilder.buildConstant(s8, 6)));
+      i32, MIRBuilder.buildAnd(i8, Shifted8, MIRBuilder.buildConstant(i8, 6)));
 
   // LUT is a packed lookup table (0x2d) used to map the 2-bit x87 FPU rounding
   // mode (from bits 11:10 of the control word) to the values expected by
   // GET_ROUNDING. The mapping is performed by shifting LUT right by the
   // extracted rounding mode and masking the result with 3 to obtain the final
-  auto LUT = MIRBuilder.buildConstant(s32, 0x2d);
-  auto LUTShifted = MIRBuilder.buildLShr(s32, LUT, Masked32);
+  auto LUT = MIRBuilder.buildConstant(i32, 0x2d);
+  auto LUTShifted = MIRBuilder.buildLShr(i32, LUT, Masked32);
   auto RetVal =
-      MIRBuilder.buildAnd(s32, LUTShifted, MIRBuilder.buildConstant(s32, 3));
+      MIRBuilder.buildAnd(i32, LUTShifted, MIRBuilder.buildConstant(i32, 3));
   auto RetValTrunc = MIRBuilder.buildZExtOrTrunc(DstTy, RetVal);
 
   MIRBuilder.buildCopy(Dst, RetValTrunc);
@@ -904,9 +977,9 @@ bool X86LegalizerInfo::legalizeSETROUNDING(MachineInstr &MI,
   MachineIRBuilder &MIRBuilder = Helper.MIRBuilder;
   MachineFunction &MF = MIRBuilder.getMF();
   Register Src = MI.getOperand(0).getReg();
-  const LLT s8 = LLT::scalar(8);
-  const LLT s16 = LLT::scalar(16);
-  const LLT s32 = LLT::scalar(32);
+  const LLT i8 = LLT::integer(8);
+  const LLT i16 = LLT::integer(16);
+  const LLT i32 = LLT::integer(32);
 
   // Allocate stack slot for control word and MXCSR (4 bytes).
   int MemSize = 4;
@@ -924,11 +997,11 @@ bool X86LegalizerInfo::legalizeSETROUNDING(MachineInstr &MI,
 
   auto LoadMMO =
       MF.getMachineMemOperand(PtrInfo, MachineMemOperand::MOLoad, 2, Align(2));
-  auto CWD16 = MIRBuilder.buildLoad(s16, StackPtr, *LoadMMO);
+  auto CWD16 = MIRBuilder.buildLoad(i16, StackPtr, *LoadMMO);
 
   // Clear RM field (bits 11:10)
   auto ClearedCWD =
-      MIRBuilder.buildAnd(s16, CWD16, MIRBuilder.buildConstant(s16, 0xf3ff));
+      MIRBuilder.buildAnd(i16, CWD16, MIRBuilder.buildConstant(i16, 0xf3ff));
 
   // Check if Src is a constant
   Register RMBits;
@@ -949,31 +1022,31 @@ bool X86LegalizerInfo::legalizeSETROUNDING(MachineInstr &MI,
     }
 
     FieldVal = FieldVal << 3;
-    RMBits = MIRBuilder.buildConstant(s16, FieldVal).getReg(0);
-    MXCSRRMBits = MIRBuilder.buildConstant(s32, FieldVal).getReg(0);
+    RMBits = MIRBuilder.buildConstant(i16, FieldVal).getReg(0);
+    MXCSRRMBits = MIRBuilder.buildConstant(i32, FieldVal).getReg(0);
   } else {
     // Convert Src (rounding mode) to bits for control word
     // (0xc9 << (2 * Src + 4)) & 0xc00
-    auto Src32 = MIRBuilder.buildZExtOrTrunc(s32, Src);
+    auto Src32 = MIRBuilder.buildZExtOrTrunc(i32, Src);
     auto ShiftAmt = MIRBuilder.buildAdd(
-        s32, MIRBuilder.buildShl(s32, Src32, MIRBuilder.buildConstant(s32, 1)),
-        MIRBuilder.buildConstant(s32, 4));
-    auto ShiftAmt8 = MIRBuilder.buildTrunc(s8, ShiftAmt);
-    auto Shifted = MIRBuilder.buildShl(s16, MIRBuilder.buildConstant(s16, 0xc9),
+        i32, MIRBuilder.buildShl(i32, Src32, MIRBuilder.buildConstant(i32, 1)),
+        MIRBuilder.buildConstant(i32, 4));
+    auto ShiftAmt8 = MIRBuilder.buildTrunc(i8, ShiftAmt);
+    auto Shifted = MIRBuilder.buildShl(i16, MIRBuilder.buildConstant(i16, 0xc9),
                                        ShiftAmt8);
     RMBits =
-        MIRBuilder.buildAnd(s16, Shifted, MIRBuilder.buildConstant(s16, 0xc00))
+        MIRBuilder.buildAnd(i16, Shifted, MIRBuilder.buildConstant(i16, 0xc00))
             .getReg(0);
 
     // For non-constant case, we still need to compute MXCSR bits dynamically
-    auto RMBits32 = MIRBuilder.buildZExt(s32, RMBits);
+    auto RMBits32 = MIRBuilder.buildZExt(i32, RMBits);
     MXCSRRMBits =
-        MIRBuilder.buildShl(s32, RMBits32, MIRBuilder.buildConstant(s32, 3))
+        MIRBuilder.buildShl(i32, RMBits32, MIRBuilder.buildConstant(i32, 3))
             .getReg(0);
   }
   // Update rounding mode bits
   auto NewCWD =
-      MIRBuilder.buildOr(s16, ClearedCWD, RMBits, MachineInstr::Disjoint);
+      MIRBuilder.buildOr(i16, ClearedCWD, RMBits, MachineInstr::Disjoint);
 
   // Store new FP Control Word to stack
   auto StoreNewMMO =
@@ -999,14 +1072,14 @@ bool X86LegalizerInfo::legalizeSETROUNDING(MachineInstr &MI,
     // Load MXCSR from stack
     auto LoadMXCSRMMO = MF.getMachineMemOperand(
         PtrInfo, MachineMemOperand::MOLoad, 4, Align(4));
-    auto MXCSR = MIRBuilder.buildLoad(s32, StackPtr, *LoadMXCSRMMO);
+    auto MXCSR = MIRBuilder.buildLoad(i32, StackPtr, *LoadMXCSRMMO);
 
     // Clear RM field (bits 14:13)
     auto ClearedMXCSR = MIRBuilder.buildAnd(
-        s32, MXCSR, MIRBuilder.buildConstant(s32, 0xffff9fff));
+        i32, MXCSR, MIRBuilder.buildConstant(i32, 0xffff9fff));
 
     // Update rounding mode bits
-    auto NewMXCSR = MIRBuilder.buildOr(s32, ClearedMXCSR, MXCSRRMBits);
+    auto NewMXCSR = MIRBuilder.buildOr(i32, ClearedMXCSR, MXCSRRMBits);
 
     // Store new MXCSR to stack
     auto StoreNewMXCSRMMO = MF.getMachineMemOperand(

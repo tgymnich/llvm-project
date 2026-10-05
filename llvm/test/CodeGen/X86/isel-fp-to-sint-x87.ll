@@ -370,20 +370,36 @@ define i8 @test_double_to_int8(double %input) nounwind {
 ; GISEL-X64-NEXT:    # kill: def $al killed $al killed $ax
 ; GISEL-X64-NEXT:    retq
 ;
-; X86-LABEL: test_double_to_int8:
-; X86:       # %bb.0: # %entry
-; X86-NEXT:    subl $8, %esp
-; X86-NEXT:    fldl {{[0-9]+}}(%esp)
-; X86-NEXT:    fnstcw {{[0-9]+}}(%esp)
-; X86-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
-; X86-NEXT:    orl $3072, %eax # imm = 0xC00
-; X86-NEXT:    movw %ax, {{[0-9]+}}(%esp)
-; X86-NEXT:    fldcw {{[0-9]+}}(%esp)
-; X86-NEXT:    fistps {{[0-9]+}}(%esp)
-; X86-NEXT:    fldcw {{[0-9]+}}(%esp)
-; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
-; X86-NEXT:    addl $8, %esp
-; X86-NEXT:    retl
+; SDAG-X86-LABEL: test_double_to_int8:
+; SDAG-X86:       # %bb.0: # %entry
+; SDAG-X86-NEXT:    subl $8, %esp
+; SDAG-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    fnstcw {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; SDAG-X86-NEXT:    orl $3072, %eax # imm = 0xC00
+; SDAG-X86-NEXT:    movw %ax, {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    fldcw {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    fistps {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    fldcw {{[0-9]+}}(%esp)
+; SDAG-X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
+; SDAG-X86-NEXT:    addl $8, %esp
+; SDAG-X86-NEXT:    retl
+;
+; GISEL-X86-LABEL: test_double_to_int8:
+; GISEL-X86:       # %bb.0: # %entry
+; GISEL-X86-NEXT:    subl $8, %esp
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fnstcw {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    orl $3072, %eax # imm = 0xC00
+; GISEL-X86-NEXT:    movw %ax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fldcw {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fistps {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fldcw {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    # kill: def $al killed $al killed $ax
+; GISEL-X86-NEXT:    addl $8, %esp
+; GISEL-X86-NEXT:    retl
 entry:
     %conv = fptosi double %input to i8
     ret i8 %conv

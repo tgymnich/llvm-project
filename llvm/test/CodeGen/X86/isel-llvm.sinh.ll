@@ -38,30 +38,18 @@ define float @use_sinhf32(float %a) nounwind {
 }
 
 define double @use_sinhf64(double %a) nounwind {
-; SDAG-X86-LABEL: use_sinhf64:
-; SDAG-X86:       # %bb.0:
-; SDAG-X86-NEXT:    subl $12, %esp
-; SDAG-X86-NEXT:    fldl {{[0-9]+}}(%esp)
-; SDAG-X86-NEXT:    fstpl (%esp)
-; SDAG-X86-NEXT:    calll sinh
-; SDAG-X86-NEXT:    addl $12, %esp
-; SDAG-X86-NEXT:    retl
+; X86-LABEL: use_sinhf64:
+; X86:       # %bb.0:
+; X86-NEXT:    subl $12, %esp
+; X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; X86-NEXT:    fstpl (%esp)
+; X86-NEXT:    calll sinh
+; X86-NEXT:    addl $12, %esp
+; X86-NEXT:    retl
 ;
 ; SDAG-X64-LABEL: use_sinhf64:
 ; SDAG-X64:       # %bb.0:
 ; SDAG-X64-NEXT:    jmp sinh@PLT # TAILCALL
-;
-; GISEL-X86-LABEL: use_sinhf64:
-; GISEL-X86:       # %bb.0:
-; GISEL-X86-NEXT:    subl $12, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
-; GISEL-X86-NEXT:    calll sinh
-; GISEL-X86-NEXT:    addl $12, %esp
-; GISEL-X86-NEXT:    retl
 ;
 ; GISEL-X64-LABEL: use_sinhf64:
 ; GISEL-X64:       # %bb.0:

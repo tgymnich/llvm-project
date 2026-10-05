@@ -11,7 +11,7 @@ tablegen(LLVM X86GenDisassemblerTables.inc -gen-disassembler)
 tablegen(LLVM X86GenInstrMapping.inc -gen-x86-instr-mapping)
 tablegen(LLVM X86GenExegesis.inc -gen-exegesis)
 tablegen(LLVM X86GenFastISel.inc -gen-fast-isel)
-tablegen(LLVM X86GenGlobalISel.inc -gen-global-isel)
+tablegen(LLVM X86GenGlobalISel.inc -gen-global-isel -gisel-extended-llt)
 tablegen(LLVM X86GenInstrInfo.inc -gen-instr-info
                                   -instr-info-expand-mi-operand-info=0)
 tablegen(LLVM X86GenMnemonicTables.inc -gen-x86-mnemonic-tables -asmwriternum=1)
@@ -21,9 +21,9 @@ tablegen(LLVM X86GenSDNodeInfo.inc -gen-sd-node-info)
 tablegen(LLVM X86GenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM X86GenFoldTables.inc -gen-x86-fold-tables -asmwriternum=1)
 tablegen(LLVM X86GenPreLegalizeGICombiner.inc -gen-global-isel-combiner
-              -combiners="X86PreLegalizerCombiner")
+              -combiners="X86PreLegalizerCombiner" -gisel-extended-llt)
 tablegen(LLVM X86GenPostLegalizeGICombiner.inc -gen-global-isel-combiner
-              -combiners="X86PostLegalizerCombiner")
+              -combiners="X86PostLegalizerCombiner" -gisel-extended-llt)
 
 set(LLVM_TARGET_DEFINITIONS X86Options.td)
 tablegen(LLVM X86Options.inc -gen-opt-parser-defs)

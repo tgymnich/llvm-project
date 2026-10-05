@@ -47,7 +47,10 @@ tablegen("X86GenFoldTables") {
 
 tablegen("X86GenGlobalISel") {
   visibility = [ ":LLVMX86CodeGen" ]
-  args = [ "-gen-global-isel" ]
+  args = [
+    "-gen-global-isel",
+    "-gisel-extended-llt",
+  ]
   td_file = "X86.td"
 }
 
@@ -71,6 +74,7 @@ tablegen("X86GenPreLegalizeGICombiner") {
   visibility = [ ":LLVMX86CodeGen" ]
   args = [
     "-gen-global-isel-combiner",
+    "-gisel-extended-llt",
     "-combiners=X86PreLegalizerCombiner",
   ]
   td_file = "X86.td"
@@ -80,6 +84,7 @@ tablegen("X86GenPostLegalizeGICombiner") {
   visibility = [ ":LLVMX86CodeGen" ]
   args = [
     "-gen-global-isel-combiner",
+    "-gisel-extended-llt",
     "-combiners=X86PostLegalizerCombiner",
   ]
   td_file = "X86.td"

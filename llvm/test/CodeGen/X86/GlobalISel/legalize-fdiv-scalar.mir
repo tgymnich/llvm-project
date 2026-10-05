@@ -34,21 +34,23 @@ body:             |
     liveins: $xmm0, $xmm1
 
     ; CHECK-LABEL: name: test_fdiv_float
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[COPY1:%[0-9]+]]:_(s128) = COPY $xmm1
-    ; CHECK: [[TRUNC1:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s128)
-    ; CHECK: [[FDIV:%[0-9]+]]:_(s32) = G_FDIV [[TRUNC]], [[TRUNC1]]
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[FDIV]](s32)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %2:_(s128) = COPY $xmm0
-    %0:_(s32) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s32) = G_TRUNC %3(s128)
-    %4:_(s32) = G_FDIV %0, %1
-    %5:_(s128) = G_ANYEXT %4(s32)
-    $xmm0 = COPY %5(s128)
+    ; CHECK: liveins: $xmm0, $xmm1
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f32) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i128) = COPY $xmm1
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(f32) = G_TRUNC [[COPY1]](i128)
+    ; CHECK-NEXT: [[FDIV:%[0-9]+]]:_(f32) = G_FDIV [[TRUNC]], [[TRUNC1]]
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[FDIV]](f32)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %2:_(i128) = COPY $xmm0
+    %0:_(f32) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f32) = G_TRUNC %3(i128)
+    %4:_(f32) = G_FDIV %0, %1
+    %5:_(i128) = G_ANYEXT %4(f32)
+    $xmm0 = COPY %5(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -73,21 +75,23 @@ body:             |
     liveins: $xmm0, $xmm1
 
     ; CHECK-LABEL: name: test_fdiv_double
-    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $xmm0
-    ; CHECK: [[TRUNC:%[0-9]+]]:_(s64) = G_TRUNC [[COPY]](s128)
-    ; CHECK: [[COPY1:%[0-9]+]]:_(s128) = COPY $xmm1
-    ; CHECK: [[TRUNC1:%[0-9]+]]:_(s64) = G_TRUNC [[COPY1]](s128)
-    ; CHECK: [[FDIV:%[0-9]+]]:_(s64) = G_FDIV [[TRUNC]], [[TRUNC1]]
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[FDIV]](s64)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %2:_(s128) = COPY $xmm0
-    %0:_(s64) = G_TRUNC %2(s128)
-    %3:_(s128) = COPY $xmm1
-    %1:_(s64) = G_TRUNC %3(s128)
-    %4:_(s64) = G_FDIV %0, %1
-    %5:_(s128) = G_ANYEXT %4(s64)
-    $xmm0 = COPY %5(s128)
+    ; CHECK: liveins: $xmm0, $xmm1
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i128) = COPY $xmm0
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f64) = G_TRUNC [[COPY]](i128)
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i128) = COPY $xmm1
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(f64) = G_TRUNC [[COPY1]](i128)
+    ; CHECK-NEXT: [[FDIV:%[0-9]+]]:_(f64) = G_FDIV [[TRUNC]], [[TRUNC1]]
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[FDIV]](f64)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %2:_(i128) = COPY $xmm0
+    %0:_(f64) = G_TRUNC %2(i128)
+    %3:_(i128) = COPY $xmm1
+    %1:_(f64) = G_TRUNC %3(i128)
+    %4:_(f64) = G_FDIV %0, %1
+    %5:_(i128) = G_ANYEXT %4(f64)
+    $xmm0 = COPY %5(i128)
     RET 0, implicit $xmm0
 
 ...

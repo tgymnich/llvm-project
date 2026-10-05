@@ -73,17 +73,17 @@ body:             |
     ; CHECK-LABEL: name: mul_1_shift_of_shift
     ; CHECK: liveins: $rax
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY $rax
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 1
-    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(s64) = G_SHL [[COPY]], [[C]](s64)
-    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(s64) = G_OR [[SHL]], [[C]]
-    ; CHECK-NEXT: $rax = COPY [[OR]](s64)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rax
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i64) = G_CONSTANT i64 1
+    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i64) = G_SHL [[COPY]], [[C]](i64)
+    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(i64) = G_OR [[SHL]], [[C]]
+    ; CHECK-NEXT: $rax = COPY [[OR]](i64)
     ; CHECK-NEXT: RET implicit $rax
-    %0:_(s64) = COPY $rax
-    %1:_(s64) = G_CONSTANT i64 1
-    %2:_(s64) = G_SHL %0, %1(s64)
-    %3:_(s64) = G_OR %2, %1
-    %4:_(s64) = G_MUL %3, %1
-    $rax = COPY %4(s64)
+    %0:_(i64) = COPY $rax
+    %1:_(i64) = G_CONSTANT i64 1
+    %2:_(i64) = G_SHL %0, %1(i64)
+    %3:_(i64) = G_OR %2, %1
+    %4:_(i64) = G_MUL %3, %1
+    $rax = COPY %4(i64)
     RET implicit $rax
 ...

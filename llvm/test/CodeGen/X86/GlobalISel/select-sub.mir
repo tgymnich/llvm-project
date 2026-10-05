@@ -40,10 +40,10 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $edi, $esi
 
-    %0(s64) = COPY $rdi
-    %1(s64) = COPY $rsi
-    %2(s64) = G_SUB %0, %1
-    $rax = COPY %2(s64)
+    %0(i64) = COPY $rdi
+    %1(i64) = COPY $rsi
+    %2(i64) = G_SUB %0, %1
+    $rax = COPY %2(i64)
 
 ...
 
@@ -62,10 +62,10 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $edi, $esi
 
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %2(s32) = G_SUB %0, %1
-    $eax = COPY %2(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %2(i32) = G_SUB %0, %1
+    $eax = COPY %2(i32)
 
 ...
 ---
@@ -91,10 +91,10 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $xmm0, $xmm1
 
-    %0(<4 x s32>) = COPY $xmm0
-    %1(<4 x s32>) = COPY $xmm1
-    %2(<4 x s32>) = G_SUB %0, %1
-    $xmm0 = COPY %2(<4 x s32>)
+    %0(<4 x i32>) = COPY $xmm0
+    %1(<4 x i32>) = COPY $xmm1
+    %2(<4 x i32>) = G_SUB %0, %1
+    $xmm0 = COPY %2(<4 x i32>)
     RET 0, implicit $xmm0
 
 ...
@@ -122,10 +122,10 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $xmm0, $xmm1
 
-    %0(<4 x s32>) = COPY $xmm0
-    %1(<4 x s32>) = COPY $xmm1
-    %2(<4 x s32>) = G_FSUB %0, %1
-    $xmm0 = COPY %2(<4 x s32>)
+    %0(<4 x f32>) = COPY $xmm0
+    %1(<4 x f32>) = COPY $xmm1
+    %2(<4 x f32>) = G_FSUB %0, %1
+    $xmm0 = COPY %2(<4 x f32>)
     RET 0, implicit $xmm0
 
 ...

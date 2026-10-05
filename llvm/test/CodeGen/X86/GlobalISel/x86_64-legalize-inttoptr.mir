@@ -23,12 +23,13 @@ body:             |
 
     ; CHECK-LABEL: name: inttoptr_p0_s64
     ; CHECK: liveins: $rdi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s64) = COPY $rdi
-    ; CHECK: [[INTTOPTR:%[0-9]+]]:_(p0) = G_INTTOPTR [[COPY]](s64)
-    ; CHECK: $rax = COPY [[INTTOPTR]](p0)
-    ; CHECK: RET 0, implicit $rax
-    %0:_(s64) = COPY $rdi
-    %1:_(p0) = G_INTTOPTR %0(s64)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rdi
+    ; CHECK-NEXT: [[INTTOPTR:%[0-9]+]]:_(p0) = G_INTTOPTR [[COPY]](i64)
+    ; CHECK-NEXT: $rax = COPY [[INTTOPTR]](p0)
+    ; CHECK-NEXT: RET 0, implicit $rax
+    %0:_(i64) = COPY $rdi
+    %1:_(p0) = G_INTTOPTR %0(i64)
     $rax = COPY %1(p0)
     RET 0, implicit $rax
 

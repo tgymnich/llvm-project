@@ -14,15 +14,15 @@ body:             |
     ; CHECK: liveins: $rax
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(p0) = COPY $rax
-    ; CHECK-NEXT: [[LOAD:%[0-9]+]]:_(s128) = G_LOAD [[COPY]](p0) :: (load (s128))
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s128) = G_CONSTANT i128 9223372036854775808
-    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(s128) = G_OR [[LOAD]], [[C]]
-    ; CHECK-NEXT: G_STORE [[OR]](s128), [[COPY]](p0) :: (store (s128), align 4)
+    ; CHECK-NEXT: [[LOAD:%[0-9]+]]:_(i128) = G_LOAD [[COPY]](p0) :: (load (i128))
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i128) = G_CONSTANT i128 9223372036854775808
+    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(i128) = G_OR [[LOAD]], [[C]]
+    ; CHECK-NEXT: G_STORE [[OR]](i128), [[COPY]](p0) :: (store (i128), align 4)
     ; CHECK-NEXT: RET 0
     %0:_(p0) = COPY $rax
-    %2:_(s128) = G_LOAD %0(p0) :: (load (s128))
-    %4:_(s128) = G_CONSTANT i128 9223372036854775808
-    %5:_(s128) = G_OR %2, %4
-    G_STORE %5(s128), %0(p0) :: (store (s128), align 4)
+    %2:_(i128) = G_LOAD %0(p0) :: (load (i128))
+    %4:_(i128) = G_CONSTANT i128 9223372036854775808
+    %5:_(i128) = G_OR %2, %4
+    G_STORE %5(i128), %0(p0) :: (store (i128), align 4)
     RET 0
 ...

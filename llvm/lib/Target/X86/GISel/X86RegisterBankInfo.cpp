@@ -145,8 +145,10 @@ X86GenRegisterBankInfo::getPartialMappingIdx(const MachineInstr &MI,
   const X86Subtarget *ST = &MF->getSubtarget<X86Subtarget>();
   bool HasSSE1 = ST->hasSSE1();
   bool HasSSE2 = ST->hasSSE2();
-  // 80 bits is only generated for X87 floating points.
-  if (Ty.getSizeInBits() == 80)
+  // Bitwise transport need not use x87 registers when SSE is unavailable.
+  if ((Ty.isFloat(32) && HasSSE1) ||
+      (Ty.isFloat(64) && (HasSSE2 || !ST->is64Bit())) || Ty.isFloat(128) ||
+      Ty.getSizeInBits() == 80)
     isFP = true;
   if ((Ty.isScalar() && !isFP) || Ty.isPointer()) {
     switch (Ty.getSizeInBits()) {

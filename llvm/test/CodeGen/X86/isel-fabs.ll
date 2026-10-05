@@ -35,8 +35,11 @@ define float @test_float_abs(float %arg) nounwind {
 ;
 ; GISEL-X86-LABEL: test_float_abs:
 ; GISEL-X86:       # %bb.0:
-; GISEL-X86-NEXT:    movl $2147483647, %eax # imm = 0x7FFFFFFF
-; GISEL-X86-NEXT:    andl {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; GISEL-X86-NEXT:    movd %xmm0, %eax
+; GISEL-X86-NEXT:    andl $2147483647, %eax # imm = 0x7FFFFFFF
+; GISEL-X86-NEXT:    movd %eax, %xmm0
+; GISEL-X86-NEXT:    movd %xmm0, %eax
 ; GISEL-X86-NEXT:    retl
     %abs = tail call float @llvm.fabs.f32(float %arg)
     ret float %abs
@@ -50,8 +53,8 @@ define double @test_double_abs(double %arg) nounwind {
 ;
 ; GISEL-X64-LABEL: test_double_abs:
 ; GISEL-X64:       # %bb.0:
-; GISEL-X64-NEXT:    movabsq $9223372036854775807, %rax # imm = 0x7FFFFFFFFFFFFFFF
-; GISEL-X64-NEXT:    movq %xmm0, %rcx
+; GISEL-X64-NEXT:    movq %xmm0, %rax
+; GISEL-X64-NEXT:    movabsq $9223372036854775807, %rcx # imm = 0x7FFFFFFFFFFFFFFF
 ; GISEL-X64-NEXT:    andq %rax, %rcx
 ; GISEL-X64-NEXT:    movq %rcx, %xmm0
 ; GISEL-X64-NEXT:    retq
@@ -80,10 +83,32 @@ define double @test_double_abs(double %arg) nounwind {
 ;
 ; GISEL-X86-LABEL: test_double_abs:
 ; GISEL-X86:       # %bb.0:
-; GISEL-X86-NEXT:    movl $-1, %eax
+; GISEL-X86-NEXT:    pushl %ebp
+; GISEL-X86-NEXT:    movl %esp, %ebp
+; GISEL-X86-NEXT:    andl $-8, %esp
+; GISEL-X86-NEXT:    subl $32, %esp
+; GISEL-X86-NEXT:    movl 8(%ebp), %eax
+; GISEL-X86-NEXT:    movl 12(%ebp), %ecx
+; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %edx
+; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    movl %ecx, 4(%edx)
+; GISEL-X86-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
+; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    movsd %xmm0, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    movl $-1, %ecx
 ; GISEL-X86-NEXT:    movl $2147483647, %edx # imm = 0x7FFFFFFF
-; GISEL-X86-NEXT:    andl {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    andl {{[0-9]+}}(%esp), %edx
+; GISEL-X86-NEXT:    andl {{[0-9]+}}(%esp), %ecx
+; GISEL-X86-NEXT:    andl 4(%eax), %edx
+; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    movl %edx, 4(%eax)
+; GISEL-X86-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
+; GISEL-X86-NEXT:    movl %esp, %ecx
+; GISEL-X86-NEXT:    movsd %xmm0, (%esp)
+; GISEL-X86-NEXT:    movl (%esp), %eax
+; GISEL-X86-NEXT:    movl 4(%ecx), %edx
+; GISEL-X86-NEXT:    movl %ebp, %esp
+; GISEL-X86-NEXT:    popl %ebp
 ; GISEL-X86-NEXT:    retl
     %abs = tail call double @llvm.fabs.f64(double %arg)
     ret double %abs

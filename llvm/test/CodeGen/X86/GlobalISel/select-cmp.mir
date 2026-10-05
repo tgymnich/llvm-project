@@ -109,13 +109,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s8) = COPY $dil
-    %1(s8) = COPY $sil
-    %4(s8) = G_ICMP intpred(eq), %0(s8), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i8) = COPY $dil
+    %1(i8) = COPY $sil
+    %4(i8) = G_ICMP intpred(eq), %0(i8), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -147,13 +147,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s16) = COPY $di
-    %1(s16) = COPY $si
-    %4(s8) = G_ICMP intpred(eq), %0(s16), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i16) = COPY $di
+    %1(i16) = COPY $si
+    %4(i8) = G_ICMP intpred(eq), %0(i16), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -185,13 +185,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s64) = COPY $rdi
-    %1(s64) = COPY $rsi
-    %4(s8) = G_ICMP intpred(eq), %0(s64), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i64) = COPY $rdi
+    %1(i64) = COPY $rsi
+    %4(i8) = G_ICMP intpred(eq), %0(i64), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -223,13 +223,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(eq), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(eq), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -261,13 +261,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(ne), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(ne), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -299,13 +299,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(ugt), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(ugt), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -337,13 +337,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(uge), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(uge), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -375,13 +375,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(ult), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(ult), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -413,13 +413,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(ule), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(ule), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -451,13 +451,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(sgt), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(sgt), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -489,13 +489,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(sge), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(sge), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -527,13 +527,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(slt), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(slt), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...
@@ -565,13 +565,13 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[MOVZX32rr8_]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = COPY $edi
-    %1(s32) = COPY $esi
-    %4(s8) = G_ICMP intpred(sle), %0(s32), %1
-    %5(s32) = G_CONSTANT i32 1
-    %6(s32) = G_ANYEXT %4(s8)
-    %3(s32) = G_AND %6, %5
-    $eax = COPY %3(s32)
+    %0(i32) = COPY $edi
+    %1(i32) = COPY $esi
+    %4(i8) = G_ICMP intpred(sle), %0(i32), %1
+    %5(i32) = G_CONSTANT i32 1
+    %6(i32) = G_ANYEXT %4(i8)
+    %3(i32) = G_AND %6, %5
+    $eax = COPY %3(i32)
     RET 0, implicit $eax
 
 ...

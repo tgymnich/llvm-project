@@ -1,0 +1,25 @@
+# RUN: llc -mtriple=x86_64 -run-pass=none -verify-machineinstrs %s -o %t
+# RUN: FileCheck %s < %t
+# RUN: llc -mtriple=x86_64 -run-pass=none -verify-machineinstrs -x mir %t -o - | FileCheck %s
+
+---
+name: x87_types
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: x87_types
+    ; CHECK: [[PTR:%.+]]:_(p0) = G_IMPLICIT_DEF
+    ; CHECK: [[FP:%.+]]:_(f80) = G_LOAD [[PTR]](p0) :: (load (f80), align 16)
+    ; CHECK: {{%.+}}:_(i80) = G_BITCAST [[FP]](f80)
+    ; CHECK: [[VEC:%.+]]:_(<2 x f80>) = G_IMPLICIT_DEF
+    ; CHECK: {{%.+}}:_(<2 x i80>) = G_BITCAST [[VEC]](<2 x f80>)
+    ; CHECK: {{%.+}}:_(s80) = G_IMPLICIT_DEF
+    ; CHECK: G_STORE [[FP]](f80), [[PTR]](p0) :: (store (f80), align 16)
+    %0:_(p0) = G_IMPLICIT_DEF
+    %1:_(f80) = G_LOAD %0 :: (load (f80), align 16)
+    %2:_(i80) = G_BITCAST %1
+    %3:_(<2 x f80>) = G_IMPLICIT_DEF
+    %4:_(<2 x i80>) = G_BITCAST %3
+    %5:_(s80) = G_IMPLICIT_DEF
+    G_STORE %1, %0 :: (store (f80), align 16)
+    RET 0
+...

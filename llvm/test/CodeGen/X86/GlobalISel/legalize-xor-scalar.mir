@@ -25,17 +25,17 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
     ; CHECK-LABEL: name: test_xor_i1
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edx
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s8) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(s8) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(s8) = G_XOR [[TRUNC]], [[TRUNC1]]
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s32) = G_ANYEXT [[XOR]](s8)
-    ; CHECK-NEXT: $eax = COPY [[ANYEXT]](s32)
+    ; CHECK: [[COPY:%[0-9]+]]:_(i32) = COPY $edx
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i8) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(i8) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(i8) = G_XOR [[TRUNC]], [[TRUNC1]]
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[XOR]](i8)
+    ; CHECK-NEXT: $eax = COPY [[ANYEXT]](i32)
     ; CHECK-NEXT: RET 0
-    %0(s32) = COPY $edx
-    %1(s1) = G_TRUNC %0(s32)
-    %2(s1) = G_XOR %1, %1
-    %3:_(s32) = G_ANYEXT %2
+    %0(i32) = COPY $edx
+    %1(i1) = G_TRUNC %0(i32)
+    %2(i1) = G_XOR %1, %1
+    %3:_(i32) = G_ANYEXT %2
     $eax = COPY %3
     RET 0
 ...
@@ -51,16 +51,16 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
     ; CHECK-LABEL: name: test_xor_i8
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edx
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s8) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(s8) = G_XOR [[TRUNC]], [[TRUNC]]
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s32) = G_ANYEXT [[XOR]](s8)
-    ; CHECK-NEXT: $eax = COPY [[ANYEXT]](s32)
+    ; CHECK: [[COPY:%[0-9]+]]:_(i32) = COPY $edx
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i8) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(i8) = G_XOR [[TRUNC]], [[TRUNC]]
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[XOR]](i8)
+    ; CHECK-NEXT: $eax = COPY [[ANYEXT]](i32)
     ; CHECK-NEXT: RET 0
-    %0(s32) = COPY $edx
-    %1(s8) = G_TRUNC %0(s32)
-    %2(s8) = G_XOR %1, %1
-    %3:_(s32) = G_ANYEXT %2
+    %0(i32) = COPY $edx
+    %1(i8) = G_TRUNC %0(i32)
+    %2(i8) = G_XOR %1, %1
+    %3:_(i32) = G_ANYEXT %2
     $eax = COPY %3
     RET 0
 ...
@@ -76,16 +76,16 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
     ; CHECK-LABEL: name: test_xor_i16
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edx
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s16) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(s16) = G_XOR [[TRUNC]], [[TRUNC]]
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s32) = G_ANYEXT [[XOR]](s16)
-    ; CHECK-NEXT: $eax = COPY [[ANYEXT]](s32)
+    ; CHECK: [[COPY:%[0-9]+]]:_(i32) = COPY $edx
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(i16) = G_XOR [[TRUNC]], [[TRUNC]]
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[XOR]](i16)
+    ; CHECK-NEXT: $eax = COPY [[ANYEXT]](i32)
     ; CHECK-NEXT: RET 0
-    %0(s32) = COPY $edx
-    %1(s16) = G_TRUNC %0(s32)
-    %2(s16) = G_XOR %1, %1
-    %3:_(s32) = G_ANYEXT %2
+    %0(i32) = COPY $edx
+    %1(i16) = G_TRUNC %0(i32)
+    %2(i16) = G_XOR %1, %1
+    %3:_(i32) = G_ANYEXT %2
     $eax = COPY %3
     RET 0
 ...
@@ -101,14 +101,14 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
     ; CHECK-LABEL: name: test_xor_i27
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edx
-    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(s32) = G_XOR [[COPY]], [[COPY]]
-    ; CHECK-NEXT: $eax = COPY [[XOR]](s32)
+    ; CHECK: [[COPY:%[0-9]+]]:_(i32) = COPY $edx
+    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(i32) = G_XOR [[COPY]], [[COPY]]
+    ; CHECK-NEXT: $eax = COPY [[XOR]](i32)
     ; CHECK-NEXT: RET 0
-    %0(s32) = COPY $edx
-    %1(s27) = G_TRUNC %0(s32)
-    %2(s27) = G_XOR %1, %1
-    %3:_(s32) = G_ANYEXT %2
+    %0(i32) = COPY $edx
+    %1(i27) = G_TRUNC %0(i32)
+    %2(i27) = G_XOR %1, %1
+    %3:_(i32) = G_ANYEXT %2
     $eax = COPY %3
     RET 0
 ...
@@ -124,14 +124,14 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
     ; CHECK-LABEL: name: test_xor_i32
-    ; CHECK: [[DEF:%[0-9]+]]:_(s32) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(s32) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(s32) = G_XOR [[DEF]], [[DEF1]]
-    ; CHECK-NEXT: $eax = COPY [[XOR]](s32)
+    ; CHECK: [[DEF:%[0-9]+]]:_(i32) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(i32) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[XOR:%[0-9]+]]:_(i32) = G_XOR [[DEF]], [[DEF1]]
+    ; CHECK-NEXT: $eax = COPY [[XOR]](i32)
     ; CHECK-NEXT: RET 0
-    %0(s32) = IMPLICIT_DEF
-    %1(s32) = IMPLICIT_DEF
-    %2(s32) = G_XOR %0, %1
+    %0(i32) = IMPLICIT_DEF
+    %1(i32) = IMPLICIT_DEF
+    %2(i32) = G_XOR %0, %1
     $eax = COPY %2
     RET 0
 ...
@@ -147,23 +147,24 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
     ; X64-LABEL: name: test_xor_i42
-    ; X64: [[COPY:%[0-9]+]]:_(s64) = COPY $rdx
-    ; X64-NEXT: [[XOR:%[0-9]+]]:_(s64) = G_XOR [[COPY]], [[COPY]]
-    ; X64-NEXT: $rax = COPY [[XOR]](s64)
+    ; X64: [[COPY:%[0-9]+]]:_(i64) = COPY $rdx
+    ; X64-NEXT: [[XOR:%[0-9]+]]:_(i64) = G_XOR [[COPY]], [[COPY]]
+    ; X64-NEXT: $rax = COPY [[XOR]](i64)
     ; X64-NEXT: RET 0
+    ;
     ; X86-LABEL: name: test_xor_i42
-    ; X86: [[COPY:%[0-9]+]]:_(s64) = COPY $rdx
-    ; X86-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY]](s64)
-    ; X86-NEXT: [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY]](s64)
-    ; X86-NEXT: [[XOR:%[0-9]+]]:_(s32) = G_XOR [[UV]], [[UV2]]
-    ; X86-NEXT: [[XOR1:%[0-9]+]]:_(s32) = G_XOR [[UV1]], [[UV3]]
-    ; X86-NEXT: [[MV:%[0-9]+]]:_(s64) = G_MERGE_VALUES [[XOR]](s32), [[XOR1]](s32)
-    ; X86-NEXT: $rax = COPY [[MV]](s64)
+    ; X86: [[COPY:%[0-9]+]]:_(i64) = COPY $rdx
+    ; X86-NEXT: [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY]](i64)
+    ; X86-NEXT: [[UV2:%[0-9]+]]:_(i32), [[UV3:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY]](i64)
+    ; X86-NEXT: [[XOR:%[0-9]+]]:_(i32) = G_XOR [[UV]], [[UV2]]
+    ; X86-NEXT: [[XOR1:%[0-9]+]]:_(i32) = G_XOR [[UV1]], [[UV3]]
+    ; X86-NEXT: [[MV:%[0-9]+]]:_(i64) = G_MERGE_VALUES [[XOR]](i32), [[XOR1]](i32)
+    ; X86-NEXT: $rax = COPY [[MV]](i64)
     ; X86-NEXT: RET 0
-    %0(s64) = COPY $rdx
-    %1(s42) = G_TRUNC %0(s64)
-    %2(s42) = G_XOR %1, %1
-    %3:_(s64) = G_ANYEXT %2
+    %0(i64) = COPY $rdx
+    %1(i42) = G_TRUNC %0(i64)
+    %2(i42) = G_XOR %1, %1
+    %3:_(i64) = G_ANYEXT %2
     $rax = COPY %3
     RET 0
 ...
@@ -179,24 +180,25 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
     ; X64-LABEL: name: test_xor_i64
-    ; X64: [[DEF:%[0-9]+]]:_(s64) = IMPLICIT_DEF
-    ; X64-NEXT: [[DEF1:%[0-9]+]]:_(s64) = IMPLICIT_DEF
-    ; X64-NEXT: [[XOR:%[0-9]+]]:_(s64) = G_XOR [[DEF]], [[DEF1]]
-    ; X64-NEXT: $rax = COPY [[XOR]](s64)
+    ; X64: [[DEF:%[0-9]+]]:_(i64) = IMPLICIT_DEF
+    ; X64-NEXT: [[DEF1:%[0-9]+]]:_(i64) = IMPLICIT_DEF
+    ; X64-NEXT: [[XOR:%[0-9]+]]:_(i64) = G_XOR [[DEF]], [[DEF1]]
+    ; X64-NEXT: $rax = COPY [[XOR]](i64)
     ; X64-NEXT: RET 0
+    ;
     ; X86-LABEL: name: test_xor_i64
-    ; X86: [[DEF:%[0-9]+]]:_(s64) = IMPLICIT_DEF
-    ; X86-NEXT: [[DEF1:%[0-9]+]]:_(s64) = IMPLICIT_DEF
-    ; X86-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF]](s64)
-    ; X86-NEXT: [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF1]](s64)
-    ; X86-NEXT: [[XOR:%[0-9]+]]:_(s32) = G_XOR [[UV]], [[UV2]]
-    ; X86-NEXT: [[XOR1:%[0-9]+]]:_(s32) = G_XOR [[UV1]], [[UV3]]
-    ; X86-NEXT: [[MV:%[0-9]+]]:_(s64) = G_MERGE_VALUES [[XOR]](s32), [[XOR1]](s32)
-    ; X86-NEXT: $rax = COPY [[MV]](s64)
+    ; X86: [[DEF:%[0-9]+]]:_(i64) = IMPLICIT_DEF
+    ; X86-NEXT: [[DEF1:%[0-9]+]]:_(i64) = IMPLICIT_DEF
+    ; X86-NEXT: [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[DEF]](i64)
+    ; X86-NEXT: [[UV2:%[0-9]+]]:_(i32), [[UV3:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[DEF1]](i64)
+    ; X86-NEXT: [[XOR:%[0-9]+]]:_(i32) = G_XOR [[UV]], [[UV2]]
+    ; X86-NEXT: [[XOR1:%[0-9]+]]:_(i32) = G_XOR [[UV1]], [[UV3]]
+    ; X86-NEXT: [[MV:%[0-9]+]]:_(i64) = G_MERGE_VALUES [[XOR]](i32), [[XOR1]](i32)
+    ; X86-NEXT: $rax = COPY [[MV]](i64)
     ; X86-NEXT: RET 0
-    %0(s64) = IMPLICIT_DEF
-    %1(s64) = IMPLICIT_DEF
-    %2(s64) = G_XOR %0, %1
+    %0(i64) = IMPLICIT_DEF
+    %1(i64) = IMPLICIT_DEF
+    %2(i64) = G_XOR %0, %1
     $rax = COPY %2
     RET 0
 ...

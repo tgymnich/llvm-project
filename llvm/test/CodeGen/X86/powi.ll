@@ -87,13 +87,10 @@ define double @test_powi_f64_i32(double %Val, i32 %x) nounwind {
 ; GISEL-X86-LABEL: test_powi_f64_i32:
 ; GISEL-X86:       # %bb.0:
 ; GISEL-X86-NEXT:    subl $12, %esp
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; GISEL-X86-NEXT:    movl 4(%eax), %eax
-; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %edx
-; GISEL-X86-NEXT:    movl %ecx, (%esp)
+; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
+; GISEL-X86-NEXT:    fstpl (%esp)
 ; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
-; GISEL-X86-NEXT:    movl %edx, {{[0-9]+}}(%esp)
 ; GISEL-X86-NEXT:    calll __powidf2
 ; GISEL-X86-NEXT:    addl $12, %esp
 ; GISEL-X86-NEXT:    retl

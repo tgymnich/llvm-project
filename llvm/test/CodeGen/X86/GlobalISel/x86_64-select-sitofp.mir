@@ -65,10 +65,10 @@ body:             |
     ; CHECK: [[COPY1:%[0-9]+]]:vr128 = COPY %1
     ; CHECK: $xmm0 = COPY [[COPY1]]
     ; CHECK: RET 0, implicit $xmm0
-    %0:gpr(s32) = COPY $edi
-    %1:vecr(s32) = G_SITOFP %0(s32)
-    %2:vecr(s128) = G_ANYEXT %1(s32)
-    $xmm0 = COPY %2(s128)
+    %0:gpr(i32) = COPY $edi
+    %1:vecr(f32) = G_SITOFP %0(i32)
+    %2:vecr(i128) = G_ANYEXT %1(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -93,10 +93,10 @@ body:             |
     ; CHECK: [[COPY1:%[0-9]+]]:vr128 = COPY %1
     ; CHECK: $xmm0 = COPY [[COPY1]]
     ; CHECK: RET 0, implicit $xmm0
-    %0:gpr(s64) = COPY $rdi
-    %1:vecr(s32) = G_SITOFP %0(s64)
-    %2:vecr(s128) = G_ANYEXT %1(s32)
-    $xmm0 = COPY %2(s128)
+    %0:gpr(i64) = COPY $rdi
+    %1:vecr(f32) = G_SITOFP %0(i64)
+    %2:vecr(i128) = G_ANYEXT %1(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -121,10 +121,10 @@ body:             |
     ; CHECK: [[COPY1:%[0-9]+]]:vr128 = COPY [[CVTSI2SDrr]]
     ; CHECK: $xmm0 = COPY [[COPY1]]
     ; CHECK: RET 0, implicit $xmm0
-    %0:gpr(s32) = COPY $edi
-    %1:vecr(s64) = G_SITOFP %0(s32)
-    %2:vecr(s128) = G_ANYEXT %1(s64)
-    $xmm0 = COPY %2(s128)
+    %0:gpr(i32) = COPY $edi
+    %1:vecr(f64) = G_SITOFP %0(i32)
+    %2:vecr(i128) = G_ANYEXT %1(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -149,10 +149,10 @@ body:             |
     ; CHECK: [[COPY1:%[0-9]+]]:vr128 = COPY %1
     ; CHECK: $xmm0 = COPY [[COPY1]]
     ; CHECK: RET 0, implicit $xmm0
-    %0:gpr(s64) = COPY $rdi
-    %1:vecr(s64) = G_SITOFP %0(s64)
-    %2:vecr(s128) = G_ANYEXT %1(s64)
-    $xmm0 = COPY %2(s128)
+    %0:gpr(i64) = COPY $rdi
+    %1:vecr(f64) = G_SITOFP %0(i64)
+    %2:vecr(i128) = G_ANYEXT %1(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...

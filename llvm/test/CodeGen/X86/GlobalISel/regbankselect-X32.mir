@@ -27,10 +27,10 @@ registers:
   - { id: 4, class: _ }
 body:             |
   bb.0 (%ir-block.0):
-    %0(s32) = IMPLICIT_DEF
-    %1(s32) = IMPLICIT_DEF
-    %2(s8) = IMPLICIT_DEF
-    %3(s32), %4(s8) = G_UADDE %0, %1, %2
+    %0(i32) = IMPLICIT_DEF
+    %1(i32) = IMPLICIT_DEF
+    %2(i8) = IMPLICIT_DEF
+    %3(i32), %4(i8) = G_UADDE %0, %1, %2
     RET 0
 
 ...

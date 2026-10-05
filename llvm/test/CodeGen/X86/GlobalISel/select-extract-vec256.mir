@@ -37,9 +37,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $ymm1
 
-    %0(<8 x s32>) = COPY $ymm1
-    %1(<4 x s32>) = G_EXTRACT %0(<8 x s32>), 0
-    $xmm0 = COPY %1(<4 x s32>)
+    %0(<8 x i32>) = COPY $ymm1
+    %1(<4 x i32>) = G_EXTRACT %0(<8 x i32>), 0
+    $xmm0 = COPY %1(<4 x i32>)
     RET 0, implicit $xmm0
 
 ...
@@ -72,9 +72,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $ymm1
 
-    %0(<8 x s32>) = COPY $ymm1
-    %1(<4 x s32>) = G_EXTRACT %0(<8 x s32>), 128
-    $xmm0 = COPY %1(<4 x s32>)
+    %0(<8 x i32>) = COPY $ymm1
+    %1(<4 x i32>) = G_EXTRACT %0(<8 x i32>), 128
+    $xmm0 = COPY %1(<4 x i32>)
     RET 0, implicit $xmm0
 
 ...

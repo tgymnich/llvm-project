@@ -14,8 +14,8 @@ body:             |
     ; CHECK-NEXT: $xmm0 = COPY [[COPY]](<2 x p0>)
     ; CHECK-NEXT: RET implicit $xmm0
     %0:_(<2 x p0>) = COPY $xmm0
-    %5:_(s64) = G_CONSTANT i64 0
-    %zero_vec:_(<2 x s64>) = G_BUILD_VECTOR %5(s64), %5(s64)
+    %5:_(i64) = G_CONSTANT i64 0
+    %zero_vec:_(<2 x s64>) = G_BUILD_VECTOR %5(i64), %5(i64)
     %ptr:_(<2 x p0>) = G_PTR_ADD %0, %zero_vec(<2 x s64>)
     $xmm0 = COPY %ptr(<2 x p0>)
     RET implicit $xmm0

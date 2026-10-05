@@ -91,6 +91,8 @@ void LLT::print(raw_ostream &OS) const {
     OS << "bf16";
   } else if (isPPCF128()) {
     OS << "ppcf128";
+  } else if (isX86FP80()) {
+    OS << "f80";
   } else if (isFloatIEEE()) {
     OS << "f" << getScalarSizeInBits();
   } else if (isInteger()) {

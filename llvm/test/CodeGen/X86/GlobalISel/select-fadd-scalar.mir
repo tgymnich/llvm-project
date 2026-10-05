@@ -75,13 +75,13 @@ body:             |
     ; AVX512VL: [[COPY4:%[0-9]+]]:vr128x = COPY %4
     ; AVX512VL: $xmm0 = COPY [[COPY4]]
     ; AVX512VL: RET 0, implicit $xmm0
-    %2:vecr(s128) = COPY $xmm0
-    %0:vecr(s32) = G_TRUNC %2(s128)
-    %3:vecr(s128) = COPY $xmm1
-    %1:vecr(s32) = G_TRUNC %3(s128)
-    %4:vecr(s32) = G_FADD %0, %1
-    %5:vecr(s128) = G_ANYEXT %4(s32)
-    $xmm0 = COPY %5(s128)
+    %2:vecr(i128) = COPY $xmm0
+    %0:vecr(f32) = G_TRUNC %2(i128)
+    %3:vecr(i128) = COPY $xmm1
+    %1:vecr(f32) = G_TRUNC %3(i128)
+    %4:vecr(f32) = G_FADD %0, %1
+    %5:vecr(i128) = G_ANYEXT %4(f32)
+    $xmm0 = COPY %5(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -144,13 +144,13 @@ body:             |
     ; AVX512VL: [[COPY4:%[0-9]+]]:vr128x = COPY %4
     ; AVX512VL: $xmm0 = COPY [[COPY4]]
     ; AVX512VL: RET 0, implicit $xmm0
-    %2:vecr(s128) = COPY $xmm0
-    %0:vecr(s64) = G_TRUNC %2(s128)
-    %3:vecr(s128) = COPY $xmm1
-    %1:vecr(s64) = G_TRUNC %3(s128)
-    %4:vecr(s64) = G_FADD %0, %1
-    %5:vecr(s128) = G_ANYEXT %4(s64)
-    $xmm0 = COPY %5(s128)
+    %2:vecr(i128) = COPY $xmm0
+    %0:vecr(f64) = G_TRUNC %2(i128)
+    %3:vecr(i128) = COPY $xmm1
+    %1:vecr(f64) = G_TRUNC %3(i128)
+    %4:vecr(f64) = G_FADD %0, %1
+    %5:vecr(i128) = G_ANYEXT %4(f64)
+    $xmm0 = COPY %5(i128)
     RET 0, implicit $xmm0
 
 ...

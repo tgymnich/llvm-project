@@ -87,20 +87,21 @@ body:             |
 
     ; CHECK-LABEL: name: int8_to_float
     ; CHECK: liveins: $edi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK: [[C:%[0-9]+]]:_(s8) = G_CONSTANT i8 24
-    ; CHECK: [[SHL:%[0-9]+]]:_(s32) = G_SHL [[COPY]], [[C]](s8)
-    ; CHECK: [[COPY1:%[0-9]+]]:_(s8) = COPY [[C]](s8)
-    ; CHECK: [[ASHR:%[0-9]+]]:_(s32) = G_ASHR [[SHL]], [[COPY1]](s8)
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s32) = G_SITOFP [[ASHR]](s32)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %1:_(s32) = COPY $edi
-    %0:_(s8) = G_TRUNC %1(s32)
-    %2:_(s32) = G_SITOFP %0(s8)
-    %3:_(s128) = G_ANYEXT %2(s32)
-    $xmm0 = COPY %3(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i8) = G_CONSTANT i8 24
+    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[COPY]], [[C]](i8)
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i8) = COPY [[C]](i8)
+    ; CHECK-NEXT: [[ASHR:%[0-9]+]]:_(i32) = G_ASHR [[SHL]], [[COPY1]](i8)
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f32) = G_SITOFP [[ASHR]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %1:_(i32) = COPY $edi
+    %0:_(i8) = G_TRUNC %1(i32)
+    %2:_(f32) = G_SITOFP %0(i8)
+    %3:_(i128) = G_ANYEXT %2(f32)
+    $xmm0 = COPY %3(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -119,20 +120,21 @@ body:             |
 
     ; CHECK-LABEL: name: int16_to_float
     ; CHECK: liveins: $edi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK: [[C:%[0-9]+]]:_(s8) = G_CONSTANT i8 16
-    ; CHECK: [[SHL:%[0-9]+]]:_(s32) = G_SHL [[COPY]], [[C]](s8)
-    ; CHECK: [[COPY1:%[0-9]+]]:_(s8) = COPY [[C]](s8)
-    ; CHECK: [[ASHR:%[0-9]+]]:_(s32) = G_ASHR [[SHL]], [[COPY1]](s8)
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s32) = G_SITOFP [[ASHR]](s32)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %1:_(s32) = COPY $edi
-    %0:_(s16) = G_TRUNC %1(s32)
-    %2:_(s32) = G_SITOFP %0(s16)
-    %3:_(s128) = G_ANYEXT %2(s32)
-    $xmm0 = COPY %3(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i8) = G_CONSTANT i8 16
+    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[COPY]], [[C]](i8)
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i8) = COPY [[C]](i8)
+    ; CHECK-NEXT: [[ASHR:%[0-9]+]]:_(i32) = G_ASHR [[SHL]], [[COPY1]](i8)
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f32) = G_SITOFP [[ASHR]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %1:_(i32) = COPY $edi
+    %0:_(i16) = G_TRUNC %1(i32)
+    %2:_(f32) = G_SITOFP %0(i16)
+    %3:_(i128) = G_ANYEXT %2(f32)
+    $xmm0 = COPY %3(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -150,15 +152,16 @@ body:             |
 
     ; CHECK-LABEL: name: int32_to_float
     ; CHECK: liveins: $edi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s32) = G_SITOFP [[COPY]](s32)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %0:_(s32) = COPY $edi
-    %1:_(s32) = G_SITOFP %0(s32)
-    %2:_(s128) = G_ANYEXT %1(s32)
-    $xmm0 = COPY %2(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f32) = G_SITOFP [[COPY]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %0:_(i32) = COPY $edi
+    %1:_(f32) = G_SITOFP %0(i32)
+    %2:_(i128) = G_ANYEXT %1(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -176,15 +179,16 @@ body:             |
 
     ; CHECK-LABEL: name: int64_to_float
     ; CHECK: liveins: $rdi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s64) = COPY $rdi
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s32) = G_SITOFP [[COPY]](s64)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s32)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %0:_(s64) = COPY $rdi
-    %1:_(s32) = G_SITOFP %0(s64)
-    %2:_(s128) = G_ANYEXT %1(s32)
-    $xmm0 = COPY %2(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rdi
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f32) = G_SITOFP [[COPY]](i64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f32)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %0:_(i64) = COPY $rdi
+    %1:_(f32) = G_SITOFP %0(i64)
+    %2:_(i128) = G_ANYEXT %1(f32)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -203,20 +207,21 @@ body:             |
 
     ; CHECK-LABEL: name: int8_to_double
     ; CHECK: liveins: $edi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK: [[C:%[0-9]+]]:_(s8) = G_CONSTANT i8 24
-    ; CHECK: [[SHL:%[0-9]+]]:_(s32) = G_SHL [[COPY]], [[C]](s8)
-    ; CHECK: [[COPY1:%[0-9]+]]:_(s8) = COPY [[C]](s8)
-    ; CHECK: [[ASHR:%[0-9]+]]:_(s32) = G_ASHR [[SHL]], [[COPY1]](s8)
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s64) = G_SITOFP [[ASHR]](s32)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %1:_(s32) = COPY $edi
-    %0:_(s8) = G_TRUNC %1(s32)
-    %2:_(s64) = G_SITOFP %0(s8)
-    %3:_(s128) = G_ANYEXT %2(s64)
-    $xmm0 = COPY %3(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i8) = G_CONSTANT i8 24
+    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[COPY]], [[C]](i8)
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i8) = COPY [[C]](i8)
+    ; CHECK-NEXT: [[ASHR:%[0-9]+]]:_(i32) = G_ASHR [[SHL]], [[COPY1]](i8)
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f64) = G_SITOFP [[ASHR]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %1:_(i32) = COPY $edi
+    %0:_(i8) = G_TRUNC %1(i32)
+    %2:_(f64) = G_SITOFP %0(i8)
+    %3:_(i128) = G_ANYEXT %2(f64)
+    $xmm0 = COPY %3(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -235,20 +240,21 @@ body:             |
 
     ; CHECK-LABEL: name: int16_to_double
     ; CHECK: liveins: $edi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK: [[C:%[0-9]+]]:_(s8) = G_CONSTANT i8 16
-    ; CHECK: [[SHL:%[0-9]+]]:_(s32) = G_SHL [[COPY]], [[C]](s8)
-    ; CHECK: [[COPY1:%[0-9]+]]:_(s8) = COPY [[C]](s8)
-    ; CHECK: [[ASHR:%[0-9]+]]:_(s32) = G_ASHR [[SHL]], [[COPY1]](s8)
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s64) = G_SITOFP [[ASHR]](s32)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %1:_(s32) = COPY $edi
-    %0:_(s16) = G_TRUNC %1(s32)
-    %2:_(s64) = G_SITOFP %0(s16)
-    %3:_(s128) = G_ANYEXT %2(s64)
-    $xmm0 = COPY %3(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i8) = G_CONSTANT i8 16
+    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[COPY]], [[C]](i8)
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i8) = COPY [[C]](i8)
+    ; CHECK-NEXT: [[ASHR:%[0-9]+]]:_(i32) = G_ASHR [[SHL]], [[COPY1]](i8)
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f64) = G_SITOFP [[ASHR]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %1:_(i32) = COPY $edi
+    %0:_(i16) = G_TRUNC %1(i32)
+    %2:_(f64) = G_SITOFP %0(i16)
+    %3:_(i128) = G_ANYEXT %2(f64)
+    $xmm0 = COPY %3(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -266,15 +272,16 @@ body:             |
 
     ; CHECK-LABEL: name: int32_to_double
     ; CHECK: liveins: $edi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s64) = G_SITOFP [[COPY]](s32)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %0:_(s32) = COPY $edi
-    %1:_(s64) = G_SITOFP %0(s32)
-    %2:_(s128) = G_ANYEXT %1(s64)
-    $xmm0 = COPY %2(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f64) = G_SITOFP [[COPY]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %0:_(i32) = COPY $edi
+    %1:_(f64) = G_SITOFP %0(i32)
+    %2:_(i128) = G_ANYEXT %1(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...
@@ -292,15 +299,16 @@ body:             |
 
     ; CHECK-LABEL: name: int64_to_double
     ; CHECK: liveins: $rdi
-    ; CHECK: [[COPY:%[0-9]+]]:_(s64) = COPY $rdi
-    ; CHECK: [[SITOFP:%[0-9]+]]:_(s64) = G_SITOFP [[COPY]](s64)
-    ; CHECK: [[ANYEXT:%[0-9]+]]:_(s128) = G_ANYEXT [[SITOFP]](s64)
-    ; CHECK: $xmm0 = COPY [[ANYEXT]](s128)
-    ; CHECK: RET 0, implicit $xmm0
-    %0:_(s64) = COPY $rdi
-    %1:_(s64) = G_SITOFP %0(s64)
-    %2:_(s128) = G_ANYEXT %1(s64)
-    $xmm0 = COPY %2(s128)
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $rdi
+    ; CHECK-NEXT: [[SITOFP:%[0-9]+]]:_(f64) = G_SITOFP [[COPY]](i64)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i128) = G_ANYEXT [[SITOFP]](f64)
+    ; CHECK-NEXT: $xmm0 = COPY [[ANYEXT]](i128)
+    ; CHECK-NEXT: RET 0, implicit $xmm0
+    %0:_(i64) = COPY $rdi
+    %1:_(f64) = G_SITOFP %0(i64)
+    %2:_(i128) = G_ANYEXT %1(f64)
+    $xmm0 = COPY %2(i128)
     RET 0, implicit $xmm0
 
 ...

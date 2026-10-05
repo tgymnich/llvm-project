@@ -40,14 +40,14 @@ body:             |
     ; CHECK-LABEL: name: test_or_v16i8
     ; CHECK: liveins: $xmm0, $xmm1
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<16 x s8>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<16 x s8>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<16 x s8>) = G_OR [[DEF]], [[DEF1]]
-    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<16 x s8>)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<16 x i8>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<16 x i8>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<16 x i8>) = G_OR [[DEF]], [[DEF1]]
+    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<16 x i8>)
     ; CHECK-NEXT: RET 0
-    %0(<16 x s8>) = IMPLICIT_DEF
-    %1(<16 x s8>) = IMPLICIT_DEF
-    %2(<16 x s8>) = G_OR %0, %1
+    %0(<16 x i8>) = IMPLICIT_DEF
+    %1(<16 x i8>) = IMPLICIT_DEF
+    %2(<16 x i8>) = G_OR %0, %1
     $xmm0 = COPY %2
     RET 0
 ...
@@ -67,14 +67,14 @@ body:             |
     ; CHECK-LABEL: name: test_or_v8i16
     ; CHECK: liveins: $xmm0, $xmm1
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<8 x s16>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<8 x s16>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<8 x s16>) = G_OR [[DEF]], [[DEF1]]
-    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<8 x s16>)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<8 x i16>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<8 x i16>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<8 x i16>) = G_OR [[DEF]], [[DEF1]]
+    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<8 x i16>)
     ; CHECK-NEXT: RET 0
-    %0(<8 x s16>) = IMPLICIT_DEF
-    %1(<8 x s16>) = IMPLICIT_DEF
-    %2(<8 x s16>) = G_OR %0, %1
+    %0(<8 x i16>) = IMPLICIT_DEF
+    %1(<8 x i16>) = IMPLICIT_DEF
+    %2(<8 x i16>) = G_OR %0, %1
     $xmm0 = COPY %2
     RET 0
 ...
@@ -94,14 +94,14 @@ body:             |
     ; CHECK-LABEL: name: test_or_v4i32
     ; CHECK: liveins: $xmm0, $xmm1
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<4 x s32>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<4 x s32>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<4 x s32>) = G_OR [[DEF]], [[DEF1]]
-    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<4 x s32>)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<4 x i32>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<4 x i32>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<4 x i32>) = G_OR [[DEF]], [[DEF1]]
+    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<4 x i32>)
     ; CHECK-NEXT: RET 0
-    %0(<4 x s32>) = IMPLICIT_DEF
-    %1(<4 x s32>) = IMPLICIT_DEF
-    %2(<4 x s32>) = G_OR %0, %1
+    %0(<4 x i32>) = IMPLICIT_DEF
+    %1(<4 x i32>) = IMPLICIT_DEF
+    %2(<4 x i32>) = G_OR %0, %1
     $xmm0 = COPY %2
     RET 0
 ...
@@ -121,14 +121,14 @@ body:             |
     ; CHECK-LABEL: name: test_or_v2i64
     ; CHECK: liveins: $xmm0, $xmm1
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<2 x s64>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<2 x s64>) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<2 x s64>) = G_OR [[DEF]], [[DEF1]]
-    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<2 x s64>)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(<2 x i64>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(<2 x i64>) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[OR:%[0-9]+]]:_(<2 x i64>) = G_OR [[DEF]], [[DEF1]]
+    ; CHECK-NEXT: $xmm0 = COPY [[OR]](<2 x i64>)
     ; CHECK-NEXT: RET 0
-    %0(<2 x s64>) = IMPLICIT_DEF
-    %1(<2 x s64>) = IMPLICIT_DEF
-    %2(<2 x s64>) = G_OR %0, %1
+    %0(<2 x i64>) = IMPLICIT_DEF
+    %1(<2 x i64>) = IMPLICIT_DEF
+    %2(<2 x i64>) = G_OR %0, %1
     $xmm0 = COPY %2
     RET 0
 ...

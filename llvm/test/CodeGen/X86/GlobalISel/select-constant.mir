@@ -53,8 +53,8 @@ body:             |
     ; CHECK: [[MOV8ri:%[0-9]+]]:gr8 = MOV8ri 2
     ; CHECK-NEXT: $al = COPY [[MOV8ri]]
     ; CHECK-NEXT: RET 0, implicit $al
-    %0(s8) = G_CONSTANT i8 2
-    $al = COPY %0(s8)
+    %0(i8) = G_CONSTANT i8 2
+    $al = COPY %0(i8)
     RET 0, implicit $al
 
 ...
@@ -71,8 +71,8 @@ body:             |
     ; CHECK: [[MOV16ri:%[0-9]+]]:gr16 = MOV16ri 3
     ; CHECK-NEXT: $ax = COPY [[MOV16ri]]
     ; CHECK-NEXT: RET 0, implicit $ax
-    %0(s16) = G_CONSTANT i16 3
-    $ax = COPY %0(s16)
+    %0(i16) = G_CONSTANT i16 3
+    $ax = COPY %0(i16)
     RET 0, implicit $ax
 
 ...
@@ -89,8 +89,8 @@ body:             |
     ; CHECK: [[MOV32ri:%[0-9]+]]:gr32 = MOV32ri 4
     ; CHECK-NEXT: $eax = COPY [[MOV32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = G_CONSTANT i32 4
-    $eax = COPY %0(s32)
+    %0(i32) = G_CONSTANT i32 4
+    $eax = COPY %0(i32)
     RET 0, implicit $eax
 
 ...
@@ -106,8 +106,8 @@ body:             |
     ; CHECK: [[MOV32r0_:%[0-9]+]]:gr32 = MOV32r0 implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[MOV32r0_]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %0(s32) = G_CONSTANT i32 0
-    $eax = COPY %0(s32)
+    %0(i32) = G_CONSTANT i32 0
+    $eax = COPY %0(i32)
     RET 0, implicit $eax
 
 ...
@@ -124,8 +124,8 @@ body:             |
     ; CHECK: [[MOV64ri:%[0-9]+]]:gr64 = MOV64ri 68719476720
     ; CHECK-NEXT: $rax = COPY [[MOV64ri]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %0(s64) = G_CONSTANT i64 68719476720
-    $rax = COPY %0(s64)
+    %0(i64) = G_CONSTANT i64 68719476720
+    $rax = COPY %0(i64)
     RET 0, implicit $rax
 
 ...
@@ -143,8 +143,8 @@ body:             |
     ; CHECK: [[MOV32ri64_:%[0-9]+]]:gr64 = MOV32ri64 1879048192
     ; CHECK-NEXT: $rax = COPY [[MOV32ri64_]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %0(s64) = G_CONSTANT i64 1879048192
-    $rax = COPY %0(s64)
+    %0(i64) = G_CONSTANT i64 1879048192
+    $rax = COPY %0(i64)
     RET 0, implicit $rax
 
 ...
@@ -161,8 +161,8 @@ body:             |
     ; CHECK: [[MOV32ri64_:%[0-9]+]]:gr64 = MOV32ri64 4294967295
     ; CHECK-NEXT: $rax = COPY [[MOV32ri64_]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %0(s64) = G_CONSTANT i64 4294967295
-    $rax = COPY %0(s64)
+    %0(i64) = G_CONSTANT i64 4294967295
+    $rax = COPY %0(i64)
     RET 0, implicit $rax
 
 ...
@@ -179,8 +179,8 @@ body:             |
     ; CHECK: [[MOV64ri32_:%[0-9]+]]:gr64 = MOV64ri32 -1
     ; CHECK-NEXT: $rax = COPY [[MOV64ri32_]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %0(s64) = G_CONSTANT i64 -1
-    $rax = COPY %0(s64)
+    %0(i64) = G_CONSTANT i64 -1
+    $rax = COPY %0(i64)
     RET 0, implicit $rax
 
 ...

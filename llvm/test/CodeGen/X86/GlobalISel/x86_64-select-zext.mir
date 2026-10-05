@@ -78,11 +78,11 @@ body:             |
     ; CHECK-NEXT: [[AND8ri:%[0-9]+]]:gr8 = AND8ri [[COPY1]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $al = COPY [[AND8ri]]
     ; CHECK-NEXT: RET 0, implicit $al
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s8) = G_CONSTANT i8 1
-    %4:gpr(s8) = G_TRUNC %1(s32)
-    %2:gpr(s8) = G_AND %4, %3
-    $al = COPY %2(s8)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i8) = G_CONSTANT i8 1
+    %4:gpr(i8) = G_TRUNC %1(i32)
+    %2:gpr(i8) = G_AND %4, %3
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -110,11 +110,11 @@ body:             |
     ; CHECK-NEXT: [[AND16ri:%[0-9]+]]:gr16 = AND16ri [[COPY1]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $ax = COPY [[AND16ri]]
     ; CHECK-NEXT: RET 0, implicit $ax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s16) = G_CONSTANT i16 1
-    %4:gpr(s16) = G_TRUNC %1(s32)
-    %2:gpr(s16) = G_AND %4, %3
-    $ax = COPY %2(s16)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i16) = G_CONSTANT i16 1
+    %4:gpr(i16) = G_TRUNC %1(i32)
+    %2:gpr(i16) = G_AND %4, %3
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -141,11 +141,11 @@ body:             |
     ; CHECK-NEXT: [[AND32ri:%[0-9]+]]:gr32 = AND32ri [[COPY]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $eax = COPY [[AND32ri]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s32) = G_CONSTANT i32 1
-    %4:gpr(s32) = COPY %1(s32)
-    %2:gpr(s32) = G_AND %4, %3
-    $eax = COPY %2(s32)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i32) = G_CONSTANT i32 1
+    %4:gpr(i32) = COPY %1(i32)
+    %2:gpr(i32) = G_AND %4, %3
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -174,11 +174,11 @@ body:             |
     ; CHECK-NEXT: [[AND64ri32_:%[0-9]+]]:gr64 = AND64ri32 [[INSERT_SUBREG]], 1, implicit-def dead $eflags
     ; CHECK-NEXT: $rax = COPY [[AND64ri32_]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s64) = G_CONSTANT i64 1
-    %4:gpr(s64) = G_ANYEXT %1(s32)
-    %2:gpr(s64) = G_AND %4, %3
-    $rax = COPY %2(s64)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i64) = G_CONSTANT i64 1
+    %4:gpr(i64) = G_ANYEXT %1(i32)
+    %2:gpr(i64) = G_AND %4, %3
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -208,11 +208,11 @@ body:             |
     ; CHECK-NEXT: [[COPY3:%[0-9]+]]:gr16 = COPY [[MOVZX32rr8_]].sub_16bit
     ; CHECK-NEXT: $ax = COPY [[COPY3]]
     ; CHECK-NEXT: RET 0, implicit $ax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s16) = G_CONSTANT i16 255
-    %4:gpr(s16) = G_TRUNC %1(s32)
-    %2:gpr(s16) = G_AND %4, %3
-    $ax = COPY %2(s16)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i16) = G_CONSTANT i16 255
+    %4:gpr(i16) = G_TRUNC %1(i32)
+    %2:gpr(i16) = G_AND %4, %3
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -240,11 +240,11 @@ body:             |
     ; CHECK-NEXT: [[MOVZX32rr8_:%[0-9]+]]:gr32 = MOVZX32rr8 [[COPY1]]
     ; CHECK-NEXT: $eax = COPY [[MOVZX32rr8_]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s32) = G_CONSTANT i32 255
-    %4:gpr(s32) = COPY %1(s32)
-    %2:gpr(s32) = G_AND %4, %3
-    $eax = COPY %2(s32)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i32) = G_CONSTANT i32 255
+    %4:gpr(i32) = COPY %1(i32)
+    %2:gpr(i32) = G_AND %4, %3
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -273,11 +273,11 @@ body:             |
     ; CHECK-NEXT: [[AND64ri32_:%[0-9]+]]:gr64 = AND64ri32 [[INSERT_SUBREG]], 255, implicit-def dead $eflags
     ; CHECK-NEXT: $rax = COPY [[AND64ri32_]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s64) = G_CONSTANT i64 255
-    %4:gpr(s64) = G_ANYEXT %1(s32)
-    %2:gpr(s64) = G_AND %4, %3
-    $rax = COPY %2(s64)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i64) = G_CONSTANT i64 255
+    %4:gpr(i64) = G_ANYEXT %1(i32)
+    %2:gpr(i64) = G_AND %4, %3
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -305,11 +305,11 @@ body:             |
     ; CHECK-NEXT: [[MOVZX32rr16_:%[0-9]+]]:gr32 = MOVZX32rr16 [[COPY1]]
     ; CHECK-NEXT: $eax = COPY [[MOVZX32rr16_]]
     ; CHECK-NEXT: RET 0, implicit $eax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s32) = G_CONSTANT i32 65535
-    %4:gpr(s32) = COPY %1(s32)
-    %2:gpr(s32) = G_AND %4, %3
-    $eax = COPY %2(s32)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i32) = G_CONSTANT i32 65535
+    %4:gpr(i32) = COPY %1(i32)
+    %2:gpr(i32) = G_AND %4, %3
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -338,11 +338,11 @@ body:             |
     ; CHECK-NEXT: [[AND64ri32_:%[0-9]+]]:gr64 = AND64ri32 [[INSERT_SUBREG]], 65535, implicit-def dead $eflags
     ; CHECK-NEXT: $rax = COPY [[AND64ri32_]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %1:gpr(s32) = COPY $edi
-    %3:gpr(s64) = G_CONSTANT i64 65535
-    %4:gpr(s64) = G_ANYEXT %1(s32)
-    %2:gpr(s64) = G_AND %4, %3
-    $rax = COPY %2(s64)
+    %1:gpr(i32) = COPY $edi
+    %3:gpr(i64) = G_CONSTANT i64 65535
+    %4:gpr(i64) = G_ANYEXT %1(i32)
+    %2:gpr(i64) = G_AND %4, %3
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -367,9 +367,9 @@ body:             |
     ; CHECK-NEXT: [[SUBREG_TO_REG:%[0-9]+]]:gr64 = SUBREG_TO_REG [[MOV32rr]], %subreg.sub_32bit
     ; CHECK-NEXT: $rax = COPY [[SUBREG_TO_REG]]
     ; CHECK-NEXT: RET 0, implicit $rax
-    %0:gpr(s32) = COPY $edi
-    %1:gpr(s64) = G_ZEXT %0(s32)
-    $rax = COPY %1(s64)
+    %0:gpr(i32) = COPY $edi
+    %1:gpr(i64) = G_ZEXT %0(i32)
+    $rax = COPY %1(i64)
     RET 0, implicit $rax
 
 ...

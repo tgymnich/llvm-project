@@ -290,6 +290,57 @@ bool X86InstructionSelector::selectCopy(MachineInstr &I,
   const unsigned SrcSize = RBI.getSizeInBits(SrcReg, MRI, TRI);
   const RegisterBank &SrcRegBank = *RBI.getRegBank(SrcReg, MRI, TRI);
 
+  // Special case GPR16 -> XMM
+  if (SrcSize == 16 && SrcRegBank.getID() == X86::GPRRegBankID &&
+      (DstRegBank.getID() == X86::VECRRegBankID)) {
+
+    if (DstReg.isVirtual() &&
+        !RBI.constrainGenericRegister(
+            DstReg, *getRegClass(MRI.getType(DstReg), DstRegBank), MRI))
+      return false;
+    const DebugLoc &DL = I.getDebugLoc();
+
+    Register ExtReg = MRI.createVirtualRegister(&X86::GR32RegClass);
+    BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::SUBREG_TO_REG), ExtReg)
+        .addReg(SrcReg)
+        .addImm(X86::sub_16bit);
+
+    BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), DstReg)
+        .addReg(ExtReg);
+
+    I.eraseFromParent();
+    return true;
+  }
+
+  // Special case XMM -> GR16
+  if (DstSize == 16 && DstRegBank.getID() == X86::GPRRegBankID &&
+      (SrcRegBank.getID() == X86::VECRRegBankID)) {
+
+    if (DstReg.isVirtual() &&
+        !RBI.constrainGenericRegister(
+            DstReg, *getRegClass(MRI.getType(DstReg), DstRegBank), MRI))
+      return false;
+    const DebugLoc &DL = I.getDebugLoc();
+
+    Register Temp32 = MRI.createVirtualRegister(&X86::GR32RegClass);
+    BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), Temp32)
+        .addReg(SrcReg);
+
+    if (MCRegister Dst32 = DstReg.isPhysical()
+                               ? TRI.getMatchingSuperReg(DstReg, X86::sub_16bit,
+                                                         &X86::GR32RegClass)
+                               : MCRegister()) {
+      BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), Dst32)
+          .addReg(Temp32);
+    } else {
+      BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), DstReg)
+          .addReg(Temp32, {}, X86::sub_16bit);
+    }
+
+    I.eraseFromParent();
+    return true;
+  }
+
   if (DstReg.isPhysical()) {
     assert(I.isCopy() && "Generic operators do not allow physical registers");
 
@@ -311,52 +362,6 @@ bool X86InstructionSelector::selectCopy(MachineInstr &I,
 
         I.getOperand(1).setReg(ExtSrc);
       }
-    }
-
-    // Special case GPR16 -> XMM
-    if (SrcSize == 16 && SrcRegBank.getID() == X86::GPRRegBankID &&
-        (DstRegBank.getID() == X86::VECRRegBankID)) {
-
-      const DebugLoc &DL = I.getDebugLoc();
-
-      // Any extend GPR16 -> GPR32
-      Register ExtReg = MRI.createVirtualRegister(&X86::GR32RegClass);
-      BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::SUBREG_TO_REG),
-              ExtReg)
-          .addReg(SrcReg)
-          .addImm(X86::sub_16bit);
-
-      // Copy GR32 -> XMM
-      BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), DstReg)
-          .addReg(ExtReg);
-
-      I.eraseFromParent();
-    }
-
-    // Special case XMM -> GR16
-    if (DstSize == 16 && DstRegBank.getID() == X86::GPRRegBankID &&
-        (SrcRegBank.getID() == X86::VECRRegBankID)) {
-
-      const DebugLoc &DL = I.getDebugLoc();
-
-      // Move XMM to GR32 register.
-      Register Temp32 = MRI.createVirtualRegister(&X86::GR32RegClass);
-      BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), Temp32)
-          .addReg(SrcReg);
-
-      // Extract the lower 16 bits
-      if (Register Dst32 = TRI.getMatchingSuperReg(DstReg, X86::sub_16bit,
-                                                   &X86::GR32RegClass)) {
-        // Optimization for Physical Dst (e.g. AX): Copy to EAX directly.
-        BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), Dst32)
-            .addReg(Temp32);
-      } else {
-        // Handle if there is no super.
-        BuildMI(*I.getParent(), I, DL, TII.get(TargetOpcode::COPY), DstReg)
-            .addReg(Temp32, {}, X86::sub_16bit);
-      }
-
-      I.eraseFromParent();
     }
 
     return true;
@@ -429,6 +434,11 @@ bool X86InstructionSelector::select(MachineInstr &I) {
   assert(I.getNumOperands() == I.getNumExplicitOperands() &&
          "Generic instruction has unexpected implicit operands\n");
 
+  if (Opcode == TargetOpcode::G_BITCAST &&
+      RBI.getRegBank(I.getOperand(0).getReg(), MRI, TRI) ==
+          RBI.getRegBank(I.getOperand(1).getReg(), MRI, TRI))
+    return selectCopy(I, MRI);
+
   if (selectImpl(I, *CoverageInfo))
     return true;
 
@@ -453,6 +463,7 @@ bool X86InstructionSelector::select(MachineInstr &I) {
   case TargetOpcode::G_PTRTOINT:
   case TargetOpcode::G_TRUNC:
     return selectTruncOrPtrToInt(I, MRI, MF);
+  case TargetOpcode::G_BITCAST:
   case TargetOpcode::G_INTTOPTR:
   case TargetOpcode::G_FREEZE:
     return selectCopy(I, MRI);

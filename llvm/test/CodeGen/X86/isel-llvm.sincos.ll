@@ -82,10 +82,8 @@ define { float, float } @test_sincos_f32(float %Val) nounwind {
 ; GISEL-X64-NEXT:    leaq {{[0-9]+}}(%rsp), %rdi
 ; GISEL-X64-NEXT:    movq %rsp, %rsi
 ; GISEL-X64-NEXT:    callq sincosf
-; GISEL-X64-NEXT:    movl {{[0-9]+}}(%rsp), %eax
-; GISEL-X64-NEXT:    movl (%rsp), %ecx
-; GISEL-X64-NEXT:    movd %eax, %xmm0
-; GISEL-X64-NEXT:    movd %ecx, %xmm1
+; GISEL-X64-NEXT:    movss {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; GISEL-X64-NEXT:    movss {{.*#+}} xmm1 = mem[0],zero,zero,zero
 ; GISEL-X64-NEXT:    popq %rax
 ; GISEL-X64-NEXT:    retq
   %res = call { float, float } @llvm.sincos.f32(float %Val)
@@ -146,13 +144,14 @@ define { double, double } @test_sincos_f64(double %Val) nounwind  {
 ; GISEL-X86-NEXT:    subl $44, %esp
 ; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
 ; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
-; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %eax
-; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    leal {{[0-9]+}}(%esp), %ecx
 ; GISEL-X86-NEXT:    fstpl (%esp)
+; GISEL-X86-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
 ; GISEL-X86-NEXT:    calll sincos
 ; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
 ; GISEL-X86-NEXT:    fldl {{[0-9]+}}(%esp)
+; GISEL-X86-NEXT:    fxch %st(1)
 ; GISEL-X86-NEXT:    addl $44, %esp
 ; GISEL-X86-NEXT:    retl
 ;
@@ -162,10 +161,8 @@ define { double, double } @test_sincos_f64(double %Val) nounwind  {
 ; GISEL-X64-NEXT:    leaq {{[0-9]+}}(%rsp), %rdi
 ; GISEL-X64-NEXT:    leaq {{[0-9]+}}(%rsp), %rsi
 ; GISEL-X64-NEXT:    callq sincos
-; GISEL-X64-NEXT:    movq {{[0-9]+}}(%rsp), %rax
-; GISEL-X64-NEXT:    movq {{[0-9]+}}(%rsp), %rcx
-; GISEL-X64-NEXT:    movq %rax, %xmm0
-; GISEL-X64-NEXT:    movq %rcx, %xmm1
+; GISEL-X64-NEXT:    movsd {{.*#+}} xmm0 = mem[0],zero
+; GISEL-X64-NEXT:    movsd {{.*#+}} xmm1 = mem[0],zero
 ; GISEL-X64-NEXT:    addq $24, %rsp
 ; GISEL-X64-NEXT:    retq
   %res = call { double, double } @llvm.sincos.f64(double %Val)
@@ -466,14 +463,12 @@ define void @can_fold_with_call_in_chain(float %x, ptr noalias %a, ptr noalias %
 ; GISEL-X64-NEXT:    movq %rbx, %rdi
 ; GISEL-X64-NEXT:    movq %r14, %rsi
 ; GISEL-X64-NEXT:    callq foo
-; GISEL-X64-NEXT:    movd {{[-0-9]+}}(%r{{[sb]}}p), %xmm0 # 4-byte Folded Reload
+; GISEL-X64-NEXT:    movss {{[-0-9]+}}(%r{{[sb]}}p), %xmm0 # 4-byte Reload
 ; GISEL-X64-NEXT:    # xmm0 = mem[0],zero,zero,zero
-; GISEL-X64-NEXT:    movd %xmm0, %eax
-; GISEL-X64-NEXT:    movl %eax, (%rbx)
-; GISEL-X64-NEXT:    movd (%rsp), %xmm0 # 4-byte Folded Reload
+; GISEL-X64-NEXT:    movss %xmm0, (%rbx)
+; GISEL-X64-NEXT:    movss (%rsp), %xmm0 # 4-byte Reload
 ; GISEL-X64-NEXT:    # xmm0 = mem[0],zero,zero,zero
-; GISEL-X64-NEXT:    movd %xmm0, %eax
-; GISEL-X64-NEXT:    movl %eax, (%r14)
+; GISEL-X64-NEXT:    movss %xmm0, (%r14)
 ; GISEL-X64-NEXT:    addq $8, %rsp
 ; GISEL-X64-NEXT:    popq %rbx
 ; GISEL-X64-NEXT:    popq %r14

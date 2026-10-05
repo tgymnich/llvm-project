@@ -14,15 +14,15 @@ registers:
 body:             |
   bb.1:
     ; CHECK-LABEL: name: test_ctpop8
-    ; CHECK: [[DEF:%[0-9]+]]:_(s8) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[ZEXT:%[0-9]+]]:_(s16) = G_ZEXT [[DEF]](s8)
-    ; CHECK-NEXT: [[CTPOP:%[0-9]+]]:_(s16) = G_CTPOP [[ZEXT]](s16)
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s8) = G_TRUNC [[CTPOP]](s16)
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s8) = COPY [[TRUNC]](s8)
-    ; CHECK-NEXT: RET 0, implicit [[COPY]](s8)
-    %0:_(s8) = IMPLICIT_DEF
-    %1:_(s8) = G_CTPOP %0
-    %2:_(s8) = COPY %1(s8)
+    ; CHECK: [[DEF:%[0-9]+]]:_(i8) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[ZEXT:%[0-9]+]]:_(i16) = G_ZEXT [[DEF]](i8)
+    ; CHECK-NEXT: [[CTPOP:%[0-9]+]]:_(i16) = G_CTPOP [[ZEXT]](i16)
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i8) = G_TRUNC [[CTPOP]](i16)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i8) = COPY [[TRUNC]](i8)
+    ; CHECK-NEXT: RET 0, implicit [[COPY]](i8)
+    %0:_(i8) = IMPLICIT_DEF
+    %1:_(i8) = G_CTPOP %0
+    %2:_(i8) = COPY %1(i8)
     RET 0, implicit %2
 
 ...
@@ -37,13 +37,13 @@ registers:
 body:             |
   bb.1:
     ; CHECK-LABEL: name: test_ctpop32
-    ; CHECK: [[DEF:%[0-9]+]]:_(s32) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[CTPOP:%[0-9]+]]:_(s32) = G_CTPOP [[DEF]](s32)
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY [[CTPOP]](s32)
-    ; CHECK-NEXT: RET 0, implicit [[COPY]](s32)
-    %0:_(s32) = IMPLICIT_DEF
-    %1:_(s32) = G_CTPOP %0
-    %2:_(s32) = COPY %1(s32)
+    ; CHECK: [[DEF:%[0-9]+]]:_(i32) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[CTPOP:%[0-9]+]]:_(i32) = G_CTPOP [[DEF]](i32)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY [[CTPOP]](i32)
+    ; CHECK-NEXT: RET 0, implicit [[COPY]](i32)
+    %0:_(i32) = IMPLICIT_DEF
+    %1:_(i32) = G_CTPOP %0
+    %2:_(i32) = COPY %1(i32)
     RET 0, implicit %2
 
 ...
@@ -58,13 +58,13 @@ registers:
 body:             |
   bb.1:
     ; CHECK-LABEL: name: test_ctpop16
-    ; CHECK: [[DEF:%[0-9]+]]:_(s16) = IMPLICIT_DEF
-    ; CHECK-NEXT: [[CTPOP:%[0-9]+]]:_(s16) = G_CTPOP [[DEF]](s16)
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s16) = COPY [[CTPOP]](s16)
-    ; CHECK-NEXT: RET 0, implicit [[COPY]](s16)
-    %0:_(s16) = IMPLICIT_DEF
-    %1:_(s16) = G_CTPOP %0
-    %2:_(s16) = COPY %1(s16)
+    ; CHECK: [[DEF:%[0-9]+]]:_(i16) = IMPLICIT_DEF
+    ; CHECK-NEXT: [[CTPOP:%[0-9]+]]:_(i16) = G_CTPOP [[DEF]](i16)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i16) = COPY [[CTPOP]](i16)
+    ; CHECK-NEXT: RET 0, implicit [[COPY]](i16)
+    %0:_(i16) = IMPLICIT_DEF
+    %1:_(i16) = G_CTPOP %0
+    %2:_(i16) = COPY %1(i16)
     RET 0, implicit %2
 
 ...

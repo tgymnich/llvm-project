@@ -69,16 +69,16 @@ body:             |
     ; CHECK-LABEL: name: zext_i1_to_i8
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s8) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s8) = G_CONSTANT i8 1
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s8) = G_AND [[TRUNC]], [[C]]
-    ; CHECK-NEXT: $al = COPY [[AND]](s8)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i8) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i8) = G_CONSTANT i8 1
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i8) = G_AND [[TRUNC]], [[C]]
+    ; CHECK-NEXT: $al = COPY [[AND]](i8)
     ; CHECK-NEXT: RET 0, implicit $al
-    %1:_(s32) = COPY $edi
-    %0:_(s1) = G_TRUNC %1(s32)
-    %2:_(s8) = G_ZEXT %0(s1)
-    $al = COPY %2(s8)
+    %1:_(i32) = COPY $edi
+    %0:_(i1) = G_TRUNC %1(i32)
+    %2:_(i8) = G_ZEXT %0(i1)
+    $al = COPY %2(i8)
     RET 0, implicit $al
 
 ...
@@ -97,16 +97,16 @@ body:             |
     ; CHECK-LABEL: name: zext_i1_to_i16
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s16) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 1
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s16) = G_AND [[TRUNC]], [[C]]
-    ; CHECK-NEXT: $ax = COPY [[AND]](s16)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i16) = G_CONSTANT i16 1
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i16) = G_AND [[TRUNC]], [[C]]
+    ; CHECK-NEXT: $ax = COPY [[AND]](i16)
     ; CHECK-NEXT: RET 0, implicit $ax
-    %1:_(s32) = COPY $edi
-    %0:_(s1) = G_TRUNC %1(s32)
-    %2:_(s16) = G_ZEXT %0(s1)
-    $ax = COPY %2(s16)
+    %1:_(i32) = COPY $edi
+    %0:_(i1) = G_TRUNC %1(i32)
+    %2:_(i16) = G_ZEXT %0(i1)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -125,15 +125,15 @@ body:             |
     ; CHECK-LABEL: name: zext_i1_to_i32
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 1
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s32) = G_AND [[COPY]], [[C]]
-    ; CHECK-NEXT: $eax = COPY [[AND]](s32)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 1
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i32) = G_AND [[COPY]], [[C]]
+    ; CHECK-NEXT: $eax = COPY [[AND]](i32)
     ; CHECK-NEXT: RET 0, implicit $eax
-    %1:_(s32) = COPY $edi
-    %0:_(s1) = G_TRUNC %1(s32)
-    %2:_(s32) = G_ZEXT %0(s1)
-    $eax = COPY %2(s32)
+    %1:_(i32) = COPY $edi
+    %0:_(i1) = G_TRUNC %1(i32)
+    %2:_(i32) = G_ZEXT %0(i1)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -152,16 +152,16 @@ body:             |
     ; CHECK-LABEL: name: zext_i1_to_i64
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[COPY]](s32)
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 1
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s64) = G_AND [[ANYEXT]], [[C]]
-    ; CHECK-NEXT: $rax = COPY [[AND]](s64)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i64) = G_ANYEXT [[COPY]](i32)
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i64) = G_CONSTANT i64 1
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i64) = G_AND [[ANYEXT]], [[C]]
+    ; CHECK-NEXT: $rax = COPY [[AND]](i64)
     ; CHECK-NEXT: RET 0, implicit $rax
-    %1:_(s32) = COPY $edi
-    %0:_(s1) = G_TRUNC %1(s32)
-    %2:_(s64) = G_ZEXT %0(s1)
-    $rax = COPY %2(s64)
+    %1:_(i32) = COPY $edi
+    %0:_(i1) = G_TRUNC %1(i32)
+    %2:_(i64) = G_ZEXT %0(i1)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -180,16 +180,16 @@ body:             |
     ; CHECK-LABEL: name: zext_i8_to_i16
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s16) = G_TRUNC [[COPY]](s32)
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 255
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s16) = G_AND [[TRUNC]], [[C]]
-    ; CHECK-NEXT: $ax = COPY [[AND]](s16)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i16) = G_CONSTANT i16 255
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i16) = G_AND [[TRUNC]], [[C]]
+    ; CHECK-NEXT: $ax = COPY [[AND]](i16)
     ; CHECK-NEXT: RET 0, implicit $ax
-    %1:_(s32) = COPY $edi
-    %0:_(s8) = G_TRUNC %1(s32)
-    %2:_(s16) = G_ZEXT %0(s8)
-    $ax = COPY %2(s16)
+    %1:_(i32) = COPY $edi
+    %0:_(i8) = G_TRUNC %1(i32)
+    %2:_(i16) = G_ZEXT %0(i8)
+    $ax = COPY %2(i16)
     RET 0, implicit $ax
 
 ...
@@ -208,15 +208,15 @@ body:             |
     ; CHECK-LABEL: name: zext_i8_to_i32
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 255
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s32) = G_AND [[COPY]], [[C]]
-    ; CHECK-NEXT: $eax = COPY [[AND]](s32)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 255
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i32) = G_AND [[COPY]], [[C]]
+    ; CHECK-NEXT: $eax = COPY [[AND]](i32)
     ; CHECK-NEXT: RET 0, implicit $eax
-    %1:_(s32) = COPY $edi
-    %0:_(s8) = G_TRUNC %1(s32)
-    %2:_(s32) = G_ZEXT %0(s8)
-    $eax = COPY %2(s32)
+    %1:_(i32) = COPY $edi
+    %0:_(i8) = G_TRUNC %1(i32)
+    %2:_(i32) = G_ZEXT %0(i8)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -235,16 +235,16 @@ body:             |
     ; CHECK-LABEL: name: zext_i8_to_i64
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[COPY]](s32)
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 255
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s64) = G_AND [[ANYEXT]], [[C]]
-    ; CHECK-NEXT: $rax = COPY [[AND]](s64)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i64) = G_ANYEXT [[COPY]](i32)
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i64) = G_CONSTANT i64 255
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i64) = G_AND [[ANYEXT]], [[C]]
+    ; CHECK-NEXT: $rax = COPY [[AND]](i64)
     ; CHECK-NEXT: RET 0, implicit $rax
-    %1:_(s32) = COPY $edi
-    %0:_(s8) = G_TRUNC %1(s32)
-    %2:_(s64) = G_ZEXT %0(s8)
-    $rax = COPY %2(s64)
+    %1:_(i32) = COPY $edi
+    %0:_(i8) = G_TRUNC %1(i32)
+    %2:_(i64) = G_ZEXT %0(i8)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -263,15 +263,15 @@ body:             |
     ; CHECK-LABEL: name: zext_i16_to_i32
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 65535
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s32) = G_AND [[COPY]], [[C]]
-    ; CHECK-NEXT: $eax = COPY [[AND]](s32)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i32) = G_AND [[COPY]], [[C]]
+    ; CHECK-NEXT: $eax = COPY [[AND]](i32)
     ; CHECK-NEXT: RET 0, implicit $eax
-    %1:_(s32) = COPY $edi
-    %0:_(s16) = G_TRUNC %1(s32)
-    %2:_(s32) = G_ZEXT %0(s16)
-    $eax = COPY %2(s32)
+    %1:_(i32) = COPY $edi
+    %0:_(i16) = G_TRUNC %1(i32)
+    %2:_(i32) = G_ZEXT %0(i16)
+    $eax = COPY %2(i32)
     RET 0, implicit $eax
 
 ...
@@ -290,16 +290,16 @@ body:             |
     ; CHECK-LABEL: name: zext_i16_to_i64
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(s64) = G_ANYEXT [[COPY]](s32)
-    ; CHECK-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 65535
-    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(s64) = G_AND [[ANYEXT]], [[C]]
-    ; CHECK-NEXT: $rax = COPY [[AND]](s64)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i64) = G_ANYEXT [[COPY]](i32)
+    ; CHECK-NEXT: [[C:%[0-9]+]]:_(i64) = G_CONSTANT i64 65535
+    ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i64) = G_AND [[ANYEXT]], [[C]]
+    ; CHECK-NEXT: $rax = COPY [[AND]](i64)
     ; CHECK-NEXT: RET 0, implicit $rax
-    %1:_(s32) = COPY $edi
-    %0:_(s16) = G_TRUNC %1(s32)
-    %2:_(s64) = G_ZEXT %0(s16)
-    $rax = COPY %2(s64)
+    %1:_(i32) = COPY $edi
+    %0:_(i16) = G_TRUNC %1(i32)
+    %2:_(i64) = G_ZEXT %0(i16)
+    $rax = COPY %2(i64)
     RET 0, implicit $rax
 
 ...
@@ -317,13 +317,13 @@ body:             |
     ; CHECK-LABEL: name: zext_i32_to_i64
     ; CHECK: liveins: $edi
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $edi
-    ; CHECK-NEXT: [[ZEXT:%[0-9]+]]:_(s64) = G_ZEXT [[COPY]](s32)
-    ; CHECK-NEXT: $rax = COPY [[ZEXT]](s64)
+    ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $edi
+    ; CHECK-NEXT: [[ZEXT:%[0-9]+]]:_(i64) = G_ZEXT [[COPY]](i32)
+    ; CHECK-NEXT: $rax = COPY [[ZEXT]](i64)
     ; CHECK-NEXT: RET 0, implicit $rax
-    %0:_(s32) = COPY $edi
-    %1:_(s64) = G_ZEXT %0(s32)
-    $rax = COPY %1(s64)
+    %0:_(i32) = COPY $edi
+    %1:_(i64) = G_ZEXT %0(i32)
+    $rax = COPY %1(i64)
     RET 0, implicit $rax
 
 ...

@@ -455,7 +455,7 @@ void CallLowering::buildCopyFromRegs(MachineIRBuilder &B,
     // Sometimes pointers are passed zero extended.
     LLT OrigTy = MRI.getType(OrigRegs[0]);
     if (OrigTy.isPointer()) {
-      LLT IntPtrTy = LLT::scalar(OrigTy.getSizeInBits());
+      LLT IntPtrTy = LLT::integer(OrigTy.getSizeInBits());
       B.buildIntToPtr(OrigRegs[0], B.buildTrunc(IntPtrTy, SrcReg));
       return;
     }
@@ -1371,7 +1371,7 @@ Register CallLowering::ValueHandler::extendRegister(Register ValReg,
   if (ValRegTy.isPointer()) {
     // The x32 ABI wants to zero extend 32-bit pointers to 64-bit registers, so
     // we have to cast to do the extension.
-    LLT IntPtrTy = LLT::scalar(ValRegTy.getSizeInBits());
+    LLT IntPtrTy = LLT::integer(ValRegTy.getSizeInBits());
     ValReg = MIRBuilder.buildPtrToInt(IntPtrTy, ValReg).getReg(0);
   }
 

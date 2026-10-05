@@ -42,8 +42,8 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
 
-    %0(<8 x s32>) = IMPLICIT_DEF
-    %1(<8 x s32>) = G_MUL %0, %0
+    %0(<8 x i32>) = IMPLICIT_DEF
+    %1(<8 x i32>) = G_MUL %0, %0
     RET 0
 
 ...
@@ -65,8 +65,8 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
 
-    %0(<8 x s32>) = IMPLICIT_DEF
-    %1(<8 x s32>) = G_ADD %0, %0
+    %0(<8 x i32>) = IMPLICIT_DEF
+    %1(<8 x i32>) = G_ADD %0, %0
     RET 0
 
 ...
@@ -88,8 +88,8 @@ registers:
 body:             |
   bb.1 (%ir-block.0):
 
-    %0(<8 x s32>) = IMPLICIT_DEF
-    %1(<8 x s32>) = G_SUB %0, %0
+    %0(<8 x i32>) = IMPLICIT_DEF
+    %1(<8 x i32>) = G_SUB %0, %0
     RET 0
 
 ...
@@ -110,8 +110,8 @@ body:             |
     liveins: $rdi
 
     %0(p0) = COPY $rdi
-    %1(<8 x s32>) = G_LOAD %0(p0) :: (load (<8 x s32>) from %ir.p1, align 1)
-    $ymm0 = COPY %1(<8 x s32>)
+    %1(<8 x i32>) = G_LOAD %0(p0) :: (load (<8 x i32>) from %ir.p1, align 1)
+    $ymm0 = COPY %1(<8 x i32>)
     RET 0, implicit $ymm0
 
 ...
@@ -131,9 +131,9 @@ body:             |
   bb.1 (%ir-block.0):
     liveins: $rdi, $ymm0
 
-    %0(<8 x s32>) = COPY $ymm0
+    %0(<8 x i32>) = COPY $ymm0
     %1(p0) = COPY $rdi
-    G_STORE %0(<8 x s32>), %1(p0) :: (store (<8 x s32>) into %ir.p1, align 1)
+    G_STORE %0(<8 x i32>), %1(p0) :: (store (<8 x i32>) into %ir.p1, align 1)
     RET 0
 
 ...

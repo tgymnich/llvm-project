@@ -65,18 +65,18 @@ regBankSelected: true
 registers:
   - { id: 0, class: gpr, preferred-register: '' }
   - { id: 1, class: gpr, preferred-register: '' }
-# X32:                     %0:gr32 = MOV32rm $noreg, 1, $noreg, @g_int, $noreg :: (load (s32) from @g_int)
+# X32:                     %0:gr32 = MOV32rm $noreg, 1, $noreg, @g_int, $noreg :: (load (i32) from @g_int)
 # X32-NEXT:                $eax = COPY %0
 # X32-NEXT:                RET 0, implicit $eax
 #
-# X32ABI:                  %0:gr32 = MOV32rm $noreg, 1, $noreg, @g_int, $noreg :: (load (s32) from @g_int)
+# X32ABI:                  %0:gr32 = MOV32rm $noreg, 1, $noreg, @g_int, $noreg :: (load (i32) from @g_int)
 # X32ABI-NEXT:             $eax = COPY %0
 # X32ABI-NEXT:             RET 0, implicit $eax
 body:             |
   bb.1.entry:
     %1(p0) = G_GLOBAL_VALUE @g_int
-    %0(s32) = G_LOAD %1(p0) :: (load (s32) from @g_int)
-    $eax = COPY %0(s32)
+    %0(i32) = G_LOAD %1(p0) :: (load (i32) from @g_int)
+    $eax = COPY %0(i32)
     RET 0, implicit $eax
 
 ...
