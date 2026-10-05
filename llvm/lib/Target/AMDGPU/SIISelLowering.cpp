@@ -5934,7 +5934,7 @@ static bool isFloatingPointWaveReduceOperation(unsigned Opc) {
          Opc == AMDGPU::V_ADD_F64_e64 || Opc == AMDGPU::V_ADD_F64_pseudo_e64;
 }
 
-/// Return the scalar opcode for combining 32-bit DPP row reductions.
+/// Return the scalar opcode for combining DPP row reductions.
 static std::optional<unsigned>
 getScalarOpcForWaveReduction(unsigned Opc, const GCNSubtarget &ST) {
   switch (Opc) {
@@ -5951,6 +5951,25 @@ getScalarOpcForWaveReduction(unsigned Opc, const GCNSubtarget &ST) {
     return AMDGPU::S_ADD_I32;
   default:
     break;
+  }
+
+  if (ST.hasScalarAddSub64()) {
+    switch (Opc) {
+    case AMDGPU::S_ADD_U64_PSEUDO:
+    case AMDGPU::S_SUB_U64_PSEUDO:
+      return AMDGPU::S_ADD_U64;
+    case AMDGPU::S_AND_B64:
+    case AMDGPU::S_OR_B64:
+    case AMDGPU::S_XOR_B64:
+      return Opc;
+    case AMDGPU::V_CMP_LT_I64_e64:
+    case AMDGPU::V_CMP_GT_I64_e64:
+    case AMDGPU::V_CMP_LT_U64_e64:
+    case AMDGPU::V_CMP_GT_U64_e64:
+      return AMDGPU::S_CSELECT_B64;
+    default:
+      break;
+    }
   }
 
   if (!ST.hasSALUFloatInsts())
@@ -6831,18 +6850,77 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
               ST.hasDPPBroadcasts() ? std::nullopt
                                     : getScalarOpcForWaveReduction(Opc, ST)) {
         auto ReadRow = [&](unsigned Lane) {
-          Register Value = MRI.createVirtualRegister(DstRegClass);
-          BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::V_READLANE_B32), Value)
-              .addReg(DPPRowShr8)
-              .addImm(Lane);
-          return Value;
+          auto ReadPart = [&](Register Part) {
+            Register Value =
+                MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
+            BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::V_READLANE_B32), Value)
+                .addReg(Part)
+                .addImm(Lane);
+            return Value;
+          };
+          if (is32BitOpc)
+            return ReadPart(DPPRowShr8);
+          MachineOperand Operand = MachineOperand::CreateReg(DPPRowShr8, false);
+          auto [Low, High] = ExtractSubRegs(MI, Operand, SrcRegClass, ST, MRI);
+          Register RowLow = ReadPart(Low);
+          Register RowHigh = ReadPart(High);
+          Register Row = MRI.createVirtualRegister(DstRegClass);
+          BuildRegSequence(*CurrBB, MI, Row, RowLow, RowHigh);
+          return Row;
         };
         auto CombineRows = [&](Register Src0, Register Src1) {
           Register Value = MRI.createVirtualRegister(DstRegClass);
+          if (*ScalarOpc == AMDGPU::S_CSELECT_B64) {
+            bool IsSigned = Opc == AMDGPU::V_CMP_LT_I64_e64 ||
+                            Opc == AMDGPU::V_CMP_GT_I64_e64;
+            bool IsMin = Opc == AMDGPU::V_CMP_LT_I64_e64 ||
+                         Opc == AMDGPU::V_CMP_LT_U64_e64;
+            MachineOperand Operand0 = MachineOperand::CreateReg(Src0, false);
+            MachineOperand Operand1 = MachineOperand::CreateReg(Src1, false);
+            auto [Low0, High0] =
+                ExtractSubRegs(MI, Operand0, DstRegClass, ST, MRI);
+            auto [Low1, High1] =
+                ExtractSubRegs(MI, Operand1, DstRegClass, ST, MRI);
+            auto Compare = [&](Register Left, Register Right,
+                               unsigned CompareOpc) {
+              BuildMI(*CurrBB, MI, DL, TII->get(CompareOpc))
+                  .addReg(Left)
+                  .addReg(Right);
+              Register Predicate =
+                  MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+              BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::S_CSELECT_B32),
+                      Predicate)
+                  .addImm(1)
+                  .addImm(0);
+              return Predicate;
+            };
+            unsigned LowCompare =
+                IsMin ? AMDGPU::S_CMP_LT_U32 : AMDGPU::S_CMP_GT_U32;
+            unsigned HighCompare =
+                IsSigned ? (IsMin ? AMDGPU::S_CMP_LT_I32 : AMDGPU::S_CMP_GT_I32)
+                         : LowCompare;
+            Register HighPredicate = Compare(High0, High1, HighCompare);
+            Register LowPredicate = Compare(Low0, Low1, LowCompare);
+            BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::S_CMP_EQ_U32))
+                .addReg(High0)
+                .addReg(High1);
+            Register Predicate =
+                MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+            BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::S_CSELECT_B32), Predicate)
+                .addReg(LowPredicate)
+                .addReg(HighPredicate);
+            BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::S_CMP_LG_U32))
+                .addReg(Predicate)
+                .addImm(0);
+            BuildMI(*CurrBB, MI, DL, TII->get(AMDGPU::S_CSELECT_B64), Value)
+                .addReg(Src0)
+                .addReg(Src1);
+            return Value;
+          }
           auto Combine = BuildMI(*CurrBB, MI, DL, TII->get(*ScalarOpc), Value)
                              .addReg(Src0)
                              .addReg(Src1);
-          if (!isFPOp)
+          if (!isFPOp && *ScalarOpc != AMDGPU::S_ADD_U64)
             Combine.setOperandDead(3);
           return Value;
         };
@@ -6857,15 +6935,16 @@ static MachineBasicBlock *lowerWaveReduce(MachineInstr &MI,
           Register UpperResult = CombineRows(Row3, Row2);
           Result = CombineRows(UpperResult, Result);
         }
-        if (Opc == AMDGPU::S_SUB_I32 || Opc == AMDGPU::V_SUB_F32_e64) {
+        if (Opc == AMDGPU::S_SUB_I32 || Opc == AMDGPU::V_SUB_F32_e64 ||
+            Opc == AMDGPU::S_SUB_U64_PSEUDO) {
           Register Negated = MRI.createVirtualRegister(DstRegClass);
-          auto Sub =
-              BuildMI(*CurrBB, MI, DL,
-                      TII->get(isFPOp ? AMDGPU::S_SUB_F32 : AMDGPU::S_SUB_I32),
-                      Negated)
-                  .addImm(0)
-                  .addReg(Result);
-          if (!isFPOp)
+          unsigned SubOpc = !is32BitOpc ? AMDGPU::S_SUB_U64
+                            : isFPOp    ? AMDGPU::S_SUB_F32
+                                        : AMDGPU::S_SUB_I32;
+          auto Sub = BuildMI(*CurrBB, MI, DL, TII->get(SubOpc), Negated)
+                         .addImm(0)
+                         .addReg(Result);
+          if (SubOpc == AMDGPU::S_SUB_I32)
             Sub.setOperandDead(3);
           Result = Negated;
         }

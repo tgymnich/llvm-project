@@ -1,3 +1,4 @@
+; RUN: llc -mtriple=amdgpu11.00 -verify-machineinstrs < %s | FileCheck %s --check-prefix=PRE64
 ; RUN: llc -mtriple=amdgpu12.00 -mcpu=gfx1200 -global-isel=0 -verify-machineinstrs < %s | FileCheck %s --check-prefixes=CHECK,WAVE32 --implicit-check-not=ds_swizzle --implicit-check-not=ds_permute
 ; RUN: llc -mtriple=amdgpu12.00 -mcpu=gfx1200 -global-isel=1 -verify-machineinstrs < %s | FileCheck %s --check-prefixes=CHECK,WAVE32 --implicit-check-not=ds_swizzle --implicit-check-not=ds_permute
 ; RUN: llc -mtriple=amdgpu12.00 -mcpu=gfx1200 -mattr=+wavefrontsize64 -global-isel=0 -verify-machineinstrs < %s | FileCheck %s --check-prefixes=CHECK,WAVE64 --implicit-check-not=ds_swizzle --implicit-check-not=ds_permute
@@ -248,3 +249,176 @@ define void @xor(i32 %value, ptr addrspace(1) %out) {
 }
 
 declare i32 @llvm.amdgcn.wave.reduce.xor(i32, i32)
+
+define void @add64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: add64:
+; CHECK-DAG: v_readlane_b32 {{.+}}, {{.+}}, 15
+; CHECK-DAG: v_readlane_b32 {{.+}}, {{.+}}, 15
+; CHECK-DAG: v_readlane_b32 {{.+}}, {{.+}}, 31
+; CHECK-DAG: v_readlane_b32 {{.+}}, {{.+}}, 31
+; WAVE64-DAG: v_readlane_b32 {{.+}}, {{.+}}, 47
+; WAVE64-DAG: v_readlane_b32 {{.+}}, {{.+}}, 47
+; WAVE64-DAG: v_readlane_b32 {{.+}}, {{.+}}, 63
+; WAVE64-DAG: v_readlane_b32 {{.+}}, {{.+}}, 63
+; CHECK: s_add_nc_u64
+; WAVE64: s_add_nc_u64
+; WAVE64: s_add_nc_u64
+; CHECK: global_store_b64
+; PRE64-LABEL: add64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.add.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.add.i64(i64, i32)
+
+define void @sub64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: sub64:
+; CHECK: s_add_nc_u64
+; WAVE64: s_add_nc_u64
+; WAVE64: s_add_nc_u64
+; CHECK: s_sub_nc_u64
+; CHECK: global_store_b64
+; PRE64-LABEL: sub64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.sub.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.sub.i64(i64, i32)
+
+define void @and64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: and64:
+; CHECK: s_and_b64
+; WAVE64: s_and_b64
+; WAVE64: s_and_b64
+; CHECK: global_store_b64
+; PRE64-LABEL: and64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.and.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.and.i64(i64, i32)
+
+define void @or64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: or64:
+; CHECK: s_or_b64
+; WAVE64: s_or_b64
+; WAVE64: s_or_b64
+; CHECK: global_store_b64
+; PRE64-LABEL: or64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.or.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.or.i64(i64, i32)
+
+define void @xor64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: xor64:
+; CHECK: s_xor_b64
+; WAVE64: s_xor_b64
+; WAVE64: s_xor_b64
+; CHECK: global_store_b64
+; PRE64-LABEL: xor64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.xor.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.xor.i64(i64, i32)
+
+define void @min64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: min64:
+; CHECK: s_cmp_lt_i32 [[HIGH0:s.+]], [[HIGH1:s.+]]
+; CHECK: s_cselect_b32 [[HIGH:s.+]], 1, 0
+; CHECK: s_cmp_lt_u32 [[LOW0:s.+]], [[LOW1:s.+]]
+; CHECK: s_cselect_b32 [[LOW:s.+]], 1, 0
+; CHECK: s_cmp_eq_u32 [[HIGH0]], [[HIGH1]]
+; CHECK: s_cselect_b32 [[PRED:s.+]], [[LOW]], [[HIGH]]
+; CHECK: s_cmp_lg_u32 [[PRED]], 0
+; CHECK: s_cselect_b64
+; CHECK: global_store_b64
+; PRE64-LABEL: min64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.min.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.min.i64(i64, i32)
+
+define void @max64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: max64:
+; CHECK: s_cmp_gt_i32 [[HIGH0:s.+]], [[HIGH1:s.+]]
+; CHECK: s_cselect_b32 [[HIGH:s.+]], 1, 0
+; CHECK: s_cmp_gt_u32 [[LOW0:s.+]], [[LOW1:s.+]]
+; CHECK: s_cselect_b32 [[LOW:s.+]], 1, 0
+; CHECK: s_cmp_eq_u32 [[HIGH0]], [[HIGH1]]
+; CHECK: s_cselect_b32 [[PRED:s.+]], [[LOW]], [[HIGH]]
+; CHECK: s_cmp_lg_u32 [[PRED]], 0
+; CHECK: s_cselect_b64
+; CHECK: global_store_b64
+; PRE64-LABEL: max64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.max.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.max.i64(i64, i32)
+
+define void @umin64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: umin64:
+; CHECK: s_cmp_lt_u32 [[HIGH0:s.+]], [[HIGH1:s.+]]
+; CHECK: s_cselect_b32 [[HIGH:s.+]], 1, 0
+; CHECK: s_cmp_lt_u32 [[LOW0:s.+]], [[LOW1:s.+]]
+; CHECK: s_cselect_b32 [[LOW:s.+]], 1, 0
+; CHECK: s_cmp_eq_u32 [[HIGH0]], [[HIGH1]]
+; CHECK: s_cselect_b32 [[PRED:s.+]], [[LOW]], [[HIGH]]
+; CHECK: s_cmp_lg_u32 [[PRED]], 0
+; CHECK: s_cselect_b64
+; CHECK: global_store_b64
+; PRE64-LABEL: umin64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.umin.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.umin.i64(i64, i32)
+
+define void @umax64(i64 %value, ptr addrspace(1) %out) {
+; CHECK-LABEL: umax64:
+; CHECK: s_cmp_gt_u32 [[HIGH0:s.+]], [[HIGH1:s.+]]
+; CHECK: s_cselect_b32 [[HIGH:s.+]], 1, 0
+; CHECK: s_cmp_gt_u32 [[LOW0:s.+]], [[LOW1:s.+]]
+; CHECK: s_cselect_b32 [[LOW:s.+]], 1, 0
+; CHECK: s_cmp_eq_u32 [[HIGH0]], [[HIGH1]]
+; CHECK: s_cselect_b32 [[PRED:s.+]], [[LOW]], [[HIGH]]
+; CHECK: s_cmp_lg_u32 [[PRED]], 0
+; CHECK: s_cselect_b64
+; CHECK: global_store_b64
+; PRE64-LABEL: umax64:
+; PRE64: ds_swizzle_b32
+; PRE64: s_setpc_b64
+  %result = call i64 @llvm.amdgcn.wave.reduce.umax.i64(i64 %value, i32 2)
+  store i64 %result, ptr addrspace(1) %out
+  ret void
+}
+
+declare i64 @llvm.amdgcn.wave.reduce.umax.i64(i64, i32)
