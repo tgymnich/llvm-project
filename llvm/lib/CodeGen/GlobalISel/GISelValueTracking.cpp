@@ -868,6 +868,15 @@ void GISelValueTracking::computeKnownBitsImpl(Register R, KnownBits &Known,
     }
     break;
   }
+  case TargetOpcode::G_EXTRACT: {
+    Register Src = MI.getOperand(1).getReg();
+    if (!DstTy.isScalar() || !MRI.getType(Src).isScalar())
+      break;
+
+    computeKnownBitsImpl(Src, Known2, APInt(1, 1), Depth + 1);
+    Known = Known2.extractBits(BitWidth, MI.getOperand(2).getImm());
+    break;
+  }
   case TargetOpcode::G_UNMERGE_VALUES: {
     unsigned NumOps = MI.getNumOperands();
     Register SrcReg = MI.getOperand(NumOps - 1).getReg();
@@ -2776,6 +2785,19 @@ unsigned GISelValueTracking::computeNumSignBits(Register R,
       return TyBits; // All bits are sign bits.
     if (BC == TargetLowering::ZeroOrOneBooleanContent)
       return TyBits - 1; // Every always-zero bit is a sign bit.
+    break;
+  }
+  case TargetOpcode::G_EXTRACT: {
+    Register Src = MI.getOperand(1).getReg();
+    LLT SrcTy = MRI.getType(Src);
+    if (!DstTy.isScalar() || !SrcTy.isScalar())
+      break;
+
+    unsigned Offset = MI.getOperand(2).getImm();
+    unsigned HighBits = SrcTy.getSizeInBits() - Offset - TyBits;
+    unsigned NumSrcSignBits = computeNumSignBits(Src, APInt(1, 1), Depth + 1);
+    if (NumSrcSignBits > HighBits)
+      FirstAnswer = std::min(NumSrcSignBits - HighBits, TyBits);
     break;
   }
   case TargetOpcode::G_UNMERGE_VALUES: {

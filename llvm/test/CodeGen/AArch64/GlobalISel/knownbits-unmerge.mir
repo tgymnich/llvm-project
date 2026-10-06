@@ -2,6 +2,66 @@
 # RUN: llc -mtriple aarch64 -passes="print<gisel-value-tracking>" %s -o - 2>&1 | FileCheck %s
 
 ---
+name: Extract_Constant
+body: |
+  bb.0:
+  ; CHECK-LABEL: name: @Extract_Constant
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:00010010001101000101011001111000 SignBits:3 IsKnownNeverZero:1
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:01111000 SignBits:1 IsKnownNeverZero:1
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:01000101 SignBits:1 IsKnownNeverZero:1
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:00010010 SignBits:3 IsKnownNeverZero:1
+    %src:_(s32) = G_CONSTANT i32 305419896
+    %low:_(s8) = G_EXTRACT %src, 0
+    %middle:_(s8) = G_EXTRACT %src, 12
+    %high:_(s8) = G_EXTRACT %src, 24
+...
+---
+name: Extract_Sign
+body: |
+  bb.0:
+  ; CHECK-LABEL: name: @Extract_Sign
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????????????????????????????? SignBits:1 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????????????????????????????? SignBits:21 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????? SignBits:1 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????? SignBits:1 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????? SignBits:5 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????? SignBits:8 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????? SignBits:8 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:00000000111111110000000000000000 SignBits:8 IsKnownNeverZero:1
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:00000000????????0000000000000000 SignBits:8 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:00000000 SignBits:8 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????? SignBits:1 IsKnownNeverZero:0
+    %src:_(s32) = COPY $w0
+    %sext:_(s32) = G_SEXT_INREG %src, 12
+    %low:_(s8) = G_EXTRACT %sext, 0
+    %boundary:_(s8) = G_EXTRACT %sext, 4
+    %partial:_(s8) = G_EXTRACT %sext, 8
+    %full:_(s8) = G_EXTRACT %sext, 12
+    %high:_(s8) = G_EXTRACT %sext, 24
+    %mask:_(s32) = G_CONSTANT i32 16711680
+    %masked:_(s32) = G_AND %src, %mask
+    %zero:_(s8) = G_EXTRACT %masked, 0
+    %unknown:_(s8) = G_EXTRACT %masked, 16
+...
+---
+name: Extract_Vector
+body: |
+  bb.0:
+  ; CHECK-LABEL: name: @Extract_Vector
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:1111111111111111 SignBits:16 IsKnownNeverZero:1
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:1111111111111111 SignBits:16 IsKnownNeverZero:1
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????????????? SignBits:1 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????????????? SignBits:1 IsKnownNeverZero:0
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:1111111111111111111111111111111111111111111111111111111111111111 SignBits:64 IsKnownNeverZero:1
+  ; CHECK-NEXT: %{{.+}}:_ KnownBits:???????????????? SignBits:1 IsKnownNeverZero:0
+    %one:_(s16) = G_CONSTANT i16 -1
+    %vec:_(<4 x s16>) = G_BUILD_VECTOR %one, %one, %one, %one
+    %scalar:_(s16) = G_EXTRACT %vec, 0
+    %subvector:_(<2 x s16>) = G_EXTRACT %vec, 32
+    %bits:_(s64) = G_CONSTANT i64 -1
+    %vector:_(<2 x s16>) = G_EXTRACT %bits, 16
+...
+---
 name:            Scalar
 body:             |
   bb.1:
