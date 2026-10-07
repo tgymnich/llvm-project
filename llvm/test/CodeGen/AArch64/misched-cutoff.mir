@@ -2,7 +2,7 @@
 # RUN: llc -mtriple=aarch64 -passes=machine-scheduler -o - %s | FileCheck %s
 # RUN: llc -mtriple=aarch64 -passes=machine-scheduler -misched-cutoff=1 -debug-only=machine-scheduler -o - %s 2>&1 | FileCheck %s --check-prefix=CHECK-CUTOFF
 
-# REQUIRES: asserts
+# REQUIRES: asserts, abi-breaking-checks
 
 # CHECK-CUTOFF-COUNT-1: Scheduling SU
 

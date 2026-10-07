@@ -793,6 +793,9 @@ llvm_config.feature_config(
     ]
 )
 
+if config.enable_abi_breaking_checks:
+    config.available_features.add("abi-breaking-checks")
+
 if "darwin" == sys.platform:
     cmd = ["sysctl", "hw.optional.fma"]
     sysctl_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE)

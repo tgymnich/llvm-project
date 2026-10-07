@@ -27,6 +27,7 @@ config.have_ocamlopt = @HAVE_OCAMLOPT@
 config.ocaml_flags = "@OCAMLFLAGS@"
 config.ptxas_executable = "@PTXAS_EXECUTABLE@"
 config.enable_assertions = @ENABLE_ASSERTIONS@
+config.enable_abi_breaking_checks = "@LLVM_ENABLE_ABI_BREAKING_CHECKS@" == "1"
 config.targets_to_build = "@TARGETS_TO_BUILD@"
 config.native_target = "@LLVM_NATIVE_ARCH@"
 config.llvm_bindings = "@LLVM_BINDINGS@".split(' ')
