@@ -760,3 +760,163 @@ exit:
   ret void
 }
 
+define <4 x i32> @mul_demanded_signbits(<4 x i8> %x, <4 x i8> %y, <4 x i32> %w0, <4 x i32> %w1, ptr %p) {
+; X86-LABEL: mul_demanded_signbits:
+; X86:       # %bb.0:
+; X86-NEXT:    pushl %ebp
+; X86-NEXT:    .cfi_def_cfa_offset 8
+; X86-NEXT:    .cfi_offset %ebp, -8
+; X86-NEXT:    movl %esp, %ebp
+; X86-NEXT:    .cfi_def_cfa_register %ebp
+; X86-NEXT:    andl $-16, %esp
+; X86-NEXT:    subl $16, %esp
+; X86-NEXT:    movl 24(%ebp), %eax
+; X86-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X86-NEXT:    vpmovsxbd %xmm1, %xmm1
+; X86-NEXT:    vpblendw {{.*#+}} xmm0 = xmm0[0,1,2,3],xmm2[4,5,6,7]
+; X86-NEXT:    vpblendw {{.*#+}} xmm1 = xmm1[0,1,2,3],mem[4,5,6,7]
+; X86-NEXT:    vpmulld %xmm1, %xmm0, %xmm0
+; X86-NEXT:    vmovdqu %xmm0, (%eax)
+; X86-NEXT:    vpshufd {{.*#+}} xmm0 = xmm0[0,0,0,0]
+; X86-NEXT:    movl %ebp, %esp
+; X86-NEXT:    popl %ebp
+; X86-NEXT:    .cfi_def_cfa %esp, 4
+; X86-NEXT:    retl
+;
+; X64-AVX1-LABEL: mul_demanded_signbits:
+; X64-AVX1:       # %bb.0:
+; X64-AVX1-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X64-AVX1-NEXT:    vpmovsxbd %xmm1, %xmm1
+; X64-AVX1-NEXT:    vpblendw {{.*#+}} xmm0 = xmm0[0,1,2,3],xmm2[4,5,6,7]
+; X64-AVX1-NEXT:    vpblendw {{.*#+}} xmm1 = xmm1[0,1,2,3],xmm3[4,5,6,7]
+; X64-AVX1-NEXT:    vpmulld %xmm1, %xmm0, %xmm0
+; X64-AVX1-NEXT:    vmovdqu %xmm0, (%rdi)
+; X64-AVX1-NEXT:    vpshufd {{.*#+}} xmm0 = xmm0[0,0,0,0]
+; X64-AVX1-NEXT:    retq
+;
+; X64-AVX2-LABEL: mul_demanded_signbits:
+; X64-AVX2:       # %bb.0:
+; X64-AVX2-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X64-AVX2-NEXT:    vpmovsxbd %xmm1, %xmm1
+; X64-AVX2-NEXT:    vpblendd {{.*#+}} xmm0 = xmm0[0,1],xmm2[2,3]
+; X64-AVX2-NEXT:    vpblendd {{.*#+}} xmm1 = xmm1[0,1],xmm3[2,3]
+; X64-AVX2-NEXT:    vpmulld %xmm1, %xmm0, %xmm0
+; X64-AVX2-NEXT:    vmovdqu %xmm0, (%rdi)
+; X64-AVX2-NEXT:    vpbroadcastd %xmm0, %xmm0
+; X64-AVX2-NEXT:    retq
+  %xe = sext <4 x i8> %x to <4 x i32>
+  %ye = sext <4 x i8> %y to <4 x i32>
+  %lhs = shufflevector <4 x i32> %xe, <4 x i32> %w0, <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+  %rhs = shufflevector <4 x i32> %ye, <4 x i32> %w1, <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+  %op = mul <4 x i32> %lhs, %rhs
+  store <4 x i32> %op, ptr %p, align 1
+  %splat = shufflevector <4 x i32> %op, <4 x i32> poison, <4 x i32> <i32 0, i32 0, i32 0, i32 0>
+  %t = trunc <4 x i32> %splat to <4 x i16>
+  %r = sext <4 x i16> %t to <4 x i32>
+  ret <4 x i32> %r
+}
+
+define <4 x i32> @mul_wide_lane_signbits(<4 x i8> %x, <4 x i8> %y, <4 x i32> %w0, <4 x i32> %w1, ptr %p) {
+; X86-LABEL: mul_wide_lane_signbits:
+; X86:       # %bb.0:
+; X86-NEXT:    pushl %ebp
+; X86-NEXT:    .cfi_def_cfa_offset 8
+; X86-NEXT:    .cfi_offset %ebp, -8
+; X86-NEXT:    movl %esp, %ebp
+; X86-NEXT:    .cfi_def_cfa_register %ebp
+; X86-NEXT:    andl $-16, %esp
+; X86-NEXT:    subl $16, %esp
+; X86-NEXT:    movl 24(%ebp), %eax
+; X86-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X86-NEXT:    vpmovsxbd %xmm1, %xmm1
+; X86-NEXT:    vpblendw {{.*#+}} xmm0 = xmm0[0,1,2,3],xmm2[4,5,6,7]
+; X86-NEXT:    vpblendw {{.*#+}} xmm1 = xmm1[0,1,2,3],mem[4,5,6,7]
+; X86-NEXT:    vpmulld %xmm1, %xmm0, %xmm0
+; X86-NEXT:    vmovdqu %xmm0, (%eax)
+; X86-NEXT:    vpshufd {{.*#+}} xmm0 = xmm0[2,2,2,2]
+; X86-NEXT:    vpslld $16, %xmm0, %xmm0
+; X86-NEXT:    vpsrad $16, %xmm0, %xmm0
+; X86-NEXT:    movl %ebp, %esp
+; X86-NEXT:    popl %ebp
+; X86-NEXT:    .cfi_def_cfa %esp, 4
+; X86-NEXT:    retl
+;
+; X64-AVX1-LABEL: mul_wide_lane_signbits:
+; X64-AVX1:       # %bb.0:
+; X64-AVX1-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X64-AVX1-NEXT:    vpmovsxbd %xmm1, %xmm1
+; X64-AVX1-NEXT:    vpblendw {{.*#+}} xmm0 = xmm0[0,1,2,3],xmm2[4,5,6,7]
+; X64-AVX1-NEXT:    vpblendw {{.*#+}} xmm1 = xmm1[0,1,2,3],xmm3[4,5,6,7]
+; X64-AVX1-NEXT:    vpmulld %xmm1, %xmm0, %xmm0
+; X64-AVX1-NEXT:    vmovdqu %xmm0, (%rdi)
+; X64-AVX1-NEXT:    vpshufd {{.*#+}} xmm0 = xmm0[2,2,2,2]
+; X64-AVX1-NEXT:    vpslld $16, %xmm0, %xmm0
+; X64-AVX1-NEXT:    vpsrad $16, %xmm0, %xmm0
+; X64-AVX1-NEXT:    retq
+;
+; X64-AVX2-LABEL: mul_wide_lane_signbits:
+; X64-AVX2:       # %bb.0:
+; X64-AVX2-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X64-AVX2-NEXT:    vpmovsxbd %xmm1, %xmm1
+; X64-AVX2-NEXT:    vpblendd {{.*#+}} xmm0 = xmm0[0,1],xmm2[2,3]
+; X64-AVX2-NEXT:    vpblendd {{.*#+}} xmm1 = xmm1[0,1],xmm3[2,3]
+; X64-AVX2-NEXT:    vpmulld %xmm1, %xmm0, %xmm0
+; X64-AVX2-NEXT:    vmovdqu %xmm0, (%rdi)
+; X64-AVX2-NEXT:    vpshufd {{.*#+}} xmm0 = xmm0[2,2,2,2]
+; X64-AVX2-NEXT:    vpslld $16, %xmm0, %xmm0
+; X64-AVX2-NEXT:    vpsrad $16, %xmm0, %xmm0
+; X64-AVX2-NEXT:    retq
+  %xe = sext <4 x i8> %x to <4 x i32>
+  %ye = sext <4 x i8> %y to <4 x i32>
+  %lhs = shufflevector <4 x i32> %xe, <4 x i32> %w0, <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+  %rhs = shufflevector <4 x i32> %ye, <4 x i32> %w1, <4 x i32> <i32 0, i32 1, i32 6, i32 7>
+  %op = mul <4 x i32> %lhs, %rhs
+  store <4 x i32> %op, ptr %p, align 1
+  %splat = shufflevector <4 x i32> %op, <4 x i32> poison, <4 x i32> <i32 2, i32 2, i32 2, i32 2>
+  %t = trunc <4 x i32> %splat to <4 x i16>
+  %r = sext <4 x i16> %t to <4 x i32>
+  ret <4 x i32> %r
+}
+
+define <2 x i32> @trunc_demanded_signbits(<2 x i8> %x, <2 x i64> %wide0) {
+; X86-LABEL: trunc_demanded_signbits:
+; X86:       # %bb.0:
+; X86-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X86-NEXT:    vpshufd {{.*#+}} xmm0 = xmm0[0,0,0,0]
+; X86-NEXT:    retl
+;
+; X64-AVX1-LABEL: trunc_demanded_signbits:
+; X64-AVX1:       # %bb.0:
+; X64-AVX1-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X64-AVX1-NEXT:    vpshufd {{.*#+}} xmm0 = xmm0[0,0,0,0]
+; X64-AVX1-NEXT:    retq
+;
+; X64-AVX2-LABEL: trunc_demanded_signbits:
+; X64-AVX2:       # %bb.0:
+; X64-AVX2-NEXT:    vpmovsxbd %xmm0, %xmm0
+; X64-AVX2-NEXT:    vpbroadcastd %xmm0, %xmm0
+; X64-AVX2-NEXT:    retq
+  %xe = sext <2 x i8> %x to <2 x i64>
+  %lhs = shufflevector <2 x i64> %xe, <2 x i64> %wide0, <2 x i32> <i32 0, i32 3>
+  %op = trunc <2 x i64> %lhs to <2 x i32>
+  %splat = shufflevector <2 x i32> %op, <2 x i32> poison, <2 x i32> <i32 0, i32 0>
+  %t = trunc <2 x i32> %splat to <2 x i8>
+  %r = sext <2 x i8> %t to <2 x i32>
+  ret <2 x i32> %r
+}
+
+define <2 x i32> @trunc_wide_lane_signbits(<2 x i8> %x, <2 x i64> %wide0) {
+; CHECK-LABEL: trunc_wide_lane_signbits:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    vpshufd {{.*#+}} xmm0 = xmm1[2,2,2,2]
+; CHECK-NEXT:    vpslld $24, %xmm0, %xmm0
+; CHECK-NEXT:    vpsrad $24, %xmm0, %xmm0
+; CHECK-NEXT:    ret{{[l|q]}}
+  %xe = sext <2 x i8> %x to <2 x i64>
+  %lhs = shufflevector <2 x i64> %xe, <2 x i64> %wide0, <2 x i32> <i32 0, i32 3>
+  %op = trunc <2 x i64> %lhs to <2 x i32>
+  %splat = shufflevector <2 x i32> %op, <2 x i32> poison, <2 x i32> <i32 1, i32 1>
+  %t = trunc <2 x i32> %splat to <2 x i8>
+  %r = sext <2 x i8> %t to <2 x i32>
+  ret <2 x i32> %r
+}
