@@ -868,3 +868,88 @@ define i1 @mixed_cc(i8 %x) {
   %res = and i1 %c1, %c2
   ret i1 %res
 }
+
+; A full-width NOT must retain its upper bits when the mask can observe them.
+define i8 @not_setcc_full_mask(i32 %x, i8 %mask) {
+; NOBMI-LABEL: not_setcc_full_mask:
+; NOBMI:       # %bb.0:
+; NOBMI-NEXT:    testl %edi, %edi
+; NOBMI-NEXT:    sete %al
+; NOBMI-NEXT:    notb %al
+; NOBMI-NEXT:    andb %sil, %al
+; NOBMI-NEXT:    retq
+;
+; BMI-LABEL: not_setcc_full_mask:
+; BMI:       # %bb.0:
+; BMI-NEXT:    xorl %eax, %eax
+; BMI-NEXT:    testl %edi, %edi
+; BMI-NEXT:    sete %al
+; BMI-NEXT:    andnl %esi, %eax, %eax
+; BMI-NEXT:    # kill: def $al killed $al killed $eax
+; BMI-NEXT:    retq
+  %cmp = icmp eq i32 %x, 0
+  %bool = zext i1 %cmp to i8
+  %not = xor i8 %bool, -1
+  %result = and i8 %not, %mask
+  ret i8 %result
+}
+
+define i8 @not_setcc_boolean_mask(i32 %x, i32 %y) {
+; NOBMI-LABEL: not_setcc_boolean_mask:
+; NOBMI:       # %bb.0:
+; NOBMI-NEXT:    testl %esi, %esi
+; NOBMI-NEXT:    sete %cl
+; NOBMI-NEXT:    testl %edi, %edi
+; NOBMI-NEXT:    setne %al
+; NOBMI-NEXT:    andb %cl, %al
+; NOBMI-NEXT:    retq
+;
+; BMI-LABEL: not_setcc_boolean_mask:
+; BMI:       # %bb.0:
+; BMI-NEXT:    xorl %eax, %eax
+; BMI-NEXT:    testl %edi, %edi
+; BMI-NEXT:    sete %al
+; BMI-NEXT:    xorl %ecx, %ecx
+; BMI-NEXT:    testl %esi, %esi
+; BMI-NEXT:    sete %cl
+; BMI-NEXT:    andnl %ecx, %eax, %eax
+; BMI-NEXT:    # kill: def $al killed $al killed $eax
+; BMI-NEXT:    retq
+  %cmp = icmp eq i32 %x, 0
+  %bool = zext i1 %cmp to i8
+  %not = xor i8 %bool, -1
+  %cmp2 = icmp eq i32 %y, 0
+  %mask = zext i1 %cmp2 to i8
+  %result = and i8 %not, %mask
+  ret i8 %result
+}
+
+define i8 @not_setcc_boolean_mask_commute(i32 %x, i32 %y) {
+; NOBMI-LABEL: not_setcc_boolean_mask_commute:
+; NOBMI:       # %bb.0:
+; NOBMI-NEXT:    testl %esi, %esi
+; NOBMI-NEXT:    sete %cl
+; NOBMI-NEXT:    testl %edi, %edi
+; NOBMI-NEXT:    setne %al
+; NOBMI-NEXT:    andb %cl, %al
+; NOBMI-NEXT:    retq
+;
+; BMI-LABEL: not_setcc_boolean_mask_commute:
+; BMI:       # %bb.0:
+; BMI-NEXT:    xorl %eax, %eax
+; BMI-NEXT:    testl %edi, %edi
+; BMI-NEXT:    sete %al
+; BMI-NEXT:    xorl %ecx, %ecx
+; BMI-NEXT:    testl %esi, %esi
+; BMI-NEXT:    sete %cl
+; BMI-NEXT:    andnl %ecx, %eax, %eax
+; BMI-NEXT:    # kill: def $al killed $al killed $eax
+; BMI-NEXT:    retq
+  %cmp = icmp eq i32 %x, 0
+  %bool = zext i1 %cmp to i8
+  %not = xor i8 %bool, -1
+  %cmp2 = icmp eq i32 %y, 0
+  %mask = zext i1 %cmp2 to i8
+  %result = and i8 %mask, %not
+  ret i8 %result
+}

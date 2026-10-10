@@ -53348,6 +53348,17 @@ static SDValue combineAnd(SDNode *N, SelectionDAG &DAG,
   SDLoc dl(N);
   const TargetLowering &TLI = DAG.getTargetLoweringInfo();
 
+  // A boolean mask makes NOT of a SETCC equivalent to inverting its condition.
+  SDValue SetCC, Mask;
+  if (sd_match(N, m_And(m_Not(m_Value(SetCC, m_SpecificOpc(X86ISD::SETCC))),
+                        m_Value(Mask))) &&
+      DAG.computeKnownBits(Mask).countMaxActiveBits() <= 1) {
+    X86::CondCode NewCC = X86::GetOppositeBranchCondition(
+        X86::CondCode(SetCC.getConstantOperandVal(0)));
+    SDValue Inverted = getSETCC(NewCC, SetCC.getOperand(1), dl, DAG);
+    return DAG.getNode(ISD::AND, dl, VT, Inverted, Mask);
+  }
+
   // If this is SSE1 only convert to FAND to avoid scalarization.
   if (Subtarget.hasSSE1() && !Subtarget.hasSSE2() && VT == MVT::v4i32) {
     return DAG.getBitcast(MVT::v4i32,
