@@ -96,7 +96,7 @@ name: wmma_nonzero_c
 body: |
   bb.0:
     ; CHECK-LABEL: name: @wmma_nonzero_c
-    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
     %a:_(s16) = G_FCONSTANT half 1.0
     %b:_(s16) = G_FCONSTANT half 1.0
     %c:_(s32) = G_FCONSTANT float 1.0
@@ -134,5 +134,174 @@ body: |
     %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %nan
     %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
     %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_accumulator_limit
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_accumulator_limit
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0x47DFFFFFE0000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_negative_accumulator_limit
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_negative_accumulator_limit
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0xC7DFFFFFE0000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_above_accumulator_limit
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_above_accumulator_limit
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0x47E0000000000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_below_negative_accumulator_limit
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_below_negative_accumulator_limit
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0xC7E0000000000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_max_accumulator
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_max_accumulator
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0x47EFFFFFE0000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_nan_accumulator
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_nan_accumulator
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0x7FF8000000000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_inf_accumulator
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_inf_accumulator
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0x7FF0000000000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_subnormal_accumulator
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_subnormal_accumulator
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0x36A0000000000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_dynamic_accumulator
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_dynamic_accumulator
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_IMPLICIT_DEF
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_mixed_accumulator
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_mixed_accumulator
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 1.0
+    %cn:_(s32) = G_FCONSTANT float -1.0
+    %cl:_(s32) = G_FCONSTANT float 0x47DFFFFFE0000000
+    %cnl:_(s32) = G_FCONSTANT float 0xC7DFFFFFE0000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %cn, %cl, %cnl
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
+...
+
+---
+name: wmma_undemanded_large_accumulator
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @wmma_undemanded_large_accumulator
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 1.0
+    %cl:_(s32) = G_FCONSTANT float 0x47EFFFFFE0000000
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %cl
     %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.wmma.f32.16x16x16.f16), %av, %bv, %cv
 ...

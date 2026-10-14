@@ -85,7 +85,7 @@ define i1 @inf_b() {
 
 define i1 @nonzero_c() {
 ; CHECK-LABEL: @nonzero_c(
-; CHECK: fcmp ueq float
+; CHECK: ret i1 false
   %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 1.0), <4 x half> splat (half 1.0), <4 x float> splat (float 1.0), i32 0, i32 0, i32 0)
   %elt = extractelement <4 x float> %d, i32 0
   %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
@@ -227,7 +227,7 @@ define i1 @wmma_inf() {
 
 define i1 @wmma_nonzero_c() {
 ; CHECK-LABEL: @wmma_nonzero_c(
-; CHECK: fcmp ueq float
+; CHECK: ret i1 false
   %d = call <8 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v8f32.v16f16(<16 x half> splat (half 1.0), <16 x half> splat (half 1.0), <8 x float> splat (float 1.0))
   %elt = extractelement <8 x float> %d, i32 0
   %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
@@ -274,6 +274,204 @@ define i1 @mfma_f32_overflow() {
 ; CHECK-LABEL: @mfma_f32_overflow(
 ; CHECK: fcmp ueq float
   %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x4f32(float 0x47EFFFFFE0000000, float 0x47EFFFFFE0000000, <4 x float> zeroinitializer, i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_accumulator_limit() {
+; CHECK-LABEL: @mfma_accumulator_limit(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0x47DFFFFFE0000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_negative_accumulator_limit() {
+; CHECK-LABEL: @mfma_negative_accumulator_limit(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0xC7DFFFFFE0000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_above_accumulator_limit() {
+; CHECK-LABEL: @mfma_above_accumulator_limit(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0x47E0000000000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_below_negative_accumulator_limit() {
+; CHECK-LABEL: @mfma_below_negative_accumulator_limit(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0xC7E0000000000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_max_accumulator() {
+; CHECK-LABEL: @mfma_max_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0x47EFFFFFE0000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_nan_accumulator() {
+; CHECK-LABEL: @mfma_nan_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0x7FF8000000000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_inf_accumulator() {
+; CHECK-LABEL: @mfma_inf_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0x7FF0000000000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_subnormal_accumulator() {
+; CHECK-LABEL: @mfma_subnormal_accumulator(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> splat (float 0x36A0000000000000), i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_dynamic_accumulator(<4 x float> %c) {
+; CHECK-LABEL: @mfma_dynamic_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> %c, i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_mixed_accumulator() {
+; CHECK-LABEL: @mfma_mixed_accumulator(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> <float 1.0, float -1.0, float 0x47DFFFFFE0000000, float 0xC7DFFFFFE0000000>, i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @mfma_undemanded_large_accumulator() {
+; CHECK-LABEL: @mfma_undemanded_large_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.mfma.f32.16x16x16f16(<4 x half> splat (half 65504.0), <4 x half> splat (half -65504.0), <4 x float> <float 1.0, float 1.0, float 1.0, float 0x47EFFFFFE0000000>, i32 0, i32 0, i32 0)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_accumulator_limit() {
+; CHECK-LABEL: @wmma_accumulator_limit(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0x47DFFFFFE0000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_negative_accumulator_limit() {
+; CHECK-LABEL: @wmma_negative_accumulator_limit(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0xC7DFFFFFE0000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_above_accumulator_limit() {
+; CHECK-LABEL: @wmma_above_accumulator_limit(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0x47E0000000000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_below_negative_accumulator_limit() {
+; CHECK-LABEL: @wmma_below_negative_accumulator_limit(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0xC7E0000000000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_max_accumulator() {
+; CHECK-LABEL: @wmma_max_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0x47EFFFFFE0000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_nan_accumulator() {
+; CHECK-LABEL: @wmma_nan_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0x7FF8000000000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_inf_accumulator() {
+; CHECK-LABEL: @wmma_inf_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0x7FF0000000000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_subnormal_accumulator() {
+; CHECK-LABEL: @wmma_subnormal_accumulator(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> splat (float 0x36A0000000000000))
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_dynamic_accumulator(<4 x float> %c) {
+; CHECK-LABEL: @wmma_dynamic_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> %c)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_mixed_accumulator() {
+; CHECK-LABEL: @wmma_mixed_accumulator(
+; CHECK: ret i1 false
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> <float 1.0, float -1.0, float 0x47DFFFFFE0000000, float 0xC7DFFFFFE0000000>)
+  %elt = extractelement <4 x float> %d, i32 0
+  %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
+  ret i1 %class
+}
+
+define i1 @wmma_undemanded_large_accumulator() {
+; CHECK-LABEL: @wmma_undemanded_large_accumulator(
+; CHECK: fcmp ueq float
+  %d = call <4 x float> @llvm.amdgcn.wmma.f32.16x16x16.f16.v4f32.v8f16(<8 x half> splat (half 65504.0), <8 x half> splat (half -65504.0), <4 x float> <float 1.0, float 1.0, float 1.0, float 0x47EFFFFFE0000000>)
   %elt = extractelement <4 x float> %d, i32 0
   %class = call i1 @llvm.is.fpclass.f32(float %elt, i32 519)
   ret i1 %class

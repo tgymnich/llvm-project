@@ -5425,10 +5425,15 @@ void computeKnownFPClass(const Value *V, const APInt &DemandedElts,
         break;
 
       // Each output sums at most 32 finite FP16 products, whose total
-      // magnitude is below 2^38. A zero accumulator cannot cause FP32 overflow.
+      // magnitude is below 2^38. Limiting C to half the largest finite FP32
+      // value leaves headroom for the products and intermediate rounding.
       // Require constants because lane-local facts do not cover cross-lane
       // reads.
-      auto IsFiniteOrZeroConstant = [](const Value *V, bool RequireZero) {
+      APFloat MaxAccumulator =
+          scalbn(APFloat::getLargest(APFloat::IEEEsingle()), -1,
+                 APFloat::rmNearestTiesToEven);
+      auto IsFiniteConstant = [&MaxAccumulator](const Value *V,
+                                                bool IsAccumulator) {
         const auto *C = dyn_cast<Constant>(V);
         if (!C)
           return false;
@@ -5437,15 +5442,18 @@ void computeKnownFPClass(const Value *V, const APInt &DemandedElts,
         for (unsigned I = 0; I != NumElts; ++I) {
           const auto *Elt =
               dyn_cast_or_null<ConstantFP>(C->getAggregateElement(I));
-          if (!Elt ||
-              (RequireZero ? !Elt->isZero() : !Elt->getValueAPF().isFinite()))
+          if (!Elt || !Elt->getValueAPF().isFinite())
+            return false;
+          if (IsAccumulator && !Elt->isZero() &&
+              Elt->getValueAPF().compareAbsoluteValue(MaxAccumulator) ==
+                  APFloat::cmpGreaterThan)
             return false;
         }
         return true;
       };
-      if (IsFiniteOrZeroConstant(II->getArgOperand(2), true) &&
-          IsFiniteOrZeroConstant(II->getArgOperand(0), false) &&
-          IsFiniteOrZeroConstant(II->getArgOperand(1), false))
+      if (IsFiniteConstant(II->getArgOperand(2), true) &&
+          IsFiniteConstant(II->getArgOperand(0), false) &&
+          IsFiniteConstant(II->getArgOperand(1), false))
         Known.knownNot(fcNan | fcInf);
       break;
     }

@@ -615,6 +615,10 @@ public:
   bool denormalsEnabledForType(const SelectionDAG &DAG, EVT VT) const;
   bool denormalsEnabledForType(LLT Ty, const MachineFunction &MF) const;
 
+  void computeKnownFPClassForTargetNode(SDValue Op, KnownFPClass &Known,
+                                        const APInt &DemandedElts,
+                                        const SelectionDAG &DAG,
+                                        unsigned Depth = 0) const override;
   bool isKnownNeverNaNForTargetNode(SDValue Op, const APInt &DemandedElts,
                                     const SelectionDAG &DAG, bool SNaN = false,
                                     unsigned Depth = 0) const override;

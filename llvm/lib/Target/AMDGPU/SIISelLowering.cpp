@@ -20548,17 +20548,10 @@ static void knownBitsForSBFE(const MachineInstr &MI, GISelValueTracking &VT,
     Known = Known.zext(BFEWidth);
 }
 
-void SITargetLowering::computeKnownFPClassForTargetInstr(
-    GISelValueTracking &Analysis, Register R, KnownFPClass &Known,
-    const APInt &DemandedElts, const MachineRegisterInfo &MRI,
-    unsigned Depth) const {
-  const MachineInstr *MI = MRI.getVRegDef(R);
-  if (MI->getOpcode() != AMDGPU::G_INTRINSIC_CONVERGENT)
-    return;
-
-  switch (cast<GIntrinsic>(MI)->getIntrinsicID()) {
+static bool isFP16MatrixIntrinsic(Intrinsic::ID IID) {
+  switch (IID) {
   default:
-    return;
+    return false;
   case Intrinsic::amdgcn_mfma_f32_32x32x4f16:
   case Intrinsic::amdgcn_mfma_f32_16x16x4f16:
   case Intrinsic::amdgcn_mfma_f32_4x4x4f16:
@@ -20567,17 +20560,39 @@ void SITargetLowering::computeKnownFPClassForTargetInstr(
   case Intrinsic::amdgcn_mfma_f32_16x16x32_f16:
   case Intrinsic::amdgcn_mfma_f32_32x32x16_f16:
   case Intrinsic::amdgcn_wmma_f32_16x16x16_f16:
-    break;
+    return true;
   }
+}
 
-  // Constants describe all participating lanes. At most 32 finite FP16
-  // products with a zero accumulator cannot overflow FP32.
+static bool isFiniteMatrixOperand(const APFloat &Elt, bool IsAccumulator) {
+  if (!Elt.isFinite())
+    return false;
+  if (!IsAccumulator || Elt.isZero())
+    return true;
+
+  // At most 32 finite FP16 products have total magnitude below 2^38.
+  // Leave headroom for the products and intermediate rounding.
+  APFloat MaxAccumulator = scalbn(APFloat::getLargest(APFloat::IEEEsingle()),
+                                  -1, APFloat::rmNearestTiesToEven);
+  return Elt.compareAbsoluteValue(MaxAccumulator) != APFloat::cmpGreaterThan;
+}
+
+void SITargetLowering::computeKnownFPClassForTargetInstr(
+    GISelValueTracking &Analysis, Register R, KnownFPClass &Known,
+    const APInt &DemandedElts, const MachineRegisterInfo &MRI,
+    unsigned Depth) const {
+  const MachineInstr *MI = MRI.getVRegDef(R);
+  if (MI->getOpcode() != AMDGPU::G_INTRINSIC_CONVERGENT ||
+      !isFP16MatrixIntrinsic(cast<GIntrinsic>(MI)->getIntrinsicID()))
+    return;
+
+  // Lane-local facts do not cover the matrix's cross-lane reads.
   for (unsigned I = 0; I != 3; ++I) {
     auto C = GFConstant::getConstant(MI->getOperand(I + 2).getReg(), MRI);
     if (!C || C->getKind() != GFConstant::GFConstantKind::FixedVector)
       return;
     if (!llvm::all_of(*C, [I](const APFloat &Elt) {
-          return I == 2 ? Elt.isZero() : Elt.isFinite();
+          return isFiniteMatrixOperand(Elt, I == 2);
         }))
       return;
   }
@@ -20917,6 +20932,28 @@ bool SITargetLowering::denormalsEnabledForType(
   }
 }
 
+void SITargetLowering::computeKnownFPClassForTargetNode(
+    SDValue Op, KnownFPClass &Known, const APInt &DemandedElts,
+    const SelectionDAG &DAG, unsigned Depth) const {
+  if (Op.getOpcode() != ISD::INTRINSIC_WO_CHAIN ||
+      !isFP16MatrixIntrinsic(
+          static_cast<Intrinsic::ID>(Op.getConstantOperandVal(0))))
+    return;
+
+  // Check all constant elements, including those in other participating lanes.
+  for (unsigned I = 0; I != 3; ++I) {
+    SDValue Src = Op.getOperand(I + 1);
+    if (Src.getOpcode() != ISD::BUILD_VECTOR)
+      return;
+    for (const SDValue &Elt : Src->ops()) {
+      const auto *C = dyn_cast<ConstantFPSDNode>(Elt);
+      if (!C || !isFiniteMatrixOperand(C->getValueAPF(), I == 2))
+        return;
+    }
+  }
+  Known.knownNot(fcNan | fcInf);
+}
+
 bool SITargetLowering::isKnownNeverNaNForTargetNode(SDValue Op,
                                                     const APInt &DemandedElts,
                                                     const SelectionDAG &DAG,
@@ -20930,6 +20967,11 @@ bool SITargetLowering::isKnownNeverNaNForTargetNode(SDValue Op,
       return true; // Clamped to 0.
     return DAG.isKnownNeverNaN(Op.getOperand(0), SNaN, Depth + 1);
   }
+
+  KnownFPClass Known;
+  computeKnownFPClassForTargetNode(Op, Known, DemandedElts, DAG, Depth);
+  if (Known.isKnownNever(SNaN ? fcSNan : fcNan))
+    return true;
 
   return AMDGPUTargetLowering::isKnownNeverNaNForTargetNode(Op, DemandedElts,
                                                             DAG, SNaN, Depth);
