@@ -5413,6 +5413,42 @@ void computeKnownFPClass(const Value *V, const APInt &DemandedElts,
     const CallInst *II = cast<CallInst>(Op);
     const Intrinsic::ID IID = II->getIntrinsicID();
     switch (IID) {
+    case Intrinsic::amdgcn_mfma_f32_32x32x4f16:
+    case Intrinsic::amdgcn_mfma_f32_16x16x4f16:
+    case Intrinsic::amdgcn_mfma_f32_4x4x4f16:
+    case Intrinsic::amdgcn_mfma_f32_32x32x8f16:
+    case Intrinsic::amdgcn_mfma_f32_16x16x16f16:
+    case Intrinsic::amdgcn_mfma_f32_16x16x32_f16:
+    case Intrinsic::amdgcn_mfma_f32_32x32x16_f16:
+    case Intrinsic::amdgcn_wmma_f32_16x16x16_f16: {
+      if ((InterestedClasses & (fcNan | fcInf)) == fcNone)
+        break;
+
+      // Each output sums at most 32 finite FP16 products, whose total
+      // magnitude is below 2^38. A zero accumulator cannot cause FP32 overflow.
+      // Require constants because lane-local facts do not cover cross-lane
+      // reads.
+      auto IsFiniteOrZeroConstant = [](const Value *V, bool RequireZero) {
+        const auto *C = dyn_cast<Constant>(V);
+        if (!C)
+          return false;
+        unsigned NumElts =
+            cast<FixedVectorType>(V->getType())->getNumElements();
+        for (unsigned I = 0; I != NumElts; ++I) {
+          const auto *Elt =
+              dyn_cast_or_null<ConstantFP>(C->getAggregateElement(I));
+          if (!Elt ||
+              (RequireZero ? !Elt->isZero() : !Elt->getValueAPF().isFinite()))
+            return false;
+        }
+        return true;
+      };
+      if (IsFiniteOrZeroConstant(II->getArgOperand(2), true) &&
+          IsFiniteOrZeroConstant(II->getArgOperand(0), false) &&
+          IsFiniteOrZeroConstant(II->getArgOperand(1), false))
+        Known.knownNot(fcNan | fcInf);
+      break;
+    }
     case Intrinsic::fabs: {
       if ((InterestedClasses & (fcNan | fcPositive)) != fcNone) {
         // If we only care about the sign bit we don't need to inspect the

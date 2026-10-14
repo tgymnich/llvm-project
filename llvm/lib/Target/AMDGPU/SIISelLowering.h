@@ -583,6 +583,11 @@ public:
                                         Register R,
                                         const MachineRegisterInfo &MRI,
                                         unsigned Depth = 0) const override;
+  void computeKnownFPClassForTargetInstr(GISelValueTracking &Analysis,
+                                         Register R, KnownFPClass &Known,
+                                         const APInt &DemandedElts,
+                                         const MachineRegisterInfo &MRI,
+                                         unsigned Depth = 0) const override;
   bool isSDNodeSourceOfDivergence(const SDNode *N, FunctionLoweringInfo *FLI,
                                   UniformityInfo *UA) const override;
 

@@ -35,6 +35,7 @@
 #include "llvm/CodeGen/GlobalISel/GISelValueTracking.h"
 #include "llvm/CodeGen/GlobalISel/GenericMachineInstrs.h"
 #include "llvm/CodeGen/GlobalISel/MIPatternMatch.h"
+#include "llvm/CodeGen/GlobalISel/Utils.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
@@ -20545,6 +20546,42 @@ static void knownBitsForSBFE(const MachineInstr &MI, GISelValueTracking &VT,
     Known = Known.sext(BFEWidth);
   else
     Known = Known.zext(BFEWidth);
+}
+
+void SITargetLowering::computeKnownFPClassForTargetInstr(
+    GISelValueTracking &Analysis, Register R, KnownFPClass &Known,
+    const APInt &DemandedElts, const MachineRegisterInfo &MRI,
+    unsigned Depth) const {
+  const MachineInstr *MI = MRI.getVRegDef(R);
+  if (MI->getOpcode() != AMDGPU::G_INTRINSIC_CONVERGENT)
+    return;
+
+  switch (cast<GIntrinsic>(MI)->getIntrinsicID()) {
+  default:
+    return;
+  case Intrinsic::amdgcn_mfma_f32_32x32x4f16:
+  case Intrinsic::amdgcn_mfma_f32_16x16x4f16:
+  case Intrinsic::amdgcn_mfma_f32_4x4x4f16:
+  case Intrinsic::amdgcn_mfma_f32_32x32x8f16:
+  case Intrinsic::amdgcn_mfma_f32_16x16x16f16:
+  case Intrinsic::amdgcn_mfma_f32_16x16x32_f16:
+  case Intrinsic::amdgcn_mfma_f32_32x32x16_f16:
+  case Intrinsic::amdgcn_wmma_f32_16x16x16_f16:
+    break;
+  }
+
+  // Constants describe all participating lanes. At most 32 finite FP16
+  // products with a zero accumulator cannot overflow FP32.
+  for (unsigned I = 0; I != 3; ++I) {
+    auto C = GFConstant::getConstant(MI->getOperand(I + 2).getReg(), MRI);
+    if (!C || C->getKind() != GFConstant::GFConstantKind::FixedVector)
+      return;
+    if (!llvm::all_of(*C, [I](const APFloat &Elt) {
+          return I == 2 ? Elt.isZero() : Elt.isFinite();
+        }))
+      return;
+  }
+  Known.knownNot(fcNan | fcInf);
 }
 
 void SITargetLowering::computeKnownBitsForTargetInstr(

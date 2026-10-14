@@ -1,0 +1,209 @@
+# RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=gfx950 -passes="print<gisel-value-tracking-fpclass>" %s -filetype=null 2>&1 | FileCheck %s
+
+---
+name: finite_32x32x4f16
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @finite_32x32x4f16
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<32 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c
+    %d:_(<32 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.32x32x4f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: finite_16x16x4f16
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @finite_16x16x4f16
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<16 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c
+    %d:_(<16 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x4f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: finite_4x4x4f16
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @finite_4x4x4f16
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.4x4x4f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: finite_32x32x8f16
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @finite_32x32x8f16
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<16 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c
+    %d:_(<16 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.32x32x8f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: finite_16x16x16f16
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @finite_16x16x16f16
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: finite_16x16x32_f16
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @finite_16x16x32_f16
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x32.f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: finite_32x32x16_f16
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @finite_32x32x16_f16
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<8 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a, %a, %a, %a, %a
+    %bv:_(<8 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b, %b, %b, %b, %b
+    %cv:_(<16 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c, %c
+    %d:_(<16 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.32x32x16.f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: nan_a
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @nan_a
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 0xH7E00
+    %b:_(s16) = G_FCONSTANT half 1.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: inf_b
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @inf_b
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 0.0
+    %b:_(s16) = G_FCONSTANT half 0xH7C00
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: nonzero_c
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @nonzero_c
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 1.0
+    %b:_(s16) = G_FCONSTANT half 1.0
+    %c:_(s32) = G_FCONSTANT float 1.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: dynamic_a
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @dynamic_a
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_IMPLICIT_DEF
+    %b:_(s16) = G_FCONSTANT half 1.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 0, 0, 0
+...
+
+---
+name: non_splat
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @non_splat
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %b, %a, %b
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %a, %b, %a
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 1, 1, 1
+...
+---
+name: mixed_nan
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @mixed_nan
+    ; CHECK: %d:_ FPClasses:(all) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 1.0
+    %b:_(s16) = G_FCONSTANT half 0xH7E00
+    %c:_(s32) = G_FCONSTANT float 0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %b
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 0, 0, 0
+...
+---
+name: negative_zero_c
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: @negative_zero_c
+    ; CHECK: %d:_ FPClasses:(zero sub norm) SignBitKnown:?
+    %a:_(s16) = G_FCONSTANT half 65504.0
+    %b:_(s16) = G_FCONSTANT half -65504.0
+    %c:_(s32) = G_FCONSTANT float -0.0
+    %av:_(<4 x s16>) = G_BUILD_VECTOR %a, %a, %a, %a
+    %bv:_(<4 x s16>) = G_BUILD_VECTOR %b, %b, %b, %b
+    %cv:_(<4 x s32>) = G_BUILD_VECTOR %c, %c, %c, %c
+    %d:_(<4 x s32>) = G_INTRINSIC_CONVERGENT intrinsic(@llvm.amdgcn.mfma.f32.16x16x16f16), %av, %bv, %cv, 0, 0, 0
+...
