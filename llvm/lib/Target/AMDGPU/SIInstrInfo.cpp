@@ -7463,8 +7463,13 @@ void SIInstrInfo::legalizeGenericOperand(MachineBasicBlock &InsertMBB,
   Register OpReg = Op.getReg();
   unsigned OpSubReg = Op.getSubReg();
 
-  const TargetRegisterClass *OpRC = RI.getSubClassWithSubReg(
-      RI.getRegClassForReg(MRI, OpReg), OpSubReg);
+  const TargetRegisterClass *OpRC = RI.getRegClassForOperandReg(MRI, Op);
+  if (ST.useRealTrue16Insts() &&
+      RI.getMatchingSuperRegClass(OpRC, DstRC, AMDGPU::lo16)) {
+    OpSubReg = RI.composeSubRegIndices(OpSubReg, AMDGPU::lo16);
+    Op.setSubReg(OpSubReg);
+    OpRC = RI.getRegClassForOperandReg(MRI, Op);
+  }
 
   // Check if operand is already the correct register class.
   if (DstRC == OpRC)
@@ -8963,8 +8968,11 @@ void SIInstrInfo::moveToVALUImpl(
     if (Inst.isCopy() && Inst.getOperand(1).getReg().isVirtual()) {
       Register NewDstReg = Inst.getOperand(1).getReg();
       const TargetRegisterClass *SrcRC = RI.getRegClassForReg(MRI, NewDstReg);
+      unsigned SrcSubReg = Inst.getOperand(1).getSubReg();
       if (const TargetRegisterClass *CommonRC =
-              RI.getCommonSubClass(NewDstRC, SrcRC)) {
+              RI.getCommonSubClass(NewDstRC, SrcRC);
+          CommonRC && (!SrcSubReg || RI.getSubRegIdxSize(SrcSubReg) ==
+                                         RI.getRegSizeInBits(*NewDstRC))) {
         // Instead of creating a copy where src and dst are the same register
         // class, we just replace all uses of dst with src.  These kinds of
         // copies interfere with the heuristics MachineSink uses to decide
@@ -8972,7 +8980,6 @@ void SIInstrInfo::moveToVALUImpl(
         // that copies will end up as machine instructions and not be
         // eliminated.
         addUsersToMoveToVALUWorklist(DstReg, MRI, Worklist);
-        unsigned SrcSubReg = Inst.getOperand(1).getSubReg();
         bool IsUndef = Inst.getOperand(1).isUndef();
         for (MachineOperand &UseMO :
              make_early_inc_range(MRI.use_operands(DstReg))) {
@@ -9013,7 +9020,8 @@ void SIInstrInfo::moveToVALUImpl(
     if (ST.useRealTrue16Insts() && Inst.isCopy() &&
         Inst.getOperand(1).getReg().isVirtual() &&
         RI.isVGPR(MRI, Inst.getOperand(1).getReg())) {
-      const TargetRegisterClass *SrcRegRC = getOpRegClass(Inst, 1);
+      const TargetRegisterClass *SrcRegRC =
+          RI.getRegClassForOperandReg(MRI, Inst.getOperand(1));
       if (RI.getMatchingSuperRegClass(NewDstRC, SrcRegRC, AMDGPU::lo16)) {
         Register NewDstReg = MRI.createVirtualRegister(NewDstRC);
         Register Undef = MRI.createVirtualRegister(&AMDGPU::VGPR_16RegClass);
@@ -9021,7 +9029,8 @@ void SIInstrInfo::moveToVALUImpl(
                 get(AMDGPU::IMPLICIT_DEF), Undef);
         BuildMI(*Inst.getParent(), &Inst, Inst.getDebugLoc(),
                 get(AMDGPU::REG_SEQUENCE), NewDstReg)
-            .addReg(Inst.getOperand(1).getReg())
+            .addReg(Inst.getOperand(1).getReg(), {},
+                    Inst.getOperand(1).getSubReg())
             .addImm(AMDGPU::lo16)
             .addReg(Undef)
             .addImm(AMDGPU::hi16);
