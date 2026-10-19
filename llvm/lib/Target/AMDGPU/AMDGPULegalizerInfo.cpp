@@ -1244,14 +1244,15 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST_,
 
   // TODO: Do we need to clamp maximum bitwidth?
   getActionDefinitionsBuilder(G_TRUNC)
-    .legalIf(isScalar(0))
-    .legalFor({{V2S16, V2S32}})
-    .clampMaxNumElements(0, S16, 2)
-    // Avoid scalarizing in cases that should be truly illegal. In unresolvable
-    // situations (like an invalid implicit use), we don't want to infinite loop
-    // in the legalizer.
-    .fewerElementsIf(elementTypeIsLegal(0), LegalizeMutations::scalarize(0))
-    .alwaysLegal();
+      .customIf(all(typeIs(0, S16), scalarWiderThan(1, 32)))
+      .legalIf(isScalar(0))
+      .legalFor({{V2S16, V2S32}})
+      .clampMaxNumElements(0, S16, 2)
+      // Avoid scalarizing in cases that should be truly illegal. In
+      // unresolvable situations (like an invalid implicit use), we don't want
+      // to infinite loop in the legalizer.
+      .fewerElementsIf(elementTypeIsLegal(0), LegalizeMutations::scalarize(0))
+      .alwaysLegal();
 
   getActionDefinitionsBuilder({G_SEXT, G_ZEXT, G_ANYEXT})
     .legalFor({{S64, S32}, {S32, S16}, {S64, S16},
@@ -2357,6 +2358,14 @@ bool AMDGPULegalizerInfo::legalizeCustom(
   MachineRegisterInfo &MRI = *B.getMRI();
 
   switch (MI.getOpcode()) {
+  case TargetOpcode::G_TRUNC: {
+    Register Src = MI.getOperand(1).getReg();
+    Register Dst = MI.getOperand(0).getReg();
+    auto Trunc32 = B.buildTrunc(LLT::integer(32), Src);
+    B.buildTrunc(Dst, Trunc32.getReg(0));
+    MI.eraseFromParent();
+    return true;
+  }
   case TargetOpcode::G_ADDRSPACE_CAST:
     return legalizeAddrSpaceCast(MI, MRI, B);
   case TargetOpcode::G_INTRINSIC_ROUNDEVEN:
