@@ -8976,8 +8976,44 @@ void SIInstrInfo::moveToVALUImpl(
         addUsersToMoveToVALUWorklist(DstReg, MRI, Worklist);
         unsigned SrcSubReg = Inst.getOperand(1).getSubReg();
         bool IsUndef = Inst.getOperand(1).isUndef();
+
+        // A 16-bit subregister source only fills the low half of dst. Copies
+        // and PHIs of the full value, and subregister reads, need it widened.
+        const TargetRegisterClass *SrcSubRC =
+            RI.getSubRegisterClass(SrcRC, SrcSubReg);
+        auto NeedsWideValue = [&](const MachineOperand &UseMO) {
+          if (UseMO.getSubReg())
+            return true;
+          const MachineInstr &UseMI = *UseMO.getParent();
+          if (!UseMI.isCopy() && !UseMI.isPHI())
+            return false;
+          Register UseDst = UseMI.getOperand(0).getReg();
+          return UseDst.isVirtual() &&
+                 !RI.getCommonSubClass(
+                     RI.getEquivalentVGPRClass(MRI.getRegClass(UseDst)),
+                     SrcSubRC);
+        };
+
+        Register WideReg;
         for (MachineOperand &UseMO :
              make_early_inc_range(MRI.use_operands(DstReg))) {
+          if (SrcSubReg && NeedsWideValue(UseMO)) {
+            if (!WideReg) {
+              WideReg = MRI.createVirtualRegister(NewDstRC);
+              Register Undef =
+                  MRI.createVirtualRegister(&AMDGPU::VGPR_16RegClass);
+              BuildMI(*Inst.getParent(), &Inst, Inst.getDebugLoc(),
+                      get(AMDGPU::IMPLICIT_DEF), Undef);
+              BuildMI(*Inst.getParent(), &Inst, Inst.getDebugLoc(),
+                      get(AMDGPU::REG_SEQUENCE), WideReg)
+                  .addReg(NewDstReg, getUndefRegState(IsUndef), SrcSubReg)
+                  .addImm(AMDGPU::lo16)
+                  .addReg(Undef)
+                  .addImm(AMDGPU::hi16);
+            }
+            UseMO.setReg(WideReg);
+            continue;
+          }
           UseMO.setSubReg(
               RI.composeSubRegIndices(SrcSubReg, UseMO.getSubReg()));
           UseMO.setReg(NewDstReg);
