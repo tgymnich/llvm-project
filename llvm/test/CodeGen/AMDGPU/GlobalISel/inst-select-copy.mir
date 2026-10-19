@@ -254,21 +254,14 @@ body: |
     liveins: $sgpr0_sgpr1
 
     ; WAVE64-LABEL: name: copy_s1_vcc_to_vcc
-    ; WAVE64: liveins: $sgpr0_sgpr1
-    ; WAVE64-NEXT: {{  $}}
-    ; WAVE64-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
-    ; WAVE64-NEXT: [[COPY1:%[0-9]+]]:sreg_64_xexec = COPY [[COPY]]
-    ; WAVE64-NEXT: S_ENDPGM 0, implicit [[COPY1]]
+    ; WAVE64: [[COPY:%[0-9]+]]:sreg_64_xexec = IMPLICIT_DEF
+    ; WAVE64-NEXT: S_ENDPGM 0, implicit [[COPY]]
     ;
     ; WAVE32-LABEL: name: copy_s1_vcc_to_vcc
-    ; WAVE32: liveins: $sgpr0_sgpr1
-    ; WAVE32-NEXT: {{  $}}
-    ; WAVE32-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
-    ; WAVE32-NEXT: [[COPY1:%[0-9]+]]:sreg_32_xm0_xexec = COPY [[COPY]]
-    ; WAVE32-NEXT: S_ENDPGM 0, implicit [[COPY1]]
-    %0:sgpr(s32) = COPY $sgpr0
-    %1:vcc(s1) = G_TRUNC %0
-    %2:vcc(s1) = COPY %1
+    ; WAVE32: [[COPY:%[0-9]+]]:sreg_32_xm0_xexec = IMPLICIT_DEF
+    ; WAVE32-NEXT: S_ENDPGM 0, implicit [[COPY]]
+    %0:vcc(s1) = G_IMPLICIT_DEF
+    %2:vcc(s1) = COPY %0
     S_ENDPGM 0, implicit %2
 
 ...

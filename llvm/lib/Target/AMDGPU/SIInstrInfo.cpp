@@ -5468,6 +5468,69 @@ bool SIInstrInfo::verifyInstruction(const MachineInstr &MI,
   const MachineFunction *MF = MI.getMF();
   const MachineRegisterInfo &MRI = MF->getRegInfo();
 
+  if ((MI.isCopy() || MI.isPHI()) && MI.getNumOperands()) {
+    auto GetSize = [&](const MachineOperand &MO) {
+      if (unsigned SubReg = MO.getSubReg())
+        return TypeSize::getFixed(RI.getSubRegIdxSize(SubReg));
+      return RI.getRegSizeInBits(MO.getReg(), MRI);
+    };
+
+    const MachineOperand &Dst = MI.getOperand(0);
+    if (Dst.isReg() && Dst.getReg()) {
+      TypeSize DstSize = GetSize(Dst);
+      for (const MachineOperand &Src : MI.explicit_uses()) {
+        if (!Src.isReg() || !Src.getReg())
+          continue;
+        TypeSize SrcSize = GetSize(Src);
+        if (DstSize == SrcSize)
+          continue;
+
+        if (MI.isCopy()) {
+          // Physical registers can hold narrow values and wave masks.
+          auto IsLegalPhysCopy = [&](const MachineOperand &Phys,
+                                     const MachineOperand &Virt) {
+            if (!Phys.getReg().isPhysical() || !Virt.getReg().isVirtual() ||
+                Phys.getSubReg() || Virt.getSubReg())
+              return false;
+            LLT Ty = MRI.getType(Virt.getReg());
+            return Ty.isValid() &&
+                   any_of(RI.regclasses(), [&](const TargetRegisterClass &RC) {
+                     return RC.contains(Phys.getReg()) &&
+                            RI.isTypeLegalForClass(RC, Ty);
+                   });
+          };
+          if (IsLegalPhysCopy(Dst, Src) || IsLegalPhysCopy(Src, Dst))
+            continue;
+
+          // SCC copies materialize or test a scalar boolean.
+          if ((Dst.getReg() == AMDGPU::SCC &&
+               (SrcSize == 32 || SrcSize == 64)) ||
+              (Src.getReg() == AMDGPU::SCC && (DstSize == 32 || DstSize == 64)))
+            continue;
+
+          if ((Dst.getReg() == AMDGPU::VCC || Dst.getReg() == AMDGPU::VCC_LO) &&
+              SrcSize == 32 &&
+              (Src.getReg().isPhysical()
+                   ? AMDGPU::VGPR_32RegClass.contains(Src.getReg())
+                   : MRI.getRegClassOrNull(Src.getReg()) ==
+                         &AMDGPU::VGPR_32RegClass))
+            continue;
+        }
+
+        // True16 operands are widened when scalar operands require 32 bits.
+        if (ST.useRealTrue16Insts() && Fix16BitCopies &&
+            (MI.isCopy() || (!Dst.getSubReg() && !Src.getSubReg())) &&
+            ((DstSize == 16 && SrcSize == 32) ||
+             (DstSize == 32 && SrcSize == 16)))
+          continue;
+
+        ErrInfo = MI.isCopy() ? "COPY operands have mismatched sizes"
+                              : "PHI operands have mismatched sizes";
+        return false;
+      }
+    }
+  }
+
   // FIXME: At this point the COPY verify is done only for non-ssa forms.
   // Find a better property to recognize the point where instruction selection
   // is just done.

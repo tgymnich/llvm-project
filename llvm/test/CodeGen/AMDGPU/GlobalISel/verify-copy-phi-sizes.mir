@@ -1,0 +1,85 @@
+# RUN: split-file %s %t
+# RUN: not --crash llc -mtriple=amdgcn -mcpu=gfx1250 -run-pass=machineverifier %t/invalid.mir -o - 2>&1 | FileCheck %s --check-prefix=ERR
+# RUN: not --crash llc -mtriple=amdgcn -mcpu=gfx1250 --passes='machine-function(verify)' %t/invalid.mir -o - 2>&1 | FileCheck %s --check-prefix=ERR
+# RUN: llc -mtriple=amdgcn -mcpu=gfx1250 -run-pass=machineverifier %t/valid.mir -o - | FileCheck %s --check-prefix=VALID
+# RUN: llc -mtriple=amdgcn -mcpu=gfx1250 --passes='machine-function(verify)' %t/valid.mir -o - | FileCheck %s --check-prefix=VALID
+
+# ERR-COUNT-6: Bad machine code: COPY operands have mismatched sizes
+# ERR-COUNT-3: Bad machine code: PHI operands have mismatched sizes
+# ERR-NOT: Bad machine code
+
+#--- invalid.mir
+---
+name: invalid_copies
+tracksRegLiveness: true
+body: |
+  bb.0:
+    successors: %bb.1
+    liveins: $sgpr0_sgpr1
+    %0:vgpr_32 = COPY $sgpr0_sgpr1
+    %1:vgpr(s32) = COPY $sgpr0_sgpr1
+    $vgpr0 = COPY $sgpr0_sgpr1
+    %2:sreg_64 = IMPLICIT_DEF
+    %3:vgpr_32 = COPY %2
+    %4:vreg_64 = COPY %2.sub0
+    %5:vgpr(s32) = G_IMPLICIT_DEF
+    %6:sreg_64 = COPY %5
+    %8:vgpr_32 = IMPLICIT_DEF
+    %9:vgpr(s64) = G_IMPLICIT_DEF
+    S_BRANCH %bb.1
+
+  bb.1:
+    %10:vreg_64 = PHI %8, %bb.0
+    %11:vgpr_32 = PHI %8.lo16, %bb.0
+    %12:vgpr(s32) = PHI %9, %bb.0
+...
+
+#--- valid.mir
+---
+name: valid_copies
+body: |
+  bb.0:
+    liveins: $sgpr0_sgpr1, $scc, $vgpr0
+    ; VALID-LABEL: name: valid_copies
+    ; VALID: %{{[0-9]+}}:vgpr_32 = COPY %{{[0-9]+}}.sub0
+    ; VALID: %{{[0-9]+}}:sgpr(s1) = COPY $scc
+    ; VALID: %{{[0-9]+}}:sreg_32 = COPY $scc
+    ; VALID: %{{[0-9]+}}:sgpr(s16) = COPY $sgpr0
+    ; VALID: %{{[0-9]+}}:sreg_32 = COPY %{{[0-9]+}}.lo16
+    %0:vgpr_32 = COPY $sgpr0
+    %1:vgpr(s64) = COPY $sgpr0_sgpr1
+    %2:sreg_64 = IMPLICIT_DEF
+    %3:vgpr_32 = COPY %2.sub0
+    %4:sgpr(s1) = COPY $scc
+    %5:sreg_32 = COPY $scc
+    %6:sgpr(s16) = COPY $sgpr0
+    %7:vcc(s1) = COPY %4
+    %8:sreg_32 = COPY %0.lo16
+    $vcc = COPY $vgpr0
+...
+---
+name: valid_partial_copy
+body: |
+  bb.0:
+    ; VALID-LABEL: name: valid_partial_copy
+    ; VALID: undef %{{[0-9]+}}.lo16:vgpr_32 = COPY %{{[0-9]+}}
+    %9:vgpr_16 = IMPLICIT_DEF
+    undef %10.lo16:vgpr_32 = COPY %9
+...
+---
+name: valid_phis
+tracksRegLiveness: true
+body: |
+  bb.0:
+    successors: %bb.1
+    %0:vgpr_32 = IMPLICIT_DEF
+    %1:vgpr(s32) = G_IMPLICIT_DEF
+    S_BRANCH %bb.1
+
+  bb.1:
+    ; VALID-LABEL: name: valid_phis
+    ; VALID: %{{[0-9]+}}:vgpr_16 = PHI %{{[0-9]+}}.lo16, %bb.0
+    ; VALID: %{{[0-9]+}}:vgpr(s32) = PHI %{{[0-9]+}}(s32), %bb.0
+    %2:vgpr_16 = PHI %0.lo16, %bb.0
+    %3:vgpr(s32) = PHI %1, %bb.0
+...
