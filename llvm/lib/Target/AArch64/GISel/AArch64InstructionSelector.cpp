@@ -1373,7 +1373,7 @@ static Register getTestBitReg(Register Reg, uint64_t &Bit, bool &Invert,
     // (tbz (trunc x), b) -> (tbz x, b) is always safe, because the bit number
     // on the truncated x is the same as the bit number on x.
     if (Opc == TargetOpcode::G_ANYEXT || Opc == TargetOpcode::G_ZEXT ||
-        Opc == TargetOpcode::G_TRUNC) {
+        Opc == TargetOpcode::G_SEXT || Opc == TargetOpcode::G_TRUNC) {
       if (Opc == TargetOpcode::G_ZEXT)
         HasZext = true;
 
@@ -1382,11 +1382,53 @@ static Register getTestBitReg(Register Reg, uint64_t &Bit, bool &Invert,
       if (!NextReg.isValid() || !MRI.hasOneNonDBGUse(NextReg))
         break;
       TypeSize InSize = MRI.getType(NextReg).getSizeInBits();
-      if (Bit >= InSize)
+      if (Opc == TargetOpcode::G_SEXT)
+        Bit = std::min<uint64_t>(Bit, InSize.getFixedValue() - 1);
+      else if (Bit >= InSize)
         break;
 
       // NextReg is worth folding. Keep looking.
       Reg = NextReg;
+      continue;
+    }
+
+    if (Opc == TargetOpcode::G_SEXT_INREG) {
+      Register Src = MI->getOperand(1).getReg();
+      int64_t Width = MI->getOperand(2).getImm();
+      assert(Width > 0 &&
+             static_cast<uint64_t>(Width) < MRI.getType(Src).getSizeInBits() &&
+             "Invalid sign-extension width");
+      Bit = std::min<uint64_t>(Bit, Width - 1);
+      Reg = Src;
+      continue;
+    }
+
+    if (Opc == TargetOpcode::G_UBFX || Opc == TargetOpcode::G_SBFX) {
+      Register Src = MI->getOperand(1).getReg();
+      auto LSBCst =
+          getIConstantVRegValWithLookThrough(MI->getOperand(2).getReg(), MRI);
+      auto WidthCst =
+          getIConstantVRegValWithLookThrough(MI->getOperand(3).getReg(), MRI);
+      if (!LSBCst || !WidthCst)
+        break;
+
+      unsigned SrcSize = MRI.getType(Src).getSizeInBits();
+      if (LSBCst->Value.uge(SrcSize) || WidthCst->Value.ugt(SrcSize))
+        break;
+
+      uint64_t LSB = LSBCst->Value.getZExtValue();
+      uint64_t Width = WidthCst->Value.getZExtValue();
+      if (Width == 0 || Width > SrcSize - LSB)
+        break;
+
+      if (Opc == TargetOpcode::G_SBFX)
+        Bit = std::min(Bit, Width - 1);
+      else if (Bit >= Width)
+        break;
+
+      // Extracted bit B corresponds to source bit LSB + B.
+      Bit += LSB;
+      Reg = Src;
       continue;
     }
 
@@ -1397,12 +1439,13 @@ static Register getTestBitReg(Register Reg, uint64_t &Bit, bool &Invert,
     default:
       break;
     case TargetOpcode::G_AND:
+    case TargetOpcode::G_OR:
     case TargetOpcode::G_XOR: {
       TestReg = MI->getOperand(1).getReg();
       Register ConstantReg = MI->getOperand(2).getReg();
       auto VRegAndVal = getIConstantVRegValWithLookThrough(ConstantReg, MRI);
       if (!VRegAndVal) {
-        // AND commutes, check the other side for a constant.
+        // Logical operations commute, check the other side for a constant.
         // FIXME: Can we canonicalize the constant so that it's always on the
         // same side at some point earlier?
         std::swap(ConstantReg, TestReg);
@@ -1442,6 +1485,10 @@ static Register getTestBitReg(Register Reg, uint64_t &Bit, bool &Invert,
     case TargetOpcode::G_AND:
       // (tbz (and x, m), b) -> (tbz x, b) when the b-th bit of m is set.
       if ((*C >> Bit) & 1)
+        NextReg = TestReg;
+      break;
+    case TargetOpcode::G_OR:
+      if (!((*C >> Bit) & 1))
         NextReg = TestReg;
       break;
     case TargetOpcode::G_SHL:
