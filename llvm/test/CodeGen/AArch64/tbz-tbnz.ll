@@ -493,8 +493,7 @@ define void @test17(i64 %in) {
 ;
 ; CHECK-GI-LABEL: test17:
 ; CHECK-GI:       // %bb.0:
-; CHECK-GI-NEXT:    ubfx w8, w0, #3, #1
-; CHECK-GI-NEXT:    tbnz w8, #0, .LBB16_2
+; CHECK-GI-NEXT:    tbnz w0, #3, .LBB16_2
 ; CHECK-GI-NEXT:  // %bb.1: // %then
 ; CHECK-GI-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
 ; CHECK-GI-NEXT:    .cfi_def_cfa_offset 16
