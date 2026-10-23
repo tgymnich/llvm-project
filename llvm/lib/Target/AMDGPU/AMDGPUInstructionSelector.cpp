@@ -206,6 +206,15 @@ bool AMDGPUInstructionSelector::selectCOPY(MachineInstr &I) const {
     return true;
   }
 
+  // A lane mask can only be copied to an SGPR of the same width.
+  if (DstReg.isVirtual() && isVCC(SrcReg, *MRI)) {
+    const TargetRegisterClass *DstRC =
+        TRI.getConstrainedRegClassForReg(DstReg, *MRI);
+    if (!DstRC || !TRI.isSGPRClass(DstRC) ||
+        TRI.getRegSizeInBits(*DstRC) != STI.getWavefrontSize())
+      return false;
+  }
+
   for (const MachineOperand &MO : I.operands()) {
     if (MO.getReg().isPhysical())
       continue;

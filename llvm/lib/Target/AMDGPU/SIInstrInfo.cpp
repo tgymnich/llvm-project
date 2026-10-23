@@ -5461,11 +5461,96 @@ bool SIInstrInfo::verifyCopy(const MachineInstr &MI,
   return true;
 }
 
+bool SIInstrInfo::verifyCopyOrPHISizes(const MachineInstr &MI,
+                                       const MachineRegisterInfo &MRI,
+                                       StringRef &ErrInfo) const {
+  const MachineOperand &Dst = MI.getOperand(0);
+  if (!Dst.isReg() || !Dst.getReg())
+    return true;
+
+  auto GetRC = [&](Register Reg) {
+    return Reg.isVirtual() ? MRI.getRegClassOrNull(Reg)
+                           : RI.getMinimalPhysRegClass(Reg);
+  };
+  // Zero if the width is unknown.
+  auto GetSize = [&](const MachineOperand &MO) {
+    if (unsigned SubReg = MO.getSubReg())
+      return TypeSize::getFixed(RI.getSubRegIdxSize(SubReg));
+    if (!MRI.getType(MO.getReg()).isValid() && !GetRC(MO.getReg()))
+      return TypeSize::getZero();
+    return RI.getRegSizeInBits(MO.getReg(), MRI);
+  };
+  auto IsScalarSize = [](TypeSize Size) { return Size == 32 || Size == 64; };
+  auto IsVReg1 = [&](Register Reg) {
+    return Reg.isVirtual() &&
+           MRI.getRegClassOrNull(Reg) == &AMDGPU::VReg_1RegClass;
+  };
+  auto IsVReg1Peer = [&](Register Reg, TypeSize Size) {
+    const TargetRegisterClass *RC = GetRC(Reg);
+    return Size == 32 ||
+           (Size == ST.getWavefrontSize() && RC && RI.isSGPRClass(RC));
+  };
+
+  const bool IsCopy = MI.isCopy();
+  const Register DstReg = Dst.getReg();
+  const TypeSize DstSize = GetSize(Dst);
+  const bool DstHasType = MRI.getType(DstReg).isValid();
+  for (const MachineOperand &Src : MI.explicit_uses()) {
+    if (!Src.isReg() || !Src.getReg())
+      continue;
+
+    const Register SrcReg = Src.getReg();
+    const bool SrcHasType = MRI.getType(SrcReg).isValid();
+    const bool HasSubRegs = Dst.getSubReg() || Src.getSubReg();
+
+    // Defer typed COPYs without subregisters to generic verification.
+    const bool IsTypedCopy =
+        IsCopy && !HasSubRegs && (DstHasType || SrcHasType);
+    if (IsTypedCopy)
+      continue;
+
+    const TypeSize SrcSize = GetSize(Src);
+    if (DstSize.isZero() || SrcSize.isZero() || DstSize == SrcSize)
+      continue;
+
+    // VReg_1 values are lowered to wave masks or 32-bit booleans.
+    const bool IsVReg1Lowering =
+        !HasSubRegs && ((IsVReg1(DstReg) && IsVReg1Peer(SrcReg, SrcSize)) ||
+                        (IsVReg1(SrcReg) && IsVReg1Peer(DstReg, DstSize)));
+    if (IsVReg1Lowering)
+      continue;
+
+    // SCC copies materialize or test a scalar boolean.
+    const bool IsSCCCopy =
+        IsCopy && ((DstReg == AMDGPU::SCC && IsScalarSize(SrcSize)) ||
+                   (SrcReg == AMDGPU::SCC && IsScalarSize(DstSize)));
+    if (IsSCCCopy)
+      continue;
+
+    // TODO: Remove along with Fix16BitCopies.
+    const bool IsTrue16Widening =
+        ST.useRealTrue16Insts() && Fix16BitCopies && !DstHasType &&
+        !SrcHasType && (IsCopy || !HasSubRegs) &&
+        ((DstSize == 16 && SrcSize == 32) || (DstSize == 32 && SrcSize == 16));
+    if (IsTrue16Widening)
+      continue;
+
+    ErrInfo = IsCopy ? "COPY operands have mismatched sizes"
+                     : "PHI operands have mismatched sizes";
+    return false;
+  }
+  return true;
+}
+
 bool SIInstrInfo::verifyInstruction(const MachineInstr &MI,
                                     StringRef &ErrInfo) const {
   uint32_t Opcode = MI.getOpcode();
   const MachineFunction *MF = MI.getMF();
   const MachineRegisterInfo &MRI = MF->getRegInfo();
+
+  if ((MI.isCopy() || Opcode == TargetOpcode::PHI) &&
+      !verifyCopyOrPHISizes(MI, MRI, ErrInfo))
+    return false;
 
   // FIXME: At this point the COPY verify is done only for non-ssa forms.
   // Find a better property to recognize the point where instruction selection

@@ -216,6 +216,11 @@ private:
   bool verifyCopy(const MachineInstr &MI, const MachineRegisterInfo &MRI,
                   StringRef &ErrInfo) const;
 
+  /// Verify effective operand widths for a COPY or PHI.
+  bool verifyCopyOrPHISizes(const MachineInstr &MI,
+                            const MachineRegisterInfo &MRI,
+                            StringRef &ErrInfo) const;
+
   bool resultDependsOnExec(const MachineInstr &MI) const;
 
   MachineInstr *convertToThreeAddressImpl(MachineInstr &MI,
