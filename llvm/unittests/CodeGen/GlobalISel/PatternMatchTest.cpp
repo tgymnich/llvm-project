@@ -1013,6 +1013,36 @@ TEST_F(AArch64GISelMITest, AddLike) {
   EXPECT_FALSE(mi_match(Or2.getReg(0), *MRI, m_GAddLike(m_Reg(), m_Reg())));
 }
 
+TEST_F(AArch64GISelMITest, MatchConstantPredicatesWide) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  for (unsigned Width : {8u, 64u, 128u, 256u}) {
+    LLT Ty = LLT::scalar(Width);
+    auto AllOnes = B.buildConstant(Ty, APInt::getAllOnes(Width));
+    auto Zero = B.buildConstant(Ty, 0);
+    auto Copy = B.buildCopy(Ty, AllOnes);
+    EXPECT_TRUE(mi_match(AllOnes.getReg(0), *MRI, m_AllOnes()));
+    EXPECT_TRUE(mi_match(AllOnes.getReg(0), *MRI, m_SpecificICst(-1)));
+    EXPECT_TRUE(mi_match(AllOnes.getReg(0), *MRI,
+                         m_SpecificICst(APInt::getAllOnes(Width))));
+    EXPECT_FALSE(mi_match(Zero.getReg(0), *MRI, m_AllOnes()));
+    EXPECT_FALSE(mi_match(Zero.getReg(0), *MRI, m_SpecificICst(-1)));
+    EXPECT_FALSE(mi_match(Copy.getReg(0), *MRI, m_AllOnes()));
+    EXPECT_FALSE(mi_match(Copy.getReg(0), *MRI, m_SpecificICst(-1)));
+    EXPECT_EQ(cast<GConstant>(AllOnes.getInstr())->getValue(),
+              APInt::getAllOnes(Width));
+  }
+
+  auto Float = B.buildFConstant(LLT::scalar(32), -1.0);
+  Register NoDef = MRI->createGenericVirtualRegister(LLT::scalar(32));
+  for (Register Reg : {Float.getReg(0), NoDef}) {
+    EXPECT_FALSE(mi_match(Reg, *MRI, m_AllOnes()));
+    EXPECT_FALSE(mi_match(Reg, *MRI, m_SpecificICst(-1)));
+  }
+}
+
 } // namespace
 
 int main(int argc, char **argv) {

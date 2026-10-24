@@ -209,20 +209,30 @@ inline auto m_PosZeroFP() {
   return GFCstPredMatch([](const APFloat &V) { return V.isPosZero(); });
 }
 
+/// Returns the value of a literal G_CONSTANT, or null if it does not match.
+inline const APInt *matchConstantInt(Register Reg,
+                                     const MachineRegisterInfo &MRI) {
+  const MachineInstr *MI = MRI.getVRegDef(Reg);
+  if (!MI || MI->getOpcode() != TargetOpcode::G_CONSTANT)
+    return nullptr;
+  const MachineOperand &Operand = MI->getOperand(1);
+  return Operand.isCImm() ? &Operand.getCImm()->getValue() : nullptr;
+}
+
 /// Matcher for a specific constant value.
 struct SpecificConstantMatch {
   APInt RequestedVal;
   SpecificConstantMatch(const APInt &RequestedVal)
       : RequestedVal(RequestedVal) {}
   bool match(const MachineRegisterInfo &MRI, Register Reg) {
-    APInt MatchedVal;
-    if (mi_match(Reg, MRI, m_ICst(MatchedVal))) {
-      if (MatchedVal.getBitWidth() > RequestedVal.getBitWidth())
-        RequestedVal = RequestedVal.sext(MatchedVal.getBitWidth());
+    if (const APInt *MatchedVal = matchConstantInt(Reg, MRI)) {
+      if (MatchedVal->getBitWidth() > RequestedVal.getBitWidth())
+        RequestedVal = RequestedVal.sext(MatchedVal->getBitWidth());
       else
-        MatchedVal = MatchedVal.sext(RequestedVal.getBitWidth());
+        return APInt::isSameValue(MatchedVal->sext(RequestedVal.getBitWidth()),
+                                  RequestedVal);
 
-      return APInt::isSameValue(MatchedVal, RequestedVal);
+      return APInt::isSameValue(*MatchedVal, RequestedVal);
     }
     return false;
   }
@@ -263,8 +273,8 @@ inline BindImmMatch m_Imm(int64_t &Imm) { return BindImmMatch(Imm); }
 /// Matches an integer constant with all bits set, regardless of width.
 struct AllOnesConstantMatch {
   bool match(const MachineRegisterInfo &MRI, Register Reg) {
-    APInt MatchedVal;
-    return mi_match(Reg, MRI, m_ICst(MatchedVal)) && MatchedVal.isAllOnes();
+    const APInt *MatchedVal = matchConstantInt(Reg, MRI);
+    return MatchedVal && MatchedVal->isAllOnes();
   }
 };
 
