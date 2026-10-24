@@ -128,16 +128,13 @@ template <typename ConstT> struct ICstOrSplatMatch {
   ConstT &CR;
   ICstOrSplatMatch(ConstT &C) : CR(C) {}
   bool match(const MachineRegisterInfo &MRI, Register Reg) {
-    if (auto MaybeCst = matchConstant<ConstT>(Reg, MRI)) {
+    auto MaybeCst = MRI.getType(Reg).isVector()
+                        ? matchConstantSplat<ConstT>(Reg, MRI)
+                        : matchConstant<ConstT>(Reg, MRI);
+    if (MaybeCst) {
       CR = *MaybeCst;
       return true;
     }
-
-    if (auto MaybeCstSplat = matchConstantSplat<ConstT>(Reg, MRI)) {
-      CR = *MaybeCstSplat;
-      return true;
-    }
-
     return false;
   };
 };
@@ -182,8 +179,10 @@ struct GFCstOrSplatGFCstMatch {
   GFCstOrSplatGFCstMatch(std::optional<FPValueAndVReg> &FPValReg)
       : FPValReg(FPValReg) {}
   bool match(const MachineRegisterInfo &MRI, Register Reg) {
-    return (FPValReg = getFConstantSplat(Reg, MRI)) ||
-           (FPValReg = getFConstantVRegValWithLookThrough(Reg, MRI));
+    FPValReg = MRI.getType(Reg).isVector()
+                   ? getFConstantSplat(Reg, MRI)
+                   : getFConstantVRegValWithLookThrough(Reg, MRI);
+    return FPValReg.has_value();
   };
 };
 
@@ -298,6 +297,10 @@ struct SpecificConstantOrSplatMatch {
   SpecificConstantOrSplatMatch(const APInt &RequestedVal)
       : RequestedVal(RequestedVal) {}
   bool match(const MachineRegisterInfo &MRI, Register Reg) {
+    if (MRI.getType(Reg).isVector())
+      return isBuildVectorConstantSplat(Reg, MRI, RequestedVal,
+                                        /* AllowUndef */ false);
+
     APInt MatchedVal;
     if (mi_match(Reg, MRI, m_ICst(MatchedVal))) {
       if (MatchedVal.getBitWidth() > RequestedVal.getBitWidth())
@@ -308,8 +311,7 @@ struct SpecificConstantOrSplatMatch {
       if (APInt::isSameValue(MatchedVal, RequestedVal))
         return true;
     }
-    return isBuildVectorConstantSplat(Reg, MRI, RequestedVal,
-                                      /* AllowUndef */ false);
+    return false;
   }
 };
 

@@ -1013,6 +1013,63 @@ TEST_F(AArch64GISelMITest, AddLike) {
   EXPECT_FALSE(mi_match(Or2.getReg(0), *MRI, m_GAddLike(m_Reg(), m_Reg())));
 }
 
+TEST_F(AArch64GISelMITest, MatchConstantOrSplatCopies) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  LLT s32 = LLT::scalar(32);
+  LLT s64 = LLT::scalar(64);
+  LLT v2s32 = LLT::fixed_vector(2, s32);
+  auto Integer = B.buildConstant(s32, 7);
+  auto IntegerCopy = B.buildCopy(s32, Integer);
+  auto Extended = B.buildZExt(s64, Integer);
+  auto IntegerSplat = B.buildSplatBuildVector(v2s32, IntegerCopy);
+  auto IntegerSplatCopy = B.buildCopy(v2s32, IntegerSplat);
+  auto ExtendedSplat =
+      B.buildSplatBuildVector(LLT::fixed_vector(2, s64), Extended);
+  auto Undef = B.buildUndef(s32);
+  auto PartialIntegerSplat =
+      B.buildBuildVector(v2s32, {Integer.getReg(0), Undef.getReg(0)});
+  APInt IntegerValue;
+  int64_t SmallIntegerValue = 0;
+  for (Register Reg : {Integer.getReg(0), IntegerSplat.getReg(0),
+                       IntegerSplatCopy.getReg(0), ExtendedSplat.getReg(0)}) {
+    EXPECT_TRUE(mi_match(Reg, *MRI, m_ICstOrSplat(IntegerValue)));
+    EXPECT_EQ(IntegerValue.getSExtValue(), 7);
+    EXPECT_TRUE(mi_match(Reg, *MRI, m_ICstOrSplat(SmallIntegerValue)));
+    EXPECT_EQ(SmallIntegerValue, 7);
+    EXPECT_TRUE(mi_match(Reg, *MRI, m_SpecificICstOrSplat(7)));
+  }
+  for (Register Reg : {IntegerCopy.getReg(0), Extended.getReg(0),
+                       PartialIntegerSplat.getReg(0)}) {
+    EXPECT_FALSE(mi_match(Reg, *MRI, m_ICstOrSplat(IntegerValue)));
+    EXPECT_FALSE(mi_match(Reg, *MRI, m_ICstOrSplat(SmallIntegerValue)));
+    EXPECT_FALSE(mi_match(Reg, *MRI, m_SpecificICstOrSplat(7)));
+  }
+
+  auto Float = B.buildFConstant(s32, 7.0);
+  auto FloatCopy = B.buildCopy(s32, Float);
+  auto FloatSplat = B.buildSplatBuildVector(v2s32, FloatCopy);
+  auto FloatSplatCopy = B.buildCopy(v2s32, FloatSplat);
+  auto WideFloat = B.buildFConstant(s64, 7.0);
+  auto WideFloatCopy = B.buildCopy(s64, WideFloat);
+  auto PartialFloatSplat =
+      B.buildBuildVector(v2s32, {Float.getReg(0), Undef.getReg(0)});
+  auto Concat = B.buildConcatVectors(
+      LLT::fixed_vector(4, s32), {FloatSplat.getReg(0), FloatSplat.getReg(0)});
+  std::optional<FPValueAndVReg> FloatValue;
+  for (Register Reg :
+       {Float.getReg(0), FloatCopy.getReg(0), FloatSplat.getReg(0),
+        FloatSplatCopy.getReg(0), WideFloatCopy.getReg(0),
+        PartialFloatSplat.getReg(0), Concat.getReg(0)}) {
+    ASSERT_TRUE(mi_match(Reg, *MRI, m_GFCstOrSplat(FloatValue)));
+    EXPECT_TRUE(FloatValue->Value.isExactlyValue(7.0));
+  }
+  EXPECT_FALSE(mi_match(Undef.getReg(0), *MRI, m_GFCstOrSplat(FloatValue)));
+  EXPECT_FALSE(FloatValue.has_value());
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
