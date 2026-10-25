@@ -21,6 +21,7 @@
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsR600.h"
+#include "llvm/Support/KnownBits.h"
 
 using namespace llvm;
 
@@ -1698,15 +1699,79 @@ SDValue R600TargetLowering::PerformDAGCombine(SDNode *N,
   SDLoc DL(N);
 
   switch (N->getOpcode()) {
-  // (f32 fp_round (f64 uint_to_fp a)) -> (f32 uint_to_fp a)
+  // (fp_round (f64 uint_to_fp a)) -> (uint_to_fp a), once a has been rounded to
+  // the f64 significand.
+  //
+  // R600 has no f64 register class, so this is not an optimization: anything
+  // left behind here is a fatal "no libcall available" later on.
   case ISD::FP_ROUND: {
-      SDValue Arg = N->getOperand(0);
-      if (Arg.getOpcode() == ISD::UINT_TO_FP && Arg.getValueType() == MVT::f64) {
-        return DAG.getNode(ISD::UINT_TO_FP, DL, N->getValueType(0),
-                           Arg.getOperand(0));
-      }
+    SDValue Arg = N->getOperand(0);
+    if (Arg.getOpcode() != ISD::UINT_TO_FP || Arg.getValueType() != MVT::f64)
       break;
-    }
+
+    EVT VT = N->getValueType(0);
+    SDValue Src = Arg.getOperand(0);
+    EVT SrcVT = Src.getValueType();
+    const int Precision = APFloat::semanticsPrecision(APFloat::IEEEdouble());
+
+    // The fold drops a rounding step, so it is only exact while a fits in the
+    // f64 significand.
+    KnownBits Known = DAG.computeKnownBits(Src);
+    int SigBits = static_cast<int>(SrcVT.getScalarSizeInBits()) -
+                  static_cast<int>(Known.countMinLeadingZeros()) -
+                  static_cast<int>(Known.countMinTrailingZeros());
+    if (SigBits <= Precision)
+      return DAG.getNode(ISD::UINT_TO_FP, DL, VT, Src);
+
+    // The expansion below builds illegal i64 operations, so it only works in
+    // the first combine round, and only for sources that fit in i64.
+    if (SrcVT.getSizeInBits() > 64 || !DCI.isBeforeLegalize())
+      break;
+
+    // Otherwise round a to the f64 significand first (nearest, ties to even) so
+    // that the conversion only performs the second rounding.
+    EVT IntVT = MVT::i64;
+    Src = DAG.getZExtOrTrunc(Src, DL, IntVT);
+
+    EVT CCVT =
+        getSetCCResultType(DAG.getDataLayout(), *DAG.getContext(), IntVT);
+    SDValue Zero = DAG.getConstant(0, DL, IntVT);
+    SDValue One = DAG.getConstant(1, DL, IntVT);
+    SDValue MaxDrop =
+        DAG.getConstant(IntVT.getSizeInBits() - Precision, DL, MVT::i32);
+
+    SDValue Clz = DAG.getNode(ISD::TRUNCATE, DL, MVT::i32,
+                              DAG.getNode(ISD::CTLZ, DL, IntVT, Src));
+    // Number of low bits to drop, masked to keep the shifts below in range on
+    // the path where nothing is dropped.
+    SDValue Drop =
+        DAG.getNode(ISD::AND, DL, MVT::i32,
+                    DAG.getNode(ISD::SUB, DL, MVT::i32, MaxDrop, Clz),
+                    DAG.getConstant(IntVT.getSizeInBits() - 1, DL, MVT::i32));
+
+    SDValue Step = DAG.getNode(ISD::SHL, DL, IntVT, One, Drop);
+    SDValue Rem = DAG.getNode(ISD::AND, DL, IntVT, Src,
+                              DAG.getNode(ISD::SUB, DL, IntVT, Step, One));
+    SDValue Half = DAG.getNode(ISD::SRL, DL, IntVT, Step,
+                               DAG.getConstant(1, DL, MVT::i32));
+    SDValue Lsb = DAG.getNode(ISD::AND, DL, IntVT,
+                              DAG.getNode(ISD::SRL, DL, IntVT, Src, Drop), One);
+    // Rem + Lsb > Half holds exactly for Rem > Half and for the odd ties.
+    SDValue RoundUp =
+        DAG.getSetCC(DL, CCVT, DAG.getNode(ISD::ADD, DL, IntVT, Rem, Lsb), Half,
+                     ISD::SETUGT);
+    SDValue Rounded = DAG.getNode(
+        ISD::ADD, DL, IntVT, DAG.getNode(ISD::SUB, DL, IntVT, Src, Rem),
+        DAG.getSelect(DL, IntVT, RoundUp, Step, Zero));
+
+    // Rounding up out of the i64 range wraps to zero. a itself converts to the
+    // same result there, as it does when nothing has to be dropped.
+    SDValue Keep = DAG.getSetCC(DL, CCVT, Rounded, Zero, ISD::SETEQ);
+    SDValue NoDrop = DAG.getSetCC(DL, CCVT, Clz, MaxDrop, ISD::SETUGE);
+    SDValue Result = DAG.getSelect(
+        DL, IntVT, DAG.getNode(ISD::OR, DL, CCVT, NoDrop, Keep), Src, Rounded);
+    return DAG.getNode(ISD::UINT_TO_FP, DL, VT, Result);
+  }
 
   // (i32 fp_to_sint (fneg (select_cc f32, f32, 1.0, 0.0 cc))) ->
   // (i32 select_cc f32, f32, -1, 0 cc)
