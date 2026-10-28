@@ -574,6 +574,20 @@ bool AMDGPURegBankCombinerImpl::matchMinMaxToMinMax3(
 bool AMDGPURegBankCombinerImpl::applyD16Load(
     unsigned D16Opc, MachineInstr &DstMI, MachineInstr *SmallLoad,
     Register SrcReg32ToOverwriteD16) const {
+  if (!cast<GAnyLoad>(SmallLoad)->isSimple())
+    return false;
+
+  // Shared intermediate values would keep the original load alive.
+  for (MachineInstr *MI = SmallLoad; MI != &DstMI;) {
+    MachineOperand *Use = MRI.getOneNonDBGUse(MI->getOperand(0).getReg());
+    if (!Use)
+      return false;
+    MI = Use->getParent();
+  }
+
+  if (!Helper.dominates(*MRI.getVRegDef(SrcReg32ToOverwriteD16), *SmallLoad))
+    return false;
+
   Register DstReg = DstMI.getOperand(0).getReg();
   LLT SrcTy = MRI.getType(SrcReg32ToOverwriteD16);
 
@@ -583,6 +597,7 @@ bool AMDGPURegBankCombinerImpl::applyD16Load(
           ? DstReg
           : MRI.createVirtualRegister({MRI.getRegBank(DstReg), SrcTy});
 
+  B.setInstrAndDebugLoc(*SmallLoad);
   B.buildInstr(D16Opc, {D16Dst},
                {SmallLoad->getOperand(1).getReg(), SrcReg32ToOverwriteD16})
       .setMemRefs(SmallLoad->memoperands());
