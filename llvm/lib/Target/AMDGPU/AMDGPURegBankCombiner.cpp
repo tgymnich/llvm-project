@@ -461,10 +461,7 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                      m_GZExt(m_all_of(m_SpecificType(LLT::scalar(16)),
                                       m_OneNonDBGUse(m_GSExtLoad(
                                           SextLoad, m_MMO(MMO))))))) &&
-        CanFoldLoad(*SextLoad)) {
-      if (MMO->getSizeInBits().getValue() != 8)
-        return false;
-
+        MMO->getSizeInBits().getValue() == 8 && CanFoldLoad(*SextLoad)) {
       return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_I8, MI, SextLoad, Dst);
     }
 
@@ -499,10 +496,7 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                      m_GZExt(m_all_of(m_SpecificType(LLT::scalar(16)),
                                       m_OneNonDBGUse(m_GSExtLoad(
                                           SextLoad, m_MMO(MMO))))))) &&
-        CanFoldLoad(*SextLoad)) {
-      if (MMO->getSizeInBits().getValue() != 8)
-        return false;
-
+        MMO->getSizeInBits().getValue() == 8 && CanFoldLoad(*SextLoad)) {
       return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_I8, MI, SextLoad, Dst);
     }
 
