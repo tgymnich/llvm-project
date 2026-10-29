@@ -430,11 +430,6 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
   const int64_t CleanLo16 = 0xFFFFFFFFFFFF0000;
   const int64_t CleanHi16 = 0x000000000000FFFF;
 
-  auto CanFoldLoad = [&](const GAnyLoad &SmallLoad) {
-    return SmallLoad.isSimple() &&
-           Helper.dominates(*MRI.getVRegDef(Dst), SmallLoad);
-  };
-
   // Load lo
   if (mi_match(MI.getOperand(1).getReg(), MRI,
                m_OneNonDBGUse(m_GOr(m_GAnd(m_GBitcast(m_Reg(Dst)),
@@ -442,7 +437,7 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                     m_OneNonDBGUse(m_MInstr(Load)))))) {
 
     if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO))) &&
-        CanFoldLoad(*ZextLoad)) {
+        Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad)) {
       unsigned LoadSize = MMO->getSizeInBits().getValue();
       if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_U8, MI, ZextLoad, Dst);
@@ -461,7 +456,8 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                      m_GZExt(m_all_of(m_SpecificType(LLT::scalar(16)),
                                       m_OneNonDBGUse(m_GSExtLoad(
                                           SextLoad, m_MMO(MMO))))))) &&
-        MMO->getSizeInBits().getValue() == 8 && CanFoldLoad(*SextLoad)) {
+        MMO->getSizeInBits().getValue() == 8 &&
+        Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad)) {
       return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_I8, MI, SextLoad, Dst);
     }
 
@@ -477,7 +473,7 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                     m_Copy(m_SpecificICst(16)))))))) {
 
     if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO))) &&
-        CanFoldLoad(*ZextLoad)) {
+        Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad)) {
       unsigned LoadSize = MMO->getSizeInBits().getValue();
       if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_U8, MI, ZextLoad, Dst);
@@ -496,7 +492,8 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                      m_GZExt(m_all_of(m_SpecificType(LLT::scalar(16)),
                                       m_OneNonDBGUse(m_GSExtLoad(
                                           SextLoad, m_MMO(MMO))))))) &&
-        MMO->getSizeInBits().getValue() == 8 && CanFoldLoad(*SextLoad)) {
+        MMO->getSizeInBits().getValue() == 8 &&
+        Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad)) {
       return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_I8, MI, SextLoad, Dst);
     }
 
@@ -582,6 +579,7 @@ bool AMDGPURegBankCombinerImpl::applyD16Load(
     unsigned D16Opc, MachineInstr &DstMI, MachineInstr *SmallLoad,
     Register SrcReg32ToOverwriteD16) const {
   Register DstReg = DstMI.getOperand(0).getReg();
+  Register LoadDst = SmallLoad->getOperand(0).getReg();
   LLT SrcTy = MRI.getType(SrcReg32ToOverwriteD16);
 
   // Dst and Src for D16 load need to have same type.
@@ -599,6 +597,9 @@ bool AMDGPURegBankCombinerImpl::applyD16Load(
     B.buildBitcast(DstReg, D16Dst);
 
   eraseInstr(DstMI, MRI);
+  // Volatile and ordered atomic loads are not trivially dead.
+  if (MachineInstr *OldLoad = MRI.getVRegDef(LoadDst))
+    eraseInstr(*OldLoad, MRI);
   return true;
 }
 

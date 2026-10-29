@@ -461,3 +461,40 @@ define amdgpu_ps void @zextload_P5_i8_D16_Hi(<2 x i16> %vec, ptr addrspace(5) %p
   store <2 x i16> %res, ptr addrspace(5) %out
   ret void
 }
+
+define amdgpu_ps void @volatile_load_P0_B16_D16(<2 x i16> %vec, ptr %ptra, ptr %out) {
+; GFX12-LABEL: volatile_load_P0_B16_D16:
+; GFX12:       ; %bb.0:
+; GFX12-NEXT:    flat_load_d16_b16 v0, v[1:2] scope:SCOPE_SYS
+; GFX12-NEXT:    s_wait_loadcnt_dscnt 0x0
+; GFX12-NEXT:    flat_store_b32 v[3:4], v0
+; GFX12-NEXT:    s_endpgm
+  %a = load volatile i16, ptr %ptra
+  %res = insertelement <2 x i16> %vec, i16 %a, i32 0
+  store <2 x i16> %res, ptr %out
+  ret void
+}
+
+define amdgpu_ps void @volatile_sextload_P0_i8_D16_Hi(<2 x i16> %vec, ptr %ptra, ptr %out) {
+; GFX12-TRUE16-LABEL: volatile_sextload_P0_i8_D16_Hi:
+; GFX12-TRUE16:       ; %bb.0:
+; GFX12-TRUE16-NEXT:    flat_load_d16_hi_i8 v0, v[1:2] scope:SCOPE_SYS
+; GFX12-TRUE16-NEXT:    s_wait_loadcnt_dscnt 0x0
+; GFX12-TRUE16-NEXT:    flat_store_b32 v[3:4], v0
+; GFX12-TRUE16-NEXT:    s_endpgm
+;
+; GFX12-FAKE16-LABEL: volatile_sextload_P0_i8_D16_Hi:
+; GFX12-FAKE16:       ; %bb.0:
+; GFX12-FAKE16-NEXT:    flat_load_i8 v1, v[1:2] scope:SCOPE_SYS
+; GFX12-FAKE16-NEXT:    s_wait_loadcnt_dscnt 0x0
+; GFX12-FAKE16-NEXT:    v_lshlrev_b32_e32 v1, 16, v1
+; GFX12-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GFX12-FAKE16-NEXT:    v_and_or_b32 v0, v0, 0xffff, v1
+; GFX12-FAKE16-NEXT:    flat_store_b32 v[3:4], v0
+; GFX12-FAKE16-NEXT:    s_endpgm
+  %a = load volatile i8, ptr %ptra
+  %a16 = sext i8 %a to i16
+  %res = insertelement <2 x i16> %vec, i16 %a16, i32 1
+  store <2 x i16> %res, ptr %out
+  ret void
+}
