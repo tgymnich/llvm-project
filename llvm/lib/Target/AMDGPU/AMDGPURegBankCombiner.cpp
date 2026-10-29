@@ -436,13 +436,13 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                            m_Copy(m_SpecificICst(CleanLo16))),
                                     m_OneNonDBGUse(m_MInstr(Load)))))) {
 
-    if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO))) &&
-        Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad)) {
+    if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO)))) {
       unsigned LoadSize = MMO->getSizeInBits().getValue();
-      if (LoadSize == 8)
+      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_U8, MI, ZextLoad, Dst);
-      if (LoadSize == 16)
+      if (LoadSize == 16 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO, MI, ZextLoad, Dst);
+
       return false;
     }
 
@@ -455,10 +455,10 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                             m_Copy(m_SpecificICst(CleanHi16))),
                      m_GZExt(m_all_of(m_SpecificType(LLT::scalar(16)),
                                       m_OneNonDBGUse(m_GSExtLoad(
-                                          SextLoad, m_MMO(MMO))))))) &&
-        MMO->getSizeInBits().getValue() == 8 &&
-        Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad)) {
-      return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_I8, MI, SextLoad, Dst);
+                                          SextLoad, m_MMO(MMO)))))))) {
+      unsigned LoadSize = MMO->getSizeInBits().getValue();
+      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad))
+        return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_I8, MI, SextLoad, Dst);
     }
 
     return false;
@@ -472,13 +472,13 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
               m_OneNonDBGUse(m_GShl(m_OneNonDBGUse(m_MInstr(Load)),
                                     m_Copy(m_SpecificICst(16)))))))) {
 
-    if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO))) &&
-        Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad)) {
+    if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO)))) {
       unsigned LoadSize = MMO->getSizeInBits().getValue();
-      if (LoadSize == 8)
+      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_U8, MI, ZextLoad, Dst);
-      if (LoadSize == 16)
+      if (LoadSize == 16 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI, MI, ZextLoad, Dst);
+
       return false;
     }
 
@@ -491,10 +491,10 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                             m_Copy(m_SpecificICst(CleanHi16))),
                      m_GZExt(m_all_of(m_SpecificType(LLT::scalar(16)),
                                       m_OneNonDBGUse(m_GSExtLoad(
-                                          SextLoad, m_MMO(MMO))))))) &&
-        MMO->getSizeInBits().getValue() == 8 &&
-        Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad)) {
-      return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_I8, MI, SextLoad, Dst);
+                                          SextLoad, m_MMO(MMO)))))))) {
+      unsigned LoadSize = MMO->getSizeInBits().getValue();
+      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad))
+        return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_I8, MI, SextLoad, Dst);
     }
 
     return false;
