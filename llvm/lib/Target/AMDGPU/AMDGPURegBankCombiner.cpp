@@ -437,10 +437,12 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                     m_OneNonDBGUse(m_MInstr(Load)))))) {
 
     if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO)))) {
+      if (!Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
+        return false;
       unsigned LoadSize = MMO->getSizeInBits().getValue();
-      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
+      if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_U8, MI, ZextLoad, Dst);
-      if (LoadSize == 16 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
+      if (LoadSize == 16)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO, MI, ZextLoad, Dst);
 
       return false;
@@ -473,10 +475,12 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                     m_Copy(m_SpecificICst(16)))))))) {
 
     if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO)))) {
+      if (!Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
+        return false;
       unsigned LoadSize = MMO->getSizeInBits().getValue();
-      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
+      if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_U8, MI, ZextLoad, Dst);
-      if (LoadSize == 16 && Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
+      if (LoadSize == 16)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI, MI, ZextLoad, Dst);
 
       return false;
@@ -579,7 +583,6 @@ bool AMDGPURegBankCombinerImpl::applyD16Load(
     unsigned D16Opc, MachineInstr &DstMI, MachineInstr *SmallLoad,
     Register SrcReg32ToOverwriteD16) const {
   Register DstReg = DstMI.getOperand(0).getReg();
-  Register LoadDst = SmallLoad->getOperand(0).getReg();
   LLT SrcTy = MRI.getType(SrcReg32ToOverwriteD16);
 
   // Dst and Src for D16 load need to have same type.
@@ -596,6 +599,8 @@ bool AMDGPURegBankCombinerImpl::applyD16Load(
   if (D16Dst != DstReg)
     B.buildBitcast(DstReg, D16Dst);
 
+  // Recursive cleanup may erase SmallLoad.
+  Register LoadDst = SmallLoad->getOperand(0).getReg();
   eraseInstr(DstMI, MRI);
   // Volatile and ordered atomic loads are not trivially dead.
   if (MachineInstr *OldLoad = MRI.getVRegDef(LoadDst))
