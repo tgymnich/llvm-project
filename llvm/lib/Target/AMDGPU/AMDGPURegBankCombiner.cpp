@@ -437,8 +437,6 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                     m_OneNonDBGUse(m_MInstr(Load)))))) {
 
     if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO)))) {
-      if (!Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
-        return false;
       unsigned LoadSize = MMO->getSizeInBits().getValue();
       if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_U8, MI, ZextLoad, Dst);
@@ -459,7 +457,7 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                       m_OneNonDBGUse(m_GSExtLoad(
                                           SextLoad, m_MMO(MMO)))))))) {
       unsigned LoadSize = MMO->getSizeInBits().getValue();
-      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad))
+      if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_LO_I8, MI, SextLoad, Dst);
     }
 
@@ -475,8 +473,6 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                     m_Copy(m_SpecificICst(16)))))))) {
 
     if (mi_match(Load, MRI, m_GZExtLoad(ZextLoad, m_MMO(MMO)))) {
-      if (!Helper.dominates(*MRI.getVRegDef(Dst), *ZextLoad))
-        return false;
       unsigned LoadSize = MMO->getSizeInBits().getValue();
       if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_U8, MI, ZextLoad, Dst);
@@ -497,7 +493,7 @@ bool AMDGPURegBankCombinerImpl::combineD16Load(MachineInstr &MI) const {
                                       m_OneNonDBGUse(m_GSExtLoad(
                                           SextLoad, m_MMO(MMO)))))))) {
       unsigned LoadSize = MMO->getSizeInBits().getValue();
-      if (LoadSize == 8 && Helper.dominates(*MRI.getVRegDef(Dst), *SextLoad))
+      if (LoadSize == 8)
         return applyD16Load(AMDGPU::G_AMDGPU_LOAD_D16_HI_I8, MI, SextLoad, Dst);
     }
 
@@ -582,6 +578,14 @@ bool AMDGPURegBankCombinerImpl::matchMinMaxToMinMax3(
 bool AMDGPURegBankCombinerImpl::applyD16Load(
     unsigned D16Opc, MachineInstr &DstMI, MachineInstr *SmallLoad,
     Register SrcReg32ToOverwriteD16) const {
+  MachineInstr *InsertPt = SmallLoad;
+  if (cast<GAnyLoad>(SmallLoad)->isSimple() &&
+      isObviouslySafeToFold(*SmallLoad, DstMI))
+    InsertPt = &DstMI;
+  else if (!Helper.dominates(*MRI.getVRegDef(SrcReg32ToOverwriteD16),
+                             *SmallLoad))
+    return false;
+
   Register DstReg = DstMI.getOperand(0).getReg();
   LLT SrcTy = MRI.getType(SrcReg32ToOverwriteD16);
 
@@ -591,7 +595,7 @@ bool AMDGPURegBankCombinerImpl::applyD16Load(
           ? DstReg
           : MRI.createVirtualRegister({MRI.getRegBank(DstReg), SrcTy});
 
-  B.setInstrAndDebugLoc(*SmallLoad);
+  B.setInstrAndDebugLoc(*InsertPt);
   B.buildInstr(D16Opc, {D16Dst},
                {SmallLoad->getOperand(1).getReg(), SrcReg32ToOverwriteD16})
       .setMemRefs(SmallLoad->memoperands());
