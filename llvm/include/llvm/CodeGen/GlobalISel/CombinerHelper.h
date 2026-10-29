@@ -530,10 +530,11 @@ public:
 
   /// Check if operand \p MO is known to be a power of 2. When \p OrNegative
   /// is true, also match operands whose negation is a power of 2 (i.e. whose
-  /// absolute value is a power of 2).
-  LLVM_ABI bool
-  matchOperandIsKnownToBeAPowerOfTwo(const MachineOperand &MO,
-                                     bool OrNegative = false) const;
+  /// absolute value is a power of 2). When \p OrZero is true, the operand may
+  /// also be zero.
+  LLVM_ABI bool matchOperandIsKnownToBeAPowerOfTwo(const MachineOperand &MO,
+                                                   bool OrNegative = false,
+                                                   bool OrZero = false) const;
 
   /// Erase \p MI
   LLVM_ABI void eraseInst(MachineInstr &MI) const;

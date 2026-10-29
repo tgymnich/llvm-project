@@ -1059,7 +1059,8 @@ llvm::ConstantFoldICmp(unsigned Pred, const Register Op1, const Register Op2,
 }
 
 bool llvm::isKnownToBeAPowerOfTwo(Register Reg, const MachineRegisterInfo &MRI,
-                                  GISelValueTracking *VT, bool OrNegative) {
+                                  GISelValueTracking *VT, bool OrNegative,
+                                  bool OrZero) {
   std::optional<DefinitionAndSourceRegister> DefSrcReg =
       getDefSrcRegIgnoringCopies(Reg, MRI);
   if (!DefSrcReg)
@@ -1081,12 +1082,14 @@ bool llvm::isKnownToBeAPowerOfTwo(Register Reg, const MachineRegisterInfo &MRI,
   case TargetOpcode::G_SHL: {
     // A left-shift of a constant one will have exactly one bit set because
     // shifting the bit off the end is undefined.
-
-    // TODO: Constant splat
-    if (auto ConstLHS = getIConstantVRegVal(MI.getOperand(1).getReg(), MRI)) {
-      if (*ConstLHS == 1)
+    Register LHS = MI.getOperand(1).getReg();
+    if (auto ConstLHS = isConstantOrConstantSplatVector(LHS, MRI)) {
+      if (ConstLHS->isOne())
         return true;
     }
+
+    if (OrZero || MI.getFlag(MachineInstr::NoUWrap))
+      return isKnownToBeAPowerOfTwo(LHS, MRI, VT, /*OrNegative=*/false, OrZero);
 
     break;
   }
@@ -1102,7 +1105,7 @@ bool llvm::isKnownToBeAPowerOfTwo(Register Reg, const MachineRegisterInfo &MRI,
     // TODO: Probably should have a recursion depth guard since you could have
     // bitcasted vector elements.
     for (const MachineOperand &MO : llvm::drop_begin(MI.operands()))
-      if (!isKnownToBeAPowerOfTwo(MO.getReg(), MRI, VT, OrNegative))
+      if (!isKnownToBeAPowerOfTwo(MO.getReg(), MRI, VT, OrNegative, OrZero))
         return false;
 
     return true;
