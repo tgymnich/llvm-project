@@ -9,9 +9,9 @@ tracksRegLiveness: true
 body: |
   bb.0:
     successors: %bb.1(0x40000000), %bb.2(0x40000000)
-    liveins: $r0, $r1, $r2, $v0, $v1, $v2, $v3
+    liveins: $r0, $r1, $r2, $w0, $v1, $v2, $v3
 
-    %0:hvxwr = COPY $v0
+    %0:hvxwr = COPY $w0
     %1:intregs = COPY $r0
     %2:predregs = C2_cmpgtui %1, 2
     %3:intregs = COPY $r1
