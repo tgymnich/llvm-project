@@ -13,8 +13,8 @@
 /// S_WAITCNT instructions when we want to access any of their results or
 /// overwrite any register that's used asynchronously.
 ///
-/// TODO: This pass currently keeps one timeline per hardware counter. A more
-/// finely-grained approach that keeps one timeline per event type could
+/// TODO: Memory counters currently keep one timeline per hardware counter. A
+/// more finely-grained approach that keeps one timeline per event type could
 /// sometimes get away with generating weaker s_waitcnt instructions. For
 /// example, when both SMEM and LDS are in flight and we need to wait for
 /// the i-th-last LDS instruction, then an lgkmcnt(i) is actually sufficient,
@@ -49,6 +49,10 @@ static cl::opt<bool>
                       cl::desc("Force all waitcnt instrs to be emitted as "
                                "s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)"),
                       cl::init(false), cl::Hidden);
+
+static cl::opt<bool> VAVDSTPerDomain(
+    "amdgpu-va-vdst-per-domain", cl::Hidden, cl::init(true),
+    cl::desc("Use per-domain VA_VDST thresholds in gfx1250 expert scheduling"));
 
 static cl::opt<bool> ForceEmitZeroLoadFlag(
     "amdgpu-waitcnt-load-forcezero",
@@ -463,6 +467,309 @@ public:
   }
 };
 
+/// VA_VDST completion frontiers and pending physical-register accesses.
+class VAVDSTState {
+  using Domain = AMDGPU::VAVDSTCompletionDomain;
+  static constexpr unsigned NumDomains = 4;
+  static constexpr unsigned XDL = static_cast<unsigned>(Domain::XDL);
+  using Scores = std::array<unsigned, NumDomains>;
+
+  struct Frontier {
+    unsigned Issued = 0;
+    unsigned Completed = 0;
+  };
+  struct Accesses {
+    Scores Reads{};
+    Scores Writes{};
+    enum : uint8_t { Read = 1, Write = 2 };
+    uint8_t Unordered = 0;
+    // Thresholds for accesses before an EXEC change; UINT8_MAX means absent.
+    uint8_t FrozenReads = UINT8_MAX;
+    uint8_t FrozenWrites = UINT8_MAX;
+  };
+  struct Fence {
+    unsigned Score;
+    Scores Predecessors;
+  };
+
+  std::array<Frontier, NumDomains> Frontiers{};
+  DenseMap<MCRegUnit, Accesses> Registers;
+  SmallVector<Fence, 0> Fences;
+  unsigned Limit;
+  // Saturation at the no-wait encoding preserves comparisons with effective
+  // waits. A shared bound retains information lost by separate domain bounds.
+  unsigned Outstanding = 0;
+
+  unsigned getTrailing(unsigned P, unsigned Score) const {
+    assert(Score <= Frontiers[P].Issued && "access beyond issued frontier");
+    return std::min(Frontiers[P].Issued - Score, Limit - 1);
+  }
+
+  unsigned getThreshold(unsigned P, unsigned Score) const {
+    unsigned Trailing = getTrailing(P, Score);
+    if (P != XDL) {
+      for (const Fence &F : Fences) {
+        if (F.Predecessors[P] < Score)
+          continue;
+        // XDL successors and successors in P are distinct counter events.
+        Trailing += getTrailing(XDL, F.Score) + 1;
+        break;
+      }
+    }
+    return std::min(Trailing, Limit - 1);
+  }
+
+public:
+  explicit VAVDSTState(unsigned Limit) : Limit(Limit) {}
+
+  unsigned getOutstanding() const { return Outstanding; }
+
+  void issue(std::optional<Domain> P, bool OrderedXDL,
+             std::optional<unsigned> Increment) {
+    Outstanding = Increment ? std::min(Outstanding + *Increment, Limit) : Limit;
+    if (!P)
+      return;
+    auto &F = Frontiers[static_cast<unsigned>(*P)];
+    if (++F.Issued == 0)
+      report_fatal_error("VA_VDST domain score wraparound");
+    if (OrderedXDL) {
+      assert(*P == Domain::XDL && "fence outside XDL domain");
+      Scores Predecessors;
+      for (unsigned I = 0; I != NumDomains; ++I)
+        Predecessors[I] = Frontiers[I].Issued;
+      --Predecessors[XDL];
+      if (Fences.size() == Limit - 1)
+        Fences.erase(Fences.begin());
+      Fences.push_back({F.Issued, Predecessors});
+    }
+  }
+
+  void record(MCRegUnit RU, std::optional<Domain> P, bool Read,
+              bool MayExecuteWithEmptyExec) {
+    auto &A = Registers[RU];
+    if (!P || MayExecuteWithEmptyExec) {
+      A.Unordered |= Read ? Accesses::Read : Accesses::Write;
+      return;
+    }
+    unsigned I = static_cast<unsigned>(*P);
+    (Read ? A.Reads : A.Writes)[I] = Frontiers[I].Issued;
+  }
+
+  std::optional<unsigned> getWait(MCRegUnit RU, bool Read) const {
+    auto It = Registers.find(RU);
+    if (It == Registers.end())
+      return std::nullopt;
+    const auto &A = It->second;
+    if (A.Unordered & (Read ? Accesses::Read : Accesses::Write))
+      return 0;
+    const auto &S = Read ? A.Reads : A.Writes;
+    unsigned Frozen = Read ? A.FrozenReads : A.FrozenWrites;
+    std::optional<unsigned> Count;
+    if (Frozen != UINT8_MAX)
+      Count = Frozen;
+    for (unsigned P = 0; P != NumDomains; ++P) {
+      if (S[P] <= Frontiers[P].Completed)
+        continue;
+      unsigned N = getThreshold(P, S[P]);
+      Count = Count ? std::min(*Count, N) : N;
+    }
+    return Count;
+  }
+
+  void changeExec() {
+    for (auto &[RU, A] : Registers) {
+      A.FrozenReads = getWait(RU, /*Read=*/true).value_or(UINT8_MAX);
+      A.FrozenWrites = getWait(RU, /*Read=*/false).value_or(UINT8_MAX);
+      A.Reads = {};
+      A.Writes = {};
+      A.Unordered = 0;
+    }
+    // Successors under a different mask cannot prove these accesses complete.
+    for (auto &F : Frontiers)
+      F.Completed = F.Issued;
+    Fences.clear();
+  }
+
+  void applyWait(unsigned Count) {
+    if (Count >= Limit)
+      return;
+    Outstanding = std::min(Outstanding, Count);
+    for (auto &F : Frontiers) {
+      if (F.Issued > Count)
+        F.Completed = std::max(F.Completed, F.Issued - Count);
+    }
+    for (const Fence &F : Fences) {
+      unsigned Successors = Frontiers[XDL].Issued - F.Score + 1;
+      for (unsigned P = 0; P != NumDomains; ++P) {
+        if (P == XDL)
+          continue;
+        unsigned Remaining = Count > Successors ? Count - Successors : 0;
+        unsigned Completed = Frontiers[P].Issued > Remaining
+                                 ? Frontiers[P].Issued - Remaining
+                                 : 0;
+        Frontiers[P].Completed = std::max(
+            Frontiers[P].Completed, std::min(F.Predecessors[P], Completed));
+      }
+    }
+    if (Count == 0) {
+      Registers.clear();
+      Fences.clear();
+    }
+    purge();
+  }
+
+  void purge() {
+    Registers.remove_if([&](auto &Entry) {
+      auto &A = Entry.second;
+      if (Outstanding <= A.FrozenReads)
+        A.FrozenReads = UINT8_MAX;
+      if (Outstanding <= A.FrozenWrites)
+        A.FrozenWrites = UINT8_MAX;
+      for (unsigned P = 0; P != NumDomains; ++P) {
+        if (A.Reads[P] <= Frontiers[P].Completed)
+          A.Reads[P] = 0;
+        if (A.Writes[P] <= Frontiers[P].Completed)
+          A.Writes[P] = 0;
+      }
+      return !A.Unordered && A.FrozenReads == UINT8_MAX &&
+             A.FrozenWrites == UINT8_MAX && all_of(A.Reads, equal_to(0)) &&
+             all_of(A.Writes, equal_to(0));
+    });
+    llvm::erase_if(Fences, [&](const Fence &F) {
+      return F.Score <= Frontiers[XDL].Completed;
+    });
+  }
+
+  bool merge(const VAVDSTState &Other) {
+    bool Changed = Other.Outstanding > Outstanding;
+    Outstanding = std::max(Outstanding, Other.Outstanding);
+    // Rebase pending accesses before capping ranges. Distances beyond the
+    // largest effective wait are equivalent, which bounds loop state.
+    auto NewFrontiers = Frontiers;
+    for (unsigned P = 0; P != NumDomains; ++P) {
+      unsigned MyRange =
+          std::min(Frontiers[P].Issued - Frontiers[P].Completed, Limit);
+      unsigned OtherRange = std::min(
+          Other.Frontiers[P].Issued - Other.Frontiers[P].Completed, Limit);
+      unsigned Range = std::max(MyRange, OtherRange);
+      Changed |= Range > MyRange;
+      unsigned Candidate = Frontiers[P].Completed + Range;
+      if (Candidate < Frontiers[P].Completed)
+        report_fatal_error("VA_VDST domain score wraparound");
+      unsigned Issued = std::max(Frontiers[P].Issued, Candidate);
+      NewFrontiers[P] = {Issued, Issued - Range};
+    }
+    for (MCRegUnit RU : Other.Registers.keys())
+      Registers.try_emplace(RU);
+    for (auto &[RU, A] : Registers) {
+      auto It = Other.Registers.find(RU);
+      const Accesses Empty;
+      const Accesses &B = It == Other.Registers.end() ? Empty : It->second;
+      uint8_t Unordered = A.Unordered | B.Unordered;
+      Changed |= Unordered != A.Unordered;
+      A.Unordered = Unordered;
+      auto MergeFrozen = [&](uint8_t &Count, uint8_t OtherCount) {
+        Changed |= OtherCount < Count;
+        Count = std::min(Count, OtherCount);
+      };
+      MergeFrozen(A.FrozenReads, B.FrozenReads);
+      MergeFrozen(A.FrozenWrites, B.FrozenWrites);
+      for (unsigned P = 0; P != NumDomains; ++P) {
+        auto MergeScore = [&](unsigned &Score, unsigned OtherScore) {
+          bool MyPending = Score > Frontiers[P].Completed;
+          bool OtherPending = OtherScore > Other.Frontiers[P].Completed;
+          if (!MyPending && !OtherPending) {
+            Score = 0;
+            return;
+          }
+          unsigned MyTrailing = MyPending ? getTrailing(P, Score) : Limit;
+          unsigned OtherTrailing =
+              OtherPending ? Other.getTrailing(P, OtherScore) : Limit;
+          unsigned Trailing = std::min(MyTrailing, OtherTrailing);
+          Changed |= !MyPending || Trailing < MyTrailing;
+          Score = NewFrontiers[P].Issued - Trailing;
+        };
+        MergeScore(A.Reads[P], B.Reads[P]);
+        MergeScore(A.Writes[P], B.Writes[P]);
+      }
+    }
+
+    SmallVector<Fence, 0> NewFences;
+    unsigned Common = std::min(Fences.size(), Other.Fences.size());
+    Changed |= Common < Fences.size();
+    for (unsigned I = 0; I != Common; ++I) {
+      const Fence &A = Fences[Fences.size() - Common + I];
+      const Fence &B = Other.Fences[Other.Fences.size() - Common + I];
+      unsigned MyTrailing = getTrailing(XDL, A.Score);
+      unsigned Trailing = std::min(MyTrailing, Other.getTrailing(XDL, B.Score));
+      Changed |= Trailing < MyTrailing;
+      Fence F{NewFrontiers[XDL].Issued - Trailing, {}};
+      for (unsigned P = 0; P != NumDomains; ++P) {
+        unsigned MyDistance =
+            std::min(Frontiers[P].Issued - A.Predecessors[P], Limit);
+        unsigned OtherDistance =
+            std::min(Other.Frontiers[P].Issued - B.Predecessors[P], Limit);
+        unsigned Distance = std::max(MyDistance, OtherDistance);
+        Changed |= Distance > MyDistance;
+        F.Predecessors[P] =
+            NewFrontiers[P].Issued - std::min(NewFrontiers[P].Issued, Distance);
+      }
+      NewFences.push_back(F);
+    }
+    Frontiers = NewFrontiers;
+    Fences = std::move(NewFences);
+    purge();
+    return Changed;
+  }
+
+  void verify() const {
+    assert(Outstanding <= Limit && "counter bound outside encoding range");
+    assert(Fences.size() < Limit && "too many XDL fences");
+    for (const auto &F : Frontiers)
+      assert(F.Completed <= F.Issued && "completion beyond issued frontier");
+    for (const auto &[RU, A] : Registers) {
+      assert((A.FrozenReads == UINT8_MAX || A.FrozenReads < Limit) &&
+             "frozen read outside encoding range");
+      assert((A.FrozenWrites == UINT8_MAX || A.FrozenWrites < Limit) &&
+             "frozen write outside encoding range");
+      for (unsigned P = 0; P != NumDomains; ++P) {
+        assert(A.Reads[P] <= Frontiers[P].Issued && "read beyond frontier");
+        assert(A.Writes[P] <= Frontiers[P].Issued && "write beyond frontier");
+      }
+    }
+    for (const Fence &F : Fences) {
+      assert(F.Score <= Frontiers[XDL].Issued && "fence beyond frontier");
+      for (unsigned P = 0; P != NumDomains; ++P)
+        assert(F.Predecessors[P] <= Frontiers[P].Issued &&
+               "fence predecessor beyond frontier");
+    }
+  }
+
+  void print(raw_ostream &OS, const SIRegisterInfo &TRI) const {
+    OS << "VA_VDST shared bound: " << Outstanding << '\n';
+    for (unsigned P = 0; P != NumDomains; ++P)
+      OS << "  domain " << P << ": " << Frontiers[P].Completed << ".."
+         << Frontiers[P].Issued << '\n';
+    SmallVector<MCRegUnit> Units(Registers.keys());
+    llvm::sort(Units);
+    for (MCRegUnit RU : Units) {
+      const Accesses &A = Registers.at(RU);
+      OS << "  " << printRegUnit(RU, &TRI) << " reads: ";
+      llvm::interleaveComma(A.Reads, OS);
+      OS << " writes: ";
+      llvm::interleaveComma(A.Writes, OS);
+      OS << " unordered: " << unsigned(A.Unordered)
+         << " frozen reads: " << unsigned(A.FrozenReads)
+         << " frozen writes: " << unsigned(A.FrozenWrites) << '\n';
+    }
+    for (const Fence &F : Fences) {
+      OS << "  XDL fence " << F.Score << ": ";
+      llvm::interleaveComma(F.Predecessors, OS);
+      OS << '\n';
+    }
+  }
+};
+
 // This objects maintains the current score brackets of each wait counter, and
 // a per-register scoreboard for each wait counter.
 //
@@ -475,6 +782,9 @@ class WaitcntBrackets {
 public:
   WaitcntBrackets(const SIInsertWaitcnts *Context) : Context(Context) {
     assert(Context->TRI.getNumRegUnits() < REGUNITS_END);
+    if (Context->IsExpertMode && AMDGPU::isGFX1250(Context->ST) &&
+        VAVDSTPerDomain)
+      VAVDST.emplace(getLimit(AMDGPU::VA_VDST_WR));
   }
 
 #ifndef NDEBUG
@@ -503,6 +813,8 @@ public:
   }
 
   unsigned getOutstanding(AMDGPU::InstCounterType T) const {
+    if (VAVDST && (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR))
+      return VAVDST->getOutstanding();
     return ScoreUBs[T] - ScoreLBs[T];
   }
 
@@ -525,7 +837,7 @@ private:
   }
 
   unsigned getScoreRange(AMDGPU::InstCounterType T) const {
-    return getScoreUB(T) - getScoreLB(T);
+    return getOutstanding(T);
   }
 
   unsigned getSGPRScore(MCRegUnit RU, AMDGPU::InstCounterType T) const {
@@ -555,6 +867,8 @@ public:
     // should be identical.
     assert(getScoreLB(AMDGPU::VA_VDST_RD) == getScoreLB(AMDGPU::VA_VDST_WR));
     assert(getScoreUB(AMDGPU::VA_VDST_RD) == getScoreUB(AMDGPU::VA_VDST_WR));
+    if (VAVDST)
+      VAVDST->verify();
   }
 
   bool merge(const WaitcntBrackets &Other);
@@ -598,6 +912,22 @@ public:
   void applyWaitcnt(const AMDGPU::Waitcnt &Wait, AMDGPU::InstCounterType T);
   void updateByEvent(HWEvents E, MachineInstr &MI);
   void recordAsyncMark(MachineInstr &MI);
+  void recordOpaqueVAVDST(MachineInstr &MI) {
+    if (!VAVDST)
+      return;
+    VAVDST->issue(std::nullopt, /*OrderedXDL=*/false, std::nullopt);
+    PendingEvents |= Context->getWaitEvents(AMDGPU::VA_VDST_RD) |
+                     Context->getWaitEvents(AMDGPU::VA_VDST_WR);
+    recordVAVDSTAccesses(MI, std::nullopt, /*Read=*/true,
+                         /*MayExecuteWithEmptyExec=*/true);
+    recordVAVDSTAccesses(MI, std::nullopt, /*Read=*/false,
+                         /*MayExecuteWithEmptyExec=*/true);
+  }
+
+  void changeVAVDSTExec() {
+    if (VAVDST)
+      VAVDST->changeExec();
+  }
 
   HWEvents getPendingEvents() const { return PendingEvents; }
   bool hasPendingEvent() const { return PendingEvents.any(); }
@@ -700,6 +1030,25 @@ private:
   void determineWaitForScore(AMDGPU::InstCounterType T, unsigned Score,
                              AMDGPU::Waitcnt &Wait) const;
   void determineWaitForVAVDSTWrite(VMEMID ID, AMDGPU::Waitcnt &Wait) const;
+  void determineWaitForVAVDST(MCRegUnit RU, AMDGPU::InstCounterType T,
+                              AMDGPU::Waitcnt &Wait) const {
+    assert(VAVDST && "per-domain state not enabled");
+    if (auto Count = VAVDST->getWait(RU, T == AMDGPU::VA_VDST_RD))
+      Wait.add(T, *Count);
+  }
+
+  void
+  recordVAVDSTAccesses(const MachineInstr &Inst,
+                       std::optional<AMDGPU::VAVDSTCompletionDomain> Domain,
+                       bool Read, bool MayExecuteWithEmptyExec) {
+    for (const MachineOperand &Op : Inst.operands()) {
+      if (!Op.isReg() || (Read ? !Op.isUse() : !Op.isDef()) ||
+          !Context->TRI.isVectorRegister(Context->MRI, Op.getReg()))
+        continue;
+      for (MCRegUnit RU : regunits(Op.getReg().asMCReg()))
+        VAVDST->record(RU, Domain, Read, MayExecuteWithEmptyExec);
+    }
+  }
 
   static bool mergeScore(const MergeInfo &M, unsigned &Score,
                          unsigned OtherScore);
@@ -769,6 +1118,8 @@ private:
   // Number of VA_VDST ordered XDL writes issued so far. Only differences
   // between values are meaningful, so unsigned wraparound is harmless.
   unsigned OrderedXDLCount = 0;
+  // Replaces the generic VA_VDST scores when per-domain tracking is enabled.
+  std::optional<VAVDSTState> VAVDST;
 
   // The score tracking logic is fragmented as follows:
   // - VMem: VGPR RegUnits and LDS DMA IDs, see the VMEMID encoding.
@@ -911,6 +1262,29 @@ void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
   assert(E.size() == 1 && "Expected singular event!");
   AMDGPU::InstCounterType T = Context->getCounterFromEvent(E);
   assert(T < Context->MaxCounter);
+
+  if (VAVDST && (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR)) {
+    auto Domain = AMDGPU::getVAVDSTCompletionDomain(Inst, Context->ST);
+    PendingEvents |= E;
+    bool Read = T == AMDGPU::VA_VDST_RD;
+    if (Read) {
+      std::optional<unsigned> Increment;
+      if (Domain)
+        Increment = 1;
+      if (AMDGPU::getHasMatrixScale(Inst.getOpcode()))
+        Increment = Context->ST.hasVOP3PX2IncrementsVaVdstTwice() ? 2 : 1;
+      VAVDST->issue(Domain, Domain && Context->TII.isVAVDSTOrderedXDL(Inst),
+                    Increment);
+    }
+    bool MayExecuteWithEmptyExec =
+        !Inst.readsRegister(AMDGPU::EXEC, &Context->TRI) ||
+        Inst.modifiesRegister(AMDGPU::VCC, &Context->TRI) ||
+        llvm::any_of(Inst.defs(), [&](const MachineOperand &Op) {
+          return Context->TRI.isSGPRReg(Context->MRI, Op.getReg());
+        });
+    recordVAVDSTAccesses(Inst, Domain, Read, MayExecuteWithEmptyExec);
+    return;
+  }
 
   unsigned UB = getScoreUB(T);
   unsigned Increment = 1;
@@ -1238,6 +1612,9 @@ void WaitcntBrackets::print(raw_ostream &OS) const {
     OS << '\n';
   }
 
+  if (VAVDST)
+    VAVDST->print(OS, Context->TRI);
+
   OS << "Pending Events: ";
   if (hasPendingEvent()) {
     OS << getPendingEvents();
@@ -1383,6 +1760,8 @@ void WaitcntBrackets::simplifyVmVsrc(const AMDGPU::Waitcnt &CheckWait,
 }
 
 void WaitcntBrackets::purgeEmptyTrackingData() {
+  if (VAVDST)
+    VAVDST->purge();
   VMem.remove_if([](const auto &P) { return P.second.empty(); });
   SGPRs.remove_if([](const auto &P) { return P.second.empty(); });
 }
@@ -1424,6 +1803,11 @@ void WaitcntBrackets::determineWaitForScore(AMDGPU::InstCounterType T,
 
 void WaitcntBrackets::determineWaitForVAVDSTWrite(VMEMID ID,
                                                   AMDGPU::Waitcnt &Wait) const {
+  if (VAVDST) {
+    determineWaitForVAVDST(static_cast<MCRegUnit>(ID), AMDGPU::VA_VDST_WR,
+                           Wait);
+    return;
+  }
   std::optional<unsigned> Count =
       getWaitForScore(AMDGPU::VA_VDST_WR, getVMemScore(ID, AMDGPU::VA_VDST_WR));
   if (!Count)
@@ -1504,7 +1888,9 @@ MCRegister WaitcntBrackets::determineVGPR16Dependency(const MachineInstr &MI,
 
   AMDGPU::Waitcnt Wait;
   for (MCRegUnit RU : regunits(OtherHalf)) {
-    if (T == AMDGPU::VA_VDST_WR)
+    if (VAVDST && (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR))
+      determineWaitForVAVDST(RU, T, Wait);
+    else if (T == AMDGPU::VA_VDST_WR)
       determineWaitForVAVDSTWrite(toVMEMID(RU), Wait);
     else
       determineWaitForScore(T, getVMemScore(toVMEMID(RU), T), Wait);
@@ -1538,7 +1924,10 @@ void WaitcntBrackets::determineWaitForPhysReg(AMDGPU::InstCounterType T,
     if (IsVGPR)
       Reg = determineVGPR16Dependency(MI, T, Reg);
     for (MCRegUnit RU : regunits(Reg)) {
-      if (IsVGPR && T == AMDGPU::VA_VDST_WR)
+      if (VAVDST && IsVGPR &&
+          (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR))
+        determineWaitForVAVDST(RU, T, Wait);
+      else if (IsVGPR && T == AMDGPU::VA_VDST_WR)
         determineWaitForVAVDSTWrite(toVMEMID(RU), Wait);
       else
         determineWaitForScore(
@@ -1587,6 +1976,13 @@ void WaitcntBrackets::applyWaitcnt(const AMDGPU::Waitcnt &Wait) {
 }
 
 void WaitcntBrackets::applyWaitcnt(AMDGPU::InstCounterType T, unsigned Count) {
+  if (VAVDST && (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR)) {
+    VAVDST->applyWait(Count);
+    if (Count == 0)
+      PendingEvents -= Context->getWaitEvents(AMDGPU::VA_VDST_RD) |
+                       Context->getWaitEvents(AMDGPU::VA_VDST_WR);
+    return;
+  }
   const unsigned UB = getScoreUB(T);
   if (Count >= UB)
     return;
@@ -2791,6 +3187,12 @@ bool SIInsertWaitcnts::insertForcedWaitAfter(MachineInstr &Inst,
 void SIInsertWaitcnts::updateEventWaitcntAfter(MachineInstr &Inst,
                                                WaitcntBrackets *ScoreBrackets) {
 
+  if (Inst.modifiesRegister(AMDGPU::EXEC, &TRI))
+    ScoreBrackets->changeVAVDSTExec();
+
+  if (Inst.isInlineAsm())
+    ScoreBrackets->recordOpaqueVAVDST(Inst);
+
   HWEvents InstEvents = AMDGPU::getEventsFor(Inst, ST, IsExpertMode, TgSplit);
   for (HWEvents E : InstEvents)
     ScoreBrackets->updateByEvent(E, Inst);
@@ -2919,7 +3321,7 @@ bool WaitcntBrackets::mergeAsyncMarks(ArrayRef<MergeInfo> MergeInfos,
 /// Returns whether the merge resulted in a change that requires tighter waits
 /// (i.e. the merged brackets strictly dominate the original brackets).
 bool WaitcntBrackets::merge(const WaitcntBrackets &Other) {
-  bool StrictDom = false;
+  bool StrictDom = VAVDST && VAVDST->merge(*Other.VAVDST);
 
   // Check if "other" has keys we don't have, and create default entries for
   // those. If they remain empty after merging, we will clean it up after.
@@ -2929,7 +3331,7 @@ bool WaitcntBrackets::merge(const WaitcntBrackets &Other) {
     SGPRs.try_emplace(K);
 
   // Array to store MergeInfo for each counter type
-  MergeInfo MergeInfos[AMDGPU::NUM_INST_CNTS];
+  MergeInfo MergeInfos[AMDGPU::NUM_INST_CNTS]{};
 
   for (auto T : inst_counter_types(Context->MaxCounter)) {
     // Merge event flags for this counter
@@ -2939,6 +3341,8 @@ bool WaitcntBrackets::merge(const WaitcntBrackets &Other) {
     if (!OldEvents.contains(OtherEvents))
       StrictDom = true;
     PendingEvents |= OtherEvents;
+    if (VAVDST && (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR))
+      continue;
 
     // Merge scores for this counter
     const unsigned MyPending = ScoreUBs[T] - ScoreLBs[T];

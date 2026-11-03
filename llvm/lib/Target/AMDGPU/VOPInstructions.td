@@ -19,6 +19,7 @@ class LetDummies {
   bit isAsCheapAsAMove;
   bit FPDPRounding;
   bit IsDPMACCInstruction;
+  bit IsGFX1250DPMACCInstruction;
   Predicate SubtargetPredicate;
   string Constraints;
   string DisableEncoding;
@@ -76,6 +77,7 @@ class VOP_Pseudo <string opName, string suffix, VOPProfile P, dag outs, dag ins,
   Instruction Opcode = !cast<Instruction>(NAME);
   bit IsTrue16 = P.IsTrue16;
   bit IsDPMACCInstruction = 0;
+  bit IsGFX1250DPMACCInstruction = 0;
   VOPProfile Pfl = P;
 
   string AsmOperands;
@@ -2504,6 +2506,16 @@ def DPMACCInstructionTable : GenericTable {
 
   let PrimaryKey = ["Opcode"];
   let PrimaryKeyName = "isDPMACCInstructionHelper";
+}
+
+def GFX1250DPMACCInstructionTable : GenericTable {
+  let FilterClass = "VOP_Pseudo";
+  let FilterClassField = "IsGFX1250DPMACCInstruction";
+  let CppTypeName = "DPMACCInstructionInfo";
+  let Fields = ["Opcode"];
+
+  let PrimaryKey = ["Opcode"];
+  let PrimaryKeyName = "isGFX1250DPMACCInstructionHelper";
 }
 
 def VOP3PHasNoOpSelHiTable : GenericTable {

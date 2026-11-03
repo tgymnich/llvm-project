@@ -16,6 +16,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iterator>
+#include <optional>
 
 namespace llvm {
 class GCNSubtarget;
@@ -24,6 +25,13 @@ class raw_ostream;
 class SIInstrInfo;
 
 namespace AMDGPU {
+
+/// Ordered completion domains of gfx1250 VALU instructions.
+enum class VAVDSTCompletionDomain { CSMACC, TRANS, DPMACC, XDL };
+
+/// Return the completion domain, or no domain for unverified instruction forms.
+std::optional<VAVDSTCompletionDomain>
+getVAVDSTCompletionDomain(const MachineInstr &Inst, const GCNSubtarget &ST);
 
 /// Bit mask of hardware events.
 ///

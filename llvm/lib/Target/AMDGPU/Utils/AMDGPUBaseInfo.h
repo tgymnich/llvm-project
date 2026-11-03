@@ -977,7 +977,7 @@ bool isTrue16Inst(unsigned Opc);
 LLVM_READONLY
 FPType getFPDstSelType(unsigned Opc);
 
-bool isDPMACCInstruction(unsigned Opc);
+bool isDPMACCInstruction(unsigned Opc, bool IsGFX1250 = false);
 
 LLVM_READONLY
 unsigned mapWMMA2AddrTo3AddrOpcode(unsigned Opc);

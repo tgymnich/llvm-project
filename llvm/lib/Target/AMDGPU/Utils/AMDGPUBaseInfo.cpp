@@ -444,6 +444,8 @@ struct VOP3PHasNoOpSelHiInfo {
 
 #define GET_DPMACCInstructionTable_DECL
 #define GET_DPMACCInstructionTable_IMPL
+#define GET_GFX1250DPMACCInstructionTable_DECL
+#define GET_GFX1250DPMACCInstructionTable_IMPL
 #define GET_MTBUFInfoTable_DECL
 #define GET_MTBUFInfoTable_IMPL
 #define GET_MUBUFInfoTable_DECL
@@ -849,8 +851,9 @@ FPType getFPDstSelType(unsigned Opc) {
   return FPType::None;
 }
 
-bool isDPMACCInstruction(unsigned Opc) {
-  return isDPMACCInstructionHelper(Opc) != nullptr;
+bool isDPMACCInstruction(unsigned Opc, bool IsGFX1250) {
+  return isDPMACCInstructionHelper(Opc) != nullptr ||
+         (IsGFX1250 && isGFX1250DPMACCInstructionHelper(Opc) != nullptr);
 }
 
 unsigned mapWMMA2AddrTo3AddrOpcode(unsigned Opc) {

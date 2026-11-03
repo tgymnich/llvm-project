@@ -20,12 +20,52 @@ namespace AMDGPU {
 LLVM_DUMP_METHOD void HWEvents::dump() const { dbgs() << *this << "\n"; }
 #endif
 
+std::optional<VAVDSTCompletionDomain>
+getVAVDSTCompletionDomain(const MachineInstr &Inst, const GCNSubtarget &ST) {
+  const SIInstrInfo &TII = *ST.getInstrInfo();
+  if (!isGFX1250(ST) || !TII.isVALU(Inst, /*AllowLDSDMA=*/false) ||
+      isVOPD(Inst.getOpcode()) || getHasMatrixScale(Inst.getOpcode()) ||
+      isPackedSingleSGPR64BitInst(Inst.getOpcode()))
+    return std::nullopt;
+  if (TII.isXDL(Inst))
+    return VAVDSTCompletionDomain::XDL;
+  if (TII.isWMMA(Inst) || TII.isSWMMAC(Inst)) {
+    switch (Inst.getOpcode()) {
+    case V_WMMA_F32_16X16X4_F32_w32_twoaddr:
+    case V_WMMA_F32_16X16X4_F32_w32_threeaddr:
+    case V_WMMA_F32_16X16X4_F32_w32_twoaddr_gfx1250:
+      return VAVDSTCompletionDomain::CSMACC;
+    default:
+      return std::nullopt;
+    }
+  }
+  if (isDPMACCInstruction(Inst.getOpcode(), /*IsGFX1250=*/true))
+    return VAVDSTCompletionDomain::DPMACC;
+  if (TII.isTRANS(Inst))
+    return VAVDSTCompletionDomain::TRANS;
+  return VAVDSTCompletionDomain::CSMACC;
+}
+
 static HWEvents getExpertSchedulingEventType(const MachineInstr &Inst,
-                                             const SIInstrInfo &TII) {
+                                             const SIInstrInfo &TII,
+                                             const GCNSubtarget &ST) {
   if (TII.isVALU(Inst, /*AllowLDSDMA=*/false)) {
     // Core/Side-, DP-, XDL- and TRANS-MACC VALU instructions complete
     // out-of-order with respect to each other, so each of these classes
     // has its own event.
+
+    if (auto Domain = getVAVDSTCompletionDomain(Inst, ST)) {
+      switch (*Domain) {
+      case VAVDSTCompletionDomain::CSMACC:
+        return HWEvents::VGPR_CSMACC_READ | HWEvents::VGPR_CSMACC_WRITE;
+      case VAVDSTCompletionDomain::TRANS:
+        return HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_TRANS_WRITE;
+      case VAVDSTCompletionDomain::DPMACC:
+        return HWEvents::VGPR_DPMACC_READ | HWEvents::VGPR_DPMACC_WRITE;
+      case VAVDSTCompletionDomain::XDL:
+        return HWEvents::VGPR_XDL_READ | HWEvents::VGPR_XDL_WRITE;
+      }
+    }
 
     if (TII.isXDL(Inst))
       return HWEvents::VGPR_XDL_READ | HWEvents::VGPR_XDL_WRITE;
@@ -201,7 +241,7 @@ HWEvents getEventsFor(const MachineInstr &Inst, const GCNSubtarget &ST,
 
   if (IsExpertMode)
     return getEventsForImpl(Inst, ST, TII, TgSplit) |
-           getExpertSchedulingEventType(Inst, TII);
+           getExpertSchedulingEventType(Inst, TII, ST);
   return getEventsForImpl(Inst, ST, TII, TgSplit);
 }
 } // namespace AMDGPU
