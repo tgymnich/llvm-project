@@ -1973,6 +1973,16 @@ public:
     return true;
   }
 
+  /// Allow different effective sizes for operands of a copy-like instruction.
+  /// DefSubReg and UseSubReg are relative to DefRC and UseRC.
+  virtual bool isCopyLikeSizeMismatchAllowed(const MachineInstr &MI,
+                                             const TargetRegisterClass *DefRC,
+                                             unsigned DefSubReg,
+                                             const TargetRegisterClass *UseRC,
+                                             unsigned UseSubReg) const {
+    return false;
+  }
+
   /// Return the current execution domain and bit mask of
   /// possible domains for instruction.
   ///

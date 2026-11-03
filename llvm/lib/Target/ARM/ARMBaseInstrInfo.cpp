@@ -717,6 +717,25 @@ void llvm::addPredicatedMveVpredROp(MachineInstrBuilder &MIB,
   MIB.addReg(Inactive);
 }
 
+bool ARMBaseInstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  if (!MI.isCopy() || !DefRC || !UseRC)
+    return false;
+  const ARMBaseRegisterInfo &RI = getRegisterInfo();
+  DefRC = RI.getSubRegisterClass(DefRC, DefSubReg);
+  UseRC = RI.getSubRegisterClass(UseRC, UseSubReg);
+  if (!DefRC || !UseRC)
+    return false;
+  return (RI.getCommonSubClass(DefRC, &ARM::HPRRegClass) &&
+          (RI.getCommonSubClass(UseRC, &ARM::GPRRegClass) ||
+           RI.getCommonSubClass(UseRC, &ARM::SPRRegClass))) ||
+         (RI.getCommonSubClass(UseRC, &ARM::HPRRegClass) &&
+          (RI.getCommonSubClass(DefRC, &ARM::GPRRegClass) ||
+           RI.getCommonSubClass(DefRC, &ARM::SPRRegClass)));
+}
+
 void ARMBaseInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator I,
                                    const DebugLoc &DL, Register DestReg,

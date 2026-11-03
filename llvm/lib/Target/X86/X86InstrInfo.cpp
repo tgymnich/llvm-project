@@ -4278,6 +4278,33 @@ static unsigned CopyToFromAsymmetricReg(Register DestReg, Register SrcReg,
   return 0;
 }
 
+bool X86InstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  if (!MI.isCopy() || !DefRC || !UseRC)
+    return false;
+  DefRC = RI.getSubRegisterClass(DefRC, DefSubReg);
+  UseRC = RI.getSubRegisterClass(UseRC, UseSubReg);
+  if (!DefRC || !UseRC)
+    return false;
+  bool DefGPR = RI.getCommonSubClass(DefRC, &X86::GR32RegClass) ||
+                RI.getCommonSubClass(DefRC, &X86::GR64RegClass);
+  bool UseGPR = RI.getCommonSubClass(UseRC, &X86::GR32RegClass) ||
+                RI.getCommonSubClass(UseRC, &X86::GR64RegClass);
+  bool DefMask = RI.getCommonSubClass(DefRC, &X86::VK16RegClass) ||
+                 RI.getCommonSubClass(DefRC, &X86::VK32RegClass) ||
+                 RI.getCommonSubClass(DefRC, &X86::VK64RegClass);
+  bool UseMask = RI.getCommonSubClass(UseRC, &X86::VK16RegClass) ||
+                 RI.getCommonSubClass(UseRC, &X86::VK32RegClass) ||
+                 RI.getCommonSubClass(UseRC, &X86::VK64RegClass);
+  return (DefMask && (UseGPR || UseMask)) || (UseMask && DefGPR) ||
+         (DefRC == &X86::CCRRegClass && UseGPR) ||
+         (UseRC == &X86::CCRRegClass && DefGPR) ||
+         (RI.getCommonSubClass(DefRC, &X86::VR128XRegClass) && UseGPR) ||
+         (RI.getCommonSubClass(UseRC, &X86::VR128XRegClass) && DefGPR);
+}
+
 void X86InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator MI,
                                const DebugLoc &DL, Register DestReg,

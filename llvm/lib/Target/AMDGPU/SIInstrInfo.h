@@ -1489,6 +1489,12 @@ public:
   bool verifyInstruction(const MachineInstr &MI,
                          StringRef &ErrInfo) const override;
 
+  bool isCopyLikeSizeMismatchAllowed(const MachineInstr &MI,
+                                     const TargetRegisterClass *DefRC,
+                                     unsigned DefSubReg,
+                                     const TargetRegisterClass *UseRC,
+                                     unsigned UseSubReg) const override;
+
   unsigned getVALUOp(const MachineInstr &MI) const;
   unsigned getVALUOp(unsigned Opc) const;
 

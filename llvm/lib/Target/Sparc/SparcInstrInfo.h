@@ -93,6 +93,12 @@ public:
   /// Determine if the branch target is in range.
   bool isBranchOffsetInRange(unsigned BranchOpc, int64_t Offset) const override;
 
+  bool isCopyLikeSizeMismatchAllowed(const MachineInstr &MI,
+                                     const TargetRegisterClass *DefRC,
+                                     unsigned DefSubReg,
+                                     const TargetRegisterClass *UseRC,
+                                     unsigned UseSubReg) const override;
+
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
                    const DebugLoc &DL, Register DestReg, Register SrcReg,
                    bool KillSrc, bool RenamableDest = false,

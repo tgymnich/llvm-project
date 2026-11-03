@@ -535,6 +535,18 @@ bool SparcInstrInfo::isBranchOffsetInRange(unsigned BranchOpc,
   llvm_unreachable("Unknown branch instruction!");
 }
 
+bool SparcInstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  if (!MI.isCopy() || DefSubReg || UseSubReg || !DefRC || !UseRC)
+    return false;
+  return (RI.getCommonSubClass(DefRC, &SP::ASRRegsRegClass) &&
+          RI.getCommonSubClass(UseRC, &SP::IntRegsRegClass)) ||
+         (RI.getCommonSubClass(UseRC, &SP::ASRRegsRegClass) &&
+          RI.getCommonSubClass(DefRC, &SP::IntRegsRegClass));
+}
+
 void SparcInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator I,
                                  const DebugLoc &DL, Register DestReg,

@@ -2119,10 +2119,10 @@ bool AArch64InstructionSelector::preISelLower(MachineInstr &I) {
     MRI.setRegBank(FPRDst, RBI.getRegBank(AArch64::FPRRegBankID));
     I.getOperand(0).setReg(FPRDst);
 
-    BuildMI(MBB, std::next(I.getIterator()), MIMetadata(I),
-            TII.get(TargetOpcode::COPY), DstReg)
-        .addReg(FPRDst);
-    return true;
+    MachineInstr *Copy = BuildMI(MBB, std::next(I.getIterator()), MIMetadata(I),
+                                 TII.get(TargetOpcode::COPY), DstReg)
+                             .addReg(FPRDst);
+    return selectCopy(*Copy, TII, MRI, TRI, RBI);
   }
   case TargetOpcode::G_SPLAT_VECTOR: {
     // Convert the type from p0 to s64 to help selection.
@@ -3312,6 +3312,15 @@ bool AArch64InstructionSelector::select(MachineInstr &I) {
     assert((*RBI.getRegBank(DefReg, MRI, TRI)).getID() ==
                AArch64::GPRRegBankID &&
            "Unexpected ext regbank");
+
+    if (RBI.getRegBank(SrcReg, MRI, TRI)->getID() == AArch64::FPRRegBankID) {
+      const TargetRegisterClass *RC =
+          SrcSize <= 32 ? &AArch64::GPR32RegClass : &AArch64::GPR64RegClass;
+      auto Copy = MIB.buildCopy({RC}, {SrcReg});
+      if (!selectCopy(*Copy, TII, MRI, TRI, RBI))
+        return false;
+      SrcReg = Copy.getReg(0);
+    }
 
     MachineInstr *ExtI;
 
@@ -8322,7 +8331,7 @@ void AArch64InstructionSelector::processPHIs(MachineFunction &MF) {
     // %endbb:
     //   %dst:gpr(s16) = G_PHI %in1:gpr(s16), %bb1, %in2_copy:gpr(s16), %bb2
     bool HasGPROp = false, HasFPROp = false;
-    for (const MachineOperand &MO : llvm::drop_begin(MI->operands())) {
+    for (const MachineOperand &MO : MI->operands()) {
       if (!MO.isReg())
         continue;
       const LLT &Ty = MRI.getType(MO.getReg());

@@ -5490,6 +5490,50 @@ bool SIInstrInfo::verifyCopy(const MachineInstr &MI,
   return true;
 }
 
+static bool isBoolLowering(const SIRegisterInfo &RI,
+                           const TargetRegisterClass *A,
+                           const TargetRegisterClass *B) {
+  if (A != &AMDGPU::VReg_1RegClass && A != &AMDGPU::SCC_CLASSRegClass)
+    std::swap(A, B);
+  if (A != &AMDGPU::VReg_1RegClass && A != &AMDGPU::SCC_CLASSRegClass)
+    return false;
+
+  const TargetRegisterClass *VRC = RI.getEquivalentVGPRClass(B);
+  bool Is32Bit = RI.getCommonSubClass(VRC, &AMDGPU::VGPR_32RegClass);
+  if (A == &AMDGPU::SCC_CLASSRegClass)
+    return Is32Bit || RI.getCommonSubClass(VRC, &AMDGPU::VReg_64RegClass);
+  return Is32Bit ||
+         (RI.isSGPRClass(B) &&
+          RI.getCommonSubClass(VRC, RI.getEquivalentVGPRClass(RI.getBoolRC())));
+}
+
+bool SIInstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  if (!DefRC || !UseRC)
+    return false;
+  DefRC = RI.getSubRegisterClass(DefRC, DefSubReg);
+  UseRC = RI.getSubRegisterClass(UseRC, UseSubReg);
+  if (!DefRC || !UseRC)
+    return false;
+  if (DefRC == UseRC || isBoolLowering(RI, DefRC, UseRC))
+    return true;
+
+  DefRC = RI.getEquivalentVGPRClass(DefRC);
+  UseRC = RI.getEquivalentVGPRClass(UseRC);
+  if (RI.getCommonSubClass(DefRC, UseRC))
+    return true;
+
+  // TODO: Remove along with Fix16BitCopies.
+  return ST.useRealTrue16Insts() && Fix16BitCopies &&
+         (!MI.isPHI() || (!DefSubReg && !UseSubReg)) &&
+         ((RI.getCommonSubClass(DefRC, &AMDGPU::VGPR_16RegClass) &&
+           RI.getCommonSubClass(UseRC, &AMDGPU::VGPR_32RegClass)) ||
+          (RI.getCommonSubClass(DefRC, &AMDGPU::VGPR_32RegClass) &&
+           RI.getCommonSubClass(UseRC, &AMDGPU::VGPR_16RegClass)));
+}
+
 bool SIInstrInfo::verifyInstruction(const MachineInstr &MI,
                                     StringRef &ErrInfo) const {
   uint32_t Opcode = MI.getOpcode();

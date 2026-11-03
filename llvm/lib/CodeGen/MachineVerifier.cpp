@@ -86,6 +86,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -312,6 +313,12 @@ struct MachineVerifier {
   bool verifyGIntrinsicSideEffects(const MachineInstr *MI);
   bool verifyGIntrinsicConvergence(const MachineInstr *MI);
   void verifyPreISelGenericInstruction(const MachineInstr *MI);
+
+  std::optional<TypeSize> getCopyLikeOperandSize(const MachineOperand &MO,
+                                                 unsigned SubReg) const;
+  void verifyCopyLikeOperands(const MachineInstr *MI, const MachineOperand &Def,
+                              const MachineOperand &Use, const char *Error,
+                              unsigned DefSubReg = 0, unsigned UseSubReg = 0);
 
   void visitMachineInstrBefore(const MachineInstr *MI);
   void visitMachineOperand(const MachineOperand *MO, unsigned MONum);
@@ -2349,6 +2356,68 @@ void MachineVerifier::visitMachineInstrAfter(const MachineInstr *MI) {
   DeadPhysDefOps.clear();
 }
 
+std::optional<TypeSize>
+MachineVerifier::getCopyLikeOperandSize(const MachineOperand &MO,
+                                        unsigned SubReg) const {
+  if (!MO.isReg() || !MO.getReg())
+    return std::nullopt;
+  if (SubReg) {
+    unsigned Size = TRI->getSubRegIdxSize(SubReg);
+    if (Size == unsigned(-1))
+      return std::nullopt;
+    return TypeSize::getFixed(Size);
+  }
+
+  Register Reg = MO.getReg();
+  const TargetRegisterClass *RC = Reg.isVirtual()
+                                      ? MRI->getRegClassOrNull(Reg)
+                                      : TRI->getMinimalPhysRegClass(Reg);
+  if (RC)
+    return TRI->getRegSizeInBits(*RC);
+  LLT Ty = MRI->getType(Reg);
+  if (Ty.isValid())
+    return Ty.getSizeInBits();
+  return std::nullopt;
+}
+
+void MachineVerifier::verifyCopyLikeOperands(const MachineInstr *MI,
+                                             const MachineOperand &Def,
+                                             const MachineOperand &Use,
+                                             const char *Error,
+                                             unsigned DefSubReg,
+                                             unsigned UseSubReg) {
+  if (!Def.isReg() || !Def.getReg() || !Use.isReg() || !Use.getReg())
+    return;
+  if (Def.getSubReg() >= TRI->getNumSubRegIndices() ||
+      Use.getSubReg() >= TRI->getNumSubRegIndices() ||
+      DefSubReg >= TRI->getNumSubRegIndices() ||
+      UseSubReg >= TRI->getNumSubRegIndices())
+    return;
+  DefSubReg = TRI->composeSubRegIndices(Def.getSubReg(), DefSubReg);
+  UseSubReg = TRI->composeSubRegIndices(Use.getSubReg(), UseSubReg);
+  std::optional<TypeSize> DefSize = getCopyLikeOperandSize(Def, DefSubReg);
+  std::optional<TypeSize> UseSize = getCopyLikeOperandSize(Use, UseSubReg);
+  if (!DefSize || !UseSize || *DefSize == *UseSize)
+    return;
+
+  const TargetRegisterClass *DefRC =
+      Def.getReg().isVirtual() ? MRI->getRegClassOrNull(Def.getReg())
+                               : TRI->getMinimalPhysRegClass(Def.getReg());
+  const TargetRegisterClass *UseRC =
+      Use.getReg().isVirtual() ? MRI->getRegClassOrNull(Use.getReg())
+                               : TRI->getMinimalPhysRegClass(Use.getReg());
+  // Register classes can describe narrower values than subregister indices.
+  if (DefRC && UseRC &&
+      TRI->findCommonRegClass(DefRC, DefSubReg, UseRC, UseSubReg))
+    return;
+  if (TII->isCopyLikeSizeMismatchAllowed(*MI, DefRC, DefSubReg, UseRC,
+                                         UseSubReg))
+    return;
+
+  report(Error, MI);
+  OS << "Def Size = " << *DefSize << ", Src Size = " << *UseSize << '\n';
+}
+
 void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
   const MCInstrDesc &MCID = MI->getDesc();
   if (MI->getNumOperands() < MCID.getNumOperands()) {
@@ -2432,6 +2501,9 @@ void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
   // Verify properties of various specific instruction types
   switch (MI->getOpcode()) {
   case TargetOpcode::COPY: {
+    if (MI->getNumOperands() < 2 || !MI->getOperand(0).isReg() ||
+        !MI->getOperand(1).isReg())
+      break;
     const MachineOperand &DstOp = MI->getOperand(0);
     const MachineOperand &SrcOp = MI->getOperand(1);
     const Register SrcReg = SrcOp.getReg();
@@ -2439,6 +2511,13 @@ void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
 
     LLT DstTy = MRI->getType(DstReg);
     LLT SrcTy = MRI->getType(SrcReg);
+    if (DstOp.getSubReg() || SrcOp.getSubReg() ||
+        (!SrcTy.isValid() && !DstTy.isValid())) {
+      verifyCopyLikeOperands(
+          MI, DstOp, SrcOp,
+          "Copy Instruction is illegal with mismatching sizes");
+      break;
+    }
     if (SrcTy.isValid() && DstTy.isValid()) {
       // If both types are valid, check that the types are the same.
       if (SrcTy != DstTy) {
@@ -2448,9 +2527,6 @@ void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
 
       break;
     }
-
-    if (!SrcTy.isValid() && !DstTy.isValid())
-      break;
 
     // If we have only one valid type, this is likely a copy between a virtual
     // and physical register.
@@ -2492,6 +2568,14 @@ void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
     }
     break;
   }
+  case TargetOpcode::PHI:
+    if (MI->getNumOperands() < 1)
+      break;
+    for (const MachineOperand &Use : MI->explicit_uses())
+      if (Use.isReg())
+        verifyCopyLikeOperands(MI, MI->getOperand(0), Use,
+                               "PHI operands have mismatched sizes");
+    break;
   case TargetOpcode::COPY_LANEMASK: {
     const MachineOperand &DstOp = MI->getOperand(0);
     const MachineOperand &SrcOp = MI->getOperand(1);
@@ -2577,18 +2661,51 @@ void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
     // TODO: verify we have properly encoded deopt arguments
   } break;
   case TargetOpcode::INSERT_SUBREG: {
-    unsigned InsertedSize;
-    if (unsigned SubIdx = MI->getOperand(2).getSubReg())
-      InsertedSize = TRI->getSubRegIdxSize(SubIdx);
-    else
-      InsertedSize = TRI->getRegSizeInBits(MI->getOperand(2).getReg(), *MRI);
-    unsigned SubRegSize = TRI->getSubRegIdxSize(MI->getOperand(3).getImm());
-    if (SubRegSize < InsertedSize) {
+    if (MI->getNumOperands() < 4)
+      break;
+    verifyCopyLikeOperands(MI, MI->getOperand(0), MI->getOperand(1),
+                           "INSERT_SUBREG operands have mismatched sizes");
+    const MachineOperand &SubRegOp = MI->getOperand(3);
+    if (!SubRegOp.isImm() || SubRegOp.getImm() <= 0 ||
+        SubRegOp.getImm() >= TRI->getNumSubRegIndices()) {
+      report("Invalid subregister index operand for INSERT_SUBREG", &SubRegOp,
+             3);
+      break;
+    }
+    const MachineOperand &Inserted = MI->getOperand(2);
+    if (!Inserted.isReg() || Inserted.getSubReg() >= TRI->getNumSubRegIndices())
+      break;
+    std::optional<TypeSize> InsertedSize =
+        getCopyLikeOperandSize(Inserted, Inserted.getSubReg());
+    unsigned SubRegSize = TRI->getSubRegIdxSize(SubRegOp.getImm());
+    if (InsertedSize && *InsertedSize > SubRegSize) {
       report("INSERT_SUBREG expected inserted value to have equal or lesser "
              "size than the subreg it was inserted into", MI);
       break;
     }
   } break;
+  case TargetOpcode::SUBREG_TO_REG:
+  case TargetOpcode::EXTRACT_SUBREG: {
+    if (MI->getNumOperands() < 3)
+      break;
+    const MachineOperand &SubRegOp = MI->getOperand(2);
+    if (!SubRegOp.isImm() || SubRegOp.getImm() <= 0 ||
+        SubRegOp.getImm() >= TRI->getNumSubRegIndices()) {
+      report("Invalid subregister index operand", &SubRegOp, 2);
+      break;
+    }
+    if (MI->isSubregToReg())
+      verifyCopyLikeOperands(
+          MI, MI->getOperand(0), MI->getOperand(1),
+          "SUBREG_TO_REG source does not match its subregister index",
+          SubRegOp.getImm());
+    else
+      verifyCopyLikeOperands(
+          MI, MI->getOperand(0), MI->getOperand(1),
+          "EXTRACT_SUBREG result does not match its subregister index", 0,
+          SubRegOp.getImm());
+    break;
+  }
   case TargetOpcode::REG_SEQUENCE: {
     unsigned NumOps = MI->getNumOperands();
     if (!(NumOps & 1)) {
@@ -2603,11 +2720,17 @@ void MachineVerifier::visitMachineInstrBefore(const MachineInstr *MI) {
       if (!RegOp.isReg())
         report("Invalid register operand for REG_SEQUENCE", &RegOp, I);
 
-      if (!SubRegOp.isImm() || SubRegOp.getImm() == 0 ||
+      if (!SubRegOp.isImm() || SubRegOp.getImm() <= 0 ||
           SubRegOp.getImm() >= TRI->getNumSubRegIndices()) {
         report("Invalid subregister index operand for REG_SEQUENCE",
                &SubRegOp, I + 1);
+        continue;
       }
+      if (RegOp.isReg())
+        verifyCopyLikeOperands(
+            MI, MI->getOperand(0), RegOp,
+            "REG_SEQUENCE source does not match its subregister index",
+            SubRegOp.getImm());
     }
 
     Register DstReg = MI->getOperand(0).getReg();

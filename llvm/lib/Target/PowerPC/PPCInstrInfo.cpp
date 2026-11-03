@@ -1662,6 +1662,31 @@ static unsigned getCRBitValue(unsigned CRBit) {
   return Ret;
 }
 
+bool PPCInstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  if (!MI.isCopy() || !DefRC || !UseRC)
+    return false;
+  DefRC = RI.getSubRegisterClass(DefRC, DefSubReg);
+  UseRC = RI.getSubRegisterClass(UseRC, UseSubReg);
+  if (!DefRC || !UseRC)
+    return false;
+  // VSX copy legalization resolves scalar/vector class differences.
+  if ((RI.getCommonSubClass(DefRC, &PPC::VSRCRegClass) &&
+       (RI.getCommonSubClass(UseRC, &PPC::F8RCRegClass) ||
+        RI.getCommonSubClass(UseRC, &PPC::VSFRCRegClass))) ||
+      (RI.getCommonSubClass(UseRC, &PPC::VSRCRegClass) &&
+       (RI.getCommonSubClass(DefRC, &PPC::F8RCRegClass) ||
+        RI.getCommonSubClass(DefRC, &PPC::VSFRCRegClass))))
+    return true;
+  return (RI.getCommonSubClass(UseRC, &PPC::CRBITRCRegClass) &&
+          RI.getCommonSubClass(DefRC, &PPC::GPRCRegClass)) ||
+         (RI.getCommonSubClass(UseRC, &PPC::CRRCRegClass) &&
+          (RI.getCommonSubClass(DefRC, &PPC::GPRCRegClass) ||
+           RI.getCommonSubClass(DefRC, &PPC::G8RCRegClass)));
+}
+
 void PPCInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I,
                                const DebugLoc &DL, Register DestReg,

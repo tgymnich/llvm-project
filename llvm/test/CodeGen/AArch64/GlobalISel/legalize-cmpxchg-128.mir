@@ -24,11 +24,10 @@ body:             |
     ; CHECK-NOLSE-NEXT: [[COPY6:%[0-9]+]]:gpr64(i64) = COPY [[COPY2]](i64)
     ; CHECK-NOLSE-NEXT: [[COPY7:%[0-9]+]]:gpr64(i64) = COPY [[COPY3]](i64)
     ; CHECK-NOLSE-NEXT: [[COPY8:%[0-9]+]]:gpr64(i64) = COPY [[COPY4]](i64)
-    ; CHECK-NOLSE-NEXT: early-clobber %14:gpr64common(i64), early-clobber %15:gpr64common(i64), early-clobber %17:gpr32common = CMP_SWAP_128_ACQUIRE [[COPY]](p0), [[COPY5]](i64), [[COPY6]](i64), [[COPY7]](i64), [[COPY8]](i64) :: (load store acquire acquire (i128))
-    ; CHECK-NOLSE-NEXT: [[COPY9:%[0-9]+]]:gpr64 = COPY %17
+    ; CHECK-NOLSE-NEXT: early-clobber %14:gpr64common(i64), early-clobber %15:gpr64common(i64), early-clobber %16:gpr32common = CMP_SWAP_128_ACQUIRE [[COPY]](p0), [[COPY5]](i64), [[COPY6]](i64), [[COPY7]](i64), [[COPY8]](i64) :: (load store acquire acquire (i128))
     ; CHECK-NOLSE-NEXT: [[MV:%[0-9]+]]:_(i128) = G_MERGE_VALUES %14(i64), %15(i64)
-    ; CHECK-NOLSE-NEXT: [[COPY10:%[0-9]+]]:_(i128) = COPY [[MV]](i128)
-    ; CHECK-NOLSE-NEXT: G_STORE [[COPY10]](i128), [[COPY]](p0) :: (store (i128))
+    ; CHECK-NOLSE-NEXT: [[COPY9:%[0-9]+]]:_(i128) = COPY [[MV]](i128)
+    ; CHECK-NOLSE-NEXT: G_STORE [[COPY9]](i128), [[COPY]](p0) :: (store (i128))
     ; CHECK-NOLSE-NEXT: RET_ReallyLR
     ;
     ; CHECK-LSE-LABEL: name: compare_swap_128

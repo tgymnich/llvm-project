@@ -2589,7 +2589,7 @@ bool AArch64LegalizerInfo::legalizeAtomicCmpxchg128(
       break;
     }
 
-    auto Scratch = MRI.createVirtualRegister(&AArch64::GPR64RegClass);
+    auto Scratch = MRI.createVirtualRegister(&AArch64::GPR32commonRegClass);
     CAS = MIRBuilder.buildInstr(Opcode, {DstLo, DstHi, Scratch},
                                 {Addr, DesiredI->getOperand(0),
                                  DesiredI->getOperand(1), NewI->getOperand(0),

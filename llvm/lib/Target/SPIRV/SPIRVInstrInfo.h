@@ -52,6 +52,12 @@ public:
                         MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
                         const DebugLoc &DL,
                         int *BytesAdded = nullptr) const override;
+  bool isCopyLikeSizeMismatchAllowed(const MachineInstr &MI,
+                                     const TargetRegisterClass *DefRC,
+                                     unsigned DefSubReg,
+                                     const TargetRegisterClass *UseRC,
+                                     unsigned UseSubReg) const override;
+
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
                    const DebugLoc &DL, Register DestReg, Register SrcReg,
                    bool KillSrc, bool RenamableDest = false,

@@ -473,6 +473,12 @@ public:
                     const DebugLoc &DL, Register DstReg,
                     ArrayRef<MachineOperand> Cond, Register TrueReg,
                     Register FalseReg) const override;
+  bool isCopyLikeSizeMismatchAllowed(const MachineInstr &MI,
+                                     const TargetRegisterClass *DefRC,
+                                     unsigned DefSubReg,
+                                     const TargetRegisterClass *UseRC,
+                                     unsigned UseSubReg) const override;
+
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
                    const DebugLoc &DL, Register DestReg, Register SrcReg,
                    bool KillSrc, bool RenamableDest = false,

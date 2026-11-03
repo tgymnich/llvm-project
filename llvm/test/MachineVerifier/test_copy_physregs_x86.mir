@@ -25,7 +25,7 @@ name: test_invalid_copies
 tracksRegLiveness: true
 body: |
   bb.0:
-    liveins: $xmm0, $xmm1, $xmm2, $xmm3
+    liveins: $xmm0, $xmm1, $xmm2, $xmm3, $eflags, $k1, $rax, $eax
 
     ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
     ; CHECK: - instruction: %0:_(<4 x s16>) = COPY $xmm1
@@ -50,4 +50,19 @@ body: |
     ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
     ; CHECK: - instruction: $xmm3 = COPY %2:_(<8 x s32>)
     $xmm3 = COPY %2
+    %10:gr64 = COPY $eflags
+    $eflags = COPY %10
+    %11:gr32 = COPY $k1
+    %12:vk16wm = COPY $eax
+    %13:vk64wm = COPY $rax
+    %14:gr64 = COPY $xmm0
+    %15:vr128 = COPY $rax
+    %16:gr32 = IMPLICIT_DEF
+    %17:vr256 = IMPLICIT_DEF
+    ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
+    ; CHECK: - instruction: {{%[0-9]+}}:gr64 = COPY {{%[0-9]+}}:gr32
+    %18:gr64 = COPY %16
+    ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
+    ; CHECK: - instruction: {{%[0-9]+}}:gr32 = COPY {{%[0-9]+}}:vr256
+    %19:gr32 = COPY %17
 ...

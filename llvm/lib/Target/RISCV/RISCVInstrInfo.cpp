@@ -488,6 +488,21 @@ void RISCVInstrInfo::copyPhysRegVector(
   }
 }
 
+bool RISCVInstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  if (!MI.isCopy() || DefSubReg || UseSubReg || !DefRC || !UseRC)
+    return false;
+  const RISCVRegisterInfo &RI = *STI.getRegisterInfo();
+  if (!RI.getCommonSubClass(DefRC, &RISCV::GPRRegClass))
+    std::swap(DefRC, UseRC);
+  return RI.getCommonSubClass(DefRC, &RISCV::GPRRegClass) &&
+         (RI.getCommonSubClass(UseRC, &RISCV::FPR32RegClass) ||
+          (STI.hasHalfFPLoadStoreMove() &&
+           RI.getCommonSubClass(UseRC, &RISCV::FPR16RegClass)));
+}
+
 void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator MBBI,
                                  const DebugLoc &DL, Register DstReg,

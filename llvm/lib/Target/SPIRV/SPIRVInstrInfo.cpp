@@ -278,6 +278,14 @@ unsigned SPIRVInstrInfo::insertBranch(MachineBasicBlock &MBB,
   return 1;
 }
 
+bool SPIRVInstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  // Register classes represent IDs rather than storage widths.
+  return MI.isCopy() || MI.isPHI();
+}
+
 void SPIRVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator I,
                                  const DebugLoc &DL, Register DestReg,

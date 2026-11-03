@@ -1,0 +1,82 @@
+# RUN: not --crash llc -mtriple=aarch64 -run-pass=none -filetype=null %s 2>&1 | FileCheck %s --implicit-check-not="Bad machine code"
+# REQUIRES: aarch64-registered-target
+
+---
+name: copy_like_sizes
+tracksRegLiveness: true
+body: |
+  bb.0:
+    liveins: $x0, $x1, $nzcv
+    %0:gpr32 = IMPLICIT_DEF
+    %1:gpr64 = IMPLICIT_DEF
+    %2:fpr32 = IMPLICIT_DEF
+    %3:fpr64 = IMPLICIT_DEF
+    %4:fpr128 = IMPLICIT_DEF
+    %5:_(s32) = IMPLICIT_DEF
+    %6:_(s64) = IMPLICIT_DEF
+    %flags:gpr64 = COPY $nzcv
+    $nzcv = COPY %1
+
+    %7:gpr32 = COPY %1.sub_32
+    %8:gpr32 = COPY %2
+    %9.sub_32:gpr64 = COPY %0
+    %10:fpr32 = COPY %4.ssub
+    %11:gpr32 = COPY %0
+
+    ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
+    ; CHECK: - instruction: {{%[0-9]+}}:gpr32 = COPY {{%[0-9]+}}:gpr64
+    %12:gpr32 = COPY %1
+    ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
+    ; CHECK: - instruction: {{%[0-9]+}}:gpr64 = COPY {{%[0-9]+}}.sub_32:gpr64
+    %13:gpr64 = COPY %1.sub_32
+    ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
+    ; CHECK: - instruction: {{%[0-9]+}}.sub_32:gpr64 = COPY {{%[0-9]+}}:gpr64
+    %14.sub_32:gpr64 = COPY %1
+    ; CHECK: Bad machine code: Copy Instruction is illegal with mismatching sizes
+    ; CHECK: - instruction: $w0 = COPY $x1
+    $w0 = COPY $x1
+    B %bb.1
+
+  bb.1:
+    %15:gpr32 = PHI %0, %bb.0
+    %16:_(s32) = PHI %5, %bb.0
+    ; CHECK: Bad machine code: PHI operands have mismatched sizes
+    ; CHECK: - instruction: {{%[0-9]+}}:gpr32 = PHI {{%[0-9]+}}:gpr64, %bb.0
+    %17:gpr32 = PHI %1, %bb.0
+    ; CHECK: Bad machine code: PHI operands have mismatched sizes
+    ; CHECK: - instruction: {{%[0-9]+}}:_(s32) = PHI {{%[0-9]+}}:_(s64), %bb.0
+    %18:_(s32) = PHI %6, %bb.0
+
+    %19:fpr128 = REG_SEQUENCE %3, %subreg.dsub, %3, %subreg.dsub_hi
+    ; CHECK: Bad machine code: REG_SEQUENCE source does not match its subregister index
+    ; CHECK: - instruction: {{%[0-9]+}}:fpr128 = REG_SEQUENCE {{%[0-9]+}}:fpr128, %subreg.dsub
+    %20:fpr128 = REG_SEQUENCE %4, %subreg.dsub
+    ; CHECK: Bad machine code: REG_SEQUENCE source does not match its subregister index
+    ; CHECK: - instruction: {{%[0-9]+}}:fpr128 = REG_SEQUENCE {{%[0-9]+}}:fpr32, %subreg.dsub
+    %21:fpr128 = REG_SEQUENCE %2, %subreg.dsub
+
+    %22:fpr32 = EXTRACT_SUBREG %4, %subreg.ssub
+    %23:fpr32 = EXTRACT_SUBREG %4.dsub, %subreg.ssub
+    ; CHECK: Bad machine code: EXTRACT_SUBREG result does not match its subregister index
+    ; CHECK: - instruction: {{%[0-9]+}}:fpr64 = EXTRACT_SUBREG {{%[0-9]+}}:fpr128, %subreg.ssub
+    %24:fpr64 = EXTRACT_SUBREG %4, %subreg.ssub
+
+    %25:gpr64 = SUBREG_TO_REG %0, %subreg.sub_32
+    ; CHECK: Bad machine code: SUBREG_TO_REG source does not match its subregister index
+    ; CHECK: - instruction: {{%[0-9]+}}:gpr64 = SUBREG_TO_REG {{%[0-9]+}}:gpr64, %subreg.sub_32
+    %26:gpr64 = SUBREG_TO_REG %1, %subreg.sub_32
+
+    %27:fpr128 = INSERT_SUBREG %4, %3, %subreg.dsub
+    %28:fpr128 = INSERT_SUBREG %4, %2, %subreg.dsub
+    ; CHECK: Bad machine code: INSERT_SUBREG operands have mismatched sizes
+    ; CHECK: - instruction: {{%[0-9]+}}:fpr128 = INSERT_SUBREG {{%[0-9]+}}:fpr64(tied-def 0)
+    %29:fpr128 = INSERT_SUBREG %3, %2, %subreg.ssub
+
+    ; CHECK: Bad machine code: Invalid subregister index operand for REG_SEQUENCE
+    %30:fpr128 = REG_SEQUENCE %3, 0
+    ; CHECK: Bad machine code: Invalid subregister index operand
+    %31:fpr32 = EXTRACT_SUBREG %4, 0
+    ; CHECK: Bad machine code: Invalid subregister index operand
+    %32:gpr64 = SUBREG_TO_REG %0, 0
+    ; CHECK: Bad machine code: Invalid subregister index operand for INSERT_SUBREG
+    %33:fpr128 = INSERT_SUBREG %4, %2, 0

@@ -6380,6 +6380,18 @@ void AArch64InstrInfo::copyPhysRegImpl(MachineBasicBlock &MBB,
   llvm_unreachable("unimplemented reg-to-reg copy");
 }
 
+bool AArch64InstrInfo::isCopyLikeSizeMismatchAllowed(
+    const MachineInstr &MI, const TargetRegisterClass *DefRC,
+    unsigned DefSubReg, const TargetRegisterClass *UseRC,
+    unsigned UseSubReg) const {
+  if (!MI.isCopy() || DefSubReg || UseSubReg || !DefRC || !UseRC)
+    return false;
+  return (DefRC == &AArch64::CCRRegClass &&
+          RI.getCommonSubClass(UseRC, &AArch64::GPR64RegClass)) ||
+         (UseRC == &AArch64::CCRRegClass &&
+          RI.getCommonSubClass(DefRC, &AArch64::GPR64RegClass));
+}
+
 void AArch64InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator I,
                                    const DebugLoc &DL, Register DestReg,

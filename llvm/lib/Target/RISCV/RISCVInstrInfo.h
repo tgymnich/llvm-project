@@ -113,6 +113,12 @@ public:
                          MachineBasicBlock::iterator MBBI, const DebugLoc &DL,
                          MCRegister DstReg, MCRegister SrcReg, bool KillSrc,
                          const TargetRegisterClass *RegClass) const;
+  bool isCopyLikeSizeMismatchAllowed(const MachineInstr &MI,
+                                     const TargetRegisterClass *DefRC,
+                                     unsigned DefSubReg,
+                                     const TargetRegisterClass *UseRC,
+                                     unsigned UseSubReg) const override;
+
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
                    const DebugLoc &DL, Register DstReg, Register SrcReg,
                    bool KillSrc, bool RenamableDest = false,
