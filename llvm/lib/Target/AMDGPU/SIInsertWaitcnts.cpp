@@ -470,8 +470,42 @@ public:
 // waitcnt in order to know if there are multiple types of events within
 // the brackets. When multiple types of event happen in the bracket,
 // wait count may get decreased out of order, therefore we need to put in
-// "s_waitcnt 0" before use.
+// "s_waitcnt 0" before use unless per-pipe ordering proves a weaker wait safe.
 class WaitcntBrackets {
+  // UNORDERED accesses have no same-pipe completion guarantee.
+  enum VALUPipe { CSMACC, DPMACC, TRANS, XDL, UNORDERED, NUM_VALU_PIPES };
+  using VALUScores = std::array<unsigned, NUM_VALU_PIPES>;
+
+  // Ordered = SamePipe + ExtraCount + LaterXDLs; unordered = SamePipe +
+  // UnorderedCount. XDLScore identifies the first guaranteed later XDL.
+  struct VALUAccess {
+    unsigned Score = 0;
+    unsigned XDLScore = 0;
+    unsigned ExtraCount = 0;
+    unsigned UnorderedCount = 0;
+  };
+  using VALUAccesses = std::array<VALUAccess, NUM_VALU_PIPES>;
+
+  struct VALUBounds {
+    unsigned Ordered = ~0u;
+    unsigned Unordered = ~0u;
+    unsigned XDLScore = 0;
+  };
+
+  struct VALUInfo {
+    VALUAccesses Reads{};
+    VALUAccesses Writes{};
+    // Bounds that cannot grow with later VALU issues.
+    unsigned FrozenReads = ~0u;
+    unsigned FrozenWrites = ~0u;
+
+    bool empty() const {
+      auto IsEmpty = [](const VALUAccess &Access) { return !Access.Score; };
+      return FrozenReads == ~0u && FrozenWrites == ~0u &&
+             all_of(Reads, IsEmpty) && all_of(Writes, IsEmpty);
+    }
+  };
+
 public:
   WaitcntBrackets(const SIInsertWaitcnts *Context) : Context(Context) {
     assert(Context->TRI.getNumRegUnits() < REGUNITS_END);
@@ -538,15 +572,18 @@ private:
     return It != VMem.end() ? It->second.Scores[T] : 0;
   }
 
-  // Number of ordered XDL writes issued after the VA_VDST write tracked for
-  // TID. Only meaningful while that write is pending.
-  unsigned getNumOrderedXDLsAfterWrite(VMEMID TID) const {
-    auto It = VMem.find(TID);
-    if (It == VMem.end())
-      return 0;
-    return std::min(OrderedXDLCount - It->second.OrderedXDLCountAtWrite,
-                    getLimit(AMDGPU::VA_VDST_WR) - 1);
-  }
+  bool tracksVALUPipes() const { return AMDGPU::isGFX1250(Context->ST); }
+  VALUPipe getVALUPipe(HWEvents E, const MachineInstr *Inst = nullptr) const;
+  unsigned getVALUSamePipe(VALUPipe Pipe, unsigned Score,
+                           const VALUScores &UBs) const;
+  unsigned getVALUOrderedBound(unsigned SamePipe, unsigned XDLScore,
+                               unsigned ExtraCount, unsigned XDLUB) const;
+  void setVALUBounds(VALUPipe Pipe, VALUAccess &Access,
+                     const VALUBounds &Bounds, const VALUScores &UBs) const;
+  VALUBounds getVALUBounds(VALUPipe Pipe, const VALUAccess &Access) const;
+  unsigned getVALUWait(VALUPipe Pipe, const VALUAccess &Access) const;
+  void applyVALUWait(unsigned Count);
+  bool mergeVALU(const WaitcntBrackets &Other);
 
 public:
   // Do some internal consistency checks.
@@ -555,8 +592,12 @@ public:
     // should be identical.
     assert(getScoreLB(AMDGPU::VA_VDST_RD) == getScoreLB(AMDGPU::VA_VDST_WR));
     assert(getScoreUB(AMDGPU::VA_VDST_RD) == getScoreUB(AMDGPU::VA_VDST_WR));
+    for (unsigned P = 0; P != NUM_VALU_PIPES; ++P)
+      assert(VALUScoreLBs[P] <= VALUScoreUBs[P] && "Invalid VALU score range");
   }
 
+  void updateVALU(MachineInstr &Inst, HWEvents Events);
+  void finishVALU(const MachineInstr &Inst);
   bool merge(const WaitcntBrackets &Other);
 
   bool counterOutOfOrder(AMDGPU::InstCounterType T) const;
@@ -699,7 +740,8 @@ private:
                                           unsigned Score) const;
   void determineWaitForScore(AMDGPU::InstCounterType T, unsigned Score,
                              AMDGPU::Waitcnt &Wait) const;
-  void determineWaitForVAVDSTWrite(VMEMID ID, AMDGPU::Waitcnt &Wait) const;
+  void determineWaitForVAVDST(AMDGPU::InstCounterType T, VMEMID ID,
+                              AMDGPU::Waitcnt &Wait) const;
 
   static bool mergeScore(const MergeInfo &M, unsigned &Score,
                          unsigned OtherScore);
@@ -738,8 +780,6 @@ private:
       for (MCRegUnit RU : regunits(Reg)) {
         auto &Info = VMem[toVMEMID(RU)];
         Info.Scores[T] = Val;
-        if (T == AMDGPU::VA_VDST_WR)
-          Info.OrderedXDLCountAtWrite = OrderedXDLCount;
       }
     } else if (TRI.isSGPRReg(Context->MRI, Reg)) {
       for (MCRegUnit RU : regunits(Reg))
@@ -766,9 +806,10 @@ private:
   unsigned LastFlatLoadCnt = 0;
   // Remember the last GDS operation.
   unsigned LastGDS = 0;
-  // Number of VA_VDST ordered XDL writes issued so far. Only differences
-  // between values are meaningful, so unsigned wraparound is harmless.
-  unsigned OrderedXDLCount = 0;
+  VALUScores VALUScoreLBs{};
+  VALUScores VALUScoreUBs{};
+  // Only the latest wait-limit fences are needed to prove a usable wait bound.
+  SmallVector<VALUScores> OrderedXDLs;
 
   // The score tracking logic is fragmented as follows:
   // - VMem: VGPR RegUnits and LDS DMA IDs, see the VMEMID encoding.
@@ -786,9 +827,6 @@ private:
   struct VMEMInfo {
     // Scores for all instruction counters. Zero-initialized.
     CounterValueArray Scores{};
-    // OrderedXDLCount when the VA_VDST_WR score was set. Every ordered XDL
-    // write issued since then remains outstanding while this write is pending.
-    unsigned OrderedXDLCountAtWrite = 0;
     // For VGPRs, we need to track an additional fine-grained set of pending
     // events.
     HWEvents VGPRPendingEvents;
@@ -823,6 +861,7 @@ private:
   };
 
   DenseMap<VMEMID, VMEMInfo> VMem; // VGPR + LDS DMA
+  DenseMap<VMEMID, VALUInfo> VALU;
   DenseMap<MCRegUnit, SGPRInfo> SGPRs;
 
   // Reg score for SCC.
@@ -879,6 +918,242 @@ void WaitcntBrackets::setScoreByOperand(const MachineOperand &Op,
   setRegScore(Op.getReg().asMCReg(), CntTy, Score);
 }
 
+WaitcntBrackets::VALUPipe
+WaitcntBrackets::getVALUPipe(HWEvents E, const MachineInstr *Inst) const {
+  if (Inst) {
+    switch (Inst->getOpcode()) {
+    case AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32:
+    case AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32_gfx1250:
+    case AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64:
+    case AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64_gfx1250:
+    case AMDGPU::V_PK_FMA_F64:
+    case AMDGPU::V_PK_FMA_F64_gfx1250:
+    case AMDGPU::V_PK_MUL_F64:
+    case AMDGPU::V_PK_MUL_F64_gfx1250:
+    case AMDGPU::V_PK_ADD_F64:
+    case AMDGPU::V_PK_ADD_F64_gfx1250:
+    case AMDGPU::V_PK_MAX_NUM_F64:
+    case AMDGPU::V_PK_MAX_NUM_F64_gfx1250:
+    case AMDGPU::V_PK_MIN_NUM_F64:
+    case AMDGPU::V_PK_MIN_NUM_F64_gfx1250:
+    case AMDGPU::V_PK_ADD_NC_U64:
+    case AMDGPU::V_PK_ADD_NC_U64_gfx1250:
+    case AMDGPU::V_PK_SUB_NC_U64:
+    case AMDGPU::V_PK_SUB_NC_U64_gfx1250:
+    case AMDGPU::V_PK_LSHL_ADD_U64:
+    case AMDGPU::V_PK_LSHL_ADD_U64_gfx1250:
+      return UNORDERED;
+    default:
+      break;
+    }
+    if ((Context->TII.isWMMA(*Inst) && !Context->TII.isXDL(*Inst)) ||
+        (AMDGPU::isVOPD(Inst->getOpcode()) &&
+         AMDGPU::isDPMACCInstruction(
+             AMDGPU::getVOPDComponents(Inst->getOpcode()).first)))
+      return UNORDERED;
+  }
+  switch (E.value()) {
+  case HWEvents::VGPR_CSMACC_READ:
+  case HWEvents::VGPR_CSMACC_WRITE:
+    return CSMACC;
+  case HWEvents::VGPR_DPMACC_READ:
+  case HWEvents::VGPR_DPMACC_WRITE:
+    return DPMACC;
+  case HWEvents::VGPR_TRANS_READ:
+  case HWEvents::VGPR_TRANS_WRITE:
+    return TRANS;
+  case HWEvents::VGPR_XDL_READ:
+  case HWEvents::VGPR_XDL_WRITE:
+    return XDL;
+  default:
+    llvm_unreachable("Expected VALU event");
+  }
+}
+
+unsigned WaitcntBrackets::getVALUSamePipe(VALUPipe Pipe, unsigned Score,
+                                          const VALUScores &UBs) const {
+  return Pipe == UNORDERED
+             ? 0
+             : std::min(UBs[Pipe] - Score, getLimit(AMDGPU::VA_VDST_WR) - 1);
+}
+
+unsigned WaitcntBrackets::getVALUOrderedBound(unsigned SamePipe,
+                                              unsigned XDLScore,
+                                              unsigned ExtraCount,
+                                              unsigned XDLUB) const {
+  unsigned Limit = getLimit(AMDGPU::VA_VDST_WR) - 1;
+  unsigned LaterXDLs = std::min(XDLUB - XDLScore + 1, Limit);
+  return std::min(SamePipe + ExtraCount + LaterXDLs, Limit);
+}
+
+void WaitcntBrackets::setVALUBounds(VALUPipe Pipe, VALUAccess &Access,
+                                    const VALUBounds &Bounds,
+                                    const VALUScores &UBs) const {
+  unsigned SamePipe = getVALUSamePipe(Pipe, Access.Score, UBs);
+  Access.UnorderedCount =
+      Bounds.Unordered != ~0u ? Bounds.Unordered - SamePipe : ~0u;
+  Access.XDLScore = Bounds.XDLScore;
+  Access.ExtraCount = 0;
+  if (Access.XDLScore) {
+    unsigned Base = getVALUOrderedBound(SamePipe, Access.XDLScore, 0, UBs[XDL]);
+    assert(Bounds.Ordered >= Base && "Strengthened VALU ordering");
+    Access.ExtraCount = Bounds.Ordered - Base;
+  }
+  if (!Access.XDLScore && Access.UnorderedCount == ~0u)
+    Access = {};
+}
+
+WaitcntBrackets::VALUBounds
+WaitcntBrackets::getVALUBounds(VALUPipe Pipe, const VALUAccess &Access) const {
+  unsigned Limit = getLimit(AMDGPU::VA_VDST_WR) - 1;
+  unsigned SamePipe = getVALUSamePipe(Pipe, Access.Score, VALUScoreUBs);
+  VALUBounds Bounds;
+  if (Access.UnorderedCount != ~0u) {
+    auto It =
+        llvm::lower_bound(OrderedXDLs, Access.Score,
+                          [Pipe](const VALUScores &Fence, unsigned Score) {
+                            return Fence[Pipe] < Score;
+                          });
+    if (Pipe == XDL || It == OrderedXDLs.end()) {
+      Bounds.Unordered = std::min(SamePipe + Access.UnorderedCount, Limit);
+    } else {
+      Bounds.XDLScore = (*It)[XDL];
+      Bounds.Ordered = getVALUOrderedBound(
+          SamePipe, Bounds.XDLScore, Access.UnorderedCount, VALUScoreUBs[XDL]);
+    }
+  }
+  // Same-pipe successors and ordered XDL successors are disjoint.
+  if (Access.XDLScore) {
+    Bounds.Ordered =
+        std::min(Bounds.Ordered,
+                 getVALUOrderedBound(SamePipe, Access.XDLScore,
+                                     Access.ExtraCount, VALUScoreUBs[XDL]));
+    Bounds.XDLScore = std::max(Bounds.XDLScore, Access.XDLScore);
+  }
+  return Bounds;
+}
+
+unsigned WaitcntBrackets::getVALUWait(VALUPipe Pipe,
+                                      const VALUAccess &Access) const {
+  VALUBounds Bounds = getVALUBounds(Pipe, Access);
+  assert((Bounds.Ordered != ~0u || Bounds.Unordered != ~0u) &&
+         "Pending VALU access has no wait bound");
+  return std::min(Bounds.Ordered, Bounds.Unordered);
+}
+
+void WaitcntBrackets::applyVALUWait(unsigned Count) {
+  VALU.remove_if([&](auto &Entry) {
+    VALUInfo &Info = Entry.second;
+    if (Info.FrozenReads >= Count)
+      Info.FrozenReads = ~0u;
+    if (Info.FrozenWrites >= Count)
+      Info.FrozenWrites = ~0u;
+    for (VALUAccesses *Accesses : {&Info.Reads, &Info.Writes})
+      for (unsigned P = 0; P != NUM_VALU_PIPES; ++P) {
+        VALUAccess &Access = (*Accesses)[P];
+        if (Access.Score <= VALUScoreLBs[P]) {
+          Access = {};
+          continue;
+        }
+        VALUBounds Bounds = getVALUBounds(static_cast<VALUPipe>(P), Access);
+        if (Bounds.Unordered >= Count)
+          Bounds.Unordered = ~0u;
+        if (Bounds.Ordered >= Count) {
+          Bounds.Ordered = ~0u;
+          Bounds.XDLScore = 0;
+        }
+        setVALUBounds(static_cast<VALUPipe>(P), Access, Bounds, VALUScoreUBs);
+      }
+    return Info.empty();
+  });
+
+  for (unsigned P = 0; P != NUM_VALU_PIPES; ++P) {
+    // A total outstanding count also bounds each individual pipe.
+    unsigned LB = VALUScoreLBs[P];
+    if (P != UNORDERED)
+      LB = std::max(LB, VALUScoreUBs[P] - std::min(Count, VALUScoreUBs[P]));
+    unsigned UB = VALUScoreUBs[P];
+    while (LB < UB) {
+      unsigned Score = LB + (UB - LB + 1) / 2;
+      if (getVALUWait(static_cast<VALUPipe>(P), {Score, 0}) >= Count)
+        LB = Score;
+      else
+        UB = Score - 1;
+    }
+    VALUScoreLBs[P] = LB;
+  }
+  if (!Count)
+    OrderedXDLs.clear();
+}
+
+bool WaitcntBrackets::mergeVALU(const WaitcntBrackets &Other) {
+  bool Changed = false;
+  for (VMEMID ID : Other.VALU.keys())
+    VALU.try_emplace(ID);
+  std::array<MergeInfo, NUM_VALU_PIPES> MergeInfos;
+  VALUScores NewUBs;
+  for (unsigned P = 0; P != NUM_VALU_PIPES; ++P) {
+    unsigned MyPending = VALUScoreUBs[P] - VALUScoreLBs[P];
+    unsigned OtherPending = Other.VALUScoreUBs[P] - Other.VALUScoreLBs[P];
+    NewUBs[P] = VALUScoreLBs[P] + std::max(MyPending, OtherPending);
+    if (NewUBs[P] < VALUScoreLBs[P])
+      report_fatal_error("InsertWaitcnt VALU score overflow");
+    MergeInfos[P] = {VALUScoreLBs[P], Other.VALUScoreLBs[P],
+                     NewUBs[P] - VALUScoreUBs[P],
+                     NewUBs[P] - Other.VALUScoreUBs[P]};
+  }
+
+  for (auto &[ID, Info] : VALU) {
+    auto OtherIt = Other.VALU.find(ID);
+    if (OtherIt != Other.VALU.end()) {
+      unsigned NewReads =
+          std::min(Info.FrozenReads, OtherIt->second.FrozenReads);
+      unsigned NewWrites =
+          std::min(Info.FrozenWrites, OtherIt->second.FrozenWrites);
+      Changed |= NewReads < Info.FrozenReads || NewWrites < Info.FrozenWrites;
+      Info.FrozenReads = NewReads;
+      Info.FrozenWrites = NewWrites;
+    }
+    for (bool IsRead : {true, false}) {
+      VALUAccesses &Accesses = IsRead ? Info.Reads : Info.Writes;
+      for (unsigned P = 0; P != NUM_VALU_PIPES; ++P) {
+        VALUAccess &Access = Accesses[P];
+        VALUAccess OtherAccess;
+        if (OtherIt != Other.VALU.end())
+          OtherAccess =
+              (IsRead ? OtherIt->second.Reads : OtherIt->second.Writes)[P];
+        const MergeInfo &M = MergeInfos[P];
+        bool MyPending = Access.Score > M.OldLB;
+        bool OtherPending = OtherAccess.Score > M.OtherLB;
+        VALUPipe Pipe = static_cast<VALUPipe>(P);
+        VALUBounds MyBounds;
+        VALUBounds OtherBounds;
+        if (MyPending)
+          MyBounds = getVALUBounds(Pipe, Access);
+        if (OtherPending)
+          OtherBounds = Other.getVALUBounds(Pipe, OtherAccess);
+        VALUBounds NewBounds;
+        NewBounds.Ordered = std::min(MyBounds.Ordered, OtherBounds.Ordered);
+        NewBounds.Unordered =
+            std::min(MyBounds.Unordered, OtherBounds.Unordered);
+        if (MyBounds.XDLScore)
+          NewBounds.XDLScore = MyBounds.XDLScore + MergeInfos[XDL].MyShift;
+        if (OtherBounds.XDLScore)
+          NewBounds.XDLScore =
+              std::max(NewBounds.XDLScore,
+                       OtherBounds.XDLScore + MergeInfos[XDL].OtherShift);
+        Changed |= NewBounds.Ordered < MyBounds.Ordered ||
+                   NewBounds.Unordered < MyBounds.Unordered;
+        Changed |= mergeScore(M, Access.Score, OtherAccess.Score);
+        setVALUBounds(Pipe, Access, NewBounds, NewUBs);
+      }
+    }
+  }
+  VALUScoreUBs = NewUBs;
+  OrderedXDLs.clear();
+  return Changed;
+}
+
 // Return true if the subtarget is one that enables Point Sample Acceleration
 // and the MachineInstr passed in is one to which it might be applied (the
 // hardware makes this decision based on several factors, but we can't determine
@@ -907,6 +1182,54 @@ bool WaitcntBrackets::hasPointSamplePendingVmemTypes(const MachineInstr &MI,
   return hasDifferentVGPRPendingEvents(Reg, HWEvents::VMEM_READ_ACCESS);
 }
 
+void WaitcntBrackets::updateVALU(MachineInstr &Inst, HWEvents Events) {
+  if (!tracksVALUPipes())
+    return;
+  for (HWEvents E : Events) {
+    if (Context->getCounterFromEvent(E) != AMDGPU::VA_VDST_RD)
+      continue;
+    VALUPipe Pipe = getVALUPipe(E, &Inst);
+    auto Advance = [&](VALUPipe P) {
+      unsigned &UB = VALUScoreUBs[P];
+      if (++UB == 0)
+        report_fatal_error("InsertWaitcnt VALU score wraparound");
+    };
+    // A scaled WMMA's load-scale decrement is not an ordered successor.
+    Advance(Pipe);
+    // A mixed VOPD's DP half is ordered behind earlier DP work.
+    if (Pipe == UNORDERED && AMDGPU::isVOPD(Inst.getOpcode()))
+      Advance(DPMACC);
+    if (Pipe == XDL && Context->TII.isVAVDSTOrderedXDL(Inst)) {
+      OrderedXDLs.push_back(VALUScoreUBs);
+      if (OrderedXDLs.size() >= getLimit(AMDGPU::VA_VDST_WR))
+        OrderedXDLs.erase(OrderedXDLs.begin());
+    }
+    break;
+  }
+}
+
+void WaitcntBrackets::finishVALU(const MachineInstr &Inst) {
+  if (!tracksVALUPipes())
+    return;
+  if (!Inst.modifiesRegister(AMDGPU::EXEC, &Context->TRI))
+    return;
+
+  // Successors under a different EXEC may be skipped.
+  for (auto &[ID, Info] : VALU) {
+    auto Freeze = [&](VALUAccesses &Accesses, unsigned &Bound) {
+      for (unsigned P = 0; P != NUM_VALU_PIPES; ++P)
+        if (Accesses[P].Score > VALUScoreLBs[P])
+          Bound = std::min(Bound,
+                           getVALUWait(static_cast<VALUPipe>(P), Accesses[P]));
+      Accesses = {};
+    };
+    Freeze(Info.Reads, Info.FrozenReads);
+    Freeze(Info.Writes, Info.FrozenWrites);
+  }
+  VALUScoreLBs = VALUScoreUBs;
+  OrderedXDLs.clear();
+}
+
 void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
   assert(E.size() == 1 && "Expected singular event!");
   AMDGPU::InstCounterType T = Context->getCounterFromEvent(E);
@@ -929,11 +1252,6 @@ void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
   // Examples including vm_cnt when buffer-store or lgkm_cnt when send-message.
   PendingEvents |= E;
   setScoreUB(T, CurrScore);
-
-  // Count this write before recording its own destination, so the
-  // destination does not count itself.
-  if (E == HWEvents::VGPR_XDL_WRITE && Context->TII.isVAVDSTOrderedXDL(Inst))
-    ++OrderedXDLCount;
 
   const SIRegisterInfo &TRI = Context->TRI;
   const MachineRegisterInfo &MRI = Context->MRI;
@@ -1025,6 +1343,12 @@ void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
       setScoreByOperand(Op, T, CurrScore);
   } else if (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR ||
              T == AMDGPU::VM_VSRC) {
+    bool HasUnconditionalAccess =
+        T != AMDGPU::VM_VSRC && tracksVALUPipes() &&
+        (!Inst.readsRegister(AMDGPU::EXEC, &TRI) ||
+         any_of(Inst.defs(), [&](const MachineOperand &Op) {
+           return TRI.isSGPRReg(MRI, Op.getReg());
+         }));
     // Match the score to the VGPR destination or source registers as
     // appropriate
     for (const MachineOperand &Op : Inst.operands()) {
@@ -1039,8 +1363,29 @@ void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
       if (T == AMDGPU::VM_VSRC && Op.isDef())
         continue;
 
-      if (TRI.isVectorRegister(Context->MRI, Op.getReg()))
+      if (!TRI.isVectorRegister(Context->MRI, Op.getReg()))
+        continue;
+      if (T == AMDGPU::VM_VSRC || !tracksVALUPipes()) {
         setScoreByOperand(Op, T, CurrScore);
+      } else {
+        VALUPipe Pipe = getVALUPipe(E, &Inst);
+        for (MCRegUnit RU : regunits(Op.getReg().asMCReg())) {
+          auto &Info = VALU[toVMEMID(RU)];
+          if (T == AMDGPU::VA_VDST_WR)
+            Info.Writes = {};
+          // These accesses may issue even when later VALU is skipped.
+          if (HasUnconditionalAccess) {
+            if (T == AMDGPU::VA_VDST_RD)
+              Info.FrozenReads = 0;
+            else
+              Info.FrozenWrites = 0;
+            continue;
+          }
+          VALUAccesses &Accesses =
+              T == AMDGPU::VA_VDST_RD ? Info.Reads : Info.Writes;
+          Accesses[Pipe] = {VALUScoreUBs[Pipe], 0};
+        }
+      }
     }
   } else /* LGKM_CNT || EXP_CNT || VS_CNT || NUM_INST_CNTS */ {
     // Match the score to the destination registers.
@@ -1384,6 +1729,7 @@ void WaitcntBrackets::simplifyVmVsrc(const AMDGPU::Waitcnt &CheckWait,
 
 void WaitcntBrackets::purgeEmptyTrackingData() {
   VMem.remove_if([](const auto &P) { return P.second.empty(); });
+  VALU.remove_if([](const auto &P) { return P.second.empty(); });
   SGPRs.remove_if([](const auto &P) { return P.second.empty(); });
 }
 
@@ -1422,18 +1768,26 @@ void WaitcntBrackets::determineWaitForScore(AMDGPU::InstCounterType T,
     Wait.add(T, *Count);
 }
 
-void WaitcntBrackets::determineWaitForVAVDSTWrite(VMEMID ID,
-                                                  AMDGPU::Waitcnt &Wait) const {
-  std::optional<unsigned> Count =
-      getWaitForScore(AMDGPU::VA_VDST_WR, getVMemScore(ID, AMDGPU::VA_VDST_WR));
-  if (!Count)
+void WaitcntBrackets::determineWaitForVAVDST(AMDGPU::InstCounterType T,
+                                             VMEMID ID,
+                                             AMDGPU::Waitcnt &Wait) const {
+  assert((T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR) &&
+         "Expected VA_VDST counter");
+  if (!tracksVALUPipes()) {
+    determineWaitForScore(T, getVMemScore(ID, T), Wait);
     return;
+  }
 
-  // The ordered-XDL count is a wait bound independent of exact event-class
-  // ordering. Combine the bounds for this register unit before Wait.add()
-  // takes the minimum across all required register-unit dependencies.
-  Wait.add(AMDGPU::VA_VDST_WR,
-           std::max(*Count, getNumOrderedXDLsAfterWrite(ID)));
+  auto It = VALU.find(ID);
+  if (It == VALU.end())
+    return;
+  Wait.add(T, T == AMDGPU::VA_VDST_RD ? It->second.FrozenReads
+                                      : It->second.FrozenWrites);
+  const VALUAccesses &Accesses =
+      T == AMDGPU::VA_VDST_RD ? It->second.Reads : It->second.Writes;
+  for (unsigned P = 0; P != NUM_VALU_PIPES; ++P)
+    if (Accesses[P].Score > VALUScoreLBs[P])
+      Wait.add(T, getVALUWait(static_cast<VALUPipe>(P), Accesses[P]));
 }
 
 AMDGPU::Waitcnt WaitcntBrackets::determineAsyncWait(unsigned N) {
@@ -1504,8 +1858,8 @@ MCRegister WaitcntBrackets::determineVGPR16Dependency(const MachineInstr &MI,
 
   AMDGPU::Waitcnt Wait;
   for (MCRegUnit RU : regunits(OtherHalf)) {
-    if (T == AMDGPU::VA_VDST_WR)
-      determineWaitForVAVDSTWrite(toVMEMID(RU), Wait);
+    if (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR)
+      determineWaitForVAVDST(T, toVMEMID(RU), Wait);
     else
       determineWaitForScore(T, getVMemScore(toVMEMID(RU), T), Wait);
   }
@@ -1538,8 +1892,8 @@ void WaitcntBrackets::determineWaitForPhysReg(AMDGPU::InstCounterType T,
     if (IsVGPR)
       Reg = determineVGPR16Dependency(MI, T, Reg);
     for (MCRegUnit RU : regunits(Reg)) {
-      if (IsVGPR && T == AMDGPU::VA_VDST_WR)
-        determineWaitForVAVDSTWrite(toVMEMID(RU), Wait);
+      if (IsVGPR && (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR))
+        determineWaitForVAVDST(T, toVMEMID(RU), Wait);
       else
         determineWaitForScore(
             T, IsVGPR ? getVMemScore(toVMEMID(RU), T) : getSGPRScore(RU, T),
@@ -1587,6 +1941,9 @@ void WaitcntBrackets::applyWaitcnt(const AMDGPU::Waitcnt &Wait) {
 }
 
 void WaitcntBrackets::applyWaitcnt(AMDGPU::InstCounterType T, unsigned Count) {
+  if (T == AMDGPU::VA_VDST_RD && tracksVALUPipes() &&
+      Count < getLimit(AMDGPU::VA_VDST_RD))
+    applyVALUWait(Count);
   const unsigned UB = getScoreUB(T);
   if (Count >= UB)
     return;
@@ -2792,8 +3149,10 @@ void SIInsertWaitcnts::updateEventWaitcntAfter(MachineInstr &Inst,
                                                WaitcntBrackets *ScoreBrackets) {
 
   HWEvents InstEvents = AMDGPU::getEventsFor(Inst, ST, IsExpertMode, TgSplit);
+  ScoreBrackets->updateVALU(Inst, InstEvents);
   for (HWEvents E : InstEvents)
     ScoreBrackets->updateByEvent(E, Inst);
+  ScoreBrackets->finishVALU(Inst);
 
   if (TII.isDS(Inst) && TII.usesLGKM_CNT(Inst)) {
     if (TII.isAlwaysGDS(Inst.getOpcode()) ||
@@ -2928,6 +3287,9 @@ bool WaitcntBrackets::merge(const WaitcntBrackets &Other) {
   for (auto K : Other.SGPRs.keys())
     SGPRs.try_emplace(K);
 
+  if (tracksVALUPipes())
+    StrictDom |= mergeVALU(Other);
+
   // Array to store MergeInfo for each counter type
   MergeInfo MergeInfos[AMDGPU::NUM_INST_CNTS];
 
@@ -2974,24 +3336,12 @@ bool WaitcntBrackets::merge(const WaitcntBrackets &Other) {
       }
     }
 
-    for (auto &[RegID, Info] : VMem) {
-      unsigned OtherScore = Other.getVMemScore(RegID, T);
-      if (T == AMDGPU::VA_VDST_WR) {
-        // A fence count is usable only when every path carrying the dependency
-        // has at least that many later ordered XDL writes. Keep this path's
-        // OrderedXDLCount and rebase each write onto it.
-        bool MyPending = Info.Scores[T] > M.OldLB;
-        bool OtherPending = OtherScore > M.OtherLB;
-        unsigned MyCount = MyPending ? getNumOrderedXDLsAfterWrite(RegID) : 0;
-        unsigned OtherCount =
-            OtherPending ? Other.getNumOrderedXDLsAfterWrite(RegID) : 0;
-        unsigned NewCount = MyPending && OtherPending
-                                ? std::min(MyCount, OtherCount)
-                                : (MyPending ? MyCount : OtherCount);
-        StrictDom |= MyPending && NewCount < MyCount;
-        Info.OrderedXDLCountAtWrite = OrderedXDLCount - NewCount;
+    if (!tracksVALUPipes() ||
+        (T != AMDGPU::VA_VDST_RD && T != AMDGPU::VA_VDST_WR)) {
+      for (auto &[RegID, Info] : VMem) {
+        unsigned OtherScore = Other.getVMemScore(RegID, T);
+        StrictDom |= mergeScore(M, Info.Scores[T], OtherScore);
       }
-      StrictDom |= mergeScore(M, Info.Scores[T], OtherScore);
     }
 
     if (isSmemCounter(T)) {

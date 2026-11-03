@@ -30,8 +30,12 @@ static HWEvents getExpertSchedulingEventType(const MachineInstr &Inst,
     if (TII.isXDL(Inst))
       return HWEvents::VGPR_XDL_READ | HWEvents::VGPR_XDL_WRITE;
 
+    unsigned Opcode = Inst.getOpcode();
+    if (AMDGPU::isGFX1250(TII.getSubtarget()) && AMDGPU::isVOPD(Opcode))
+      Opcode = AMDGPU::getVOPDComponents(Opcode).first;
+
     // On gfx1250, 64-bit transcendental instructions use the DP pipe.
-    if (AMDGPU::isDPMACCInstruction(Inst.getOpcode()) &&
+    if (AMDGPU::isDPMACCInstruction(Opcode) &&
         (AMDGPU::isGFX1250(TII.getSubtarget()) || !TII.isTRANS(Inst)))
       return HWEvents::VGPR_DPMACC_READ | HWEvents::VGPR_DPMACC_WRITE;
 

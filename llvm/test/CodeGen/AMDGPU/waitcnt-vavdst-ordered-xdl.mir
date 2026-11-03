@@ -16,7 +16,7 @@ body: |
     ; CHECK-NEXT: early-clobber $vgpr40_vgpr41_vgpr42_vgpr43 = V_WMMA_F16_16X16X64_FP8_FP8_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr40_vgpr41_vgpr42_vgpr43, 0, 0, 0, 0, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23 = V_WMMA_F32_16X16X32_BF16_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, 0, 0, 0, 0, implicit $exec
     ; CHECK-NEXT: $vgpr34 = V_ADD_F32_e32 $vgpr28, $vgpr29, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_2
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr35, $vgpr30, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
@@ -41,7 +41,7 @@ body: |
     ; CHECK-NEXT: $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63 = V_SWMMAC_I32_16X16X128_IU8_w32_twoaddr 8, $vgpr32_vgpr33_vgpr34_vgpr35_vgpr36_vgpr37_vgpr38_vgpr39, 8, $vgpr40_vgpr41_vgpr42_vgpr43_vgpr44_vgpr45_vgpr46_vgpr47_vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55, $vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63, $vgpr4_vgpr5, 0, 0, 0, 0, 0, implicit $exec
     ; CHECK-NEXT: $vgpr25 = V_ADD_F32_e32 $vgpr28, $vgpr29, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_2
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr24, $vgpr30, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
@@ -83,7 +83,7 @@ body: |
     ; CHECK-NEXT: $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr22_vgpr23_vgpr24_vgpr25 = V_WMMA_F16_16X16X64_FP8_FP8_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr22_vgpr23_vgpr24_vgpr25, 0, 0, 0, 0, implicit $exec
     ; CHECK-NEXT: $vgpr27 = V_ADD_F32_e32 $vgpr28, $vgpr29, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr26, $vgpr30, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
@@ -105,7 +105,7 @@ body: |
     ; CHECK-NEXT: $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr16_vgpr17_vgpr18_vgpr19 = V_WMMA_BF16F32_16X16X32_BF16_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr32_vgpr33_vgpr34_vgpr35_vgpr36_vgpr37_vgpr38_vgpr39, 0, 0, 0, 0, implicit $exec
     ; CHECK-NEXT: $vgpr25 = V_ADD_F32_e32 $vgpr28, $vgpr29, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr24, $vgpr30, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
@@ -127,7 +127,7 @@ body: |
     ; CHECK-NEXT: $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr4_vgpr5_vgpr6_vgpr7_vgpr8_vgpr9_vgpr10_vgpr11 = V_WMMA_F32_16X16X4_F32_w32_twoaddr $vgpr0_vgpr1, $vgpr2_vgpr3, 8, $vgpr4_vgpr5_vgpr6_vgpr7_vgpr8_vgpr9_vgpr10_vgpr11, 0, 0, 0, 0, implicit $exec
     ; CHECK-NEXT: $vgpr25 = V_ADD_F32_e32 $vgpr28, $vgpr29, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_2
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr24, $vgpr30, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
@@ -149,7 +149,7 @@ body: |
     ; CHECK-NEXT: $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr40_vgpr41_vgpr42_vgpr43_vgpr44_vgpr45_vgpr46_vgpr47_vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55 = V_WMMA_F32_32X16X128_F4_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7_vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, 8, $vgpr40_vgpr41_vgpr42_vgpr43_vgpr44_vgpr45_vgpr46_vgpr47_vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55, 0, 0, implicit $exec
     ; CHECK-NEXT: $vgpr25 = V_ADD_F32_e32 $vgpr28, $vgpr29, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_2
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr24, $vgpr30, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr30 = V_MOV_B32_e32 $vgpr31, implicit $exec
@@ -160,17 +160,17 @@ body: |
 ...
 
 ---
-name: matrix_scale_increments_vavdst_twice
+name: scaled_wmma_has_one_ordered_completion
 tracksRegLiveness: false
 body: |
   bb.0:
-    ; CHECK-LABEL: name: matrix_scale_increments_vavdst_twice
+    ; CHECK-LABEL: name: scaled_wmma_has_one_ordered_completion
     ; CHECK: S_SETREG_IMM32_B32 2, 2074, implicit-def $mode, implicit $mode
     ; CHECK-NEXT: S_WAIT_LOADCNT_DSCNT .Loadcnt_0_Dscnt_0
     ; CHECK-NEXT: S_WAIT_KMCNT 0
     ; CHECK-NEXT: early-clobber $vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63 = V_WMMA_F32_16X16X32_BF16_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63, 0, 0, 0, 0, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr32_vgpr33_vgpr34_vgpr35_vgpr36_vgpr37_vgpr38_vgpr39 = V_WMMA_SCALE_F32_16X16X128_F8F6F4_f8_f8_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7_vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23_vgpr24_vgpr25_vgpr26_vgpr27_vgpr28_vgpr29_vgpr30_vgpr31, 8, $vgpr32_vgpr33_vgpr34_vgpr35_vgpr36_vgpr37_vgpr38_vgpr39, $vgpr40, $vgpr41, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_2
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr24, $vgpr56, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63 = V_WMMA_F32_16X16X32_BF16_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63, 0, 0, 0, 0, implicit $exec
@@ -207,7 +207,7 @@ body: |
   ; CHECK-NEXT: bb.3:
   ; CHECK-NEXT:   early-clobber $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23 = V_WMMA_F32_16X16X32_BF16_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, 0, 0, 0, 0, implicit $exec
   ; CHECK-NEXT:   $vgpr25 = V_ADD_F32_e32 $vgpr28, $vgpr29, implicit $mode, implicit $exec
-  ; CHECK-NEXT:   S_WAITCNT_DEPCTR .VaVdst_1
+  ; CHECK-NEXT:   S_WAITCNT_DEPCTR .VaVdst_2
   ; CHECK-NEXT:   DS_WRITE_B32_gfx9 $vgpr24, $vgpr30, 0, 0, implicit $exec
   ; CHECK-NEXT:   S_ENDPGM 0
   bb.0:
@@ -388,7 +388,7 @@ body: |
   ; CHECK-NEXT: bb.3:
   ; CHECK-NEXT:   early-clobber $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23 = V_WMMA_F32_16X16X32_BF16_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, 8, $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, 0, 0, 0, 0, implicit $exec
   ; CHECK-NEXT:   $vgpr25 = V_MOV_B32_e32 $vgpr31, implicit $exec
-  ; CHECK-NEXT:   S_WAITCNT_DEPCTR .VaVdst_1
+  ; CHECK-NEXT:   S_WAITCNT_DEPCTR .VaVdst_2
   ; CHECK-NEXT:   DS_WRITE_B32_gfx9 $vgpr24, $vgpr30, 0, 0, implicit $exec
   ; CHECK-NEXT:   S_ENDPGM 0
   bb.0:
@@ -410,17 +410,17 @@ body: |
 ...
 
 ---
-name: read_side_war_remains_conservative
+name: read_side_war_uses_ordered_xdl
 tracksRegLiveness: false
 body: |
   bb.0:
-    ; CHECK-LABEL: name: read_side_war_remains_conservative
+    ; CHECK-LABEL: name: read_side_war_uses_ordered_xdl
     ; CHECK: S_SETREG_IMM32_B32 2, 2074, implicit-def $mode, implicit $mode
     ; CHECK-NEXT: S_WAIT_LOADCNT_DSCNT .Loadcnt_0_Dscnt_0
     ; CHECK-NEXT: S_WAIT_KMCNT 0
     ; CHECK-NEXT: $vgpr2 = V_ADD_F32_e32 $vgpr0, $vgpr1, implicit $mode, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr32_vgpr33_vgpr34_vgpr35_vgpr36_vgpr37_vgpr38_vgpr39 = V_WMMA_F32_16X16X32_BF16_w32_twoaddr $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, 8, $vgpr32_vgpr33_vgpr34_vgpr35_vgpr36_vgpr37_vgpr38_vgpr39, 0, 0, 0, 0, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
     ; CHECK-NEXT: $vgpr0 = DS_READ_B32_gfx9 $vgpr24, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr2 = V_ADD_F32_e32 $vgpr0, $vgpr1, implicit $mode, implicit $exec

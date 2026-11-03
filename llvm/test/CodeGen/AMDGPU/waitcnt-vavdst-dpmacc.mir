@@ -43,12 +43,12 @@ body: |
     ; CHECK-NEXT: S_WAITCNT_DEPCTR .VmVsrc_0
     ; CHECK-NEXT: $vgpr50_vgpr51, $sgpr_null = V_MAD_U64_U32_e64 $vgpr80, $vgpr81, $vgpr82_vgpr83, 0, implicit $exec
     ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr90, $vgpr50, 0, 0, implicit $exec
     ; CHECK-NEXT: S_WAITCNT_DEPCTR .VmVsrc_0
     ; CHECK-NEXT: $vgpr50_vgpr51, $sgpr_null = V_MAD_I64_I32_e64 $vgpr80, $vgpr81, $vgpr82_vgpr83, 0, implicit $exec
     ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr90, $vgpr50, 0, 0, implicit $exec
     ; CHECK-NEXT: S_WAITCNT_DEPCTR .VmVsrc_0
     ; CHECK-NEXT: $vgpr50_vgpr51 = V_LSHL_ADD_U64_e64 $vgpr80_vgpr81, 0, $vgpr82_vgpr83, implicit $exec
