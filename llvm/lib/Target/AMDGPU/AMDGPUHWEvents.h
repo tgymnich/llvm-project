@@ -175,6 +175,9 @@ private:
 HWEvents getSimplifiedVMEMEventsFor(const MachineInstr &Inst,
                                     const SIInstrInfo &TII);
 
+/// Returns the union of both gfx1250 VOPD components' VALU completion events.
+HWEvents getVOPDVALUEventsFor(unsigned Opcode, const SIInstrInfo &TII);
+
 /// \returns A bitmask of HWEvent triggered by \p Inst
 HWEvents getEventsFor(const MachineInstr &Inst, const GCNSubtarget &ST,
                       bool IsExpertMode, bool TgSplit);

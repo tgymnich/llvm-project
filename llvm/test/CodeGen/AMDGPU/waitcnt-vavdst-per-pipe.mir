@@ -1445,6 +1445,66 @@ body: |
 ...
 
 ---
+name: mixed_vopd3_x_producer
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: mixed_vopd3_x_producer
+    ; CHECK: S_SETREG_IMM32_B32 2, 2074, implicit-def $mode, implicit $mode
+    ; CHECK-NEXT: S_WAIT_LOADCNT_DSCNT .Loadcnt_0_Dscnt_0
+    ; CHECK-NEXT: S_WAIT_KMCNT 0
+    ; CHECK-NEXT: $vgpr40_vgpr41, $vgpr42 = V_DUAL_FMA_F64_e64_X_ADD_F32_e32_e96_gfx1250 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, $vgpr84_vgpr85, 0, $vgpr86, 0, $vgpr87, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr90, $vgpr40, 0, 0, implicit $exec
+    ; CHECK-NEXT: S_ENDPGM 0
+    $vgpr40_vgpr41, $vgpr42 = V_DUAL_FMA_F64_e64_X_ADD_F32_e32_e96_gfx1250 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, $vgpr84_vgpr85, 0, $vgpr86, 0, $vgpr87, implicit $mode, implicit $exec
+    $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    DS_WRITE_B32_gfx9 $vgpr90, $vgpr40, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: mixed_vopd3_x_read_war
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: mixed_vopd3_x_read_war
+    ; CHECK: S_SETREG_IMM32_B32 2, 2074, implicit-def $mode, implicit $mode
+    ; CHECK-NEXT: S_WAIT_LOADCNT_DSCNT .Loadcnt_0_Dscnt_0
+    ; CHECK-NEXT: S_WAIT_KMCNT 0
+    ; CHECK-NEXT: $vgpr40_vgpr41, $vgpr42 = V_DUAL_FMA_F64_e64_X_ADD_F32_e32_e96_gfx1250 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, $vgpr84_vgpr85, 0, $vgpr86, 0, $vgpr87, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr100_vgpr101, 0, $vgpr102_vgpr103, 0, 0, implicit $mode, implicit $exec
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr80 = DS_READ_B32_gfx9 $vgpr90, 0, 0, implicit $exec
+    ; CHECK-NEXT: S_ENDPGM 0
+    $vgpr40_vgpr41, $vgpr42 = V_DUAL_FMA_F64_e64_X_ADD_F32_e32_e96_gfx1250 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, $vgpr84_vgpr85, 0, $vgpr86, 0, $vgpr87, implicit $mode, implicit $exec
+    $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr100_vgpr101, 0, $vgpr102_vgpr103, 0, 0, implicit $mode, implicit $exec
+    $vgpr80 = DS_READ_B32_gfx9 $vgpr90, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: mixed_vopd3_y_read_war
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: mixed_vopd3_y_read_war
+    ; CHECK: S_SETREG_IMM32_B32 2, 2074, implicit-def $mode, implicit $mode
+    ; CHECK-NEXT: S_WAIT_LOADCNT_DSCNT .Loadcnt_0_Dscnt_0
+    ; CHECK-NEXT: S_WAIT_KMCNT 0
+    ; CHECK-NEXT: $vgpr40_vgpr41, $vgpr42 = V_DUAL_FMA_F64_e64_X_ADD_F32_e32_e96_gfx1250 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, $vgpr84_vgpr85, 0, $vgpr86, 0, $vgpr87, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $vgpr50 = V_ADD_F32_e32 $vgpr88, $vgpr89, implicit $mode, implicit $exec
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr86 = DS_READ_B32_gfx9 $vgpr90, 0, 0, implicit $exec
+    ; CHECK-NEXT: S_ENDPGM 0
+    $vgpr40_vgpr41, $vgpr42 = V_DUAL_FMA_F64_e64_X_ADD_F32_e32_e96_gfx1250 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, $vgpr84_vgpr85, 0, $vgpr86, 0, $vgpr87, implicit $mode, implicit $exec
+    $vgpr50 = V_ADD_F32_e32 $vgpr88, $vgpr89, implicit $mode, implicit $exec
+    $vgpr86 = DS_READ_B32_gfx9 $vgpr90, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
 name: mixed_vopd3_producer_partial_wait
 tracksRegLiveness: false
 body: |

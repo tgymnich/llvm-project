@@ -20,29 +20,37 @@ namespace AMDGPU {
 LLVM_DUMP_METHOD void HWEvents::dump() const { dbgs() << *this << "\n"; }
 #endif
 
+static HWEvents getNonXDLVALUEventsFor(unsigned Opcode,
+                                       const SIInstrInfo &TII) {
+  // On gfx1250, 64-bit transcendental instructions complete in DP-MACC order.
+  if (AMDGPU::isDPMACCInstruction(Opcode) &&
+      (AMDGPU::isGFX1250(TII.getSubtarget()) || !TII.isTRANS(Opcode)))
+    return HWEvents::VGPR_DPMACC_READ | HWEvents::VGPR_DPMACC_WRITE;
+
+  if (TII.isTRANS(Opcode))
+    return HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_TRANS_WRITE;
+
+  return HWEvents::VGPR_CSMACC_READ | HWEvents::VGPR_CSMACC_WRITE;
+}
+
+HWEvents getVOPDVALUEventsFor(unsigned Opcode, const SIInstrInfo &TII) {
+  assert(AMDGPU::isGFX1250(TII.getSubtarget()) && AMDGPU::isVOPD(Opcode) &&
+         "Expected gfx1250 VOPD instruction");
+  auto [OpX, OpY] = AMDGPU::getVOPDComponents(Opcode);
+  return getNonXDLVALUEventsFor(OpX, TII) | getNonXDLVALUEventsFor(OpY, TII);
+}
+
 static HWEvents getExpertSchedulingEventType(const MachineInstr &Inst,
                                              const SIInstrInfo &TII) {
   if (TII.isVALU(Inst, /*AllowLDSDMA=*/false)) {
-    // Core/Side-, DP-, XDL- and TRANS-MACC VALU instructions complete
-    // out-of-order with respect to each other, so each of these classes
-    // has its own event.
-
     if (TII.isXDL(Inst))
       return HWEvents::VGPR_XDL_READ | HWEvents::VGPR_XDL_WRITE;
 
     unsigned Opcode = Inst.getOpcode();
     if (AMDGPU::isGFX1250(TII.getSubtarget()) && AMDGPU::isVOPD(Opcode))
-      Opcode = AMDGPU::getVOPDComponents(Opcode).first;
+      return getVOPDVALUEventsFor(Opcode, TII);
 
-    // On gfx1250, 64-bit transcendental instructions use the DP pipe.
-    if (AMDGPU::isDPMACCInstruction(Opcode) &&
-        (AMDGPU::isGFX1250(TII.getSubtarget()) || !TII.isTRANS(Inst)))
-      return HWEvents::VGPR_DPMACC_READ | HWEvents::VGPR_DPMACC_WRITE;
-
-    if (TII.isTRANS(Inst))
-      return HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_TRANS_WRITE;
-
-    return HWEvents::VGPR_CSMACC_READ | HWEvents::VGPR_CSMACC_WRITE;
+    return getNonXDLVALUEventsFor(Opcode, TII);
   }
 
   // FLAT and LDS instructions may read their VGPR sources out-of-order

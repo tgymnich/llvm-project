@@ -637,6 +637,7 @@ public:
   void applyWaitcnt(const AMDGPU::Waitcnt &Wait);
   void applyWaitcnt(AMDGPU::InstCounterType T, unsigned Count);
   void applyWaitcnt(const AMDGPU::Waitcnt &Wait, AMDGPU::InstCounterType T);
+  void updateByEvents(HWEvents Events, MachineInstr &MI);
   void updateByEvent(HWEvents E, MachineInstr &MI);
   void recordAsyncMark(MachineInstr &MI);
 
@@ -946,11 +947,15 @@ WaitcntBrackets::getVALUPipe(HWEvents E, const MachineInstr *Inst) const {
     default:
       break;
     }
-    if ((Context->TII.isWMMA(*Inst) && !Context->TII.isXDL(*Inst)) ||
-        (AMDGPU::isVOPD(Inst->getOpcode()) &&
-         AMDGPU::isDPMACCInstruction(
-             AMDGPU::getVOPDComponents(Inst->getOpcode()).first)))
+    if (Context->TII.isWMMA(*Inst) && !Context->TII.isXDL(*Inst))
       return UNORDERED;
+    if (AMDGPU::isVOPD(Inst->getOpcode())) {
+      HWEvents ReadEvents =
+          AMDGPU::getVOPDVALUEventsFor(Inst->getOpcode(), Context->TII) &
+          Context->getWaitEvents(AMDGPU::VA_VDST_RD);
+      if (ReadEvents.size() > 1)
+        return UNORDERED;
+    }
   }
   switch (E.value()) {
   case HWEvents::VGPR_CSMACC_READ:
@@ -1197,7 +1202,8 @@ void WaitcntBrackets::updateVALU(MachineInstr &Inst, HWEvents Events) {
     // A scaled WMMA's load-scale decrement is not an ordered successor.
     Advance(Pipe);
     // A mixed VOPD's DP half is ordered behind earlier DP work.
-    if (Pipe == UNORDERED && AMDGPU::isVOPD(Inst.getOpcode()))
+    if (Pipe == UNORDERED && AMDGPU::isVOPD(Inst.getOpcode()) &&
+        Events.contains(HWEvents::VGPR_DPMACC_READ))
       Advance(DPMACC);
     if (Pipe == XDL && Context->TII.isVAVDSTOrderedXDL(Inst)) {
       OrderedXDLs.push_back(VALUScoreUBs);
@@ -1228,6 +1234,24 @@ void WaitcntBrackets::finishVALU(const MachineInstr &Inst) {
   }
   VALUScoreLBs = VALUScoreUBs;
   OrderedXDLs.clear();
+}
+
+void WaitcntBrackets::updateByEvents(HWEvents Events, MachineInstr &Inst) {
+  updateVALU(Inst, Events);
+  HWEvents SeenVALU;
+  for (HWEvents E : Events) {
+    AMDGPU::InstCounterType T = Context->getCounterFromEvent(E);
+    if (T == AMDGPU::VA_VDST_RD || T == AMDGPU::VA_VDST_WR) {
+      // A dual instruction increments VA_VDST once across both components.
+      if ((SeenVALU & Context->getWaitEvents(T)).any()) {
+        PendingEvents |= E;
+        continue;
+      }
+      SeenVALU |= E;
+    }
+    updateByEvent(E, Inst);
+  }
+  finishVALU(Inst);
 }
 
 void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
@@ -3149,10 +3173,7 @@ void SIInsertWaitcnts::updateEventWaitcntAfter(MachineInstr &Inst,
                                                WaitcntBrackets *ScoreBrackets) {
 
   HWEvents InstEvents = AMDGPU::getEventsFor(Inst, ST, IsExpertMode, TgSplit);
-  ScoreBrackets->updateVALU(Inst, InstEvents);
-  for (HWEvents E : InstEvents)
-    ScoreBrackets->updateByEvent(E, Inst);
-  ScoreBrackets->finishVALU(Inst);
+  ScoreBrackets->updateByEvents(InstEvents, Inst);
 
   if (TII.isDS(Inst) && TII.usesLGKM_CNT(Inst)) {
     if (TII.isAlwaysGDS(Inst.getOpcode()) ||
