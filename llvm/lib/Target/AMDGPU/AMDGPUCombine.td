@@ -111,6 +111,15 @@ def int_minmax_to_med3 : GICombineRule<
          [{ return matchIntMinMaxToMed3(*${min_or_max}, ${matchinfo}); }]),
   (apply [{ applyMed3(*${min_or_max}, ${matchinfo}); }])>;
 
+def u16_pack_matchdata : GIDefMatchData<"U16PackMatchInfo">;
+
+def u16_pack : GICombineRule<
+  (defs root:$root, u16_pack_matchdata:$matchinfo),
+  (match (wip_match_opcode G_OR, G_BUILD_VECTOR, G_BUILD_VECTOR_TRUNC,
+                          G_TRUNC):$root,
+         [{ return matchU16Pack(*${root}, ${matchinfo}); }]),
+  (apply [{ applyU16Pack(*${root}, ${matchinfo}); }])>;
+
 let Predicates = [Predicate<"Subtarget->d16PreservesUnusedBits()">] in
 def d16_load : GICombineRule<
   (defs root:$bitcast),
@@ -357,7 +366,7 @@ def AMDGPURegBankCombiner : GICombiner<
    fp_minmax_to_clamp, fp_minmax_to_med3, fmed3_intrinsic_to_clamp,
    identity_combines, redundant_and, constant_fold_cast_op,
    cast_of_cast_combines, sext_trunc, zext_of_shift_amount_combines,
-   d16_load, smax_to_minmax3, smin_to_minmax3, umax_to_minmax3,
+   d16_load, u16_pack, smax_to_minmax3, smin_to_minmax3, umax_to_minmax3,
    umin_to_minmax3, fmax_to_minmax3, fmin_to_minmax3, fmaximum_to_minmax3,
    fminimum_to_minmax3, fmax_ieee_to_minmax3, fmin_ieee_to_minmax3,
    redundant_sext_inreg, redundant_zext_sext_inreg, redundant_aext_sext_inreg]> {

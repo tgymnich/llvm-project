@@ -26,6 +26,7 @@
 #include "llvm/CodeGen/MachineFunctionAnalysisManager.h"
 #include "llvm/CodeGen/MachinePassManager.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/Target/TargetMachine.h"
 
 #define GET_GICOMBINER_DEPS
@@ -104,6 +105,14 @@ public:
                             MinMaxToMinMax3MatchInfo &MatchInfo) const;
   void applyMinMaxToMinMax3(MachineInstr &MI,
                             MinMaxToMinMax3MatchInfo &MatchInfo) const;
+
+  struct U16PackMatchInfo {
+    Register Lo, Hi;
+    std::optional<uint32_t> HiConstant;
+  };
+
+  bool matchU16Pack(MachineInstr &MI, U16PackMatchInfo &MatchInfo) const;
+  void applyU16Pack(MachineInstr &MI, const U16PackMatchInfo &MatchInfo) const;
 
 private:
   SIModeRegisterDefaults getMode() const;
@@ -391,6 +400,142 @@ void AMDGPURegBankCombinerImpl::applyMed3(MachineInstr &MI,
                {getAsVgpr(MatchInfo.Val0), getAsVgpr(MatchInfo.Val1),
                 getAsVgpr(MatchInfo.Val2)},
                MI.getFlags());
+  MI.eraseFromParent();
+}
+
+bool AMDGPURegBankCombinerImpl::matchU16Pack(
+    MachineInstr &MI, U16PackMatchInfo &MatchInfo) const {
+  Register Dst = MI.getOperand(0).getReg();
+  LLT ExpectedTy = MI.getOpcode() == AMDGPU::G_OR
+                       ? LLT::integer(32)
+                       : LLT::fixed_vector(2, LLT::integer(16));
+  if (MRI.getType(Dst) != ExpectedTy || !isVgprRegBank(Dst))
+    return false;
+
+  Register Lo, Hi;
+  if (MI.getOpcode() == AMDGPU::G_OR) {
+    auto MatchHi = [&](Register Reg) {
+      Reg = getSrcRegIgnoringCopies(Reg, MRI);
+      std::optional<ValueAndVReg> Shift;
+      if (mi_match(Reg, MRI, m_GShl(m_Reg(Hi), m_GCst(Shift))) &&
+          Shift->Value == 16)
+        return true;
+      auto C = getIConstantVRegValWithLookThrough(Reg, MRI);
+      if (!C || (C->Value.getZExtValue() & 65535))
+        return false;
+      Hi = Register();
+      MatchInfo.HiConstant = C->Value.getZExtValue() >> 16;
+      return true;
+    };
+    Lo = MI.getOperand(1).getReg();
+    if (!MatchHi(MI.getOperand(2).getReg())) {
+      Lo = MI.getOperand(2).getReg();
+      if (!MatchHi(MI.getOperand(1).getReg()))
+        return false;
+    }
+  } else {
+    if (MI.getOpcode() == AMDGPU::G_TRUNC) {
+      Register Src = getSrcRegIgnoringCopies(MI.getOperand(1).getReg(), MRI);
+      if (!mi_match(Src, MRI, m_GBuildVector(m_Reg(Lo), m_Reg(Hi))))
+        return false;
+    } else {
+      Lo = MI.getOperand(1).getReg();
+      Hi = MI.getOperand(2).getReg();
+    }
+  }
+
+  auto StripCasts = [&](Register Reg) {
+    Reg = getSrcRegIgnoringCopies(Reg, MRI);
+    Register Src;
+    if (mi_match(
+            Reg, MRI,
+            m_GZExt(m_all_of(m_SpecificType(LLT::integer(16)), m_Reg(Src)))))
+      Reg = getSrcRegIgnoringCopies(Src, MRI);
+    if (MRI.getType(Reg) == LLT::integer(16) &&
+        mi_match(Reg, MRI, m_GTrunc(m_Reg(Src))))
+      Reg = getSrcRegIgnoringCopies(Src, MRI);
+    return Reg;
+  };
+  Lo = StripCasts(Lo);
+  if (Hi)
+    Hi = StripCasts(Hi);
+
+  auto MatchClamp = [&](Register Reg) -> Register {
+    Register Src;
+    std::optional<ValueAndVReg> C;
+    if (Reg && MRI.getType(Reg) == LLT::integer(32) &&
+        mi_match(Reg, MRI, m_GUMin(m_Reg(Src), m_GCst(C))) && C->Value == 65535)
+      return Src;
+    return Register();
+  };
+  Register LoSrc = MatchClamp(Lo);
+  Register HiSrc = MatchClamp(Hi);
+  if (!LoSrc && !HiSrc)
+    return false;
+
+  auto MatchBounded = [&](Register Reg) -> Register {
+    if (MRI.getType(Reg) == LLT::integer(16) &&
+        getIConstantVRegValWithLookThrough(Reg, MRI))
+      return Reg;
+    if (MRI.getType(Reg) != LLT::integer(32))
+      return Register();
+
+    // Avoid materializing a mask that packing would otherwise discard.
+    std::optional<ValueAndVReg> Mask;
+    if (MRI.hasOneNonDBGUse(Reg) &&
+        mi_match(Reg, MRI, m_GAnd(m_Reg(), m_GCst(Mask))) &&
+        Mask->Value == 65535)
+      return Register();
+    if (VT->maskedValueIsZero(Reg, APInt::getHighBitsSet(32, 16)))
+      return Reg;
+    return Register();
+  };
+  if (!LoSrc)
+    LoSrc = MatchBounded(Lo);
+  if (!HiSrc && Hi)
+    HiSrc = MatchBounded(Hi);
+  if (!LoSrc || (!HiSrc && !MatchInfo.HiConstant))
+    return false;
+
+  MatchInfo.Lo = LoSrc;
+  MatchInfo.Hi = HiSrc;
+  return true;
+}
+
+void AMDGPURegBankCombinerImpl::applyU16Pack(
+    MachineInstr &MI, const U16PackMatchInfo &MatchInfo) const {
+  const LLT I32 = LLT::integer(32);
+  const LLT V2I16 = LLT::fixed_vector(2, LLT::integer(16));
+  const RegisterBank &VGPR = RBI.getRegBank(AMDGPU::VGPRRegBankID);
+  auto BuildConstant = [&](uint32_t C) {
+    Register Reg = B.buildConstant(I32, C).getReg(0);
+    MRI.setRegBank(Reg, VGPR);
+    return Reg;
+  };
+  auto GetSource = [&](Register Reg) {
+    if (MRI.getType(Reg) == LLT::integer(16))
+      return BuildConstant(
+          getIConstantVRegValWithLookThrough(Reg, MRI)->Value.getZExtValue());
+    if (isVgprRegBank(Reg))
+      return Reg;
+    Register Copy = B.buildCopy(I32, Reg).getReg(0);
+    MRI.setRegBank(Copy, VGPR);
+    return Copy;
+  };
+  Register Lo = GetSource(MatchInfo.Lo);
+  Register Hi = MatchInfo.HiConstant ? BuildConstant(*MatchInfo.HiConstant)
+                                     : GetSource(MatchInfo.Hi);
+  Register Dst = MI.getOperand(0).getReg();
+  Register Packed = Dst;
+  if (MRI.getType(Dst) != V2I16) {
+    Packed = MRI.createGenericVirtualRegister(V2I16);
+    MRI.setRegBank(Packed, VGPR);
+  }
+  B.buildIntrinsic(Intrinsic::amdgcn_cvt_pk_u16, ArrayRef<Register>(Packed))
+      .addUse(Lo)
+      .addUse(Hi);
+  if (Packed != Dst)
+    B.buildBitcast(Dst, Packed);
   MI.eraseFromParent();
 }
 

@@ -1454,16 +1454,24 @@ define <2 x i8> @test_unsigned_v2f64_v2i8(<2 x double> %f) {
 }
 
 define <2 x i16> @test_unsigned_v2f64_v2i16(<2 x double> %f) {
-; GFX7-LABEL: test_unsigned_v2f64_v2i16:
-; GFX7:       ; %bb.0:
-; GFX7-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX7-NEXT:    v_cvt_u32_f64_e32 v0, v[0:1]
-; GFX7-NEXT:    v_cvt_u32_f64_e32 v1, v[2:3]
-; GFX7-NEXT:    v_min_u32_e32 v0, 0xffff, v0
-; GFX7-NEXT:    v_min_u32_e32 v1, 0xffff, v1
-; GFX7-NEXT:    v_lshlrev_b32_e32 v1, 16, v1
-; GFX7-NEXT:    v_or_b32_e32 v0, v0, v1
-; GFX7-NEXT:    s_setpc_b64 s[30:31]
+; GFX7-ISEL-LABEL: test_unsigned_v2f64_v2i16:
+; GFX7-ISEL:       ; %bb.0:
+; GFX7-ISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX7-ISEL-NEXT:    v_cvt_u32_f64_e32 v0, v[0:1]
+; GFX7-ISEL-NEXT:    v_cvt_u32_f64_e32 v1, v[2:3]
+; GFX7-ISEL-NEXT:    v_min_u32_e32 v0, 0xffff, v0
+; GFX7-ISEL-NEXT:    v_min_u32_e32 v1, 0xffff, v1
+; GFX7-ISEL-NEXT:    v_lshlrev_b32_e32 v1, 16, v1
+; GFX7-ISEL-NEXT:    v_or_b32_e32 v0, v0, v1
+; GFX7-ISEL-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX7-GI-LABEL: test_unsigned_v2f64_v2i16:
+; GFX7-GI:       ; %bb.0:
+; GFX7-GI-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX7-GI-NEXT:    v_cvt_u32_f64_e32 v0, v[0:1]
+; GFX7-GI-NEXT:    v_cvt_u32_f64_e32 v1, v[2:3]
+; GFX7-GI-NEXT:    v_cvt_pk_u16_u32_e32 v0, v0, v1
+; GFX7-GI-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX9-LABEL: test_unsigned_v2f64_v2i16:
 ; GFX9:       ; %bb.0:
@@ -1531,11 +1539,9 @@ define <2 x i16> @test_unsigned_v2f64_v2i16(<2 x double> %f) {
 ; GFX12-GI-NEXT:    s_wait_samplecnt 0x0
 ; GFX12-GI-NEXT:    s_wait_bvhcnt 0x0
 ; GFX12-GI-NEXT:    s_wait_kmcnt 0x0
-; GFX12-GI-NEXT:    v_cvt_u32_f64_e32 v2, v[2:3]
 ; GFX12-GI-NEXT:    v_cvt_u32_f64_e32 v0, v[0:1]
-; GFX12-GI-NEXT:    v_min_u32_e32 v1, 0xffff, v2
-; GFX12-GI-NEXT:    v_min_u32_e32 v0, 0xffff, v0
-; GFX12-GI-NEXT:    v_mov_b16_e32 v0.h, v1.l
+; GFX12-GI-NEXT:    v_cvt_u32_f64_e32 v1, v[2:3]
+; GFX12-GI-NEXT:    v_cvt_pk_u16_u32 v0, v0, v1
 ; GFX12-GI-NEXT:    s_setpc_b64 s[30:31]
     %x = call <2 x i16> @llvm.fptoui.sat.v2f64.v2i16(<2 x double> %f)
     ret <2 x i16> %x
