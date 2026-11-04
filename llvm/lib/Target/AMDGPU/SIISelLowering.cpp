@@ -1189,6 +1189,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
                        ISD::SIGN_EXTEND,
                        ISD::SIGN_EXTEND_INREG,
                        ISD::ANY_EXTEND,
+                       ISD::BUILD_VECTOR,
                        ISD::EXTRACT_VECTOR_ELT,
                        ISD::INSERT_VECTOR_ELT,
                        ISD::FCOPYSIGN});
@@ -15883,6 +15884,68 @@ static SDValue matchPERM(SDNode *N, TargetLowering::DAGCombinerInfo &DCI) {
   return SDValue();
 }
 
+static SDValue matchU16Clamp(SDValue Op) {
+  SDValue Src;
+  if (Op.getValueType() == MVT::i32 &&
+      sd_match(Op, m_UMin(m_Value(Src), m_SpecificInt(65535))))
+    return Src;
+  return SDValue();
+}
+
+static SDValue matchU16Pack(SDValue Lo, SDValue Hi, SelectionDAG &DAG,
+                            const SDLoc &DL) {
+  auto StripCasts = [](SDValue Op) {
+    if (Op.getOpcode() == ISD::ZERO_EXTEND &&
+        Op.getOperand(0).getValueType() == MVT::i16)
+      Op = Op.getOperand(0);
+    if (Op.getOpcode() == ISD::TRUNCATE && Op.getValueType() == MVT::i16)
+      Op = Op.getOperand(0);
+    return Op;
+  };
+  Lo = StripCasts(Lo);
+  Hi = StripCasts(Hi);
+
+  SDValue LoSrc = matchU16Clamp(Lo);
+  SDValue HiSrc = matchU16Clamp(Hi);
+  if (!LoSrc && !HiSrc)
+    return SDValue();
+
+  auto MatchBounded = [&](SDValue Op) -> SDValue {
+    if (Op.getValueType() == MVT::i16 && isa<ConstantSDNode>(Op))
+      return DAG.getZExtOrTrunc(Op, DL, MVT::i32);
+    if (Op.getValueType() != MVT::i32)
+      return SDValue();
+
+    // Avoid materializing a mask that packing would otherwise discard.
+    if (Op.hasOneUse() && sd_match(Op, m_And(m_Value(), m_SpecificInt(65535))))
+      return SDValue();
+    if (DAG.MaskedValueIsZero(Op, APInt::getHighBitsSet(32, 16)))
+      return Op;
+    return SDValue();
+  };
+  if (!LoSrc)
+    LoSrc = MatchBounded(Lo);
+  if (!HiSrc)
+    HiSrc = MatchBounded(Hi);
+  if (!LoSrc || !HiSrc)
+    return SDValue();
+
+  return DAG.getNode(AMDGPUISD::CVT_PK_U16_U32, DL, MVT::i32, LoSrc, HiSrc);
+}
+
+SDValue
+SITargetLowering::performBuildVectorCombine(SDNode *N,
+                                            DAGCombinerInfo &DCI) const {
+  if (N->getValueType(0) != MVT::v2i16 || !N->isDivergent())
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  if (SDValue Packed =
+          matchU16Pack(N->getOperand(0), N->getOperand(1), DAG, SDLoc(N)))
+    return DAG.getBitcast(MVT::v2i16, Packed);
+  return SDValue();
+}
+
 SDValue SITargetLowering::performOrCombine(SDNode *N,
                                            DAGCombinerInfo &DCI) const {
   SelectionDAG &DAG = DCI.DAG;
@@ -15890,6 +15953,22 @@ SDValue SITargetLowering::performOrCombine(SDNode *N,
   SDValue RHS = N->getOperand(1);
 
   EVT VT = N->getValueType(0);
+  if (VT == MVT::i32 && N->isDivergent()) {
+    SDValue Lo, Hi;
+    if (sd_match(SDValue(N, 0),
+                 m_Or(m_Value(Lo), m_Shl(m_Value(Hi), m_SpecificInt(16))))) {
+      if (SDValue Packed = matchU16Pack(Lo, Hi, DAG, SDLoc(N)))
+        return Packed;
+    }
+    if (auto *C = dyn_cast<ConstantSDNode>(RHS)) {
+      if ((C->getZExtValue() & 65535) == 0) {
+        Hi = DAG.getConstant(C->getZExtValue() >> 16, SDLoc(N), MVT::i32);
+        if (SDValue Packed = matchU16Pack(LHS, Hi, DAG, SDLoc(N)))
+          return Packed;
+      }
+    }
+  }
+
   if (VT == MVT::i1) {
     // or (fp_class x, c1), (fp_class x, c2) -> fp_class x, (c1 | c2)
     if (LHS.getOpcode() == AMDGPUISD::FP_CLASS &&
@@ -19518,6 +19597,8 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
     return performAndCombine(N, DCI);
   case ISD::OR:
     return performOrCombine(N, DCI);
+  case ISD::BUILD_VECTOR:
+    return performBuildVectorCombine(N, DCI);
   case ISD::FSHR: {
     const SIInstrInfo *TII = getSubtarget()->getInstrInfo();
     if (N->getValueType(0) == MVT::i32 && N->isDivergent() &&

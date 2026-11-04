@@ -226,6 +226,7 @@ private:
                                    const ConstantSDNode *CRHS) const;
 
   SDValue performAndCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue performBuildVectorCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performOrCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performXorCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performZeroOrAnyExtendCombine(SDNode *N, DAGCombinerInfo &DCI) const;
