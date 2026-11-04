@@ -469,6 +469,9 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
                       MVT::v16i32, MVT::v16f32, MVT::v32i32, MVT::v32f32},
                      Custom);
 
+  if (Subtarget->hasTensorCvtLutInsts())
+    setOperationAction(ISD::VECTOR_SHUFFLE, {MVT::v8i8, MVT::v16i8}, Custom);
+
   if (Subtarget->hasPkMovB32()) {
     // TODO: 16-bit element vectors should be legal with even aligned elements.
     // TODO: Can be legal with wider source types than the result with
@@ -1267,10 +1270,20 @@ bool SITargetLowering::isFPExtFoldable(const MachineInstr &MI, unsigned Opcode,
          denormalModeIsFlushAllF32(*MI.getMF());
 }
 
-bool SITargetLowering::isShuffleMaskLegal(ArrayRef<int>, EVT) const {
-  // SI has some legal vector types, but no legal vector operations. Say no
-  // shuffles are legal in order to prefer scalarizing some vector operations.
-  return false;
+bool SITargetLowering::isShuffleMaskLegal(ArrayRef<int> Mask, EVT VT) const {
+  if (!Subtarget->hasTensorCvtLutInsts() ||
+      (VT != MVT::v8i8 && VT != MVT::v16i8))
+    return false;
+
+  unsigned SourcePieces = 0;
+  for (int Index : Mask) {
+    if (Index < 0)
+      continue;
+    SourcePieces |= 1u << (Index / 8);
+    if (llvm::popcount(SourcePieces) > 2)
+      return false;
+  }
+  return true;
 }
 
 MVT SITargetLowering::getRegisterTypeForCallingConv(LLVMContext &Context,
@@ -8456,6 +8469,14 @@ void SITargetLowering::ReplaceNodeResults(SDNode *N,
                                           SmallVectorImpl<SDValue> &Results,
                                           SelectionDAG &DAG) const {
   switch (N->getOpcode()) {
+  case ISD::VECTOR_SHUFFLE: {
+    // Preserve the byte mask before type legalization splits the vector.
+    if (N->getValueType(0) == MVT::v8i8 || N->getValueType(0) == MVT::v16i8) {
+      if (SDValue Res = lowerVECTOR_SHUFFLE(SDValue(N, 0), DAG))
+        Results.push_back(Res);
+    }
+    return;
+  }
   case ISD::INSERT_VECTOR_ELT: {
     if (SDValue Res = lowerINSERT_VECTOR_ELT(SDValue(N, 0), DAG))
       Results.push_back(Res);
@@ -9919,11 +9940,226 @@ static bool elementPairIsOddToEven(ArrayRef<int> Mask, int Elt) {
          !(Mask[Elt + 1] & 1);
 }
 
+/// Estimate VALU issue cycles for assembling one dword of a byte shuffle.
+static unsigned getShuffleDwordCost(ArrayRef<int> Mask, bool UseDwordPerm,
+                                    unsigned NumElements) {
+  assert(Mask.size() == 4 && "expected one dword of shuffle mask");
+  unsigned SourceDwords = 0;
+  bool IsCopy = true;
+  for (unsigned I = 0; I != 4; ++I) {
+    int Index = Mask[I];
+    if (Index < 0)
+      continue;
+    SourceDwords |= 1u << (Index / 4);
+    IsCopy &= static_cast<unsigned>(Index) % 4 == I;
+  }
+
+  if (!SourceDwords || (IsCopy && llvm::has_single_bit(SourceDwords)))
+    return 0;
+  if (llvm::all_of(Mask, [First = Mask.front()](int Index) {
+        return Index < 0 || Index == First;
+      }))
+    return 1;
+
+  constexpr unsigned DwordPairMask = 0b11;
+  unsigned FirstSourceDword = llvm::countr_zero(SourceDwords);
+  bool IsDwordPair = !(FirstSourceDword & 1) &&
+                     SourceDwords == (DwordPairMask << FirstSourceDword);
+  bool UseDwordPair =
+      IsDwordPair && (NumElements == 8 || Mask[0] % 4 != 3 ||
+                      Mask[1] % 4 != 0 || Mask[1] == Mask[0] + 1);
+  if ((UseDwordPerm || UseDwordPair) && llvm::popcount(SourceDwords) <= 2)
+    return 1;
+
+  if (UseDwordPerm)
+    return llvm::popcount(SourceDwords) - 1;
+
+  unsigned Cost = 0;
+  for (unsigned I = 0; I != 4; I += 2) {
+    int Low = Mask[I];
+    int High = Mask[I + 1];
+    if (Low < 0) {
+      Cost += High >= 0 && !(High & 1);
+      continue;
+    }
+    if (High < 0) {
+      Cost += Low & 1;
+      continue;
+    }
+    if (!(Low & 1) && High == Low + 1)
+      continue;
+
+    // A halfword blend needs the bytes in bits [7:0] and [15:8].
+    Cost += 1 + (Low & 1) + !(High & 1);
+  }
+
+  // Two independent 32-bit shifts can share a VOPD instruction.
+  if (Mask[0] >= 0 && Mask[0] % 4 == 3 && Mask[2] >= 0 && Mask[2] % 4 == 3)
+    --Cost;
+  return Cost;
+}
+
+/// Estimate VALU issue cycles for assembling a byte shuffle.
+static unsigned getShuffleMaskCost(ArrayRef<int> Mask) {
+  auto First = llvm::find_if(Mask, [](int Index) { return Index >= 0; });
+  if (First == Mask.end())
+    return 0;
+
+  SmallVector<ArrayRef<int>, 4> Dwords;
+  unsigned DefinedDwords = 0;
+  unsigned MisplacedCopies = 0;
+  unsigned FirstDword = (First - Mask.begin()) / 4;
+  unsigned Cost = 0;
+  for (unsigned I = 0, E = Mask.size(); I != E; I += 4) {
+    ArrayRef<int> Dword = Mask.slice(I, 4);
+    if (llvm::all_of(Dword, [](int Index) { return Index < 0; }))
+      continue;
+    ++DefinedDwords;
+    if (llvm::is_contained(Dwords, Dword))
+      continue;
+    Dwords.push_back(Dword);
+    bool NeedsHalfwordAssembly = Dword[0] >= 0 && Dword[1] >= 0 &&
+                                 ((Dword[0] % 4 == 3 && Dword[1] % 4 == 0) ||
+                                  (Dword[0] % 4 == 0 && !(Dword[1] & 1) &&
+                                   Dword[0] / 4 != Dword[1] / 4));
+    if (Mask.size() == 16 && Dword[0] >= 0 && Dword[0] % 4 == 3 &&
+        Dword[1] == Dword[0] - 1 && Dword[2] == Dword[0] - 2 &&
+        Dword[3] == Dword[0] - 3)
+      NeedsHalfwordAssembly = true;
+    bool UseDwordPerm =
+        (Mask.size() == 8 && I / 4 != FirstDword) || !NeedsHalfwordAssembly ||
+        llvm::all_of(Dword,
+                     [](int Index) { return Index < 0 || Index % 8 >= 4; });
+    unsigned DwordCost = getShuffleDwordCost(Dword, UseDwordPerm, Mask.size());
+    Cost += DwordCost + (!UseDwordPerm && DwordCost > 1 && Dword[0] % 4 == 0);
+    if (!DwordCost) {
+      auto Source = llvm::find_if(Dword, [](int Index) { return Index >= 0; });
+      MisplacedCopies += *Source / 8 == *First / 8 &&
+                         static_cast<unsigned>(*Source) / 4 != I / 4;
+    }
+  }
+
+  if (Cost) {
+    Cost += divideCeil(MisplacedCopies, 2u);
+    Cost += Mask.size() / 4 - DefinedDwords;
+    if (Mask.size() == 16 && DefinedDwords == 1)
+      Cost += 2;
+  }
+  Cost += divideCeil(DefinedDwords - Dwords.size(), 2u);
+  return Cost;
+}
+
 SDValue SITargetLowering::lowerVECTOR_SHUFFLE(SDValue Op,
                                               SelectionDAG &DAG) const {
   SDLoc SL(Op);
   EVT ResultVT = Op.getValueType();
   ShuffleVectorSDNode *SVN = cast<ShuffleVectorSDNode>(Op);
+  if (ResultVT == MVT::v8i8 || ResultVT == MVT::v16i8) {
+    ArrayRef<int> ShuffleMask = SVN->getMask();
+    if (!isShuffleMaskLegal(ShuffleMask, ResultVT))
+      return SDValue();
+
+    unsigned SourceDwords = 0;
+    for (int Index : ShuffleMask)
+      if (Index >= 0)
+        SourceDwords |= 1u << (Index / 4);
+    unsigned NumElements = ResultVT.getVectorNumElements();
+    bool IsB4 = NumElements == 8 && llvm::popcount(SourceDwords) <= 2;
+    unsigned PieceElements = IsB4 ? 4 : 8;
+    unsigned PiecesPerOperand = NumElements / PieceElements;
+    SmallVector<unsigned, 2> SourcePieces;
+    bool HasUniformSource = false;
+    bool HasDivergentSource = false;
+    uint64_t Selectors = 0;
+    for (unsigned I = 0; I != NumElements; ++I) {
+      int Index = ShuffleMask[I];
+      if (Index < 0)
+        continue;
+
+      unsigned Piece = Index / PieceElements;
+      auto Position = llvm::find(SourcePieces, Piece);
+      unsigned Slot = Position - SourcePieces.begin();
+      if (Position == SourcePieces.end()) {
+        bool IsDivergent =
+            Op.getOperand(Piece / PiecesPerOperand)->isDivergent();
+        HasUniformSource |= !IsDivergent;
+        HasDivergentSource |= IsDivergent;
+        SourcePieces.push_back(Piece);
+      }
+
+      unsigned ByteIndex = Slot * PieceElements + Index % PieceElements;
+      if (IsB4) {
+        // Keep the two nibbles of each byte together.
+        Selectors |= uint64_t(ByteIndex * 2) << (I * 8);
+        Selectors |= uint64_t(ByteIndex * 2 + 1) << (I * 8 + 4);
+      } else {
+        Selectors |= uint64_t(ByteIndex) << (I * 4);
+      }
+    }
+
+    // The packed permutation occupies four VALU cycles and needs a follower.
+    bool IsMixed = HasUniformSource && HasDivergentSource;
+    unsigned PermCost = 4 + 1 + HasUniformSource;
+    unsigned ShuffleCost = getShuffleMaskCost(ShuffleMask);
+    if (ShuffleCost && HasUniformSource && !HasDivergentSource)
+      ShuffleCost += NumElements / 4;
+    if (ShuffleCost <= PermCost + IsMixed)
+      return SDValue();
+
+    MVT SourceVT = NumElements == 8 ? MVT::v2i32 : MVT::v4i32;
+    MVT TableVT = IsB4 ? MVT::i32 : MVT::i64;
+    unsigned RegClass =
+        IsB4 ? AMDGPU::VGPR_32RegClassID : AMDGPU::VReg_64RegClassID;
+    SmallVector<SDValue, 2> Sources;
+    for (unsigned Piece : SourcePieces) {
+      SDValue Operand = Op.getOperand(Piece / PiecesPerOperand);
+      SDValue Source = DAG.getBitcast(SourceVT, Operand);
+      SDValue Offset = DAG.getVectorIdxConstant(
+          (Piece % PiecesPerOperand) * (PieceElements / 4), SL);
+      SDValue Part;
+      if (IsB4)
+        Part =
+            DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, MVT::i32, Source, Offset);
+      else if (NumElements == 8)
+        Part = DAG.getBitcast(MVT::i64, Source);
+      else {
+        Part =
+            DAG.getNode(ISD::EXTRACT_SUBVECTOR, SL, MVT::v2i32, Source, Offset);
+        Part = DAG.getBitcast(MVT::i64, Part);
+      }
+      if (HasDivergentSource) {
+        // Both table operands must use the same register bank.
+        SDValue RC = DAG.getTargetConstant(RegClass, SL, MVT::i32);
+        Part = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, SL,
+                                          TableVT, Part, RC),
+                       0);
+      }
+      Sources.push_back(Part);
+    }
+
+    SDValue Mask =
+        DAG.getBitcast(MVT::v2i32, DAG.getConstant(Selectors, SL, MVT::i64));
+    if (HasUniformSource && !HasDivergentSource) {
+      SDValue RC =
+          DAG.getTargetConstant(AMDGPU::VReg_64RegClassID, SL, MVT::i32);
+      Mask = SDValue(DAG.getMachineNode(TargetOpcode::COPY_TO_REGCLASS, SL,
+                                        MVT::v2i32, Mask, RC),
+                     0);
+    }
+    SDValue IntrinsicID =
+        DAG.getConstant(IsB4 ? Intrinsic::amdgcn_perm_pk16_b4_u4
+                             : Intrinsic::amdgcn_perm_pk16_b8_u4,
+                        SL, MVT::i32);
+    // Source 1 supplies the low half of the lookup table.
+    SDValue Result =
+        DAG.getNode(ISD::INTRINSIC_WO_CHAIN, SL, IsB4 ? MVT::v2i32 : MVT::v4i32,
+                    IntrinsicID, Sources.back(), Sources.front(), Mask);
+    if (!IsB4 && NumElements == 8)
+      Result = DAG.getNode(ISD::EXTRACT_SUBVECTOR, SL, MVT::v2i32, Result,
+                           DAG.getVectorIdxConstant(0, SL));
+    return DAG.getBitcast(ResultVT, Result);
+  }
+
   MVT EltVT = ResultVT.getVectorElementType().getSimpleVT();
   const int NewSrcNumElts = 2;
   MVT PackVT = MVT::getVectorVT(EltVT, NewSrcNumElts);

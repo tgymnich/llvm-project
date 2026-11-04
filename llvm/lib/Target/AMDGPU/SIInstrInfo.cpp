@@ -6813,6 +6813,22 @@ bool SIInstrInfo::isOperandLegal(const MachineInstr &MI, unsigned OpIdx,
   if (!MO)
     MO = &MI.getOperand(OpIdx);
 
+  if (isVPermPk16(MI.getOpcode())) {
+    unsigned Src0Idx =
+        AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src0);
+    unsigned Src1Idx =
+        AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src1);
+    if (OpIdx == Src0Idx || OpIdx == Src1Idx) {
+      const MachineOperand &Other =
+          MI.getOperand(OpIdx == Src0Idx ? Src1Idx : Src0Idx);
+      // Both halves of the lookup table must use the same register bank.
+      bool IsVGPR = MO->isReg() && RI.isVGPR(MRI, MO->getReg());
+      bool OtherIsVGPR = Other.isReg() && RI.isVGPR(MRI, Other.getReg());
+      if (IsVGPR != OtherIsVGPR)
+        return false;
+    }
+  }
+
   const bool IsInlineConst = !MO->isReg() && isInlineConstant(*MO, OpInfo);
 
   if (isVALU(MI, /*AllowLDSDMA=*/false) && !IsInlineConst &&

@@ -28959,6 +28959,14 @@ static SDValue foldShuffleOfConcatUndefs(ShuffleVectorSDNode *Shuf,
   // operand 1 is offset down to account for narrowing of the vectors.
   ArrayRef<int> Mask = Shuf->getMask();
   EVT VT = Shuf->getValueType(0);
+  const TargetLowering &TLI = DAG.getTargetLoweringInfo();
+  // Keep custom shuffles with illegal types intact for type legalization.
+  if (!TLI.isTypeLegal(VT) &&
+      TLI.getOperationAction(ISD::VECTOR_SHUFFLE, VT) ==
+          TargetLowering::Custom &&
+      TLI.isShuffleMaskLegal(Mask, VT))
+    return SDValue();
+
   unsigned NumElts = VT.getVectorNumElements();
   unsigned HalfNumElts = NumElts / 2;
   SmallVector<int, 16> Mask0(HalfNumElts, -1);
@@ -28977,7 +28985,6 @@ static SDValue foldShuffleOfConcatUndefs(ShuffleVectorSDNode *Shuf,
   }
 
   // Ask the target if this is a valid transform.
-  const TargetLowering &TLI = DAG.getTargetLoweringInfo();
   EVT HalfVT = EVT::getVectorVT(*DAG.getContext(), VT.getScalarType(),
                                 HalfNumElts);
   if (!TLI.isShuffleMaskLegal(Mask0, HalfVT) ||

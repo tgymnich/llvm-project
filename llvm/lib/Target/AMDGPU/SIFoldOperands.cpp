@@ -3244,6 +3244,52 @@ bool SIFoldOperandsImpl::tryOptimizeAGPRPhis(MachineBasicBlock &MBB) {
   return Changed;
 }
 
+static bool foldVPermTableCopies(MachineInstr &MI, const SIInstrInfo &TII,
+                                 MachineRegisterInfo &MRI) {
+  if (!SIInstrInfo::isVPermPk16(MI.getOpcode()) || MI.isBundled())
+    return false;
+
+  auto GetScalarSource = [&](MachineOperand &Op) -> Register {
+    if (!Op.isReg() || !Op.getReg().isVirtual() || Op.getSubReg())
+      return Register();
+    MachineInstr *Copy = MRI.getVRegDef(Op.getReg());
+    if (!Copy || !Copy->isCopy())
+      return Register();
+    const MachineOperand &Source = Copy->getOperand(1);
+    if (Source.getSubReg() || Source.isUndef() ||
+        !TII.getRegisterInfo().isSGPRReg(MRI, Source.getReg()))
+      return Register();
+    return Source.getReg();
+  };
+
+  unsigned Src0Idx =
+      AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src0);
+  unsigned Src1Idx =
+      AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src1);
+  MachineOperand &Src0 = MI.getOperand(Src0Idx);
+  MachineOperand &Src1 = MI.getOperand(Src1Idx);
+  Register NewSrc0 = GetScalarSource(Src0);
+  Register NewSrc1 = GetScalarSource(Src1);
+  if (!NewSrc0 || !NewSrc1)
+    return false;
+
+  // Fold both table halves together to preserve their common register bank.
+  Register OldSrc0 = Src0.getReg();
+  Register OldSrc1 = Src1.getReg();
+  Src0.setReg(NewSrc0);
+  Src1.setReg(NewSrc1);
+  if (!TII.isOperandLegal(MI, Src0Idx) || !TII.isOperandLegal(MI, Src1Idx)) {
+    Src0.setReg(OldSrc0);
+    Src1.setReg(OldSrc1);
+    return false;
+  }
+  Src0.setIsKill(false);
+  Src1.setIsKill(false);
+  MRI.clearKillFlags(NewSrc0);
+  MRI.clearKillFlags(NewSrc1);
+  return true;
+}
+
 bool SIFoldOperandsImpl::run(MachineFunction &MF, const MachineLoopInfo *MLI) {
   this->MF = &MF;
   MRI = &MF.getRegInfo();
@@ -3261,6 +3307,10 @@ bool SIFoldOperandsImpl::run(MachineFunction &MF, const MachineLoopInfo *MLI) {
 
   bool Changed = false;
   for (MachineBasicBlock *MBB : depth_first(&MF)) {
+    if (ST->hasTensorCvtLutInsts())
+      for (MachineInstr &MI : *MBB)
+        Changed |= foldVPermTableCopies(MI, *TII, *MRI);
+
     MachineOperand *CurrentKnownM0Val = nullptr;
     for (auto &MI : make_early_inc_range(*MBB)) {
       Changed |= tryFoldCndMask(MI);
