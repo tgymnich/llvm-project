@@ -25,6 +25,7 @@
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunctionAnalysisManager.h"
 #include "llvm/CodeGen/MachinePassManager.h"
+#include "llvm/CodeGen/MachineUniformityAnalysis.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/Target/TargetMachine.h"
 
@@ -46,6 +47,7 @@ class AMDGPUPreLegalizerCombinerImpl : public Combiner {
 protected:
   const AMDGPUPreLegalizerCombinerImplRuleConfig &RuleConfig;
   const GCNSubtarget &STI;
+  const MachineUniformityInfo &MUI;
   const AMDGPUCombinerHelper Helper;
 
 public:
@@ -53,13 +55,17 @@ public:
       MachineFunction &MF, CombinerInfo &CInfo, GISelValueTracking &VT,
       GISelCSEInfo *CSEInfo,
       const AMDGPUPreLegalizerCombinerImplRuleConfig &RuleConfig,
-      const GCNSubtarget &STI, MachineDominatorTree *MDT,
-      const LegalizerInfo *LI);
+      const GCNSubtarget &STI, const MachineUniformityInfo &MUI,
+      MachineDominatorTree *MDT, const LegalizerInfo *LI);
 
   static const char *getName() { return "AMDGPUPreLegalizerCombinerImpl"; }
 
   bool tryCombineAllImpl(MachineInstr &MI) const;
   bool tryCombineAll(MachineInstr &I) const override;
+
+  bool matchI16Clamp(Register Reg, MachineInstr &Pack, Register &Src) const;
+  bool matchI16Pack(MachineInstr &Pack, Register Lo, Register Hi,
+                    Register &Src0, Register &Src1) const;
 
   struct ClampI64ToI16MatchInfo {
     int64_t Cmp1 = 0;
@@ -92,9 +98,10 @@ AMDGPUPreLegalizerCombinerImpl::AMDGPUPreLegalizerCombinerImpl(
     MachineFunction &MF, CombinerInfo &CInfo, GISelValueTracking &VT,
     GISelCSEInfo *CSEInfo,
     const AMDGPUPreLegalizerCombinerImplRuleConfig &RuleConfig,
-    const GCNSubtarget &STI, MachineDominatorTree *MDT, const LegalizerInfo *LI)
+    const GCNSubtarget &STI, const MachineUniformityInfo &MUI,
+    MachineDominatorTree *MDT, const LegalizerInfo *LI)
     : Combiner(MF, CInfo, &VT, CSEInfo), RuleConfig(RuleConfig), STI(STI),
-      Helper(Observer, B, /*IsPreLegalize*/ true, &VT, MDT, LI, STI),
+      MUI(MUI), Helper(Observer, B, /*IsPreLegalize*/ true, &VT, MDT, LI, STI),
 #define GET_GICOMBINER_CONSTRUCTOR_INITS
 #include "AMDGPUGenPreLegalizeGICombiner.inc"
 #undef GET_GICOMBINER_CONSTRUCTOR_INITS
@@ -105,6 +112,65 @@ bool AMDGPUPreLegalizerCombinerImpl::tryCombineAll(MachineInstr &MI) const {
   if (tryCombineAllImpl(MI))
     return true;
   return false;
+}
+
+bool AMDGPUPreLegalizerCombinerImpl::matchI16Clamp(Register Reg,
+                                                   MachineInstr &Pack,
+                                                   Register &Src) const {
+  LLT Ty = MRI.getType(Reg);
+  if ((Ty != LLT::scalar(32) && Ty != LLT::fixed_vector(2, 32)) ||
+      !MRI.hasOneNonDBGUse(Reg))
+    return false;
+
+  // Don't look through copies; they may carry temporal divergence.
+  MachineInstr *MI = MRI.getVRegDef(Reg);
+  if (MI->getParent() != Pack.getParent())
+    return false;
+
+  if (MI->getOpcode() == AMDGPU::G_AMDGPU_SMED3) {
+    if (Ty != LLT::scalar(32) ||
+        !mi_match(MI->getOperand(2).getReg(), MRI, m_SpecificICst(-32768)) ||
+        !mi_match(MI->getOperand(3).getReg(), MRI, m_SpecificICst(32767)))
+      return false;
+    Src = MI->getOperand(1).getReg();
+  } else {
+    Register Inner;
+    bool OuterIsMin =
+        mi_match(*MI, MRI, m_GSMin(m_Reg(Inner), m_SpecificICstOrSplat(32767)));
+    if (!OuterIsMin &&
+        !mi_match(*MI, MRI,
+                  m_GSMax(m_Reg(Inner), m_SpecificICstOrSplat(-32768))))
+      return false;
+
+    MachineInstr *InnerMI = MRI.getVRegDef(Inner);
+    if (InnerMI->getParent() != Pack.getParent() || !MRI.hasOneNonDBGUse(Inner))
+      return false;
+    if (OuterIsMin) {
+      if (!mi_match(*InnerMI, MRI,
+                    m_GSMax(m_Reg(Src), m_SpecificICstOrSplat(-32768))))
+        return false;
+    } else if (!mi_match(*InnerMI, MRI,
+                         m_GSMin(m_Reg(Src), m_SpecificICstOrSplat(32767)))) {
+      return false;
+    }
+  }
+
+  MachineInstr *SrcMI = MRI.getVRegDef(Src);
+  if (MRI.getType(Src) != Ty || SrcMI->getParent() != Pack.getParent())
+    return false;
+
+  for (auto I = SrcMI->getIterator(), E = Pack.getIterator(); I != E; ++I)
+    if (I->modifiesRegister(AMDGPU::EXEC, STI.getRegisterInfo()))
+      return false;
+  return true;
+}
+
+bool AMDGPUPreLegalizerCombinerImpl::matchI16Pack(MachineInstr &Pack,
+                                                  Register Lo, Register Hi,
+                                                  Register &Src0,
+                                                  Register &Src1) const {
+  return matchI16Clamp(Lo, Pack, Src0) && matchI16Clamp(Hi, Pack, Src1) &&
+         (MUI.isDivergentAtDef(Src0) || MUI.isDivergentAtDef(Src1));
 }
 
 bool AMDGPUPreLegalizerCombinerImpl::matchClampI64ToI16(
@@ -203,6 +269,7 @@ static bool runCombiner(MachineFunction &MF,
                         function_ref<GISelCSEInfo *()> GetCSEInfo,
                         function_ref<GISelValueTracking *()> GetVT,
                         function_ref<MachineDominatorTree *()> GetMDT,
+                        function_ref<const MachineUniformityInfo *()> GetMUI,
                         bool EnableOpt) {
   AMDGPUPreLegalizerCombinerImplRuleConfig RuleConfig;
   if (!RuleConfig.parseCommandLineOption())
@@ -227,7 +294,7 @@ static bool runCombiner(MachineFunction &MF,
   GISelCSEInfo *CSEInfo = GetCSEInfo();
   MachineDominatorTree *MDT = GetMDT();
   AMDGPUPreLegalizerCombinerImpl Impl(MF, CInfo, *VT, CSEInfo, RuleConfig, STI,
-                                      MDT, STI.getLegalizerInfo());
+                                      *GetMUI(), MDT, STI.getLegalizerInfo());
   return Impl.combineMachineInstrs();
 }
 
@@ -265,6 +332,7 @@ void AMDGPUPreLegalizerCombinerLegacy::getAnalysisUsage(
     AU.addRequired<MachineDominatorTreeWrapperPass>();
   }
 
+  AU.addRequired<MachineUniformityAnalysisPass>();
   AU.addRequired<GISelCSEAnalysisWrapperPass>();
   AU.addPreserved<GISelCSEAnalysisWrapperPass>();
   MachineFunctionPass::getAnalysisUsage(AU);
@@ -291,6 +359,10 @@ bool AMDGPUPreLegalizerCombinerLegacy::runOnMachineFunction(
                               : &getAnalysis<MachineDominatorTreeWrapperPass>()
                                      .getDomTree();
       },
+      [&]() {
+        return &getAnalysis<MachineUniformityAnalysisPass>()
+                    .getUniformityInfo();
+      },
       EnableOpt);
 }
 
@@ -300,6 +372,7 @@ INITIALIZE_PASS_BEGIN(AMDGPUPreLegalizerCombinerLegacy, DEBUG_TYPE,
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_DEPENDENCY(GISelValueTrackingAnalysisLegacy)
+INITIALIZE_PASS_DEPENDENCY(MachineUniformityAnalysisPass)
 INITIALIZE_PASS_END(AMDGPUPreLegalizerCombinerLegacy, DEBUG_TYPE,
                     "Combine AMDGPU machine instrs before legalization", false,
                     false)
@@ -323,6 +396,7 @@ AMDGPUPreLegalizerCombinerPass::run(MachineFunction &MF,
                        ? nullptr
                        : &MFAM.getResult<MachineDominatorTreeAnalysis>(MF);
           },
+          [&]() { return &MFAM.getResult<MachineUniformityAnalysis>(MF); },
           /*EnableOpt=*/!IsOptLevelNone))
     return PreservedAnalyses::all();
 

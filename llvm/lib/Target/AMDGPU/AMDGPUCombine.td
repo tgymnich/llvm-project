@@ -304,6 +304,58 @@ def fold_carry_into_addsub_combines : GICombineGroup<[
   fold_carry_into_addsub<(G_SUB i32:$dst, i32:$src, $zext), G_USUBE>
 ]>;
 
+defvar cvt_pk_i16_i32_apply = (apply [{
+  B.buildInstr(AMDGPU::G_AMDGPU_CVT_PK_I16_I32, {${dst}.getReg()},
+               {${src0}, ${src1}});
+  ${pack}->eraseFromParent();
+}]);
+
+// v2i16 build_vector_trunc(clamp_i16(i32:x), clamp_i16(i32:y))
+//   -> G_AMDGPU_CVT_PK_I16_I32(x, y)
+def build_vector_trunc_clamp_i16 : GICombineRule<
+  (defs root:$pack, register_matchinfo:$src0, register_matchinfo:$src1),
+  (match (G_BUILD_VECTOR_TRUNC v2i16:$dst, $lo, $hi):$pack,
+         [{ return matchI16Pack(*${pack}, ${lo}.getReg(), ${hi}.getReg(),
+                               ${src0}, ${src1}); }]),
+  cvt_pk_i16_i32_apply>;
+
+// v2i16 trunc(build_vector(clamp_i16(i32:x), clamp_i16(i32:y)))
+//   -> G_AMDGPU_CVT_PK_I16_I32(x, y)
+def trunc_build_vector_clamp_i16 : GICombineRule<
+  (defs root:$pack, register_matchinfo:$src0, register_matchinfo:$src1),
+  (match (G_TRUNC v2i16:$dst, v2i32:$vec):$pack,
+         (G_BUILD_VECTOR $vec, $lo, $hi),
+         [{ return MRI.getVRegDef(${vec}.getReg())->getParent() == ${pack}->getParent() &&
+                   MRI.hasOneNonDBGUse(${vec}.getReg()) &&
+                   matchI16Pack(*${pack}, ${lo}.getReg(), ${hi}.getReg(),
+                                ${src0}, ${src1}); }]),
+  cvt_pk_i16_i32_apply>;
+
+def build_vector_clamp_i16 : GICombineRule<
+  (defs root:$pack, register_matchinfo:$src0, register_matchinfo:$src1),
+  (match (G_BUILD_VECTOR v2i16:$dst, i16:$lo16, i16:$hi16):$pack,
+         (G_TRUNC $lo16, i32:$lo):$lo_trunc,
+         (G_TRUNC $hi16, i32:$hi):$hi_trunc,
+         [{ return ${lo_trunc}->getParent() == ${pack}->getParent() &&
+                   ${hi_trunc}->getParent() == ${pack}->getParent() &&
+                   MRI.hasOneNonDBGUse(${lo16}.getReg()) &&
+                   MRI.hasOneNonDBGUse(${hi16}.getReg()) &&
+                   matchI16Pack(*${pack}, ${lo}.getReg(), ${hi}.getReg(),
+                                ${src0}, ${src1}); }]),
+  cvt_pk_i16_i32_apply>;
+
+def trunc_vector_clamp_i16 : GICombineRule<
+  (defs root:$pack, register_matchinfo:$src),
+  (match (G_TRUNC v2i16:$dst, v2i32:$clamp):$pack,
+         [{ return matchI16Clamp(${clamp}.getReg(), *${pack}, ${src}) &&
+                   MUI.isDivergentAtDef(${src}); }]),
+  (apply [{
+    auto Unmerge = B.buildUnmerge(LLT::scalar(32), ${src});
+    B.buildInstr(AMDGPU::G_AMDGPU_CVT_PK_I16_I32, {${dst}.getReg()},
+                 {Unmerge.getReg(0), Unmerge.getReg(1)});
+    ${pack}->eraseFromParent();
+  }])>;
+
 let Predicates = [Has16BitInsts, NotHasMed3_16] in {
 // For gfx8, expand f16-fmed3-as-f32 into a min/max f16 sequence. This
 // saves one instruction compared to the promotion.
@@ -335,7 +387,9 @@ def AMDGPUPreLegalizerCombiner: GICombiner<
   [all_combines, combine_fmul_with_select_to_fldexp, clamp_i64_to_i16,
    foldable_fneg, fold_fabs_fptrunc, combine_shuffle_vector,
    combine_shuffle_vector_to_build_vector, trunc_lshr16_to_unmerge,
-   binop_s64_with_s32_mask_combines, combine_or_s64_s32]> {
+   binop_s64_with_s32_mask_combines, combine_or_s64_s32,
+   build_vector_trunc_clamp_i16, trunc_build_vector_clamp_i16,
+   build_vector_clamp_i16, trunc_vector_clamp_i16]> {
   let CombineAllMethodName = "tryCombineAllImpl";
 }
 

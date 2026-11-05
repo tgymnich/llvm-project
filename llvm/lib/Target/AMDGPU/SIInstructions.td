@@ -4081,6 +4081,19 @@ def : GCNPat <
                          (i16 (EXTRACT_SUBREG VGPR_32:$src1, lo16)), hi16)
 >;
 
+def cvt_pk_i16_i32_clamp : PatFrags<
+  (ops node:$src),
+  [(smin_oneuse (smax_oneuse node:$src, (i32 -32768)), (i32 32767)),
+   (smax_oneuse (smin_oneuse node:$src, (i32 32767)), (i32 -32768)),
+   (HasOneUseTernaryOp<AMDGPUsmed3> node:$src, (i32 -32768), (i32 32767))]>;
+
+def : GCNPat <
+  (v2i16 (DivergentBinFrag<build_vector>
+    (i16 (HasOneUseUnaryOp<trunc> (cvt_pk_i16_i32_clamp i32:$src0))),
+    (i16 (HasOneUseUnaryOp<trunc> (cvt_pk_i16_i32_clamp i32:$src1))))),
+  (V_CVT_PK_I16_I32_e64 $src0, $src1)
+>;
+
 let SubtargetPredicate = HasVOP3PInsts in {
 let True16Predicate = NotUseRealTrue16Insts in
 def : GCNPat <
