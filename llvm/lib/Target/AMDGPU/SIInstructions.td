@@ -2961,8 +2961,17 @@ def : AMDGPUPat <
                $src1), sub1)
 >;
 
+def FshrBytePat : PatFrag<(ops node:$src0, node:$src1, node:$src2),
+  (fshr node:$src0, node:$src1, (shl node:$src2, (i32 3))),
+  [{ return N->isDivergent(); }]> {
+  let GISelPredicateCode = [{ return true; }];
+}
+
 let True16Predicate = NotHasTrue16BitInsts in {
 let SubtargetPredicate = isNotGFX9Plus in {
+def : GCNPat<(FshrBytePat i32:$src0, i32:$src1, i32:$src2),
+            (V_ALIGNBYTE_B32_e64 $src0, $src1, $src2)>;
+
 def : GCNPat<(i32 (DivergentUnaryFrag<trunc> (srl i64:$src0, (and i32:$src1, (i32 31))))),
           (V_ALIGNBIT_B32_e64 (i32 (EXTRACT_SUBREG (i64 $src0), sub1)),
                           (i32 (EXTRACT_SUBREG (i64 $src0), sub0)), $src1)>;
@@ -2973,6 +2982,9 @@ def : GCNPat<(i32 (DivergentUnaryFrag<trunc> (srl i64:$src0, (i32 ShiftAmt32Imm:
 } // isNotGFX9Plus
 
 let SubtargetPredicate = isGFX9GFX10 in {
+def : GCNPat<(FshrBytePat i32:$src0, i32:$src1, i32:$src2),
+            (V_ALIGNBYTE_B32_opsel_e64 0, $src0, 0, $src1, 0, $src2)>;
+
 foreach pat = [(i32 (DivergentUnaryFrag<trunc> (srl i64:$src0, (and i32:$src1, (i32 31))))),
                (i32 (DivergentUnaryFrag<trunc> (srl i64:$src0, (i32 ShiftAmt32Imm:$src1))))] in
 def : GCNPat<pat,
@@ -2994,6 +3006,10 @@ def : GCNPat<(fshr i32:$src0, i32:$src1, i32:$src2),
 } // end True16Predicate = NotHasTrue16BitInsts
 
 let True16Predicate = UseRealTrue16Insts in {
+def : GCNPat<(FshrBytePat i32:$src0, i32:$src1, i32:$src2),
+            (V_ALIGNBYTE_B32_t16_e64 0, $src0, 0, $src1, 0,
+              (EXTRACT_SUBREG VGPR_32:$src2, lo16))>;
+
 def : GCNPat<(i32 (DivergentUnaryFrag<trunc> (srl i64:$src0, (i32 ShiftAmt32Imm:$src1)))),
           (V_ALIGNBIT_B32_t16_e64 0, /* src0_modifiers */
                           (i32 (EXTRACT_SUBREG (i64 $src0), sub1)),
@@ -3012,6 +3028,9 @@ def : GCNPat<(fshr i32:$src0, i32:$src1, i32:$src2),
 } // end True16Predicate = UseRealTrue16Insts
 
 let True16Predicate = UseFakeTrue16Insts in {
+def : GCNPat<(FshrBytePat i32:$src0, i32:$src1, i32:$src2),
+            (V_ALIGNBYTE_B32_fake16_e64 0, $src0, 0, $src1, 0, $src2)>;
+
 def : GCNPat<(i32 (DivergentUnaryFrag<trunc> (srl i64:$src0, (and i32:$src1, (i32 31))))),
      (V_ALIGNBIT_B32_fake16_e64 0, /* src0_modifiers */
                                (i32 (EXTRACT_SUBREG (i64 $src0), sub1)),
