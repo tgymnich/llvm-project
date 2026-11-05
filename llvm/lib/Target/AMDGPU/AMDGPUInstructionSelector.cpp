@@ -2752,6 +2752,31 @@ bool AMDGPUInstructionSelector::selectG_SZA_EXT(MachineInstr &I) const {
   if (SrcBank->getID() == AMDGPU::VGPRRegBankID && DstSize <= 32) {
     // 64-bit should have been split up in RegBankSelect
 
+    if (Signed && SrcSize == 16 && STI.hasTrue16BitInsts()) {
+      Register CvtSrc = SrcReg;
+      const bool RealTrue16 = STI.useRealTrue16Insts();
+      if (RealTrue16 && SrcTy.getSizeInBits() > 16) {
+        if (!RBI.constrainGenericRegister(SrcReg, AMDGPU::VGPR_32RegClass,
+                                          *MRI))
+          return false;
+        CvtSrc = MRI->createVirtualRegister(&AMDGPU::VGPR_16RegClass);
+        BuildMI(MBB, I, DL, TII.get(AMDGPU::COPY), CvtSrc)
+            .addReg(SrcReg, {}, AMDGPU::lo16);
+      }
+
+      const unsigned CvtOpc = RealTrue16 ? AMDGPU::V_CVT_I32_I16_t16_e64
+                                         : AMDGPU::V_CVT_I32_I16_fake16_e64;
+      auto ExtI = BuildMI(MBB, I, DL, TII.get(CvtOpc), DstReg);
+      if (RealTrue16)
+        ExtI.addImm(SISrcMods::NONE);
+      ExtI.addReg(CvtSrc);
+      if (RealTrue16)
+        ExtI.addImm(0); // op_sel
+      I.eraseFromParent();
+      constrainSelectedInstRegOperands(*ExtI, TII, TRI, RBI);
+      return true;
+    }
+
     // Try to use an and with a mask if it will save code size.
     unsigned Mask;
     if (!Signed && shouldUseAndMask(SrcSize, Mask)) {
