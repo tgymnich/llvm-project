@@ -798,6 +798,43 @@ bb:
   ret void
 }
 
+; The store keeps the vector load from being narrowed.
+define <2 x half> @fmul_swap_lo_pair_v4f16(ptr addrspace(1) %in, ptr addrspace(1) %out, <2 x half> %y) #0 {
+; GCN-LABEL: fmul_swap_lo_pair_v4f16:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    global_load_dwordx2 v[0:1], v[0:1], off
+; GCN-NEXT:    s_waitcnt vmcnt(0)
+; GCN-NEXT:    global_store_dwordx2 v[2:3], v[0:1], off
+; GCN-NEXT:    v_alignbit_b32 v0, v0, v0, 16
+; GCN-NEXT:    v_pk_mul_f16 v0, v0, v4
+; GCN-NEXT:    s_waitcnt vmcnt(0)
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+  %x = load <4 x half>, ptr addrspace(1) %in
+  store <4 x half> %x, ptr addrspace(1) %out
+  %swap = shufflevector <4 x half> %x, <4 x half> poison, <2 x i32> <i32 1, i32 0>
+  %r = fmul <2 x half> %swap, %y
+  ret <2 x half> %r
+}
+
+define <2 x half> @fma_swap_lo_pair_v8f16(ptr addrspace(1) %in, ptr addrspace(1) %out, <2 x half> %y) #0 {
+; GCN-LABEL: fma_swap_lo_pair_v8f16:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    global_load_dwordx4 v[5:8], v[0:1], off
+; GCN-NEXT:    s_waitcnt vmcnt(0)
+; GCN-NEXT:    v_alignbit_b32 v0, v5, v5, 16
+; GCN-NEXT:    v_pk_fma_f16 v0, v0, v4, v0
+; GCN-NEXT:    global_store_dwordx4 v[2:3], v[5:8], off
+; GCN-NEXT:    s_waitcnt vmcnt(0)
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+  %x = load <8 x half>, ptr addrspace(1) %in
+  store <8 x half> %x, ptr addrspace(1) %out
+  %swap = shufflevector <8 x half> %x, <8 x half> poison, <2 x i32> <i32 1, i32 0>
+  %r = call <2 x half> @llvm.fma.v2f16(<2 x half> %swap, <2 x half> %y, <2 x half> %swap)
+  ret <2 x half> %r
+}
+
 declare <2 x half> @llvm.fma.v2f16(<2 x half>, <2 x half>, <2 x half>) #1
 
 attributes #0 = { nounwind "amdgpu-no-dispatch-id" "amdgpu-no-dispatch-ptr" "amdgpu-no-implicitarg-ptr" "amdgpu-no-lds-kernel-id" "amdgpu-no-queue-ptr" "amdgpu-no-workgroup-id-x" "amdgpu-no-workgroup-id-y" "amdgpu-no-workgroup-id-z" "amdgpu-no-workitem-id-y" "amdgpu-no-workitem-id-z" }
