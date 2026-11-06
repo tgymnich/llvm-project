@@ -245,6 +245,7 @@ private:
   SDValue performMinMaxCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performFMed3Combine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performCvtPkRTZCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue performBuildVectorCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performExponentOnlyScaleCombine(SDNode *N,
                                           DAGCombinerInfo &DCI) const;
   SDValue performExtractVectorEltCombine(SDNode *N, DAGCombinerInfo &DCI) const;

@@ -1185,6 +1185,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
                        ISD::UINT_TO_FP,
                        ISD::FCANONICALIZE,
                        ISD::SCALAR_TO_VECTOR,
+                       ISD::BUILD_VECTOR,
                        ISD::ZERO_EXTEND,
                        ISD::SIGN_EXTEND,
                        ISD::SIGN_EXTEND_INREG,
@@ -17177,6 +17178,40 @@ SDValue SITargetLowering::performCvtPkRTZCombine(SDNode *N,
   return SDValue();
 }
 
+// v2i16 build_vector (trunc (umin x, 0xffff)), (trunc y)
+//   -> cvt_pk_u16_u32 x, y   if y is known to fit in 16 bits
+// Lanes are handled symmetrically; at least one must be a umin clamp.
+SDValue
+SITargetLowering::performBuildVectorCombine(SDNode *N,
+                                            DAGCombinerInfo &DCI) const {
+  if (N->getValueType(0) != MVT::v2i16 || !N->isDivergent() ||
+      !isTypeLegal(MVT::v2i16))
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDValue Srcs[2];
+  bool HasClamp = false;
+  for (auto [Src, Elt] : zip_equal(Srcs, N->op_values())) {
+    if (Elt.getOpcode() != ISD::TRUNCATE ||
+        Elt.getOperand(0).getValueType() != MVT::i32)
+      return SDValue();
+
+    Src = Elt.getOperand(0);
+    SDValue X;
+    if (sd_match(Src, m_OneUse(m_UMin(m_Value(X), m_SpecificInt(0xffff))))) {
+      Src = X;
+      HasClamp = true;
+    } else if (DAG.computeKnownBits(Src).countMaxActiveBits() > 16) {
+      return SDValue();
+    }
+  }
+
+  if (!HasClamp)
+    return SDValue();
+
+  return DAG.getNode(AMDGPUISD::CVT_PK_U16_U32, SDLoc(N), MVT::v2i16, Srcs);
+}
+
 /// V_CVT_SCALEF32_* conversions to a narrow format only read the exponent
 /// field of their f32 scale operand.
 SDValue
@@ -19567,6 +19602,8 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
     return performFMed3Combine(N, DCI);
   case AMDGPUISD::CVT_PKRTZ_F16_F32:
     return performCvtPkRTZCombine(N, DCI);
+  case ISD::BUILD_VECTOR:
+    return performBuildVectorCombine(N, DCI);
   case ISD::INTRINSIC_WO_CHAIN:
     if (SDValue Res = performExponentOnlyScaleCombine(N, DCI))
       return Res;
