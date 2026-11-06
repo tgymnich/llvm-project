@@ -124,13 +124,14 @@ static SDValue createVOP3PSrc32FromLo16(SDValue Lo, SDValue Src,
   return NewSrc;
 }
 
-// Look through operations that obscure just looking at the low 16-bits of the
-// same register.
-static SDValue stripExtractLoElt(SDValue In) {
+// Look through operations that obscure just looking at the low EltSize bits of
+// the same register.
+static SDValue stripExtractLoElt(SDValue In, unsigned EltSize = 16) {
   if (In.getOpcode() == ISD::EXTRACT_VECTOR_ELT) {
-    SDValue Idx = In.getOperand(1);
-    if (isNullConstant(Idx) && In.getValueSizeInBits() <= 32)
-      return In.getOperand(0);
+    SDValue Src = In.getOperand(0);
+    if (isNullConstant(In.getOperand(1)) && In.getValueSizeInBits() <= 32 &&
+        Src.getScalarValueSizeInBits() == EltSize)
+      return Src;
   }
 
   if (In.getOpcode() == ISD::TRUNCATE) {
@@ -3792,8 +3793,9 @@ bool AMDGPUDAGToDAGISel::SelectVOP3PMods(SDValue In, SDValue &Src,
     }
 
     unsigned VecSize = Src.getValueSizeInBits();
-    Lo = stripExtractLoElt(Lo);
-    Hi = stripExtractLoElt(Hi);
+    unsigned EltSize = Src.getScalarValueSizeInBits();
+    Lo = stripExtractLoElt(Lo, EltSize);
+    Hi = stripExtractLoElt(Hi, EltSize);
 
     if (Lo.getValueSizeInBits() > VecSize) {
       Lo = CurDAG->getTargetExtractSubreg(
