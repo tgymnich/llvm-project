@@ -110,6 +110,40 @@ attributes #3 = { "amdgpu-max-num-workgroups"="0,42,89" }
 
 !0 = !{i32 0, i32 -1}
 
+
+define i32 @use_grid_size_y_nested_max_num_workgroups() #0 {
+; CHECK-LABEL: define i32 @use_grid_size_y_nested_max_num_workgroups(
+; CHECK-SAME: ) #[[ATTR0]] {
+; CHECK-NEXT:    [[IMPLICITARG_PTR:%.*]] = call ptr addrspace(4) @llvm.amdgcn.implicitarg.ptr()
+; CHECK-NEXT:    [[BASE:%.*]] = getelementptr i16, ptr addrspace(4) [[IMPLICITARG_PTR]], i64 1
+; CHECK-NEXT:    [[GRID_PTR:%.*]] = getelementptr i16, ptr addrspace(4) [[BASE]], i64 1
+; CHECK-NEXT:    [[GRID_SIZE_Y:%.*]] = load i32, ptr addrspace(4) [[GRID_PTR]], align 4, !range [[RNG2]]
+; CHECK-NEXT:    ret i32 [[GRID_SIZE_Y]]
+;
+  %implicitarg.ptr = call ptr addrspace(4) @llvm.amdgcn.implicitarg.ptr()
+  %base = getelementptr i16, ptr addrspace(4) %implicitarg.ptr, i64 1
+  %grid.ptr = getelementptr i16, ptr addrspace(4) %base, i64 1
+  %grid.size.y = load i32, ptr addrspace(4) %grid.ptr, align 4
+  ret i32 %grid.size.y
+}
+
+define i32 @use_grid_size_x_multiple_uses_max_num_workgroups(i32 %other) #0 {
+; CHECK-LABEL: define i32 @use_grid_size_x_multiple_uses_max_num_workgroups(
+; CHECK-SAME: i32 [[OTHER:%.*]]) #[[ATTR0]] {
+; CHECK-NEXT:    [[IMPLICITARG_PTR:%.*]] = call ptr addrspace(4) @llvm.amdgcn.implicitarg.ptr()
+; CHECK-NEXT:    [[GRID_SIZE_X:%.*]] = load i32, ptr addrspace(4) [[IMPLICITARG_PTR]], align 4, !range [[RNG0]]
+; CHECK-NEXT:    [[A:%.*]] = add i32 [[GRID_SIZE_X]], [[OTHER]]
+; CHECK-NEXT:    [[B:%.*]] = sub i32 [[GRID_SIZE_X]], [[OTHER]]
+; CHECK-NEXT:    [[SUM:%.*]] = add i32 [[A]], [[B]]
+; CHECK-NEXT:    ret i32 [[SUM]]
+;
+  %implicitarg.ptr = call ptr addrspace(4) @llvm.amdgcn.implicitarg.ptr()
+  %grid.size.x = load i32, ptr addrspace(4) %implicitarg.ptr, align 4
+  %a = add i32 %grid.size.x, %other
+  %b = sub i32 %grid.size.x, %other
+  %sum = add i32 %a, %b
+  ret i32 %sum
+}
 ;.
 ; CHECK: attributes #[[ATTR0]] = { "amdgpu-max-num-workgroups"="36,42,89" }
 ; CHECK: attributes #[[ATTR1]] = { "amdgpu-max-num-workgroups"="4294967294,42,89" }

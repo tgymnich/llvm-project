@@ -182,29 +182,21 @@ static bool processUse(CallInst *CI, bool IsV5OrAbove) {
 
   unsigned KnownNumGridDims = HasReqdWorkGroupSize ? computeNumGridDims(MD) : 0;
 
-  // We expect to see several GEP users, casted to the appropriate type and
-  // loaded.
-  for (User *U : CI->users()) {
-    if (!U->hasOneUse())
+  SmallVector<User *, 16> Worklist(CI->user_begin(), CI->user_end());
+  for (unsigned Idx = 0; Idx != Worklist.size(); ++Idx) {
+    User *U = Worklist[Idx];
+    if (isa<GetElementPtrInst, BitCastInst, AddrSpaceCastInst>(U)) {
+      Worklist.append(U->user_begin(), U->user_end());
+      continue;
+    }
+
+    auto *Load = dyn_cast<LoadInst>(U);
+    if (!Load || !Load->isSimple() || !Load->getType()->isIntegerTy())
       continue;
 
     int64_t Offset = 0;
-    auto *Load = dyn_cast<LoadInst>(U); // Load from ImplicitArgPtr/DispatchPtr?
-    auto *BCI = dyn_cast<BitCastInst>(U);
-    if (!Load && !BCI) {
-      if (GetPointerBaseWithConstantOffset(U, Offset, DL) != CI)
-        continue;
-      Load = dyn_cast<LoadInst>(*U->user_begin()); // Load from GEP?
-      BCI = dyn_cast<BitCastInst>(*U->user_begin());
-    }
-
-    if (BCI) {
-      if (!BCI->hasOneUse())
-        continue;
-      Load = dyn_cast<LoadInst>(*BCI->user_begin()); // Load from BCI?
-    }
-
-    if (!Load || !Load->isSimple())
+    if (GetPointerBaseWithConstantOffset(Load->getPointerOperand(), Offset,
+                                         DL) != CI)
       continue;
 
     unsigned LoadSize = DL.getTypeStoreSize(Load->getType());
