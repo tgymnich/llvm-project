@@ -727,6 +727,18 @@ Value *AMDGPUSwLowerLDS::getTranslatedLDSPtrOfFlat(Value *LoadMallocPtr,
   return IRB.CreateSelect(IRB.CreateIsNull(FlatPtr), LDSNull, LDSPtr);
 }
 
+static bool shouldScalarizeLDSAddrSpaceCast(AddrSpaceCastInst *ASC) {
+  auto *VecTy = dyn_cast<FixedVectorType>(ASC->getType());
+  if (!VecTy || ASC->getDestAddressSpace() == AMDGPUAS::LOCAL_ADDRESS ||
+      ASC->getNumUses() > VecTy->getNumElements())
+    return false;
+
+  return all_of(ASC->users(), [](User *U) {
+    auto *Extract = dyn_cast<ExtractElementInst>(U);
+    return Extract && isa<ConstantInt>(Extract->getIndexOperand());
+  });
+}
+
 void AMDGPUSwLowerLDS::translateLDSMemoryOperationsToGlobalMemory(
     Function *Func, Value *LoadMallocPtr,
     SetVector<Instruction *> &LDSInstructions) {
@@ -821,6 +833,25 @@ void AMDGPUSwLowerLDS::translateLDSMemoryOperationsToGlobalMemory(
       MI->eraseFromParent();
     } else if (AddrSpaceCastInst *ASC = dyn_cast<AddrSpaceCastInst>(Inst)) {
       Value *AIOperand = ASC->getPointerOperand();
+      if (shouldScalarizeLDSAddrSpaceCast(ASC)) {
+        // Keep each address calculation with its scalar use.
+        for (User *U : make_early_inc_range(ASC->users())) {
+          auto *Extract = cast<ExtractElementInst>(U);
+          IRB.SetInsertPoint(Extract);
+          Value *LDSPtr =
+              IRB.CreateExtractElement(AIOperand, Extract->getIndexOperand());
+          Value *Replacement =
+              getTranslatedGlobalMemoryPtrOfLDS(LoadMallocPtr, LDSPtr);
+          Value *NewPtr =
+              IRB.CreateAddrSpaceCast(Replacement, Extract->getType());
+          if (auto *NewInst = dyn_cast<Instruction>(NewPtr))
+            NewInst->takeName(Extract);
+          Extract->replaceAllUsesWith(NewPtr);
+          Extract->eraseFromParent();
+        }
+        ASC->eraseFromParent();
+        continue;
+      }
       Value *NewAI = nullptr;
       if (ASC->getDestAddressSpace() == AMDGPUAS::LOCAL_ADDRESS) {
         NewAI =
