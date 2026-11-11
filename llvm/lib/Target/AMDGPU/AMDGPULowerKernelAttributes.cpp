@@ -420,12 +420,20 @@ static bool processUse(CallInst *CI, bool IsV5OrAbove) {
           Inst = cast<Instruction>(*Inst->user_begin());
 
         using namespace llvm::PatternMatch;
-        if (!match(
-                Inst,
-                m_UDiv(m_ZExtOrSelf(m_LoadSimple(m_GEP(
-                           m_Intrinsic<Intrinsic::amdgcn_dispatch_ptr>(),
-                           m_SpecificInt(GRID_SIZE_X + I * sizeof(uint32_t))))),
-                       m_Value())))
+        Value *GridSize;
+        if (!match(Inst, m_UDiv(m_ZExtOrSelf(m_Value(GridSize)), m_Value())))
+          continue;
+
+        auto *GridSizeLoad = dyn_cast<LoadInst>(GridSize);
+        if (!GridSizeLoad || !GridSizeLoad->isSimple() ||
+            !GridSizeLoad->getType()->isIntegerTy(32))
+          continue;
+
+        int64_t Offset = 0;
+        Value *Base = GetPointerBaseWithConstantOffset(
+            GridSizeLoad->getPointerOperand(), Offset, DL);
+        if (Offset != GRID_SIZE_X + I * sizeof(uint32_t) ||
+            !match(Base, m_Intrinsic<Intrinsic::amdgcn_dispatch_ptr>()))
           continue;
 
         IRBuilder<> Builder(Inst);
