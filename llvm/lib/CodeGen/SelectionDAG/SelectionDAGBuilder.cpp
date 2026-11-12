@@ -4687,9 +4687,10 @@ void SelectionDAGBuilder::visitGetElementPtr(const User &I) {
             (int64_t(Offset) >= 0 && NW.hasNoUnsignedSignedWrap()))
           Flags |= SDNodeFlags::NoUnsignedWrap;
         Flags.setInBounds(NW.isInBounds());
+        Flags.setNoUnsignedSignedWrap(NW.hasNoUnsignedSignedWrap());
 
         N = DAG.getMemBasePlusOffset(
-            N, DAG.getConstant(Offset, dl, N.getValueType()), dl, Flags);
+            N, DAG.getConstant(Offset, dl, N.getValueType()), dl, Flags, AS);
       }
     } else {
       // IdxSize is the width of the arithmetic according to IR semantics.
@@ -4731,10 +4732,11 @@ void SelectionDAGBuilder::visitGetElementPtr(const User &I) {
             (Offs.isNonNegative() && NW.hasNoUnsignedSignedWrap()))
           Flags.setNoUnsignedWrap(true);
         Flags.setInBounds(NW.isInBounds());
+        Flags.setNoUnsignedSignedWrap(NW.hasNoUnsignedSignedWrap());
 
         OffsVal = DAG.getSExtOrTrunc(OffsVal, dl, N.getValueType());
 
-        N = DAG.getMemBasePlusOffset(N, OffsVal, dl, Flags);
+        N = DAG.getMemBasePlusOffset(N, OffsVal, dl, Flags, AS);
         continue;
       }
 
@@ -4801,8 +4803,9 @@ void SelectionDAGBuilder::visitGetElementPtr(const User &I) {
       SDNodeFlags AddFlags;
       AddFlags.setNoUnsignedWrap(NW.hasNoUnsignedWrap());
       AddFlags.setInBounds(NW.isInBounds());
+      AddFlags.setNoUnsignedSignedWrap(NW.hasNoUnsignedSignedWrap());
 
-      N = DAG.getMemBasePlusOffset(N, IdxN, dl, AddFlags);
+      N = DAG.getMemBasePlusOffset(N, IdxN, dl, AddFlags, AS);
     }
   }
 

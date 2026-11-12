@@ -37275,8 +37275,8 @@ bool AArch64TargetLowering::isTypeDesirableForOp(unsigned Opc, EVT VT) const {
   return TargetLowering::isTypeDesirableForOp(Opc, VT);
 }
 
-bool AArch64TargetLowering::shouldPreservePtrArith(const Function &F,
-                                                   EVT VT) const {
+bool AArch64TargetLowering::shouldPreservePtrArith(const Function &F, EVT VT,
+                                                   unsigned AddrSpace) const {
   return Subtarget->hasCPA() && Subtarget->getCLOpts().use_featcpa_codegen;
 }
 

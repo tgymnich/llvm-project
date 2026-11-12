@@ -142,6 +142,9 @@ private:
   bool SelectMUBUF(SDValue Addr, SDValue &SRsrc, SDValue &VAddr,
                    SDValue &SOffset, SDValue &Offset, SDValue &Offen,
                    SDValue &Idxen, SDValue &Addr64) const;
+  bool SelectMUBUFOffen(SDNode *Parent, SDValue Addr, SDValue &SRsrc,
+                        SDValue &VAddr, SDValue &SOffset,
+                        SDValue &Offset) const;
   bool SelectMUBUFAddr64(SDValue Addr, SDValue &SRsrc, SDValue &VAddr,
                          SDValue &SOffset, SDValue &Offset) const;
   bool SelectMUBUFScratchOffen(SDNode *Parent, SDValue Addr, SDValue &RSrc,

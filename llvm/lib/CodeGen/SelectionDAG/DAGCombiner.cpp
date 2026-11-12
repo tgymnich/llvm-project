@@ -2779,7 +2779,12 @@ SDValue DAGCombiner::visitPTRADD(SDNode *N) {
       //   (ptradd inbounds (inttoptr (ptrtoint (ptradd inbounds x, y))), z)
       // The outer inbounds ptradd might therefore rely on a provenance that x
       // does not have.
-      return DAG.getMemBasePlusOffset(X, Add, DL, Flags);
+      SDNodeFlags PtrFlags = Flags;
+      if (N->getFlags().hasNoUnsignedSignedWrap() &&
+          N0->getFlags().hasNoUnsignedSignedWrap() &&
+          DAG.willNotOverflowAdd(/*IsSigned=*/true, Y, Z))
+        PtrFlags.setNoUnsignedSignedWrap(true);
+      return DAG.getNode(ISD::PTRADD, DL, PtrVT, X, Add, PtrFlags);
     }
   }
 
@@ -2810,9 +2815,10 @@ SDValue DAGCombiner::visitPTRADD(SDNode *N) {
         //   (ptradd inbounds (inttoptr (ptrtoint (ptradd inbounds GA, v))), c)
         // The outer inbounds ptradd might therefore rely on a provenance that
         // GA does not have.
-        SDValue Inner = DAG.getMemBasePlusOffset(GAValue, N1, DL, Flags);
+        SDValue Inner = DAG.getNode(ISD::PTRADD, DL, PtrVT, GAValue, N1, Flags);
         AddToWorklist(Inner.getNode());
-        return DAG.getMemBasePlusOffset(Inner, N0.getOperand(1), DL, Flags);
+        return DAG.getNode(ISD::PTRADD, DL, PtrVT, Inner, N0.getOperand(1),
+                           Flags);
       }
     }
   }
@@ -2844,9 +2850,9 @@ SDValue DAGCombiner::visitPTRADD(SDNode *N) {
     if (ZIsConstant != YIsConstant) {
       if (YIsConstant)
         std::swap(Y, Z);
-      SDValue Inner = DAG.getMemBasePlusOffset(X, Y, DL, ReassocFlags);
+      SDValue Inner = DAG.getNode(ISD::PTRADD, DL, PtrVT, X, Y, ReassocFlags);
       AddToWorklist(Inner.getNode());
-      return DAG.getMemBasePlusOffset(Inner, Z, DL, ReassocFlags);
+      return DAG.getNode(ISD::PTRADD, DL, PtrVT, Inner, Z, ReassocFlags);
     }
   }
 

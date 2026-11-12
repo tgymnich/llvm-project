@@ -740,6 +740,18 @@ void AMDGPUDAGToDAGISel::Select(SDNode *N) {
   switch (Opc) {
   default:
     break;
+  case ISD::PTRADD:
+    if (N->getValueType(0) == MVT::i32) {
+      SDNodeFlags Flags = N->getFlags();
+      Flags.setInBounds(false);
+      Flags.setNoUnsignedSignedWrap(false);
+      SDValue Operands[] = {N->getOperand(0), N->getOperand(1)};
+      N = CurDAG->MorphNodeTo(N, ISD::ADD, N->getVTList(), Operands);
+      N->setFlags(Flags);
+      Select(N);
+      return;
+    }
+    break;
   case ISD::UADDO_CARRY:
   case ISD::USUBO_CARRY:
     if (N->getValueType(0) == MVT::i64) {
@@ -1628,6 +1640,23 @@ bool AMDGPUDAGToDAGISel::SelectDSReadWrite2(SDValue Addr, SDValue &Base,
   return true;
 }
 
+static bool isSigned32BitAddressOffset(SelectionDAG &DAG, SDValue Addr) {
+  return Addr.getValueType() == MVT::i32 && Addr.getOpcode() == ISD::PTRADD &&
+         Addr->getFlags().hasNoUnsignedSignedWrap() &&
+         !Addr->getFlags().hasNoUnsignedWrap() &&
+         !DAG.SignBitIsZero(Addr.getOperand(1));
+}
+
+static bool canFoldAddressOffset(SelectionDAG &DAG, SDValue Addr) {
+  // Memory instructions add offsets in 64 bits; 32-bit arithmetic must not
+  // wrap.
+  return Addr.getValueType() != MVT::i32 ||
+         Addr->getFlags().hasNoUnsignedWrap() ||
+         (Addr.getOpcode() == ISD::PTRADD &&
+          Addr->getFlags().hasNoUnsignedSignedWrap()) ||
+         DAG.isADDLike(Addr, /*NoWrap=*/true);
+}
+
 bool AMDGPUDAGToDAGISel::SelectMUBUF(SDValue Addr, SDValue &Ptr, SDValue &VAddr,
                                      SDValue &SOffset, SDValue &Offset,
                                      SDValue &Offen, SDValue &Idxen,
@@ -1637,7 +1666,6 @@ bool AMDGPUDAGToDAGISel::SelectMUBUF(SDValue Addr, SDValue &Ptr, SDValue &VAddr,
   if (Subtarget->useFlatForGlobal())
     return false;
 
-  Addr = Expand32BitAddress(Addr);
   SDLoc DL(Addr);
 
   Idxen = CurDAG->getTargetConstant(0, DL, MVT::i1);
@@ -1649,15 +1677,53 @@ bool AMDGPUDAGToDAGISel::SelectMUBUF(SDValue Addr, SDValue &Ptr, SDValue &VAddr,
 
   ConstantSDNode *C1 = nullptr;
   SDValue N0 = Addr;
-  if (CurDAG->isBaseWithConstantOffset(Addr)) {
+  if (canFoldAddressOffset(*CurDAG, Addr) &&
+      CurDAG->isBaseWithConstantOffset(Addr)) {
     C1 = cast<ConstantSDNode>(Addr.getOperand(1));
-    if (isUInt<32>(C1->getZExtValue()))
+    if (isUInt<32>(C1->getZExtValue()) &&
+        (!isSigned32BitAddressOffset(*CurDAG, Addr) || C1->getSExtValue() >= 0))
       N0 = Addr.getOperand(0);
     else
       C1 = nullptr;
   }
 
-  if (N0->isAnyAdd()) {
+  SDValue RegisterOffset;
+  if (N0.getValueType() == MVT::i32 && canFoldAddressOffset(*CurDAG, N0) &&
+      (N0->isAnyAdd() || CurDAG->isADDLike(N0, /*NoWrap=*/true))) {
+    bool IsSigned = isSigned32BitAddressOffset(*CurDAG, N0);
+    SDValue Base = N0.getOperand(0);
+    SDValue Addend = N0.getOperand(1);
+    if (!IsSigned && Base->isDivergent() && !Addend->isDivergent())
+      std::swap(Base, Addend);
+
+    if (!Base->isDivergent() && !IsSigned) {
+      N0 = Base;
+      RegisterOffset = Addend;
+      if (!RegisterOffset->isDivergent())
+        SOffset = RegisterOffset;
+    }
+  }
+
+  N0 = Expand32BitAddress(N0);
+  if (RegisterOffset && RegisterOffset->isDivergent()) {
+    Ptr = N0;
+    VAddr = RegisterOffset;
+    if (Subtarget->hasAddr64()) {
+      SDValue Zero = CurDAG->getTargetConstant(0, DL, MVT::i32);
+      SDValue Hi = SDValue(
+          CurDAG->getMachineNode(AMDGPU::V_MOV_B32_e32, DL, MVT::i32, Zero), 0);
+      SDValue Operands[] = {
+          CurDAG->getTargetConstant(AMDGPU::VReg_64RegClassID, DL, MVT::i32),
+          VAddr, CurDAG->getTargetConstant(AMDGPU::sub0, DL, MVT::i32), Hi,
+          CurDAG->getTargetConstant(AMDGPU::sub1, DL, MVT::i32)};
+      VAddr = SDValue(
+          CurDAG->getMachineNode(AMDGPU::REG_SEQUENCE, DL, MVT::i64, Operands),
+          0);
+      Addr64 = CurDAG->getTargetConstant(1, DL, MVT::i1);
+    } else {
+      Offen = CurDAG->getTargetConstant(1, DL, MVT::i1);
+    }
+  } else if (N0->isAnyAdd()) {
     // (add N2, N3) -> addr64, or
     // (add (add N2, N3), C1) -> addr64
     SDValue N2 = N0.getOperand(0);
@@ -1709,11 +1775,17 @@ bool AMDGPUDAGToDAGISel::SelectMUBUF(SDValue Addr, SDValue &Ptr, SDValue &VAddr,
 
   // Illegal offset, store it in soffset.
   Offset = CurDAG->getTargetConstant(0, DL, MVT::i32);
-  SOffset =
+  SDValue ConstantOffset =
       SDValue(CurDAG->getMachineNode(
                   AMDGPU::S_MOV_B32, DL, MVT::i32,
                   CurDAG->getTargetConstant(C1->getZExtValue(), DL, MVT::i32)),
               0);
+  SOffset =
+      RegisterOffset && !RegisterOffset->isDivergent()
+          ? SDValue(CurDAG->getMachineNode(AMDGPU::S_ADD_I32, DL, MVT::i32,
+                                           RegisterOffset, ConstantOffset),
+                    0)
+          : ConstantOffset;
   return true;
 }
 
@@ -1878,6 +1950,38 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFScratchOffset(SDNode *Parent,
   return true;
 }
 
+static MemSDNode *findMemSDNode(SDNode *N);
+
+bool AMDGPUDAGToDAGISel::SelectMUBUFOffen(SDNode *Parent, SDValue Addr,
+                                          SDValue &SRsrc, SDValue &VAddr,
+                                          SDValue &SOffset,
+                                          SDValue &Offset) const {
+  if (Addr.getValueType() != MVT::i32)
+    return false;
+
+  SDValue Ptr, Offen, Idxen, Addr64;
+  if (!SelectMUBUF(Addr, Ptr, VAddr, SOffset, Offset, Offen, Idxen, Addr64) ||
+      !cast<ConstantSDNode>(Offen)->getZExtValue())
+    return false;
+
+  // Each byte must remain within the resource's UINT32_MAX-byte range.
+  uint64_t MaxOffset =
+      CurDAG->computeKnownBits(VAddr).getMaxValue().getZExtValue();
+  uint64_t ImmOffset = cast<ConstantSDNode>(Offset)->getZExtValue();
+  uint64_t AccessSize =
+      findMemSDNode(Parent)->getMemoryVT().getStoreSize().getFixedValue();
+  if (MaxOffset + ImmOffset + AccessSize > UINT32_MAX)
+    return false;
+
+  const SIInstrInfo *TII = Subtarget->getInstrInfo();
+  uint64_t Rsrc =
+      TII->getDefaultRsrcDataFormat() | maskTrailingOnes<uint64_t>(32);
+  const auto &Lowering =
+      *static_cast<const SITargetLowering *>(getTargetLowering());
+  SRsrc = SDValue(Lowering.buildRSRC(*CurDAG, SDLoc(Addr), Ptr, 0, Rsrc), 0);
+  return true;
+}
+
 bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc,
                                            SDValue &SOffset, SDValue &Offset
                                            ) const {
@@ -1935,8 +2039,8 @@ bool AMDGPUDAGToDAGISel::SelectFlatOffsetImpl(
   int64_t OffsetVal = 0;
 
   unsigned AS = findMemSDNode(N)->getAddressSpace();
-  if (AS == AMDGPUAS::CONSTANT_ADDRESS_32BIT)
-    Addr = Expand32BitAddress(Addr);
+  bool Is32BitConstant =
+      AS == AMDGPUAS::CONSTANT_ADDRESS_32BIT && Addr.getValueType() == MVT::i32;
 
   bool CanHaveFlatSegmentOffsetBug =
       Subtarget->hasFlatSegmentOffsetBug() &&
@@ -1945,17 +2049,22 @@ bool AMDGPUDAGToDAGISel::SelectFlatOffsetImpl(
 
   if (Subtarget->hasFlatInstOffsets() && !CanHaveFlatSegmentOffsetBug) {
     SDValue N0, N1;
-    if (isBaseWithConstantOffset64(Addr, N0, N1) &&
+    if ((!Is32BitConstant || canFoldAddressOffset(*CurDAG, Addr)) &&
+        isBaseWithConstantOffset64(Addr, N0, N1) &&
         (FlatVariant != FlatAddrSpace::FlatScratch ||
          isFlatScratchBaseLegal(Addr))) {
-      int64_t COffsetVal = cast<ConstantSDNode>(N1)->getSExtValue();
+      auto *COffset = cast<ConstantSDNode>(N1);
+      int64_t COffsetVal =
+          Is32BitConstant && !isSigned32BitAddressOffset(*CurDAG, Addr)
+              ? COffset->getZExtValue()
+              : COffset->getSExtValue();
 
-      // Adding the offset to the base address in a FLAT instruction must not
-      // change the memory aperture in which the address falls. Therefore we can
-      // only fold offsets from inbounds GEPs into FLAT instructions.
+      // A FLAT offset must preserve the aperture. Nonwrapping 32-bit addresses
+      // preserve the high bits.
       bool IsInBounds =
           Addr.getOpcode() == ISD::PTRADD && Addr->getFlags().hasInBounds();
-      if (COffsetVal == 0 || FlatVariant != FlatAddrSpace::FLAT || IsInBounds) {
+      if (COffsetVal == 0 || FlatVariant != FlatAddrSpace::FLAT || IsInBounds ||
+          Is32BitConstant) {
         const SIInstrInfo *TII = Subtarget->getInstrInfo();
         if (TII->isLegalFLATOffset(COffsetVal, AS, FlatVariant)) {
           Addr = N0;
@@ -2032,7 +2141,8 @@ bool AMDGPUDAGToDAGISel::SelectFlatOffsetImpl(
     }
   }
 
-  VAddr = Addr;
+  VAddr =
+      AS == AMDGPUAS::CONSTANT_ADDRESS_32BIT ? Expand32BitAddress(Addr) : Addr;
   Offset = CurDAG->getSignedTargetConstant(OffsetVal, SDLoc(), MVT::i32);
   return true;
 }
@@ -2085,14 +2195,17 @@ bool AMDGPUDAGToDAGISel::SelectGlobalSAddr(SDNode *N, SDValue Addr,
   int64_t ImmOffset = 0;
   ScaleOffset = false;
 
-  Addr = Expand32BitAddress(Addr);
-
   // Match the immediate offset first, which canonically is moved as low as
   // possible.
 
   SDValue LHS, RHS;
-  if (isBaseWithConstantOffset64(Addr, LHS, RHS)) {
-    int64_t COffsetVal = cast<ConstantSDNode>(RHS)->getSExtValue();
+  if (canFoldAddressOffset(*CurDAG, Addr) &&
+      isBaseWithConstantOffset64(Addr, LHS, RHS)) {
+    auto *COffset = cast<ConstantSDNode>(RHS);
+    int64_t COffsetVal = Addr.getValueType() == MVT::i32 &&
+                                 !isSigned32BitAddressOffset(*CurDAG, Addr)
+                             ? COffset->getZExtValue()
+                             : COffset->getSExtValue();
     const SIInstrInfo *TII = Subtarget->getInstrInfo();
 
     if (NeedIOffset &&
@@ -2119,7 +2232,7 @@ bool AMDGPUDAGToDAGISel::SelectGlobalSAddr(SDNode *N, SDValue Addr,
               CurDAG->getTargetConstant(Lo_32(RemainderOffset), SDLoc(),
                                         MVT::i32));
           VOffset = SDValue(VMov, 0);
-          SAddr = LHS;
+          SAddr = Expand32BitAddress(LHS);
           Offset = CurDAG->getSignedTargetConstant(SplitImmOffset, SDLoc(),
                                                    MVT::i32);
           return true;
@@ -2138,6 +2251,31 @@ bool AMDGPUDAGToDAGISel::SelectGlobalSAddr(SDNode *N, SDValue Addr,
         return false;
     }
   }
+
+  if (Addr.getValueType() == MVT::i32 && canFoldAddressOffset(*CurDAG, Addr) &&
+      (Addr->isAnyAdd() || CurDAG->isADDLike(Addr, /*NoWrap=*/true))) {
+    bool IsSigned = isSigned32BitAddressOffset(*CurDAG, Addr);
+    LHS = Addr.getOperand(0);
+    RHS = Addr.getOperand(1);
+    if (!IsSigned && LHS->isDivergent() && !RHS->isDivergent())
+      std::swap(LHS, RHS);
+
+    if (!LHS->isDivergent() && RHS.getValueType() == MVT::i32 &&
+        (IsSigned == Subtarget->hasSignedGVSOffset() ||
+         CurDAG->SignBitIsZero(RHS))) {
+      SDValue ExtendedOffset = CurDAG->getNode(
+          Subtarget->hasSignedGVSOffset() ? ISD::SIGN_EXTEND : ISD::ZERO_EXTEND,
+          SDLoc(RHS), MVT::i64, RHS);
+      ScaleOffset =
+          SelectScaleOffset(N, ExtendedOffset, Subtarget->hasSignedGVSOffset());
+      SAddr = Expand32BitAddress(LHS);
+      VOffset = ScaleOffset ? ExtendedOffset : RHS;
+      Offset = CurDAG->getSignedTargetConstant(ImmOffset, SDLoc(), MVT::i32);
+      return true;
+    }
+  }
+
+  Addr = Expand32BitAddress(Addr);
 
   // Match the variable offset.
   if (Addr->isAnyAdd()) {
@@ -2656,10 +2794,8 @@ bool AMDGPUDAGToDAGISel::SelectSMRDBaseOffset(SDNode *N, SDValue Addr,
                                 true, ImmOff, ScaleOffset);
   }
 
-  // A 32-bit (address + offset) should not cause unsigned 32-bit integer
-  // wraparound, because s_load instructions perform the addition in 64 bits.
-  if (Addr.getValueType() == MVT::i32 && Addr.getOpcode() == ISD::ADD &&
-      !Addr->getFlags().hasNoUnsignedWrap())
+  // SMEM adds offsets in 64 bits.
+  if (!canFoldAddressOffset(*CurDAG, Addr))
     return false;
 
   SDValue N0, N1;
@@ -2673,11 +2809,22 @@ bool AMDGPUDAGToDAGISel::SelectSMRDBaseOffset(SDNode *N, SDValue Addr,
   if (!N0 || !N1)
     return false;
 
+  bool IsSigned = isSigned32BitAddressOffset(*CurDAG, Addr);
+  if (IsSigned && !isa<ConstantSDNode>(N1) && !CurDAG->SignBitIsZero(N1))
+    return false;
+
+  if (Addr.getValueType() == MVT::i32 && !IsSigned) {
+    if (auto *C = dyn_cast<ConstantSDNode>(N1))
+      N1 = CurDAG->getConstant(C->getZExtValue(), SDLoc(N1), MVT::i64);
+  }
+
   if (SelectSMRDOffset(N, N1, SOffset, Offset, Imm32Only, IsBuffer, HasSOffset,
                        ImmOffset, ScaleOffset)) {
     SBase = N0;
     return true;
   }
+  if (IsSigned)
+    return false;
   if (SelectSMRDOffset(N, N0, SOffset, Offset, Imm32Only, IsBuffer, HasSOffset,
                        ImmOffset, ScaleOffset)) {
     SBase = N1;

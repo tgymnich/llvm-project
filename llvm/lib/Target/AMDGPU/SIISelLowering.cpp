@@ -13292,9 +13292,10 @@ static bool isNoUnsignedWrap(SDValue Addr) {
          Addr->getOpcode() == ISD::OR;
 }
 
-bool SITargetLowering::shouldPreservePtrArith(const Function &F,
-                                              EVT PtrVT) const {
-  return PtrVT == MVT::i64;
+bool SITargetLowering::shouldPreservePtrArith(const Function &F, EVT PtrVT,
+                                              unsigned AddrSpace) const {
+  return PtrVT == MVT::i64 ||
+         (PtrVT == MVT::i32 && AddrSpace == AMDGPUAS::CONSTANT_ADDRESS_32BIT);
 }
 
 bool SITargetLowering::canTransformPtrArithOutOfBounds(const Function &F,
@@ -18268,7 +18269,7 @@ SDValue SITargetLowering::performPtrAddCombine(SDNode *N,
   // Fold (ptradd x, shl(0 - v, k)) -> sub(x, shl(v, k)).
   // Adapted from DAGCombiner::visitADDLikeCommutative.
   SDValue V, K;
-  if (sd_match(N1, m_Shl(m_Neg(m_Value(V)), m_Value(K)))) {
+  if (VT != MVT::i32 && sd_match(N1, m_Shl(m_Neg(m_Value(V)), m_Value(K)))) {
     SDNodeFlags ShlFlags = N1->getFlags();
     // If the original shl is NUW and NSW, the first k+1 bits of 0-v are all 0,
     // so v is either 0 or the first k+1 bits of v are all 1 -> NSW can be
@@ -18324,9 +18325,9 @@ SDValue SITargetLowering::performPtrAddCombine(SDNode *N,
     // If both additions in the original were NUW, reassociation preserves that.
     SDNodeFlags ReassocFlags =
         (N->getFlags() & N1->getFlags()) & SDNodeFlags::NoUnsignedWrap;
-    SDValue UniformInner = DAG.getMemBasePlusOffset(X, Y, DL, ReassocFlags);
+    SDValue UniformInner = DAG.getNode(ISD::PTRADD, DL, VT, X, Y, ReassocFlags);
     DCI.AddToWorklist(UniformInner.getNode());
-    return DAG.getMemBasePlusOffset(UniformInner, Z, DL, ReassocFlags);
+    return DAG.getNode(ISD::PTRADD, DL, VT, UniformInner, Z, ReassocFlags);
   }
 
   return SDValue();

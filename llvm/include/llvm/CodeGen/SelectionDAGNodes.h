@@ -429,13 +429,17 @@ public:
     // the source address space, so the result is poison if the source is null.
     NonNull = 1 << 17,
 
+    // PTRADD adds a signed offset to an unsigned base without wrapping.
+    NoUnsignedSignedWrap = 1 << 18,
+
     // NOTE: Please update LargestValue in LLVM_DECLARE_ENUM_AS_BITMASK below
     // the class definition when adding new flags.
 
     PoisonGeneratingFlags = NoUnsignedWrap | NoSignedWrap | Exact | Disjoint |
-        NonNeg | NoNaNs | NoInfs | SameSign | InBounds | NonNull,
+                            NonNeg | NoNaNs | NoInfs | SameSign | InBounds |
+                            NonNull | NoUnsignedSignedWrap,
     FastMathFlags = NoNaNs | NoInfs | NoSignedZeros | AllowReciprocal |
-        AllowContract | ApproximateFuncs | AllowReassociation,
+                    AllowContract | ApproximateFuncs | AllowReassociation,
   };
 
   /// Default constructor turns off all optimization flags.
@@ -469,6 +473,7 @@ public:
   void setNoFPExcept(bool b) { setFlag<NoFPExcept>(b); }
   void setUnpredictable(bool b) { setFlag<Unpredictable>(b); }
   void setInBounds(bool b) { setFlag<InBounds>(b); }
+  void setNoUnsignedSignedWrap(bool b) { setFlag<NoUnsignedSignedWrap>(b); }
   void setNoConvergent(bool b) { setFlag<NoConvergent>(b); }
   void setNonNull(bool b) { setFlag<NonNull>(b); }
 
@@ -489,6 +494,7 @@ public:
   bool hasNoFPExcept() const { return Flags & NoFPExcept; }
   bool hasUnpredictable() const { return Flags & Unpredictable; }
   bool hasInBounds() const { return Flags & InBounds; }
+  bool hasNoUnsignedSignedWrap() const { return Flags & NoUnsignedSignedWrap; }
   bool hasNoConvergent() const { return Flags & NoConvergent; }
   bool hasNonNull() const { return Flags & NonNull; }
 
@@ -499,7 +505,8 @@ public:
   void operator|=(const SDNodeFlags &OtherFlags) { Flags |= OtherFlags.Flags; }
 };
 
-LLVM_DECLARE_ENUM_AS_BITMASK(decltype(SDNodeFlags::None), SDNodeFlags::NonNull);
+LLVM_DECLARE_ENUM_AS_BITMASK(decltype(SDNodeFlags::None),
+                             SDNodeFlags::NoUnsignedSignedWrap);
 
 inline SDNodeFlags operator|(SDNodeFlags LHS, SDNodeFlags RHS) {
   LHS |= RHS;

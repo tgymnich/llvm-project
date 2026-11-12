@@ -619,7 +619,8 @@ public:
 
   /// In AArch64, true if FEAT_CPA is present. Allows pointer arithmetic
   /// semantics to be preserved for instruction selection.
-  bool shouldPreservePtrArith(const Function &F, EVT PtrVT) const override;
+  bool shouldPreservePtrArith(const Function &F, EVT PtrVT,
+                              unsigned AddrSpace = 0) const override;
 
   // Match a register name (e.g. "x5", "d5", "sp") to its register number, with
   // no validity filtering. This is the single entry point for the generated

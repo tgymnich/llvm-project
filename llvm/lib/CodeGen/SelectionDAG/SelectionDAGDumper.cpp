@@ -780,6 +780,9 @@ void SDNode::print_details(raw_ostream &OS, const SelectionDAG *G) const {
   if (getFlags().hasInBounds())
     OS << " inbounds";
 
+  if (getFlags().hasNoUnsignedSignedWrap())
+    OS << " nusw";
+
   if (getFlags().hasNonNeg())
     OS << " nneg";
 

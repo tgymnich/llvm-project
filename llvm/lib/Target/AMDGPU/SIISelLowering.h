@@ -302,7 +302,8 @@ public:
 
   bool shouldExpandVectorDynExt(SDNode *N) const;
 
-  bool shouldPreservePtrArith(const Function &F, EVT PtrVT) const override;
+  bool shouldPreservePtrArith(const Function &F, EVT PtrVT,
+                              unsigned AddrSpace = 0) const override;
 
   bool canTransformPtrArithOutOfBounds(const Function &F,
                                        EVT PtrVT) const override;

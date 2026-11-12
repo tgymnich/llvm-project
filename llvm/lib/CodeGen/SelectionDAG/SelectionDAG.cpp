@@ -9626,22 +9626,25 @@ static SDValue getMemsetStringVal(EVT VT, const SDLoc &dl, SelectionDAG &DAG,
 
 SDValue SelectionDAG::getMemBasePlusOffset(SDValue Base, TypeSize Offset,
                                            const SDLoc &DL,
-                                           const SDNodeFlags Flags) {
+                                           const SDNodeFlags Flags,
+                                           unsigned AddrSpace) {
   SDValue Index = getTypeSize(DL, Base.getValueType(), Offset);
-  return getMemBasePlusOffset(Base, Index, DL, Flags);
+  return getMemBasePlusOffset(Base, Index, DL, Flags, AddrSpace);
 }
 
 SDValue SelectionDAG::getMemBasePlusOffset(SDValue Ptr, SDValue Offset,
                                            const SDLoc &DL,
-                                           const SDNodeFlags Flags) {
+                                           const SDNodeFlags Flags,
+                                           unsigned AddrSpace) {
   assert(Offset.getValueType().isInteger());
   EVT BasePtrVT = Ptr.getValueType();
   if (TLI->shouldPreservePtrArith(this->getMachineFunction().getFunction(),
-                                  BasePtrVT))
+                                  BasePtrVT, AddrSpace))
     return getNode(ISD::PTRADD, DL, BasePtrVT, Ptr, Offset, Flags);
-  // InBounds only applies to PTRADD, don't set it if we generate ADD.
+  // Pointer flags only apply to PTRADD.
   SDNodeFlags AddFlags = Flags;
   AddFlags.setInBounds(false);
+  AddFlags.setNoUnsignedSignedWrap(false);
   return getNode(ISD::ADD, DL, BasePtrVT, Ptr, Offset, AddFlags);
 }
 

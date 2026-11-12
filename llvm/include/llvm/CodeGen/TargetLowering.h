@@ -3759,11 +3759,12 @@ public:
   }
 
   /// True if target has some particular form of dealing with pointer arithmetic
-  /// semantics for pointers with the given value type. False if pointer
-  /// arithmetic should not be preserved for passes such as instruction
-  /// selection, and can fallback to regular arithmetic.
-  /// This should be removed when PTRADD nodes are widely supported by backends.
-  virtual bool shouldPreservePtrArith(const Function &F, EVT PtrVT) const {
+  /// semantics for pointers with the given value type and address space. False
+  /// if pointer arithmetic should not be preserved for passes such as
+  /// instruction selection, and can fallback to regular arithmetic. This should
+  /// be removed when PTRADD nodes are widely supported by backends.
+  virtual bool shouldPreservePtrArith(const Function &F, EVT PtrVT,
+                                      unsigned AddrSpace = 0) const {
     return false;
   }
 

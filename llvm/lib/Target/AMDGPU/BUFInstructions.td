@@ -8,6 +8,8 @@
 
 def MUBUFAddr64 : ComplexPattern<iPTR, 4, "SelectMUBUFAddr64">;
 def MUBUFOffset : ComplexPattern<iPTR, 3, "SelectMUBUFOffset">;
+let WantsParent = true in
+def MUBUFOffen : ComplexPattern<iPTR, 4, "SelectMUBUFOffen">;
 
 let WantsParent = true in {
   def MUBUFScratchOffen : ComplexPattern<iPTR, 4, "SelectMUBUFScratchOffen">;
@@ -541,6 +543,15 @@ class MUBUF_Offset_Load_Pat <Instruction inst, ValueType load_vt = i32, SDPatter
   (load_vt (inst v4i32:$srsrc, i32:$soffset, i32:$offset))
 >;
 
+class MUBUF_Offen_Load_Pat <Instruction inst,
+                           ValueType load_vt = i32,
+                           SDPatternOperator ld = null_frag> : GCNPat <
+  (load_vt (ld (MUBUFOffen v4i32:$srsrc, i32:$vaddr, i32:$soffset, i32:$offset))),
+  (load_vt (inst i32:$vaddr, v4i32:$srsrc, i32:$soffset, i32:$offset))
+> {
+  let AddedComplexity = 10;
+}
+
 class MUBUF_Addr64_Load_Pat <Instruction inst,
                             ValueType load_vt = i32,
                             SDPatternOperator ld = null_frag> : GCNPat <
@@ -551,6 +562,7 @@ class MUBUF_Addr64_Load_Pat <Instruction inst,
 multiclass MUBUF_Pseudo_Load_Pats_Common<string BaseInst, ValueType load_vt = i32, SDPatternOperator ld = null_frag> {
   def : MUBUF_Offset_Load_Pat<!cast<Instruction>(BaseInst#"_OFFSET"), load_vt, ld>;
   def : MUBUF_Addr64_Load_Pat<!cast<Instruction>(BaseInst#"_ADDR64"), load_vt, ld>;
+  def : MUBUF_Offen_Load_Pat<!cast<Instruction>(BaseInst#"_OFFEN"), load_vt, ld>;
 }
 
 multiclass MUBUF_Pseudo_Load_Pats<string BaseInst, ValueType load_vt = i32, SDPatternOperator ld = null_frag>{
@@ -2084,6 +2096,7 @@ multiclass MUBUFLoad_PatternOffset_Common <string Instr, ValueType vt,
     (vt (ld (MUBUFOffset v4i32:$srsrc, i32:$soffset, i32:$offset))),
     (!cast<MUBUF_Pseudo>(Instr # "_OFFSET") $srsrc, $soffset, $offset)
   >;
+  def : MUBUF_Offen_Load_Pat<!cast<Instruction>(Instr # "_OFFEN"), vt, ld>;
 }
 
 multiclass MUBUFLoad_PatternOffset <string Instr, ValueType vt,

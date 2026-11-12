@@ -1109,12 +1109,14 @@ public:
   /// Returns sum of the base pointer and offset.
   /// Unlike getObjectPtrOffset this does not set NoUnsignedWrap and InBounds by
   /// default.
-  LLVM_ABI SDValue
-  getMemBasePlusOffset(SDValue Base, TypeSize Offset, const SDLoc &DL,
-                       const SDNodeFlags Flags = SDNodeFlags());
-  LLVM_ABI SDValue
-  getMemBasePlusOffset(SDValue Base, SDValue Offset, const SDLoc &DL,
-                       const SDNodeFlags Flags = SDNodeFlags());
+  LLVM_ABI SDValue getMemBasePlusOffset(SDValue Base, TypeSize Offset,
+                                        const SDLoc &DL,
+                                        const SDNodeFlags Flags = SDNodeFlags(),
+                                        unsigned AddrSpace = 0);
+  LLVM_ABI SDValue getMemBasePlusOffset(SDValue Base, SDValue Offset,
+                                        const SDLoc &DL,
+                                        const SDNodeFlags Flags = SDNodeFlags(),
+                                        unsigned AddrSpace = 0);
 
   /// Create an add instruction with appropriate flags when used for
   /// addressing some offset of an object. i.e. if a load is split into multiple
