@@ -122,7 +122,7 @@ define amdgpu_gs half @v_fptrunc_round_f32_to_f16_towardzero(float %a) {
 ;
 ; GFX11-SDAG-LABEL: v_fptrunc_round_f32_to_f16_towardzero:
 ; GFX11-SDAG:       ; %bb.0:
-; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, s0
+; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, v0
 ; GFX11-SDAG-NEXT:    ; return to shader part epilog
 ;
 ; GFX11-GISEL-LABEL: v_fptrunc_round_f32_to_f16_towardzero:
@@ -137,7 +137,7 @@ define amdgpu_gs half @v_fptrunc_round_f32_to_f16_towardzero(float %a) {
 ;
 ; GFX12-SDAG-LABEL: v_fptrunc_round_f32_to_f16_towardzero:
 ; GFX12-SDAG:       ; %bb.0:
-; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, s0
+; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, v0
 ; GFX12-SDAG-NEXT:    ; return to shader part epilog
 ;
 ; GFX12-GISEL-LABEL: v_fptrunc_round_f32_to_f16_towardzero:
@@ -167,7 +167,7 @@ define amdgpu_gs <2 x half> @v_fptrunc_round_f32_to_v2f16_towardzero(float %a, f
 ; GISEL-LABEL: v_fptrunc_round_f32_to_v2f16_towardzero:
 ; GISEL:       ; %bb.0:
 ; GISEL-NEXT:    v_cvt_pkrtz_f16_f32_e32 v0, v0, v0
-; GISEL-NEXT:    v_cvt_pkrtz_f16_f32_e32 v1, v1, v0
+; GISEL-NEXT:    v_cvt_pkrtz_f16_f32_e32 v1, v1, v1
 ; GISEL-NEXT:    v_pack_b32_f16 v0, v0, v1
 ; GISEL-NEXT:    ; return to shader part epilog
 ;
@@ -190,7 +190,7 @@ define amdgpu_gs <2 x half> @v_fptrunc_round_poison_to_v2f16_towardzero(float %a
 ;
 ; GFX11-SDAG-LABEL: v_fptrunc_round_poison_to_v2f16_towardzero:
 ; GFX11-SDAG:       ; %bb.0:
-; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, s0
+; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, v0
 ; GFX11-SDAG-NEXT:    ; return to shader part epilog
 ;
 ; GFX11-GISEL-LABEL: v_fptrunc_round_poison_to_v2f16_towardzero:
@@ -207,7 +207,7 @@ define amdgpu_gs <2 x half> @v_fptrunc_round_poison_to_v2f16_towardzero(float %a
 ;
 ; GFX12-SDAG-LABEL: v_fptrunc_round_poison_to_v2f16_towardzero:
 ; GFX12-SDAG:       ; %bb.0:
-; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, s0
+; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, v0
 ; GFX12-SDAG-NEXT:    ; return to shader part epilog
 ;
 ; GFX12-GISEL-LABEL: v_fptrunc_round_poison_to_v2f16_towardzero:
@@ -229,7 +229,7 @@ define amdgpu_gs <2 x half> @v_fptrunc_round_constant_to_v2f16_towardzero(float 
 ;
 ; GFX11-SDAG-LABEL: v_fptrunc_round_constant_to_v2f16_towardzero:
 ; GFX11-SDAG:       ; %bb.0:
-; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, s0
+; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, v0
 ; GFX11-SDAG-NEXT:    v_mov_b16_e32 v0.h, 0x3c00
 ; GFX11-SDAG-NEXT:    ; return to shader part epilog
 ;
@@ -247,7 +247,7 @@ define amdgpu_gs <2 x half> @v_fptrunc_round_constant_to_v2f16_towardzero(float 
 ;
 ; GFX12-SDAG-LABEL: v_fptrunc_round_constant_to_v2f16_towardzero:
 ; GFX12-SDAG:       ; %bb.0:
-; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, s0
+; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, v0, v0
 ; GFX12-SDAG-NEXT:    v_mov_b16_e32 v0.h, 0x3c00
 ; GFX12-SDAG-NEXT:    ; return to shader part epilog
 ;
@@ -420,7 +420,7 @@ define amdgpu_gs void @v_fptrunc_round_f32_to_f16_towardzero_multiple_calls(floa
 ; SDAG-LABEL: v_fptrunc_round_f32_to_f16_towardzero_multiple_calls:
 ; SDAG:       ; %bb.0:
 ; SDAG-NEXT:    v_cvt_pkrtz_f16_f32_e32 v0, v0, v0
-; SDAG-NEXT:    v_cvt_pkrtz_f16_f32_e32 v4, v1, v0
+; SDAG-NEXT:    v_cvt_pkrtz_f16_f32_e32 v4, v1, v1
 ; SDAG-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 1), 1
 ; SDAG-NEXT:    v_cvt_f16_f32_e32 v1, v1
 ; SDAG-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 2), 0
@@ -431,8 +431,8 @@ define amdgpu_gs void @v_fptrunc_round_f32_to_f16_towardzero_multiple_calls(floa
 ;
 ; GFX11-SDAG-LABEL: v_fptrunc_round_f32_to_f16_towardzero_multiple_calls:
 ; GFX11-SDAG:       ; %bb.0:
-; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v4, v0, s0
-; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v5, v1, s0
+; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v4, v0, v0
+; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v5, v1, v1
 ; GFX11-SDAG-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 1), 1
 ; GFX11-SDAG-NEXT:    v_cvt_f16_f32_e64 v0.l, v1
 ; GFX11-SDAG-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 2), 0
@@ -445,7 +445,7 @@ define amdgpu_gs void @v_fptrunc_round_f32_to_f16_towardzero_multiple_calls(floa
 ; GFX11-GISEL-LABEL: v_fptrunc_round_f32_to_f16_towardzero_multiple_calls:
 ; GFX11-GISEL:       ; %bb.0:
 ; GFX11-GISEL-NEXT:    v_cvt_pk_rtz_f16_f32_e32 v4, v0, v0
-; GFX11-GISEL-NEXT:    v_cvt_pk_rtz_f16_f32_e32 v5, v1, v0
+; GFX11-GISEL-NEXT:    v_cvt_pk_rtz_f16_f32_e32 v5, v1, v1
 ; GFX11-GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 1), 1
 ; GFX11-GISEL-NEXT:    v_cvt_f16_f32_e64 v0.l, v1
 ; GFX11-GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 2), 0
@@ -458,7 +458,7 @@ define amdgpu_gs void @v_fptrunc_round_f32_to_f16_towardzero_multiple_calls(floa
 ; GISEL-LABEL: v_fptrunc_round_f32_to_f16_towardzero_multiple_calls:
 ; GISEL:       ; %bb.0:
 ; GISEL-NEXT:    v_cvt_pkrtz_f16_f32_e32 v0, v0, v0
-; GISEL-NEXT:    v_cvt_pkrtz_f16_f32_e32 v4, v1, v0
+; GISEL-NEXT:    v_cvt_pkrtz_f16_f32_e32 v4, v1, v1
 ; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 1), 1
 ; GISEL-NEXT:    v_cvt_f16_f32_e32 v1, v1
 ; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 2), 0
@@ -469,8 +469,8 @@ define amdgpu_gs void @v_fptrunc_round_f32_to_f16_towardzero_multiple_calls(floa
 ;
 ; GFX12-SDAG-LABEL: v_fptrunc_round_f32_to_f16_towardzero_multiple_calls:
 ; GFX12-SDAG:       ; %bb.0:
-; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v4, v0, s0
-; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v5, v1, s0
+; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v4, v0, v0
+; GFX12-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v5, v1, v1
 ; GFX12-SDAG-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 2, 1), 1
 ; GFX12-SDAG-NEXT:    v_cvt_f16_f32_e64 v0.l, v1
 ; GFX12-SDAG-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 2, 2), 0
@@ -483,7 +483,7 @@ define amdgpu_gs void @v_fptrunc_round_f32_to_f16_towardzero_multiple_calls(floa
 ; GFX12-GISEL-LABEL: v_fptrunc_round_f32_to_f16_towardzero_multiple_calls:
 ; GFX12-GISEL:       ; %bb.0:
 ; GFX12-GISEL-NEXT:    v_cvt_pk_rtz_f16_f32_e32 v4, v0, v0
-; GFX12-GISEL-NEXT:    v_cvt_pk_rtz_f16_f32_e32 v5, v1, v0
+; GFX12-GISEL-NEXT:    v_cvt_pk_rtz_f16_f32_e32 v5, v1, v1
 ; GFX12-GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 2, 1), 1
 ; GFX12-GISEL-NEXT:    v_cvt_f16_f32_e64 v0.l, v1
 ; GFX12-GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_WAVE_MODE, 2, 2), 0
@@ -1127,7 +1127,7 @@ define amdgpu_gs <2 x i32> @s_fptrunc_round_v2f32_to_v2f16_towardzero(<2 x float
 ; GFX11-SDAG-LABEL: s_fptrunc_round_v2f32_to_v2f16_towardzero:
 ; GFX11-SDAG:       ; %bb.0:
 ; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v0, s0, s0
-; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v1, s1, s0
+; GFX11-SDAG-NEXT:    v_cvt_pk_rtz_f16_f32_e64 v1, s1, s1
 ; GFX11-SDAG-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
 ; GFX11-SDAG-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX11-SDAG-NEXT:    v_and_b32_e32 v1, 0xffff, v1

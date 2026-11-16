@@ -130,6 +130,24 @@ bool BreakFalseDeps::pickBestRegisterForUndef(MachineInstr *MI, unsigned OpIdx,
   MachineOperand &MO = MI->getOperand(OpIdx);
   assert(MO.isUndef() && "Expected undef machine operand");
 
+  // Get the undef operand's register class
+  const TargetRegisterClass *OpRC = TII->getRegClass(MI->getDesc(), OpIdx);
+  assert(OpRC && "Not a valid register class");
+
+  // If the instruction has a true dependency, we can hide the false depdency
+  // behind it. Reusing a register the instruction already reads adds no new
+  // register allocation constraint, so this is done even for operands that are
+  // not renamable.
+  for (MachineOperand &CurrMO : MI->all_uses()) {
+    if (CurrMO.isUndef() || !OpRC->contains(CurrMO.getReg()))
+      continue;
+    // We found a true dependency - replace the undef register with the true
+    // dependency.
+    MO.setReg(CurrMO.getReg());
+    Changed = true;
+    return true;
+  }
+
   // We can't change registers that aren't renamable.
   if (!MO.isRenamable())
     return false;
@@ -144,22 +162,6 @@ bool BreakFalseDeps::pickBestRegisterForUndef(MachineInstr *MI, unsigned OpIdx,
       if (NumRoots > 1)
         return false;
     }
-  }
-
-  // Get the undef operand's register class
-  const TargetRegisterClass *OpRC = TII->getRegClass(MI->getDesc(), OpIdx);
-  assert(OpRC && "Not a valid register class");
-
-  // If the instruction has a true dependency, we can hide the false depdency
-  // behind it.
-  for (MachineOperand &CurrMO : MI->all_uses()) {
-    if (CurrMO.isUndef() || !OpRC->contains(CurrMO.getReg()))
-      continue;
-    // We found a true dependency - replace the undef register with the true
-    // dependency.
-    MO.setReg(CurrMO.getReg());
-    Changed = true;
-    return true;
   }
 
   // Go over all registers in the register class and find the register with

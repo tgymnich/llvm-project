@@ -472,7 +472,7 @@ define <3 x half> @v_constained_fsub_v3f16_fpexcept_strict(<3 x half> %x, <3 x h
 ; GFX9-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX9-GISEL-NEXT:    v_sub_f16_e32 v1, v1, v3
 ; GFX9-GISEL-NEXT:    v_pk_add_f16 v0, v0, v2 neg_lo:[0,1] neg_hi:[0,1]
-; GFX9-GISEL-NEXT:    v_lshl_or_b32 v1, s4, 16, v1
+; GFX9-GISEL-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX9-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX8-SDAG-LABEL: v_constained_fsub_v3f16_fpexcept_strict:
@@ -547,7 +547,7 @@ define <3 x half> @v_constained_fsub_v3f16_fpexcept_strict(<3 x half> %x, <3 x h
 ; GFX11-GISEL-FAKE16-NEXT:    v_sub_f16_e32 v1, v1, v3
 ; GFX11-GISEL-FAKE16-NEXT:    v_pk_add_f16 v0, v0, v2 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX11-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
-; GFX11-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX11-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX11-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX12-SDAG-LABEL: v_constained_fsub_v3f16_fpexcept_strict:

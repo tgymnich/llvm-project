@@ -1508,17 +1508,17 @@ define amdgpu_kernel void @test_div_scale_f32_val_undef_val(ptr addrspace(1) %ou
 ; GFX7:       ; %bb.0:
 ; GFX7-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x9
 ; GFX7-NEXT:    v_mov_b32_e32 v0, 0x41000000
-; GFX7-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX7-NEXT:    v_div_scale_f32 v0, s[2:3], s0, s0, v0
+; GFX7-NEXT:    v_div_scale_f32 v0, s[2:3], v0, v0, v0
 ; GFX7-NEXT:    s_mov_b32 s2, -1
 ; GFX7-NEXT:    s_mov_b32 s3, 0xf000
+; GFX7-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX7-NEXT:    buffer_store_dword v0, off, s[0:3], 0
 ; GFX7-NEXT:    s_endpgm
 ;
 ; GFX8-LABEL: test_div_scale_f32_val_undef_val:
 ; GFX8:       ; %bb.0:
 ; GFX8-NEXT:    v_mov_b32_e32 v0, 0x41000000
-; GFX8-NEXT:    v_div_scale_f32 v2, s[0:1], s0, s0, v0
+; GFX8-NEXT:    v_div_scale_f32 v2, s[0:1], v0, v0, v0
 ; GFX8-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    v_mov_b32_e32 v0, s0
@@ -1554,17 +1554,17 @@ define amdgpu_kernel void @test_div_scale_f32_undef_val_val(ptr addrspace(1) %ou
 ; GFX7:       ; %bb.0:
 ; GFX7-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x9
 ; GFX7-NEXT:    v_mov_b32_e32 v0, 0x41000000
-; GFX7-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX7-NEXT:    v_div_scale_f32 v0, s[2:3], v0, v0, s0
+; GFX7-NEXT:    v_div_scale_f32 v0, s[2:3], v0, v0, v0
 ; GFX7-NEXT:    s_mov_b32 s2, -1
 ; GFX7-NEXT:    s_mov_b32 s3, 0xf000
+; GFX7-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX7-NEXT:    buffer_store_dword v0, off, s[0:3], 0
 ; GFX7-NEXT:    s_endpgm
 ;
 ; GFX8-LABEL: test_div_scale_f32_undef_val_val:
 ; GFX8:       ; %bb.0:
 ; GFX8-NEXT:    v_mov_b32_e32 v0, 0x41000000
-; GFX8-NEXT:    v_div_scale_f32 v2, s[0:1], v0, v0, s0
+; GFX8-NEXT:    v_div_scale_f32 v2, s[0:1], v0, v0, v0
 ; GFX8-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    v_mov_b32_e32 v0, s0
@@ -1645,10 +1645,10 @@ define amdgpu_kernel void @test_div_scale_f64_val_undef_val(ptr addrspace(1) %ou
 ; GFX7-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x9
 ; GFX7-NEXT:    v_mov_b32_e32 v0, 0
 ; GFX7-NEXT:    v_mov_b32_e32 v1, 0x40200000
-; GFX7-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX7-NEXT:    v_div_scale_f64 v[0:1], s[2:3], s[0:1], s[0:1], v[0:1]
+; GFX7-NEXT:    v_div_scale_f64 v[0:1], s[2:3], v[0:1], v[0:1], v[0:1]
 ; GFX7-NEXT:    s_mov_b32 s2, -1
 ; GFX7-NEXT:    s_mov_b32 s3, 0xf000
+; GFX7-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX7-NEXT:    buffer_store_dwordx2 v[0:1], off, s[0:3], 0
 ; GFX7-NEXT:    s_endpgm
 ;
@@ -1656,7 +1656,7 @@ define amdgpu_kernel void @test_div_scale_f64_val_undef_val(ptr addrspace(1) %ou
 ; GFX8:       ; %bb.0:
 ; GFX8-NEXT:    v_mov_b32_e32 v0, 0
 ; GFX8-NEXT:    v_mov_b32_e32 v1, 0x40200000
-; GFX8-NEXT:    v_div_scale_f64 v[0:1], s[0:1], s[0:1], s[0:1], v[0:1]
+; GFX8-NEXT:    v_div_scale_f64 v[0:1], s[0:1], v[0:1], v[0:1], v[0:1]
 ; GFX8-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
 ; GFX8-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX8-NEXT:    v_mov_b32_e32 v3, s1
@@ -1666,7 +1666,7 @@ define amdgpu_kernel void @test_div_scale_f64_val_undef_val(ptr addrspace(1) %ou
 ;
 ; GFX10-LABEL: test_div_scale_f64_val_undef_val:
 ; GFX10:       ; %bb.0:
-; GFX10-NEXT:    v_div_scale_f64 v[0:1], s0, s[0:1], s[0:1], 0x40200000
+; GFX10-NEXT:    v_div_scale_f64 v[0:1], s0, exec, exec, 0x40200000
 ; GFX10-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
 ; GFX10-NEXT:    v_mov_b32_e32 v2, 0
 ; GFX10-NEXT:    s_waitcnt lgkmcnt(0)
@@ -1675,7 +1675,7 @@ define amdgpu_kernel void @test_div_scale_f64_val_undef_val(ptr addrspace(1) %ou
 ;
 ; GFX11-LABEL: test_div_scale_f64_val_undef_val:
 ; GFX11:       ; %bb.0:
-; GFX11-NEXT:    v_div_scale_f64 v[0:1], null, s[0:1], s[0:1], 0x40200000
+; GFX11-NEXT:    v_div_scale_f64 v[0:1], null, exec, exec, 0x40200000
 ; GFX11-NEXT:    s_load_b64 s[0:1], s[4:5], 0x24
 ; GFX11-NEXT:    v_mov_b32_e32 v2, 0
 ; GFX11-NEXT:    s_waitcnt lgkmcnt(0)

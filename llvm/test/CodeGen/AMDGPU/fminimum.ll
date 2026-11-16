@@ -690,7 +690,7 @@ define amdgpu_ps <3 x half> @test_fminimum_v3f16_vv(<3 x half> %a, <3 x half> %b
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v2
 ; GFX1170-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX1170-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
-; GFX1170-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX1170-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX1170-GISEL-FAKE16-NEXT:    ; return to shader part epilog
 ;
 ; GFX12-SDAG-LABEL: test_fminimum_v3f16_vv:
@@ -711,7 +711,7 @@ define amdgpu_ps <3 x half> @test_fminimum_v3f16_vv(<3 x half> %a, <3 x half> %b
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v2
 ; GFX12-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX12-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
-; GFX12-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX12-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX12-GISEL-FAKE16-NEXT:    ; return to shader part epilog
   %val = call <3 x half> @llvm.minimum.v3f16(<3 x half> %a, <3 x half> %b)
   ret <3 x half> %val

@@ -1706,6 +1706,9 @@ public:
   /// instruction.
   static unsigned getNumWaitStates(const MachineInstr &MI);
 
+  unsigned getUndefRegClearance(const MachineInstr &MI,
+                                unsigned OpNum) const override;
+
   /// Returns the operand named \p Op.  If \p MI does not have an
   /// operand named \c Op, this function returns nullptr.
   LLVM_READONLY

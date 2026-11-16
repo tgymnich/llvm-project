@@ -6762,7 +6762,7 @@ define <3 x half> @v_exp_v3f16(<3 x half> %in) {
 ; GFX900-GISEL-NEXT:    v_cvt_f16_f32_e32 v0, v0
 ; GFX900-GISEL-NEXT:    v_cvt_f16_f32_e32 v1, v1
 ; GFX900-GISEL-NEXT:    v_pack_b32_f16 v0, v2, v0
-; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, s4, 16, v1
+; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX900-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; SI-SDAG-LABEL: v_exp_v3f16:
@@ -6875,7 +6875,7 @@ define <3 x half> @v_exp_v3f16_afn(<3 x half> %in) {
 ; GFX900-GISEL-NEXT:    v_exp_f16_e32 v0, v0
 ; GFX900-GISEL-NEXT:    v_exp_f16_e32 v1, v1
 ; GFX900-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v3
-; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, s4, 16, v1
+; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX900-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; SI-SDAG-LABEL: v_exp_v3f16_afn:

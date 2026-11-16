@@ -10,10 +10,10 @@ define amdgpu_kernel void @test_bitcast_llc_v128i8_v16i8(ptr addrspace(1) %out, 
 ; GFX9-NEXT:    s_load_dword s2, s[4:5], 0x8
 ; GFX9-NEXT:    v_mov_b32_e32 v0, 0x6050400
 ; GFX9-NEXT:    v_mov_b32_e32 v36, 0
-; GFX9-NEXT:    s_waitcnt lgkmcnt(0)
-; GFX9-NEXT:    v_perm_b32 v0, s0, s0, v0
+; GFX9-NEXT:    v_perm_b32 v0, v0, v0, v0
 ; GFX9-NEXT:    v_lshlrev_b32_e32 v1, 16, v0
 ; GFX9-NEXT:    v_or_b32_sdwa v0, v0, v1 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
+; GFX9-NEXT:    s_waitcnt lgkmcnt(0)
 ; GFX9-NEXT:    s_lshl_b32 s2, s2, 2
 ; GFX9-NEXT:    v_mov_b32_e32 v1, v0
 ; GFX9-NEXT:    v_mov_b32_e32 v2, v0

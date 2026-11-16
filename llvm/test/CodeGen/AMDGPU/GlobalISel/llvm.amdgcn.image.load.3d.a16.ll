@@ -56,7 +56,7 @@ define amdgpu_ps <4 x float> @load_3d_v4f32_xyzw(<8 x i32> inreg %rsrc, i16 %s, 
 ; GFX11-FAKE16-NEXT:    v_and_b32_e32 v2, 0xffff, v2
 ; GFX11-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
 ; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v0, v1, 16, v0
-; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v2
+; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v1, v2, 16, v2
 ; GFX11-FAKE16-NEXT:    image_load v[0:3], v[0:1], s[0:7] dmask:0xf dim:SQ_RSRC_IMG_3D unorm a16
 ; GFX11-FAKE16-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-FAKE16-NEXT:    ; return to shader part epilog
@@ -74,7 +74,7 @@ define amdgpu_ps <4 x float> @load_3d_v4f32_xyzw(<8 x i32> inreg %rsrc, i16 %s, 
 ; GFX12-FAKE16-NEXT:    v_and_b32_e32 v2, 0xffff, v2
 ; GFX12-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
 ; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v0, v1, 16, v0
-; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v2
+; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v1, v2, 16, v2
 ; GFX12-FAKE16-NEXT:    image_load v[0:3], [v0, v1], s[0:7] dmask:0xf dim:SQ_RSRC_IMG_3D a16
 ; GFX12-FAKE16-NEXT:    s_wait_loadcnt 0x0
 ; GFX12-FAKE16-NEXT:    ; return to shader part epilog
@@ -170,7 +170,7 @@ define amdgpu_ps <4 x float> @load_3d_v4f32_xyzw_tfe(<8 x i32> inreg %rsrc, ptr 
 ; GFX11-FAKE16-NEXT:    v_mov_b32_e32 v8, v5
 ; GFX11-FAKE16-NEXT:    v_mov_b32_e32 v9, v5
 ; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v10, v1, 16, v0
-; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v11, s0, 16, v2
+; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v11, v2, 16, v2
 ; GFX11-FAKE16-NEXT:    v_dual_mov_b32 v0, v5 :: v_dual_mov_b32 v1, v6
 ; GFX11-FAKE16-NEXT:    v_dual_mov_b32 v2, v7 :: v_dual_mov_b32 v3, v8
 ; GFX11-FAKE16-NEXT:    v_mov_b32_e32 v4, v9
@@ -205,7 +205,7 @@ define amdgpu_ps <4 x float> @load_3d_v4f32_xyzw_tfe(<8 x i32> inreg %rsrc, ptr 
 ; GFX12-FAKE16-NEXT:    v_mov_b32_e32 v8, v5
 ; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v10, v1, 16, v0
 ; GFX12-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
-; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v11, s0, 16, v2
+; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v11, v2, 16, v2
 ; GFX12-FAKE16-NEXT:    v_dual_mov_b32 v0, v5 :: v_dual_mov_b32 v1, v6
 ; GFX12-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_4)
 ; GFX12-FAKE16-NEXT:    v_dual_mov_b32 v2, v7 :: v_dual_mov_b32 v3, v8
@@ -309,7 +309,7 @@ define amdgpu_ps <4 x float> @load_3d_v4f32_xyzw_tfe_lwe(<8 x i32> inreg %rsrc, 
 ; GFX11-FAKE16-NEXT:    v_mov_b32_e32 v8, v5
 ; GFX11-FAKE16-NEXT:    v_mov_b32_e32 v9, v5
 ; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v10, v1, 16, v0
-; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v11, s0, 16, v2
+; GFX11-FAKE16-NEXT:    v_lshl_or_b32 v11, v2, 16, v2
 ; GFX11-FAKE16-NEXT:    v_dual_mov_b32 v0, v5 :: v_dual_mov_b32 v1, v6
 ; GFX11-FAKE16-NEXT:    v_dual_mov_b32 v2, v7 :: v_dual_mov_b32 v3, v8
 ; GFX11-FAKE16-NEXT:    v_mov_b32_e32 v4, v9
@@ -344,7 +344,7 @@ define amdgpu_ps <4 x float> @load_3d_v4f32_xyzw_tfe_lwe(<8 x i32> inreg %rsrc, 
 ; GFX12-FAKE16-NEXT:    v_mov_b32_e32 v8, v5
 ; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v10, v1, 16, v0
 ; GFX12-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
-; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v11, s0, 16, v2
+; GFX12-FAKE16-NEXT:    v_lshl_or_b32 v11, v2, 16, v2
 ; GFX12-FAKE16-NEXT:    v_dual_mov_b32 v0, v5 :: v_dual_mov_b32 v1, v6
 ; GFX12-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_4)
 ; GFX12-FAKE16-NEXT:    v_dual_mov_b32 v2, v7 :: v_dual_mov_b32 v3, v8

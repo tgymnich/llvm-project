@@ -28,7 +28,7 @@ define bfloat @v_fdiv_bf16(bfloat %x, bfloat %y) {
 ; GFX1250-TRUE16-NEXT:    v_div_fmas_f32 v2, v2, v3, v5
 ; GFX1250-TRUE16-NEXT:    v_div_fixup_f32 v0, v2, v1, v0
 ; GFX1250-TRUE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX1250-TRUE16-NEXT:    v_cvt_pk_bf16_f32 v0, v0, s0
+; GFX1250-TRUE16-NEXT:    v_cvt_pk_bf16_f32 v0, v0, v0
 ; GFX1250-TRUE16-NEXT:    s_set_pc_i64 s[30:31]
 ;
 ; GFX1250-FAKE16-LABEL: v_fdiv_bf16:
@@ -56,7 +56,7 @@ define bfloat @v_fdiv_bf16(bfloat %x, bfloat %y) {
 ; GFX1250-FAKE16-NEXT:    v_div_fmas_f32 v2, v2, v3, v5
 ; GFX1250-FAKE16-NEXT:    v_div_fixup_f32 v0, v2, v1, v0
 ; GFX1250-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX1250-FAKE16-NEXT:    v_cvt_pk_bf16_f32 v0, v0, s0
+; GFX1250-FAKE16-NEXT:    v_cvt_pk_bf16_f32 v0, v0, v0
 ; GFX1250-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %fdiv = fdiv bfloat %x, %y
   ret bfloat %fdiv

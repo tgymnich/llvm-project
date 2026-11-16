@@ -784,7 +784,7 @@ define void @f(ptr %p, <16 x i1> %m, <16 x i63> %pt, <16 x i1> %sc,
 ; CHECK-NEXT:    v_lshrrev_b32_e32 v2, 15, v30
 ; CHECK-NEXT:    flat_store_short v[0:1], v2
 ; CHECK-NEXT:    v_add_co_u32_e32 v0, vcc, 0x78, v34
-; CHECK-NEXT:    v_alignbit_b32 v2, v30, v51, 15
+; CHECK-NEXT:    v_alignbit_b32 v2, v51, v51, 15
 ; CHECK-NEXT:    v_addc_co_u32_e32 v1, vcc, 0, v35, vcc
 ; CHECK-NEXT:    flat_store_dword v[0:1], v2
 ; CHECK-NEXT:    v_lshlrev_b32_e32 v0, 31, v8
@@ -943,7 +943,7 @@ define void @f(ptr %p, <16 x i1> %m, <16 x i63> %pt, <16 x i1> %sc,
 ; CHECK-NEXT:    ; implicit-def: $agpr28
 ; CHECK-NEXT:    ; implicit-def: $agpr29
 ; CHECK-NEXT:    ; implicit-def: $agpr31
-; CHECK-NEXT:    v_alignbit_b32 v2, v30, v3, 15
+; CHECK-NEXT:    v_alignbit_b32 v2, v3, v3, 15
 ; CHECK-NEXT:    flat_store_dword v[0:1], v2
 ; CHECK-NEXT:    v_lshlrev_b32_e32 v0, 31, v12
 ; CHECK-NEXT:    v_and_b32_e32 v1, 0x7fffffff, v0

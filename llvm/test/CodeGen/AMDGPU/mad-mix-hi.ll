@@ -503,7 +503,7 @@ define <2 x half> @v_mad_mixhi_f16_f16lo_f16lo_f16lo_undeflo_clamp_precvt(half %
 ; GISEL-GFX9-NEXT:    v_mad_mix_f32 v0, v0, v1, v2 op_sel_hi:[1,1,1] clamp
 ; GISEL-GFX9-NEXT:    v_cvt_f16_f32_e32 v0, v0
 ; GISEL-GFX9-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GISEL-GFX9-NEXT:    v_and_b32_e32 v1, s4, v1
+; GISEL-GFX9-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GISEL-GFX9-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GISEL-GFX9-NEXT:    s_setpc_b64 s[30:31]
 ;

@@ -271,6 +271,7 @@
 ; GCN-O2-NEXT:       block-placement
 ; GCN-O2-NEXT:       fentry-insert
 ; GCN-O2-NEXT:       xray-instrumentation
+; GCN-O2-NEXT:       break-false-deps
 ; GCN-O2-NEXT:       gcn-create-vopd
 ; GCN-O2-NEXT:       si-memory-legalizer
 ; GCN-O2-NEXT:       si-post-ra-16bit-mov-folding
@@ -459,6 +460,7 @@
 ; GCN-O3-NEXT:       block-placement
 ; GCN-O3-NEXT:       fentry-insert
 ; GCN-O3-NEXT:       xray-instrumentation
+; GCN-O3-NEXT:       break-false-deps
 ; GCN-O3-NEXT:       gcn-create-vopd
 ; GCN-O3-NEXT:       si-memory-legalizer
 ; GCN-O3-NEXT:       si-post-ra-16bit-mov-folding

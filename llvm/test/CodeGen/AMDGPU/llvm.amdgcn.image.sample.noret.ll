@@ -464,8 +464,8 @@ define amdgpu_ps void @sample_d_1d_g16_nortn(<8 x i32> inreg %rsrc, <4 x i32> in
 ; GFX12PLUS-GISEL-FAKE16:       ; %bb.0: ; %main_body
 ; GFX12PLUS-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX12PLUS-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
-; GFX12PLUS-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
-; GFX12PLUS-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX12PLUS-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
+; GFX12PLUS-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX12PLUS-GISEL-FAKE16-NEXT:    image_sample_d_g16 off, [v0, v1, v2], s[0:7], s[8:11] dmask:0xf dim:SQ_RSRC_IMG_1D
 ; GFX12PLUS-GISEL-FAKE16-NEXT:    s_endpgm
 main_body:

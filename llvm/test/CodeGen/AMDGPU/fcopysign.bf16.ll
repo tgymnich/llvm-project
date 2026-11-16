@@ -5215,7 +5215,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3f32_sign_v3bf16(<3 x float> %ma
 ; GFX9-NEXT:    s_mov_b32 s4, 0x7060302
 ; GFX9-NEXT:    v_perm_b32 v0, v1, v0, s4
 ; GFX9-NEXT:    s_mov_b32 s4, 0x7fff7fff
-; GFX9-NEXT:    v_alignbit_b32 v1, s4, v2, 16
+; GFX9-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX9-NEXT:    v_bfi_b32 v0, s4, v0, v3
 ; GFX9-NEXT:    v_bfi_b32 v1, s4, v1, v4
 ; GFX9-NEXT:    s_setpc_b64 s[30:31]
@@ -5240,7 +5240,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3f32_sign_v3bf16(<3 x float> %ma
 ; GFX10-NEXT:    v_perm_b32 v0, v1, v0, 0x7060302
 ; GFX10-NEXT:    v_cndmask_b32_e32 v2, v6, v8, vcc_lo
 ; GFX10-NEXT:    v_bfi_b32 v0, 0x7fff7fff, v0, v3
-; GFX10-NEXT:    v_alignbit_b32 v1, s4, v2, 16
+; GFX10-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX10-NEXT:    v_bfi_b32 v1, 0x7fff7fff, v1, v4
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -5292,7 +5292,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3f32_sign_v3bf16(<3 x float> %ma
 ; GFX11FAKE16-NEXT:    v_cndmask_b32_e32 v2, v6, v8, vcc_lo
 ; GFX11FAKE16-NEXT:    v_bfi_b32 v0, 0x7fff7fff, v0, v3
 ; GFX11FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX11FAKE16-NEXT:    v_alignbit_b32 v1, s0, v2, 16
+; GFX11FAKE16-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX11FAKE16-NEXT:    v_bfi_b32 v1, 0x7fff7fff, v1, v4
 ; GFX11FAKE16-NEXT:    s_setpc_b64 s[30:31]
   %mag.trunc = fptrunc <3 x float> %mag to <3 x bfloat>
@@ -5453,7 +5453,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3f64_sign_v3bf16(<3 x double> %m
 ; GFX9-NEXT:    v_cndmask_b32_e32 v1, v4, v1, vcc
 ; GFX9-NEXT:    v_perm_b32 v0, v1, v0, s4
 ; GFX9-NEXT:    s_mov_b32 s4, 0x7fff7fff
-; GFX9-NEXT:    v_alignbit_b32 v1, s4, v10, 16
+; GFX9-NEXT:    v_alignbit_b32 v1, v10, v10, 16
 ; GFX9-NEXT:    v_bfi_b32 v0, s4, v0, v6
 ; GFX9-NEXT:    v_bfi_b32 v1, s4, v1, v7
 ; GFX9-NEXT:    s_setpc_b64 s[30:31]
@@ -5508,7 +5508,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3f64_sign_v3bf16(<3 x double> %m
 ; GFX10-NEXT:    v_perm_b32 v0, v1, v0, 0x7060302
 ; GFX10-NEXT:    v_bfi_b32 v0, 0x7fff7fff, v0, v6
 ; GFX10-NEXT:    v_cndmask_b32_e32 v2, v8, v14, vcc_lo
-; GFX10-NEXT:    v_alignbit_b32 v1, s4, v2, 16
+; GFX10-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX10-NEXT:    v_bfi_b32 v1, 0x7fff7fff, v1, v7
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -5634,7 +5634,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3f64_sign_v3bf16(<3 x double> %m
 ; GFX11FAKE16-NEXT:    v_bfi_b32 v0, 0x7fff7fff, v0, v6
 ; GFX11FAKE16-NEXT:    v_cndmask_b32_e32 v2, v8, v14, vcc_lo
 ; GFX11FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX11FAKE16-NEXT:    v_alignbit_b32 v1, s0, v2, 16
+; GFX11FAKE16-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX11FAKE16-NEXT:    v_bfi_b32 v1, 0x7fff7fff, v1, v7
 ; GFX11FAKE16-NEXT:    s_setpc_b64 s[30:31]
   %mag.trunc = fptrunc <3 x double> %mag to <3 x bfloat>
@@ -5736,7 +5736,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3bf16_sign_v3f32(<3 x bfloat> %m
 ; GFX9-NEXT:    v_perm_b32 v2, v3, v2, s4
 ; GFX9-NEXT:    s_mov_b32 s4, 0x7fff7fff
 ; GFX9-NEXT:    v_bfi_b32 v0, s4, v0, v2
-; GFX9-NEXT:    v_alignbit_b32 v2, s4, v4, 16
+; GFX9-NEXT:    v_alignbit_b32 v2, v4, v4, 16
 ; GFX9-NEXT:    v_bfi_b32 v1, s4, v1, v2
 ; GFX9-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -5760,7 +5760,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3bf16_sign_v3f32(<3 x bfloat> %m
 ; GFX10-NEXT:    v_perm_b32 v2, v3, v2, 0x7060302
 ; GFX10-NEXT:    v_cndmask_b32_e32 v4, v6, v8, vcc_lo
 ; GFX10-NEXT:    v_bfi_b32 v0, 0x7fff7fff, v0, v2
-; GFX10-NEXT:    v_alignbit_b32 v3, s4, v4, 16
+; GFX10-NEXT:    v_alignbit_b32 v3, v4, v4, 16
 ; GFX10-NEXT:    v_bfi_b32 v1, 0x7fff7fff, v1, v3
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -5812,7 +5812,7 @@ define <3 x bfloat> @v_copysign_out_v3bf16_mag_v3bf16_sign_v3f32(<3 x bfloat> %m
 ; GFX11FAKE16-NEXT:    v_cndmask_b32_e32 v4, v6, v8, vcc_lo
 ; GFX11FAKE16-NEXT:    v_bfi_b32 v0, 0x7fff7fff, v0, v2
 ; GFX11FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX11FAKE16-NEXT:    v_alignbit_b32 v3, s0, v4, 16
+; GFX11FAKE16-NEXT:    v_alignbit_b32 v3, v4, v4, 16
 ; GFX11FAKE16-NEXT:    v_bfi_b32 v1, 0x7fff7fff, v1, v3
 ; GFX11FAKE16-NEXT:    s_setpc_b64 s[30:31]
   %sign.trunc = fptrunc <3 x float> %sign to <3 x bfloat>

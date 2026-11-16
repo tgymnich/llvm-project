@@ -568,7 +568,7 @@ define <2 x half> @fptrunc_fma_to_f16_hi_clamp(float %a, float %b, float %c) #0 
 ; GISEL-GFX900-NEXT:    v_fma_f32 v0, v0, v1, v2
 ; GISEL-GFX900-NEXT:    v_cvt_f16_f32_e64 v0, v0 clamp
 ; GISEL-GFX900-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GISEL-GFX900-NEXT:    v_and_b32_e32 v1, s4, v1
+; GISEL-GFX900-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GISEL-GFX900-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GISEL-GFX900-NEXT:    s_setpc_b64 s[30:31]
 .entry:
@@ -607,7 +607,7 @@ define <2 x half> @fptrunc_fma_to_f16_hi_clamp_contract(float %a, float %b, floa
 ; GISEL-GFX900-NEXT:    v_fma_f32 v0, v0, v1, v2
 ; GISEL-GFX900-NEXT:    v_cvt_f16_f32_e64 v0, v0 clamp
 ; GISEL-GFX900-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GISEL-GFX900-NEXT:    v_and_b32_e32 v1, s4, v1
+; GISEL-GFX900-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GISEL-GFX900-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GISEL-GFX900-NEXT:    s_setpc_b64 s[30:31]
 .entry:

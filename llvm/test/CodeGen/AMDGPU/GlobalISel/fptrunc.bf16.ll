@@ -703,7 +703,7 @@ define amdgpu_ps <3 x bfloat> @fptrunc_v3f32_to_v3bf16(<3 x float> %a) {
 ; GFX11-FAKE16-NEXT:    v_cndmask_b32_e32 v2, v6, v8, vcc_lo
 ; GFX11-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_3) | instskip(NEXT) | instid1(VALU_DEP_2)
 ; GFX11-FAKE16-NEXT:    v_perm_b32 v0, v1, v0, 0x7060302
-; GFX11-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v2, 16
+; GFX11-FAKE16-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX11-FAKE16-NEXT:    ; return to shader part epilog
 ;
 ; GFX11-TRUE16-LABEL: fptrunc_v3f32_to_v3bf16:
@@ -749,7 +749,7 @@ define amdgpu_ps <3 x bfloat> @fptrunc_v3f32_to_v3bf16(<3 x float> %a) {
 ; GFX12-FAKE16-NEXT:    v_perm_b32 v0, v1, v0, 0x7060302
 ; GFX12-FAKE16-NEXT:    s_wait_alu depctr_va_vcc(0)
 ; GFX12-FAKE16-NEXT:    v_cndmask_b32_e32 v2, v6, v8, vcc_lo
-; GFX12-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v2, 16
+; GFX12-FAKE16-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX12-FAKE16-NEXT:    ; return to shader part epilog
 ;
 ; GFX12-TRUE16-LABEL: fptrunc_v3f32_to_v3bf16:
@@ -800,7 +800,7 @@ define amdgpu_ps <3 x bfloat> @fptrunc_v3f32_to_v3bf16(<3 x float> %a) {
 ; GFX1250-FAKE16-NEXT:    v_perm_b32 v0, v1, v0, 0x7060302
 ; GFX1250-FAKE16-NEXT:    v_cndmask_b32_e32 v2, v6, v8, vcc_lo
 ; GFX1250-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX1250-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v2, 16
+; GFX1250-FAKE16-NEXT:    v_alignbit_b32 v1, v2, v2, 16
 ; GFX1250-FAKE16-NEXT:    ; return to shader part epilog
 ;
 ; GFX1250-TRUE16-LABEL: fptrunc_v3f32_to_v3bf16:

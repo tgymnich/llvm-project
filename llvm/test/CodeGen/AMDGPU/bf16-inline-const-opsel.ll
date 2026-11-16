@@ -25,7 +25,7 @@ define bfloat @scalar_add_inline_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v0, v0, 1.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fadd bfloat %x, 1.0
@@ -53,7 +53,7 @@ define bfloat @scalar_mul_inline_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_mul_bf16 v0, v0, 0.5 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fmul bfloat %x, 0.5
@@ -81,7 +81,7 @@ define bfloat @scalar_sub_inline_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v0, v0, 1.0 op_sel:[0,1] op_sel_hi:[1,0] neg_lo:[0,1] neg_hi:[0,1]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fsub bfloat %x, 1.0
@@ -109,7 +109,7 @@ define bfloat @scalar_rsub_inline_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v0, v0, 1.0 op_sel:[0,1] op_sel_hi:[1,0] neg_lo:[1,0] neg_hi:[1,0]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fsub bfloat 1.0, %x
@@ -138,8 +138,8 @@ define bfloat @scalar_fma_inline_const(bfloat %x, bfloat %y) {
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_fma_bf16 v0, v0, v1, 2.0 op_sel:[0,0,1] op_sel_hi:[1,1,0]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
@@ -168,7 +168,7 @@ define bfloat @scalar_max_inline_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_max_num_bf16 v0, v0, 4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = call bfloat @llvm.maxnum.bf16(bfloat %x, bfloat 4.0)
@@ -196,7 +196,7 @@ define bfloat @scalar_min_inline_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_min_num_bf16 v0, v0, -4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = call bfloat @llvm.minnum.bf16(bfloat %x, bfloat -4.0)
@@ -224,7 +224,7 @@ define bfloat @scalar_add_non_inlineable_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v0, v0, 0x42c8
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fadd bfloat %x, 100.0
@@ -252,7 +252,7 @@ define bfloat @scalar_mul_non_inlineable_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_mul_bf16 v0, v0, 0x4348
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fmul bfloat %x, 200.0
@@ -280,7 +280,7 @@ define bfloat @scalar_sub_non_inlineable_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v0, v0, 0x42c8 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fsub bfloat %x, 100.0
@@ -308,7 +308,7 @@ define bfloat @scalar_rsub_non_inlineable_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v0, v0, 0x4348 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = fsub bfloat 200.0, %x
@@ -337,8 +337,8 @@ define bfloat @scalar_fma_non_inlineable_const(bfloat %x, bfloat %y) {
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_fma_bf16 v0, v0, v1, 0x42c8
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
@@ -367,7 +367,7 @@ define bfloat @scalar_max_non_inlineable_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_max_num_bf16 v0, v0, 0x4348
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = call bfloat @llvm.maxnum.bf16(bfloat %x, bfloat 200.0)
@@ -395,7 +395,7 @@ define bfloat @scalar_min_non_inlineable_const(bfloat %x) {
 ; GFX1250-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX1250-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX1250-GISEL-FAKE16-NEXT:    v_pk_min_num_bf16 v0, v0, 0x42c8
 ; GFX1250-GISEL-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
   %r = call bfloat @llvm.minnum.bf16(bfloat %x, bfloat 100.0)

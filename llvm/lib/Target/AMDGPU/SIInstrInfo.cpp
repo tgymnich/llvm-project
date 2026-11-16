@@ -2095,6 +2095,47 @@ unsigned SIInstrInfo::getNumWaitStates(const MachineInstr &MI) {
   }
 }
 
+unsigned SIInstrInfo::getUndefRegClearance(const MachineInstr &MI,
+                                           unsigned OpNum) const {
+  const MachineOperand &MO = MI.getOperand(OpNum);
+  if (!MO.getReg().isPhysical() || !isVALU(MI, /*AllowLDSDMA=*/false))
+    return 0;
+
+  unsigned Opc = MI.getOpcode();
+  // Indexed sources encode a register base, even when marked undef.
+  switch (Opc) {
+  case AMDGPU::V_MOVRELS_B32_e32:
+  case AMDGPU::V_MOVRELS_B32_e64:
+  case AMDGPU::V_MOVRELSD_B32_e32:
+  case AMDGPU::V_MOVRELSD_B32_e64:
+  case AMDGPU::V_MOVRELSD_2_B32_e32:
+  case AMDGPU::V_MOVRELSD_2_B32_e64:
+    return 0;
+  default:
+    break;
+  }
+
+  // Only data source operands can be retargeted.
+  if ((int)OpNum != AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src0) &&
+      (int)OpNum != AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src1) &&
+      (int)OpNum != AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src2))
+    return 0;
+
+  // Only opt in when the operand can be retargeted at a register the
+  // instruction already reads. The max-clearance fallback could pick an
+  // otherwise unused register, which would count against the register budget.
+  const TargetRegisterClass *OpRC = getRegClass(MI.getDesc(), OpNum);
+  if (!OpRC)
+    return 0;
+  for (const MachineOperand &Use : MI.all_uses()) {
+    if (!Use.isUndef() && Use.getReg().isPhysical() &&
+        OpRC->contains(Use.getReg()))
+      return 1;
+  }
+
+  return 0;
+}
+
 bool SIInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   MachineBasicBlock &MBB = *MI.getParent();
   DebugLoc DL = MBB.findDebugLoc(MI);

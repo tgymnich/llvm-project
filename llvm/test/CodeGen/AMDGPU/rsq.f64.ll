@@ -2906,7 +2906,7 @@ define <2 x double> @v_neg_rsq_v2f64_poisonelt(<2 x double> %x) {
 ; SI-GISEL-NEXT:    v_cndmask_b32_e32 v2, v4, v2, vcc
 ; SI-GISEL-NEXT:    v_cndmask_b32_e32 v3, v5, v3, vcc
 ; SI-GISEL-NEXT:    v_fma_f64 v[4:5], v[6:7], v[8:9], v[6:7]
-; SI-GISEL-NEXT:    v_div_scale_f64 v[6:7], s[4:5], v[2:3], v[2:3], s[4:5]
+; SI-GISEL-NEXT:    v_div_scale_f64 v[6:7], s[4:5], v[2:3], v[2:3], v[2:3]
 ; SI-GISEL-NEXT:    v_fma_f64 v[8:9], -v[10:11], v[4:5], 1.0
 ; SI-GISEL-NEXT:    v_div_scale_f64 v[12:13], s[4:5], -1.0, v[0:1], -1.0
 ; SI-GISEL-NEXT:    v_fma_f64 v[4:5], v[4:5], v[8:9], v[4:5]
@@ -2918,20 +2918,20 @@ define <2 x double> @v_neg_rsq_v2f64_poisonelt(<2 x double> %x) {
 ; SI-GISEL-NEXT:    v_mov_b32_e32 v10, 0xbff00000
 ; SI-GISEL-NEXT:    v_cmp_eq_u32_e32 vcc, v10, v13
 ; SI-GISEL-NEXT:    v_fma_f64 v[12:13], -v[6:7], v[14:15], 1.0
-; SI-GISEL-NEXT:    v_div_scale_f64 v[16:17], s[4:5], s[4:5], v[2:3], s[4:5]
+; SI-GISEL-NEXT:    v_div_scale_f64 v[16:17], s[4:5], v[2:3], v[2:3], v[2:3]
 ; SI-GISEL-NEXT:    v_cmp_eq_u32_e64 s[4:5], v1, v11
 ; SI-GISEL-NEXT:    v_fma_f64 v[10:11], v[14:15], v[12:13], v[14:15]
 ; SI-GISEL-NEXT:    s_xor_b64 vcc, vcc, s[4:5]
 ; SI-GISEL-NEXT:    v_mul_f64 v[12:13], v[16:17], v[10:11]
 ; SI-GISEL-NEXT:    v_div_fmas_f64 v[4:5], v[18:19], v[4:5], v[8:9]
 ; SI-GISEL-NEXT:    v_fma_f64 v[8:9], -v[6:7], v[12:13], v[16:17]
-; SI-GISEL-NEXT:    v_cmp_eq_u32_e32 vcc, s4, v17
+; SI-GISEL-NEXT:    v_cmp_eq_u32_e32 vcc, v17, v17
 ; SI-GISEL-NEXT:    v_cmp_eq_u32_e64 s[4:5], v3, v7
 ; SI-GISEL-NEXT:    s_xor_b64 vcc, vcc, s[4:5]
 ; SI-GISEL-NEXT:    v_div_fixup_f64 v[0:1], v[4:5], v[0:1], -1.0
 ; SI-GISEL-NEXT:    s_nop 0
 ; SI-GISEL-NEXT:    v_div_fmas_f64 v[6:7], v[8:9], v[10:11], v[12:13]
-; SI-GISEL-NEXT:    v_div_fixup_f64 v[2:3], v[6:7], v[2:3], s[4:5]
+; SI-GISEL-NEXT:    v_div_fixup_f64 v[2:3], v[6:7], v[2:3], v[6:7]
 ; SI-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; VI-SDAG-LABEL: v_neg_rsq_v2f64_poisonelt:
@@ -3021,8 +3021,8 @@ define <2 x double> @v_neg_rsq_v2f64_poisonelt(<2 x double> %x) {
 ; VI-GISEL-NEXT:    v_cndmask_b32_e64 v2, v6, v2, s[4:5]
 ; VI-GISEL-NEXT:    v_div_scale_f64 v[4:5], s[6:7], v[0:1], v[0:1], -1.0
 ; VI-GISEL-NEXT:    v_cndmask_b32_e64 v3, v7, v3, s[4:5]
-; VI-GISEL-NEXT:    v_div_scale_f64 v[6:7], s[4:5], v[2:3], v[2:3], s[4:5]
-; VI-GISEL-NEXT:    v_div_scale_f64 v[16:17], s[4:5], s[4:5], v[2:3], s[4:5]
+; VI-GISEL-NEXT:    v_div_scale_f64 v[6:7], s[4:5], v[2:3], v[2:3], v[2:3]
+; VI-GISEL-NEXT:    v_div_scale_f64 v[16:17], s[4:5], v[2:3], v[2:3], v[2:3]
 ; VI-GISEL-NEXT:    v_rcp_f64_e32 v[8:9], v[4:5]
 ; VI-GISEL-NEXT:    v_rcp_f64_e32 v[10:11], v[6:7]
 ; VI-GISEL-NEXT:    v_fma_f64 v[12:13], -v[4:5], v[8:9], 1.0
@@ -3042,7 +3042,7 @@ define <2 x double> @v_neg_rsq_v2f64_poisonelt(<2 x double> %x) {
 ; VI-GISEL-NEXT:    s_mov_b64 vcc, s[4:5]
 ; VI-GISEL-NEXT:    v_div_fmas_f64 v[6:7], v[6:7], v[10:11], v[18:19]
 ; VI-GISEL-NEXT:    v_div_fixup_f64 v[0:1], v[4:5], v[0:1], -1.0
-; VI-GISEL-NEXT:    v_div_fixup_f64 v[2:3], v[6:7], v[2:3], s[4:5]
+; VI-GISEL-NEXT:    v_div_fixup_f64 v[2:3], v[6:7], v[2:3], v[6:7]
 ; VI-GISEL-NEXT:    s_setpc_b64 s[30:31]
   %sqrt = call <2 x double> @llvm.sqrt.v2f64(<2 x double> %x)
   %rsq = fdiv <2 x double> <double -1.0, double poison>, %sqrt

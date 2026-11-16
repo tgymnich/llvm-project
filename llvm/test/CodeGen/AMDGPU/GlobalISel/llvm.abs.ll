@@ -681,7 +681,7 @@ define <3 x i16> @abs_vgpr_v3i16(<3 x i16> %arg) {
 ; GFX1250-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX1250-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
 ; GFX1250-FAKE16-NEXT:    v_pk_max_i16 v0, v0, v2
-; GFX1250-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX1250-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX1250-FAKE16-NEXT:    s_set_pc_i64 s[30:31]
 ;
 ; GFX1250-REAL16-LABEL: abs_vgpr_v3i16:

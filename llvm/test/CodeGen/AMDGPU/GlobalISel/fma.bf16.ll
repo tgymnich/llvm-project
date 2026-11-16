@@ -472,7 +472,7 @@ define amdgpu_ps <3 x bfloat> @fma_v3bf16_vvv(<3 x bfloat> %a, <3 x bfloat> %b, 
 ; GFX9-NEXT:    v_cndmask_b32_e32 v1, v4, v3, vcc
 ; GFX9-NEXT:    s_mov_b32 s0, 0x7060302
 ; GFX9-NEXT:    v_perm_b32 v0, v2, v0, s0
-; GFX9-NEXT:    v_alignbit_b32 v1, s0, v1, 16
+; GFX9-NEXT:    v_alignbit_b32 v1, v1, v1, 16
 ; GFX9-NEXT:    ; return to shader part epilog
 ;
 ; GFX12-LABEL: fma_v3bf16_vvv:
@@ -949,7 +949,7 @@ define amdgpu_ps <5 x bfloat> @fma_v5bf16_vvv(<5 x bfloat> %a, <5 x bfloat> %b, 
 ; GFX9-NEXT:    s_mov_b32 s0, 0x7060302
 ; GFX9-NEXT:    v_perm_b32 v0, v3, v0, s0
 ; GFX9-NEXT:    v_perm_b32 v1, v4, v1, s0
-; GFX9-NEXT:    v_alignbit_b32 v2, s0, v2, 16
+; GFX9-NEXT:    v_alignbit_b32 v2, v2, v2, 16
 ; GFX9-NEXT:    ; return to shader part epilog
 ;
 ; GFX12-LABEL: fma_v5bf16_vvv:

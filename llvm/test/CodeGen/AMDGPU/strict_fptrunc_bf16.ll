@@ -7,7 +7,7 @@ define amdgpu_ps void @strict_fptrunc_f32_to_bf16(float %a, ptr %out) #0 {
 ; GFX950:       ; %bb.0:
 ; GFX950-NEXT:    v_mov_b32_e32 v3, v2
 ; GFX950-NEXT:    v_mov_b32_e32 v2, v1
-; GFX950-NEXT:    v_cvt_pk_bf16_f32 v0, v0, s0
+; GFX950-NEXT:    v_cvt_pk_bf16_f32 v0, v0, v0
 ; GFX950-NEXT:    flat_store_short v[2:3], v0
 ; GFX950-NEXT:    s_endpgm
 ;
@@ -18,7 +18,7 @@ define amdgpu_ps void @strict_fptrunc_f32_to_bf16(float %a, ptr %out) #0 {
 ; GFX1250-NEXT:    v_nop
 ; GFX1250-NEXT:    global_prefetch_b8 v0, s[64:65] scope:SCOPE_SE
 ; GFX1250-NEXT:    v_dual_mov_b32 v3, v2 :: v_dual_mov_b32 v2, v1
-; GFX1250-NEXT:    v_cvt_pk_bf16_f32 v0, v0, s0
+; GFX1250-NEXT:    v_cvt_pk_bf16_f32 v0, v0, v0
 ; GFX1250-NEXT:    flat_store_b16 v[2:3], v0
 ; GFX1250-NEXT:    s_endpgm
   %cvt = call bfloat @llvm.experimental.constrained.fptrunc.bf16.f32(float %a, metadata !"round.tonearest", metadata !"fpexcept.strict")
@@ -39,7 +39,7 @@ define amdgpu_ps void @strict_fptrunc_f64_to_bf16(double %a, ptr %out) #0 {
 ; GFX950-NEXT:    v_add_u32_e32 v0, v6, v0
 ; GFX950-NEXT:    s_or_b64 vcc, vcc, s[0:1]
 ; GFX950-NEXT:    v_cndmask_b32_e32 v0, v0, v6, vcc
-; GFX950-NEXT:    v_cvt_pk_bf16_f32 v0, v0, s0
+; GFX950-NEXT:    v_cvt_pk_bf16_f32 v0, v0, v0
 ; GFX950-NEXT:    flat_store_short v[2:3], v0
 ; GFX950-NEXT:    s_endpgm
 ;
@@ -61,7 +61,7 @@ define amdgpu_ps void @strict_fptrunc_f64_to_bf16(double %a, ptr %out) #0 {
 ; GFX1250-NEXT:    s_or_b32 vcc_lo, vcc_lo, s0
 ; GFX1250-NEXT:    v_cndmask_b32_e32 v0, v0, v6, vcc_lo
 ; GFX1250-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX1250-NEXT:    v_cvt_pk_bf16_f32 v0, v0, s0
+; GFX1250-NEXT:    v_cvt_pk_bf16_f32 v0, v0, v0
 ; GFX1250-NEXT:    flat_store_b16 v[2:3], v0
 ; GFX1250-NEXT:    s_endpgm
   %cvt = call bfloat @llvm.experimental.constrained.fptrunc.bf16.f64(double %a, metadata !"round.tonearest", metadata !"fpexcept.strict")

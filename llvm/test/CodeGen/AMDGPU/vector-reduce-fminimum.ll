@@ -98,7 +98,7 @@ define half @test_vector_reduce_fminimum_v2half(<2 x half> %v) {
 ; GFX1170-GISEL-FAKE16-LABEL: test_vector_reduce_fminimum_v2half:
 ; GFX1170-GISEL-FAKE16:       ; %bb.0: ; %entry
 ; GFX1170-GISEL-FAKE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX1170-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX1170-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
@@ -142,7 +142,7 @@ define half @test_vector_reduce_fminimum_v2half(<2 x half> %v) {
 ; GFX12-GISEL-FAKE16-NEXT:    s_wait_samplecnt 0x0
 ; GFX12-GISEL-FAKE16-NEXT:    s_wait_bvhcnt 0x0
 ; GFX12-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
-; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX12-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX12-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
@@ -461,7 +461,7 @@ define half @test_vector_reduce_fminimum_v4half(<4 x half> %v) {
 ; GFX1170-GISEL-FAKE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX1170-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX1170-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -511,7 +511,7 @@ define half @test_vector_reduce_fminimum_v4half(<4 x half> %v) {
 ; GFX12-GISEL-FAKE16-NEXT:    s_wait_kmcnt 0x0
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX12-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX12-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 entry:
@@ -767,7 +767,7 @@ define half @test_vector_reduce_fminimum_v8half(<8 x half> %v) {
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v1, v1, v3
 ; GFX1170-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
-; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX1170-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX1170-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
@@ -827,7 +827,7 @@ define half @test_vector_reduce_fminimum_v8half(<8 x half> %v) {
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v1, v1, v3
 ; GFX12-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
-; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX12-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX12-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
@@ -1302,7 +1302,7 @@ define half @test_vector_reduce_fminimum_v16half(<16 x half> %v) {
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v1, v1, v3
 ; GFX1170-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
-; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX1170-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX1170-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX1170-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX1170-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
@@ -1382,7 +1382,7 @@ define half @test_vector_reduce_fminimum_v16half(<16 x half> %v) {
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v1, v1, v3
 ; GFX12-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
-; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v0, 16
+; GFX12-GISEL-FAKE16-NEXT:    v_alignbit_b32 v1, v0, v0, 16
 ; GFX12-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
 ; GFX12-GISEL-FAKE16-NEXT:    v_pk_minimum_f16 v0, v0, v1
 ; GFX12-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]

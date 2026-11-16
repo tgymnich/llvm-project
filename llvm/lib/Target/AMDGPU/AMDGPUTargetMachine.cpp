@@ -74,6 +74,7 @@
 #include "llvm/Analysis/KernelInfo.h"
 #include "llvm/CodeGen/AtomicExpand.h"
 #include "llvm/CodeGen/BranchRelaxation.h"
+#include "llvm/CodeGen/BreakFalseDeps.h"
 #include "llvm/CodeGen/DeadMachineInstructionElim.h"
 #include "llvm/CodeGen/DetectDeadLanes.h"
 #include "llvm/CodeGen/EarlyIfConversion.h"
@@ -1836,6 +1837,8 @@ void GCNPassConfig::addPreSched2() {
 }
 
 void GCNPassConfig::addPreEmitPass() {
+  if (getOptLevel() != CodeGenOptLevel::None)
+    addPass(createBreakFalseDepsLegacyPass());
   if (isPassEnabled(CLOpts.enable_vopd, CodeGenOptLevel::Less))
     addPass(&GCNCreateVOPDID);
   addPass(createSIMemoryLegalizerPass());
@@ -2591,6 +2594,9 @@ void AMDGPUCodeGenPassBuilder::addPostBBSections(PassManagerWrapper &PMW) {
 }
 
 void AMDGPUCodeGenPassBuilder::addPreEmitPass(PassManagerWrapper &PMW) {
+  if (TM.getOptLevel() != CodeGenOptLevel::None)
+    addMachineFunctionPass(BreakFalseDepsPass(), PMW);
+
   if (isPassEnabled(CLOpts.enable_vopd, CodeGenOptLevel::Less)) {
     addMachineFunctionPass(GCNCreateVOPDPass(), PMW);
   }

@@ -4825,7 +4825,7 @@ define <3 x half> @v_log2_v3f16(<3 x half> %in) {
 ; GFX900-GISEL-NEXT:    v_log_f16_sdwa v0, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1
 ; GFX900-GISEL-NEXT:    v_log_f16_e32 v1, v1
 ; GFX900-GISEL-NEXT:    v_pack_b32_f16 v0, v2, v0
-; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, s4, 16, v1
+; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX900-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX1100-SDAG-TRUE16-LABEL: v_log2_v3f16:
@@ -4867,7 +4867,7 @@ define <3 x half> @v_log2_v3f16(<3 x half> %in) {
 ; GFX1100-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX1100-GISEL-FAKE16-NEXT:    s_waitcnt_depctr depctr_va_vdst(0)
 ; GFX1100-GISEL-FAKE16-NEXT:    v_pack_b32_f16 v0, v0, v2
-; GFX1100-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX1100-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX1100-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; R600-LABEL: v_log2_v3f16:
@@ -4958,7 +4958,7 @@ define <3 x half> @v_log2_v3f16_fast(<3 x half> %in) {
 ; GFX900-GISEL-NEXT:    v_log_f16_sdwa v0, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1
 ; GFX900-GISEL-NEXT:    v_log_f16_e32 v1, v1
 ; GFX900-GISEL-NEXT:    v_pack_b32_f16 v0, v2, v0
-; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, s4, 16, v1
+; GFX900-GISEL-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX900-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX1100-SDAG-TRUE16-LABEL: v_log2_v3f16_fast:
@@ -5000,7 +5000,7 @@ define <3 x half> @v_log2_v3f16_fast(<3 x half> %in) {
 ; GFX1100-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX1100-GISEL-FAKE16-NEXT:    s_waitcnt_depctr depctr_va_vdst(0)
 ; GFX1100-GISEL-FAKE16-NEXT:    v_pack_b32_f16 v0, v0, v2
-; GFX1100-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX1100-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX1100-GISEL-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; R600-LABEL: v_log2_v3f16_fast:

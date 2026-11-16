@@ -663,7 +663,7 @@ define <3 x half> @v_mad_mix_v3f32(<3 x half> %src0, <3 x half> %src1, <3 x half
 ; GISEL-GFX1100-FAKE16-NEXT:    v_fma_mixhi_f16 v3, v0, v2, v4 op_sel:[1,1,1] op_sel_hi:[1,1,1]
 ; GISEL-GFX1100-FAKE16-NEXT:    v_dual_mov_b32 v0, v3 :: v_dual_and_b32 v1, 0xffff, v1
 ; GISEL-GFX1100-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GISEL-GFX1100-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GISEL-GFX1100-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GISEL-GFX1100-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GISEL-GFX900-LABEL: v_mad_mix_v3f32:
@@ -1279,7 +1279,7 @@ define <3 x half> @v_mad_mix_v3f32_clamp_postcvt(<3 x half> %src0, <3 x half> %s
 ; GISEL-GFX1100-FAKE16-NEXT:    v_fma_mixhi_f16 v3, v0, v2, v4 op_sel:[1,1,1] op_sel_hi:[1,1,1] clamp
 ; GISEL-GFX1100-FAKE16-NEXT:    v_dual_mov_b32 v0, v3 :: v_dual_and_b32 v1, 0xffff, v1
 ; GISEL-GFX1100-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GISEL-GFX1100-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GISEL-GFX1100-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GISEL-GFX1100-FAKE16-NEXT:    v_pk_max_f16 v1, v1, v1 clamp
 ; GISEL-GFX1100-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -2335,7 +2335,7 @@ define <3 x half> @v_mad_mix_v3f32_clamp_precvt(<3 x half> %src0, <3 x half> %sr
 ; GISEL-GFX1100-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GISEL-GFX1100-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_2) | instskip(NEXT) | instid1(VALU_DEP_2)
 ; GISEL-GFX1100-FAKE16-NEXT:    v_pack_b32_f16 v0, v2, v0
-; GISEL-GFX1100-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GISEL-GFX1100-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GISEL-GFX1100-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GISEL-GFX900-LABEL: v_mad_mix_v3f32_clamp_precvt:
@@ -2348,7 +2348,7 @@ define <3 x half> @v_mad_mix_v3f32_clamp_precvt(<3 x half> %src0, <3 x half> %sr
 ; GISEL-GFX900-NEXT:    v_cvt_f16_f32_e32 v0, v0
 ; GISEL-GFX900-NEXT:    v_cvt_f16_f32_e32 v1, v1
 ; GISEL-GFX900-NEXT:    v_pack_b32_f16 v0, v2, v0
-; GISEL-GFX900-NEXT:    v_lshl_or_b32 v1, s4, 16, v1
+; GISEL-GFX900-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GISEL-GFX900-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GISEL-GFX906-LABEL: v_mad_mix_v3f32_clamp_precvt:
@@ -2361,7 +2361,7 @@ define <3 x half> @v_mad_mix_v3f32_clamp_precvt(<3 x half> %src0, <3 x half> %sr
 ; GISEL-GFX906-NEXT:    v_cvt_f16_f32_e32 v0, v0
 ; GISEL-GFX906-NEXT:    v_cvt_f16_f32_e32 v1, v1
 ; GISEL-GFX906-NEXT:    v_pack_b32_f16 v0, v2, v0
-; GISEL-GFX906-NEXT:    v_lshl_or_b32 v1, s4, 16, v1
+; GISEL-GFX906-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GISEL-GFX906-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GISEL-VI-LABEL: v_mad_mix_v3f32_clamp_precvt:

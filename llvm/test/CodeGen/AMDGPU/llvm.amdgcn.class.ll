@@ -1295,7 +1295,7 @@ define amdgpu_kernel void @test_class_undef_f32(ptr addrspace(1) %out, float %a,
 ; SI-GISEL-NEXT:    s_mov_b32 s2, -1
 ; SI-GISEL-NEXT:    s_waitcnt lgkmcnt(0)
 ; SI-GISEL-NEXT:    v_mov_b32_e32 v0, s3
-; SI-GISEL-NEXT:    v_cmp_class_f32_e32 vcc, s0, v0
+; SI-GISEL-NEXT:    v_cmp_class_f32_e32 vcc, v0, v0
 ; SI-GISEL-NEXT:    s_or_b64 s[4:5], vcc, vcc
 ; SI-GISEL-NEXT:    s_cselect_b32 s3, -1, 0
 ; SI-GISEL-NEXT:    v_mov_b32_e32 v0, s3

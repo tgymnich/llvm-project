@@ -1092,7 +1092,7 @@ define <3 x bfloat> @shuffle_v3bf16_rebroadcast(ptr addrspace(1) %arg0) {
 ; GFX9-NEXT:    s_mov_b32 s4, 0x7060302
 ; GFX9-NEXT:    s_waitcnt vmcnt(0)
 ; GFX9-NEXT:    v_perm_b32 v0, v1, v1, s4
-; GFX9-NEXT:    v_alignbit_b32 v1, s4, v1, 16
+; GFX9-NEXT:    v_alignbit_b32 v1, v1, v1, 16
 ; GFX9-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX10-LABEL: shuffle_v3bf16_rebroadcast:
@@ -1101,7 +1101,7 @@ define <3 x bfloat> @shuffle_v3bf16_rebroadcast(ptr addrspace(1) %arg0) {
 ; GFX10-NEXT:    global_load_dword v1, v[0:1], off
 ; GFX10-NEXT:    s_waitcnt vmcnt(0)
 ; GFX10-NEXT:    v_perm_b32 v0, v1, v1, 0x7060302
-; GFX10-NEXT:    v_alignbit_b32 v1, s4, v1, 16
+; GFX10-NEXT:    v_alignbit_b32 v1, v1, v1, 16
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX11-TRUE16-LABEL: shuffle_v3bf16_rebroadcast:
@@ -1119,7 +1119,7 @@ define <3 x bfloat> @shuffle_v3bf16_rebroadcast(ptr addrspace(1) %arg0) {
 ; GFX11-FAKE16-NEXT:    global_load_b32 v1, v[0:1], off
 ; GFX11-FAKE16-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-FAKE16-NEXT:    v_perm_b32 v0, v1, v1, 0x7060302
-; GFX11-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v1, 16
+; GFX11-FAKE16-NEXT:    v_alignbit_b32 v1, v1, v1, 16
 ; GFX11-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 entry:
   %val0 = load <3 x bfloat>, ptr addrspace(1) %arg0
@@ -1491,7 +1491,7 @@ define <3 x half> @shuffle_v3f16_rebroadcast(ptr addrspace(1) %arg0) {
 ; GFX9-NEXT:    s_mov_b32 s4, 0x7060302
 ; GFX9-NEXT:    s_waitcnt vmcnt(0)
 ; GFX9-NEXT:    v_perm_b32 v0, v1, v1, s4
-; GFX9-NEXT:    v_alignbit_b32 v1, s4, v1, 16
+; GFX9-NEXT:    v_alignbit_b32 v1, v1, v1, 16
 ; GFX9-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX10-LABEL: shuffle_v3f16_rebroadcast:
@@ -1500,7 +1500,7 @@ define <3 x half> @shuffle_v3f16_rebroadcast(ptr addrspace(1) %arg0) {
 ; GFX10-NEXT:    global_load_dword v1, v[0:1], off
 ; GFX10-NEXT:    s_waitcnt vmcnt(0)
 ; GFX10-NEXT:    v_perm_b32 v0, v1, v1, 0x7060302
-; GFX10-NEXT:    v_alignbit_b32 v1, s4, v1, 16
+; GFX10-NEXT:    v_alignbit_b32 v1, v1, v1, 16
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX11-TRUE16-LABEL: shuffle_v3f16_rebroadcast:
@@ -1518,7 +1518,7 @@ define <3 x half> @shuffle_v3f16_rebroadcast(ptr addrspace(1) %arg0) {
 ; GFX11-FAKE16-NEXT:    global_load_b32 v1, v[0:1], off
 ; GFX11-FAKE16-NEXT:    s_waitcnt vmcnt(0)
 ; GFX11-FAKE16-NEXT:    v_perm_b32 v0, v1, v1, 0x7060302
-; GFX11-FAKE16-NEXT:    v_alignbit_b32 v1, s0, v1, 16
+; GFX11-FAKE16-NEXT:    v_alignbit_b32 v1, v1, v1, 16
 ; GFX11-FAKE16-NEXT:    s_setpc_b64 s[30:31]
 entry:
   %val0 = load <3 x half>, ptr addrspace(1) %arg0

@@ -4584,7 +4584,7 @@ define bfloat @local_atomic_fadd_ret_bf16(ptr addrspace(3) %ptr) nounwind {
 ; GFX13-GISEL-FAKE16-NEXT:    v_lshrrev_b32_e32 v3, v0, v4
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v3, 0xffff, v3
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v3, s0, 16, v3
+; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v3, v3, 16, v3
 ; GFX13-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v3, v3, 4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v3, 0xffff, v3
@@ -5210,7 +5210,7 @@ define bfloat @local_atomic_fadd_ret_bf16__offset(ptr addrspace(3) %ptr) nounwin
 ; GFX13-GISEL-FAKE16-NEXT:    v_lshrrev_b32_e32 v3, v1, v4
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v3, 0xffff, v3
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v3, s0, 16, v3
+; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v3, v3, 16, v3
 ; GFX13-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v3, v3, 4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v3, 0xffff, v3
@@ -5842,7 +5842,7 @@ define void @local_atomic_fadd_noret_bf16(ptr addrspace(3) %ptr) nounwind {
 ; GFX13-GISEL-FAKE16-NEXT:    v_lshrrev_b32_e32 v4, v0, v2
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v4, 0xffff, v4
-; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v4, s0, 16, v4
+; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v4, v4, 16, v4
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v4, v4, 4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v4, 0xffff, v4
@@ -6448,7 +6448,7 @@ define void @local_atomic_fadd_noret_bf16__offset(ptr addrspace(3) %ptr) nounwin
 ; GFX13-GISEL-FAKE16-NEXT:    v_lshrrev_b32_e32 v4, v1, v2
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v4, 0xffff, v4
-; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v4, s0, 16, v4
+; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v4, v4, 16, v4
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v4, v4, 4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v4, 0xffff, v4
@@ -7071,7 +7071,7 @@ define bfloat @local_atomic_fadd_ret_bf16__offset__align4(ptr addrspace(3) %ptr)
 ; GFX13-GISEL-FAKE16-NEXT:    v_mov_b32_e32 v2, v1
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v2
-; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, s0, 16, v1
+; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v1, v1, 16, v1
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v1, v1, 4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v1, 0xffff, v1
@@ -7655,7 +7655,7 @@ define void @local_atomic_fadd_noret_bf16__offset__align4(ptr addrspace(3) %ptr)
 ; GFX13-GISEL-FAKE16-NEXT:    s_wait_dscnt 0x0
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v2, 0xffff, v1
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v2, s0, 16, v2
+; GFX13-GISEL-FAKE16-NEXT:    v_lshl_or_b32 v2, v2, 16, v2
 ; GFX13-GISEL-FAKE16-NEXT:    v_pk_add_bf16 v2, v2, 4.0 op_sel:[0,1] op_sel_hi:[1,0]
 ; GFX13-GISEL-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
 ; GFX13-GISEL-FAKE16-NEXT:    v_and_b32_e32 v2, 0xffff, v2

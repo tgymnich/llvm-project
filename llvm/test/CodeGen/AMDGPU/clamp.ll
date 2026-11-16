@@ -3119,7 +3119,7 @@ define amdgpu_kernel void @v_clamp_v2f16_undef_elt(ptr addrspace(1) %out, ptr ad
 ; GFX8-NEXT:    v_max_f16_sdwa v2, v3, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; GFX8-NEXT:    v_max_f16_e32 v3, v3, v3
 ; GFX8-NEXT:    v_max_f16_e32 v2, 0, v2
-; GFX8-NEXT:    v_max_f16_e32 v3, s0, v3
+; GFX8-NEXT:    v_max_f16_e32 v3, v3, v3
 ; GFX8-NEXT:    v_min_f16_e32 v3, 1.0, v3
 ; GFX8-NEXT:    v_min_f16_sdwa v2, v2, v4 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
 ; GFX8-NEXT:    v_or_b32_e32 v2, v3, v2
@@ -3931,9 +3931,9 @@ define amdgpu_kernel void @v_clamp_v2f16_undef_limit_elts0(ptr addrspace(1) %out
 ; GFX8-NEXT:    s_waitcnt vmcnt(0)
 ; GFX8-NEXT:    v_max_f16_sdwa v2, v3, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; GFX8-NEXT:    v_max_f16_e32 v3, v3, v3
-; GFX8-NEXT:    v_max_f16_e32 v2, s0, v2
+; GFX8-NEXT:    v_max_f16_e32 v2, v2, v2
 ; GFX8-NEXT:    v_max_f16_e32 v3, 0, v3
-; GFX8-NEXT:    v_min_f16_e32 v3, s0, v3
+; GFX8-NEXT:    v_min_f16_e32 v3, v3, v3
 ; GFX8-NEXT:    v_min_f16_sdwa v2, v2, v4 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
 ; GFX8-NEXT:    v_or_b32_e32 v2, v3, v2
 ; GFX8-NEXT:    flat_store_dword v[0:1], v2
@@ -4034,7 +4034,7 @@ define amdgpu_kernel void @v_clamp_v2f16_undef_limit_elts1(ptr addrspace(1) %out
 ; GFX8-NEXT:    v_max_f16_sdwa v2, v3, v3 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; GFX8-NEXT:    v_max_f16_e32 v3, v3, v3
 ; GFX8-NEXT:    v_max_f16_e32 v2, 0, v2
-; GFX8-NEXT:    v_max_f16_e32 v3, s0, v3
+; GFX8-NEXT:    v_max_f16_e32 v3, v3, v3
 ; GFX8-NEXT:    v_min_f16_e32 v3, 1.0, v3
 ; GFX8-NEXT:    v_min_f16_sdwa v2, v2, v4 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:DWORD
 ; GFX8-NEXT:    v_or_b32_e32 v2, v3, v2

@@ -31,7 +31,7 @@ define void @undef_lo_v2i16(i16 %arg0) {
 ; GFX9-GISEL:       ; %bb.0:
 ; GFX9-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX9-GISEL-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, s4, v1
+; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GFX9-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GFX9-GISEL-NEXT:    ;;#ASMSTART
 ; GFX9-GISEL-NEXT:    ; use v0
@@ -94,7 +94,7 @@ define void @undef_lo_v2f16(half %arg0) {
 ; GFX9-GISEL:       ; %bb.0:
 ; GFX9-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX9-GISEL-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, s4, v1
+; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GFX9-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GFX9-GISEL-NEXT:    ;;#ASMSTART
 ; GFX9-GISEL-NEXT:    ; use v0
@@ -175,7 +175,7 @@ define void @undef_lo_op_v2f16(half %arg0) {
 ; GFX9-GISEL:       ; %bb.0:
 ; GFX9-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX9-GISEL-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, s4, v1
+; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GFX9-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GFX9-GISEL-NEXT:    v_pk_add_f16 v0, v0, 1.0 op_sel_hi:[1,0]
 ; GFX9-GISEL-NEXT:    ;;#ASMSTART
@@ -260,7 +260,7 @@ define void @undef_lo_op_v2i16(i16 %arg0) {
 ; GFX9-GISEL:       ; %bb.0:
 ; GFX9-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX9-GISEL-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, s4, v1
+; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GFX9-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GFX9-GISEL-NEXT:    v_mov_b32_e32 v1, 0x630063
 ; GFX9-GISEL-NEXT:    v_pk_add_u16 v0, v0, v1
@@ -352,7 +352,7 @@ define void @undef_lo3_v4i16(i16 %arg0) {
 ; GFX9-GISEL:       ; %bb.0:
 ; GFX9-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX9-GISEL-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, s4, v1
+; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GFX9-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GFX9-GISEL-NEXT:    ;;#ASMSTART
 ; GFX9-GISEL-NEXT:    ; use v[0:1]
@@ -425,7 +425,7 @@ define void @undef_lo3_v4f16(half %arg0) {
 ; GFX9-GISEL:       ; %bb.0:
 ; GFX9-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX9-GISEL-NEXT:    v_mov_b32_e32 v1, 0xffff
-; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, s4, v1
+; GFX9-GISEL-NEXT:    v_and_b32_e32 v1, v1, v1
 ; GFX9-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v1
 ; GFX9-GISEL-NEXT:    ;;#ASMSTART
 ; GFX9-GISEL-NEXT:    ; use v[0:1]
@@ -622,7 +622,7 @@ define void @undef_hi_v2i16(i16 %arg0) {
 ; GFX11-FAKE16-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX11-FAKE16-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX11-FAKE16-GISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMSTART
 ; GFX11-FAKE16-GISEL-NEXT:    ; use v0
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMEND
@@ -689,7 +689,7 @@ define void @undef_hi_v2f16(half %arg0) {
 ; GFX11-FAKE16-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX11-FAKE16-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX11-FAKE16-GISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMSTART
 ; GFX11-FAKE16-GISEL-NEXT:    ; use v0
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMEND
@@ -767,7 +767,7 @@ define void @undef_hi_op_v2f16(half %arg0) {
 ; GFX11-FAKE16-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX11-FAKE16-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX11-FAKE16-GISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX11-FAKE16-GISEL-NEXT:    v_pk_add_f16 v0, v0, 1.0 op_sel_hi:[1,0]
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMSTART
 ; GFX11-FAKE16-GISEL-NEXT:    ; use v0
@@ -856,7 +856,7 @@ define void @undef_hi_op_v2i16(i16 %arg0) {
 ; GFX11-FAKE16-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX11-FAKE16-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX11-FAKE16-GISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
-; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX11-FAKE16-GISEL-NEXT:    v_pk_add_u16 v0, v0, 0x630063
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMSTART
 ; GFX11-FAKE16-GISEL-NEXT:    ; use v0
@@ -936,7 +936,7 @@ define void @undef_hi3_v4i16(i16 %arg0) {
 ; GFX11-FAKE16-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX11-FAKE16-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX11-FAKE16-GISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMSTART
 ; GFX11-FAKE16-GISEL-NEXT:    ; use v[0:1]
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMEND
@@ -1004,7 +1004,7 @@ define void @undef_hi3_v4f16(half %arg0) {
 ; GFX11-FAKE16-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX11-FAKE16-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX11-FAKE16-GISEL-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, s0, 16, v0
+; GFX11-FAKE16-GISEL-NEXT:    v_lshl_or_b32 v0, v0, 16, v0
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMSTART
 ; GFX11-FAKE16-GISEL-NEXT:    ; use v[0:1]
 ; GFX11-FAKE16-GISEL-NEXT:    ;;#ASMEND
