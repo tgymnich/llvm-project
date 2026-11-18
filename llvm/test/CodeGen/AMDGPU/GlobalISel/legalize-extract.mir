@@ -101,7 +101,8 @@ body: |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s96) = COPY $vgpr0_vgpr1_vgpr2
     ; CHECK-NEXT: [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32), [[UV2:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY]](s96)
-    ; CHECK-NEXT: $vgpr0 = COPY [[UV]](i32)
+    ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY [[UV]](i32)
+    ; CHECK-NEXT: $vgpr0 = COPY [[COPY1]](s32)
     %0:_(s96) = COPY $vgpr0_vgpr1_vgpr2
     %1:_(s32) = G_EXTRACT %0, 0
     $vgpr0 = COPY %1

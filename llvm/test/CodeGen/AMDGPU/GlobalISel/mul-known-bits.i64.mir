@@ -196,7 +196,8 @@ body:             |
     ; GFX10: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
     ; GFX10-NEXT: {{  $}}
     ; GFX10-NEXT: [[C:%[0-9]+]]:_(i64) = G_CONSTANT i64 0
-    ; GFX10-NEXT: $vgpr0_vgpr1 = COPY [[C]](i64)
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(s64) = COPY [[C]](i64)
+    ; GFX10-NEXT: $vgpr0_vgpr1 = COPY [[COPY]](s64)
     %0:_(s64) = COPY $vgpr0_vgpr1
     %1:_(s64) = COPY $vgpr2_vgpr3
     %2:_(s64) = G_CONSTANT i64 0

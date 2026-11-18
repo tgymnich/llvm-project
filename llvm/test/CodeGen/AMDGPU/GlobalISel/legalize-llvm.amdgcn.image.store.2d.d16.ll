@@ -319,13 +319,11 @@ define amdgpu_ps void @image_store_v3f16(<8 x i32> inreg %rsrc, i32 %s, i32 %t, 
   ; GFX81-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[LSHR]], [[C]](i32)
   ; GFX81-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; GFX81-NEXT:   [[BITCAST2:%[0-9]+]]:_(<2 x i16>) = G_BITCAST [[OR]](i32)
-  ; GFX81-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[BITCAST1]], [[C1]]
+  ; GFX81-NEXT:   [[BITCAST3:%[0-9]+]]:_(<2 x i16>) = G_BITCAST [[BITCAST1]](i32)
   ; GFX81-NEXT:   [[C2:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
   ; GFX81-NEXT:   [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[C2]], [[C]](i32)
-  ; GFX81-NEXT:   [[OR1:%[0-9]+]]:_(i32) = G_OR [[AND1]], [[SHL1]]
-  ; GFX81-NEXT:   [[BITCAST3:%[0-9]+]]:_(<2 x i16>) = G_BITCAST [[OR1]](i32)
-  ; GFX81-NEXT:   [[OR2:%[0-9]+]]:_(i32) = G_OR [[C2]], [[SHL1]]
-  ; GFX81-NEXT:   [[BITCAST4:%[0-9]+]]:_(<2 x i16>) = G_BITCAST [[OR2]](i32)
+  ; GFX81-NEXT:   [[OR1:%[0-9]+]]:_(i32) = G_OR [[C2]], [[SHL1]]
+  ; GFX81-NEXT:   [[BITCAST4:%[0-9]+]]:_(<2 x i16>) = G_BITCAST [[OR1]](i32)
   ; GFX81-NEXT:   [[CONCAT_VECTORS:%[0-9]+]]:_(<6 x i16>) = G_CONCAT_VECTORS [[BITCAST2]](<2 x i16>), [[BITCAST3]](<2 x i16>), [[BITCAST4]](<2 x i16>)
   ; GFX81-NEXT:   [[BITCAST5:%[0-9]+]]:_(<3 x i32>) = G_BITCAST [[CONCAT_VECTORS]](<6 x i16>)
   ; GFX81-NEXT:   G_AMDGPU_INTRIN_IMAGE_STORE_D16 intrinsic(@llvm.amdgcn.image.store.2d), [[BITCAST5]](<3 x i32>), 7, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 0, 0, 0 :: (dereferenceable store (<3 x f16>), align 8, addrspace 8)

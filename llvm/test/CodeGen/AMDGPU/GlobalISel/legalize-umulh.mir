@@ -376,14 +376,7 @@ body: |
     ; GFX8-NEXT: [[AND3:%[0-9]+]]:_(s32) = G_AND [[UV3]], [[C]]
     ; GFX8-NEXT: [[MUL1:%[0-9]+]]:_(s32) = G_MUL [[AND2]], [[AND3]]
     ; GFX8-NEXT: [[LSHR1:%[0-9]+]]:_(s32) = G_LSHR [[MUL1]], [[C1]](s32)
-    ; GFX8-NEXT: [[C2:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
-    ; GFX8-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[LSHR1]], [[C2]](i32)
-    ; GFX8-NEXT: [[OR:%[0-9]+]]:_(i32) = G_OR [[LSHR]], [[SHL]]
-    ; GFX8-NEXT: [[BITCAST:%[0-9]+]]:_(<2 x s16>) = G_BITCAST [[OR]](i32)
-    ; GFX8-NEXT: [[BITCAST1:%[0-9]+]]:_(i32) = G_BITCAST [[BITCAST]](<2 x s16>)
-    ; GFX8-NEXT: [[LSHR2:%[0-9]+]]:_(i32) = G_LSHR [[BITCAST1]], [[C2]](i32)
-    ; GFX8-NEXT: [[AND4:%[0-9]+]]:_(s32) = G_AND [[BITCAST1]], [[C]]
-    ; GFX8-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x s32>) = G_BUILD_VECTOR [[AND4]](s32), [[LSHR2]](i32)
+    ; GFX8-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x s32>) = G_BUILD_VECTOR [[LSHR]](s32), [[LSHR1]](s32)
     ; GFX8-NEXT: $vgpr0_vgpr1 = COPY [[BUILD_VECTOR]](<2 x s32>)
     ;
     ; GFX9-LABEL: name: test_umulh_v2s16

@@ -38,6 +38,19 @@ class LegalizationArtifactCombiner {
   const LegalizerInfo &LI;
   GISelValueTracking *VT;
 
+  Register getTruncSource(Register Reg) const {
+    MachineInstr *Def = MRI.getVRegDef(Reg);
+    if (Def->getOpcode() == TargetOpcode::G_TRUNC)
+      return Def->getOperand(1).getReg();
+    auto *Unmerge = dyn_cast<GUnmerge>(Def);
+    if (!Unmerge || Unmerge->getReg(0) != Reg || !MRI.getType(Reg).isScalar() ||
+        Unmerge->getNumDefs() != 2 || MRI.getType(Reg).getSizeInBits() != 16 ||
+        !MRI.use_nodbg_empty(Unmerge->getReg(1)))
+      return Register();
+    Register Source = Unmerge->getSourceReg();
+    return MRI.getType(Source).isInteger(32) ? Source : Register();
+  }
+
   static bool isArtifactCast(unsigned Opc) {
     switch (Opc) {
     case TargetOpcode::G_TRUNC:
@@ -68,8 +81,8 @@ public:
     Register SrcReg = lookThroughCopyInstrs(MI.getOperand(1).getReg());
 
     // aext(trunc x) - > aext/copy/trunc x
-    Register TruncSrc;
-    if (mi_match(SrcReg, MRI, m_GTrunc(m_Reg(TruncSrc)))) {
+    Register TruncSrc = getTruncSource(SrcReg);
+    if (TruncSrc) {
       LLVM_DEBUG(dbgs() << ".. Combine MI: " << MI);
       if (MRI.getType(DstReg) == MRI.getType(TruncSrc))
         replaceRegOrBuildCopy(DstReg, TruncSrc, MRI, Builder, UpdatedDefs,
@@ -127,10 +140,9 @@ public:
 
     // zext(trunc x) - > and (aext/copy/trunc x), mask
     // zext(sext x) -> and (sext x), mask
-    Register TruncSrc;
+    Register TruncSrc = getTruncSource(SrcReg);
     Register SextSrc;
-    if (mi_match(SrcReg, MRI, m_GTrunc(m_Reg(TruncSrc))) ||
-        mi_match(SrcReg, MRI, m_GSExt(m_Reg(SextSrc)))) {
+    if (TruncSrc || mi_match(SrcReg, MRI, m_GSExt(m_Reg(SextSrc)))) {
       LLT DstTy = MRI.getType(DstReg);
       if (isInstUnsupported({TargetOpcode::G_AND, {DstTy}}) ||
           isConstantUnsupported(DstTy))
@@ -639,13 +651,13 @@ public:
     // Stores the best register found in the current query so far.
     Register CurrentBest = Register();
 
-    /// Given an concat_vector op \p Concat and a start bit and size, try to
+    /// Given a merge or concat \p Concat and a start bit and size, try to
     /// find the origin of the value defined by that start position and size.
     ///
     /// \returns a register with the requested size, or the current best
     /// register found during the current query.
-    Register findValueFromConcat(GConcatVectors &Concat, unsigned StartBit,
-                                 unsigned Size) {
+    Register findValueFromMerge(GMergeLikeInstr &Concat, unsigned StartBit,
+                                unsigned Size) {
       assert(Size > 0);
 
       // Find the source operand that provides the bits requested.
@@ -862,8 +874,12 @@ public:
       // For unmerge however with multiple defs, we need to compute the offset
       // into the source of the unmerge.
       switch (Def->getOpcode()) {
+      case TargetOpcode::G_BITCAST:
+        return findValueFromDefImpl(Def->getOperand(1).getReg(), StartBit, Size,
+                                    DstTy);
+      case TargetOpcode::G_MERGE_VALUES:
       case TargetOpcode::G_CONCAT_VECTORS:
-        return findValueFromConcat(cast<GConcatVectors>(*Def), StartBit, Size);
+        return findValueFromMerge(cast<GMergeLikeInstr>(*Def), StartBit, Size);
       case TargetOpcode::G_UNMERGE_VALUES: {
         unsigned DefStartBit = 0;
         unsigned DefSize = MRI.getType(DefReg).getSizeInBits();
@@ -896,7 +912,8 @@ public:
       case TargetOpcode::G_ANYEXT:
         return findValueFromExt(*Def, StartBit, Size);
       case TargetOpcode::G_IMPLICIT_DEF: {
-        if (MRI.getType(DefReg) == DstTy)
+        if (MRI.getType(DefReg).getUniqueRAWLLTData() ==
+            DstTy.getUniqueRAWLLTData())
           return DefReg;
         MIB.setInstrAndDebugLoc(*Def);
         return MIB.buildUndef(DstTy).getReg(0);
@@ -996,9 +1013,23 @@ public:
                              SmallVectorImpl<MachineInstr *> &DeadInsts,
                              SmallVectorImpl<Register> &UpdatedDefs,
                              GISelChangeObserver &Observer) {
+      using namespace MIPatternMatch;
       Register Elt0 = MI.getSourceReg(0);
       LLT EltTy = MRI.getType(Elt0);
       unsigned EltSize = EltTy.getSizeInBits();
+
+      Register Source;
+      if (isa<GMerge>(MI) && mi_match(Elt0, MRI, m_GTrunc(m_Reg(Source))) &&
+          MRI.getType(Source).getUniqueRAWLLTData() ==
+              MRI.getType(MI.getReg(0)).getUniqueRAWLLTData() &&
+          llvm::all_of(drop_begin(MI.operands(), 2), [&](const auto &Operand) {
+            return mi_match(Operand.getReg(), MRI, m_GImplicitDef());
+          })) {
+        replaceRegOrBuildCopy(MI.getReg(0), Source, MRI, MIB, UpdatedDefs,
+                              Observer);
+        DeadInsts.push_back(&MI);
+        return true;
+      }
 
       unsigned Elt0UnmergeIdx;
       // Search for unmerge that will be candidate for combine.
@@ -1014,20 +1045,33 @@ public:
       unsigned DstSize = DstTy.getSizeInBits();
       unsigned UnmergeSrcSize = UnmergeSrcTy.getSizeInBits();
 
-      // Recognize copy of UnmergeSrc to Dst.
+      // Recognize a copy or bitcast of UnmergeSrc to Dst.
       // Unmerge UnmergeSrc and reassemble it using merge-like opcode into Dst.
       //
       // %0:_(EltTy), %1, ... = G_UNMERGE_VALUES %UnmergeSrc:_(Ty)
       // %Dst:_(Ty) = G_merge_like_opcode %0:_(EltTy), %1, ...
       //
       // %Dst:_(Ty) = COPY %UnmergeSrc:_(Ty)
-      if ((DstSize == UnmergeSrcSize) && (DstTy == UnmergeSrcTy) &&
-          (Elt0UnmergeIdx == 0)) {
+      if (DstSize == UnmergeSrcSize && Elt0UnmergeIdx == 0 &&
+          (DstTy == UnmergeSrcTy ||
+           (DstTy.isVector() && UnmergeSrcTy.isVector() &&
+            DstTy.getElementType().isScalar() &&
+            UnmergeSrcTy.getElementType().isScalar() &&
+            DstTy.getElementCount() == UnmergeSrcTy.getElementCount() &&
+            LI.isLegalOrCustom(
+                {TargetOpcode::G_BITCAST, {DstTy, UnmergeSrcTy}})))) {
         if (!isSequenceFromUnmerge(MI, 0, Unmerge, 0, NumMIElts, EltSize,
                                    /*AllowUndef=*/DstTy.isVector()))
           return false;
 
-        replaceRegOrBuildCopy(Dst, UnmergeSrc, MRI, MIB, UpdatedDefs, Observer);
+        if (DstTy.getUniqueRAWLLTData() == UnmergeSrcTy.getUniqueRAWLLTData())
+          replaceRegOrBuildCopy(Dst, UnmergeSrc, MRI, MIB, UpdatedDefs,
+                                Observer);
+        else {
+          MIB.setInstrAndDebugLoc(MI);
+          MIB.buildCast(Dst, UnmergeSrc);
+          UpdatedDefs.push_back(Dst);
+        }
         DeadInsts.push_back(&MI);
         return true;
       }
@@ -1277,6 +1321,11 @@ public:
       }
 
       if (ConvertOp) {
+        if (ConvertOp == TargetOpcode::G_BITCAST &&
+            MergeI->getOpcode() == TargetOpcode::G_MERGE_VALUES &&
+            !LI.isLegalOrCustom({ConvertOp, {DestTy, MergeSrcTy}}))
+          return false;
+
         Builder.setInstrAndDebugLoc(MI);
 
         for (unsigned Idx = 0; Idx < NumDefs; ++Idx) {

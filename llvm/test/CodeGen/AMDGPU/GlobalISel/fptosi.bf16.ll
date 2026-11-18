@@ -748,7 +748,6 @@ define amdgpu_ps <3 x i16> @fptosi_v3bf16_v3i16_v(<3 x bfloat> %a) {
 ; GFX6-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX6-NEXT:    v_lshlrev_b32_e32 v2, 16, v2
 ; GFX6-NEXT:    v_or_b32_e32 v0, v0, v2
-; GFX6-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX6-NEXT:    v_readfirstlane_b32 s0, v0
 ; GFX6-NEXT:    v_readfirstlane_b32 s1, v1
 ; GFX6-NEXT:    ; return to shader part epilog

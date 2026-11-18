@@ -36,13 +36,8 @@ body: |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $x0
     ; CHECK-NEXT: [[COPY1:%[0-9]+]]:_(i64) = COPY $x2
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i32) = G_TRUNC [[COPY1]](i64)
-    ; CHECK-NEXT: [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[COPY]](i64)
-    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(i32) = G_IMPLICIT_DEF
-    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i64) = G_MERGE_VALUES [[UV]](i32), [[UV1]](i32)
-    ; CHECK-NEXT: [[MV1:%[0-9]+]]:_(i64) = G_MERGE_VALUES [[TRUNC]](i32), [[DEF]](i32)
-    ; CHECK-NEXT: $x0 = COPY [[MV]](i64)
-    ; CHECK-NEXT: $x1 = COPY [[MV1]](i64)
+    ; CHECK-NEXT: $x0 = COPY [[COPY]](i64)
+    ; CHECK-NEXT: $x1 = COPY [[COPY1]](i64)
     %0:_(i64) = COPY $x0
     %1:_(i64) = COPY $x1
     %2:_(i64) = COPY $x2

@@ -574,22 +574,13 @@ define void @undef_lo2_v4f16(<2 x half> %arg0) {
 }
 
 define void @undef_hi_v2i16(i16 %arg0) {
-; GFX8-SDAG-LABEL: undef_hi_v2i16:
-; GFX8-SDAG:       ; %bb.0:
-; GFX8-SDAG-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX8-SDAG-NEXT:    ;;#ASMSTART
-; GFX8-SDAG-NEXT:    ; use v0
-; GFX8-SDAG-NEXT:    ;;#ASMEND
-; GFX8-SDAG-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX8-GISEL-LABEL: undef_hi_v2i16:
-; GFX8-GISEL:       ; %bb.0:
-; GFX8-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX8-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
-; GFX8-GISEL-NEXT:    ;;#ASMSTART
-; GFX8-GISEL-NEXT:    ; use v0
-; GFX8-GISEL-NEXT:    ;;#ASMEND
-; GFX8-GISEL-NEXT:    s_setpc_b64 s[30:31]
+; GFX8-LABEL: undef_hi_v2i16:
+; GFX8:       ; %bb.0:
+; GFX8-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX8-NEXT:    ;;#ASMSTART
+; GFX8-NEXT:    ; use v0
+; GFX8-NEXT:    ;;#ASMEND
+; GFX8-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX9-SDAG-LABEL: undef_hi_v2i16:
 ; GFX9-SDAG:       ; %bb.0:
@@ -641,22 +632,13 @@ define void @undef_hi_v2i16(i16 %arg0) {
 }
 
 define void @undef_hi_v2f16(half %arg0) {
-; GFX8-SDAG-LABEL: undef_hi_v2f16:
-; GFX8-SDAG:       ; %bb.0:
-; GFX8-SDAG-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX8-SDAG-NEXT:    ;;#ASMSTART
-; GFX8-SDAG-NEXT:    ; use v0
-; GFX8-SDAG-NEXT:    ;;#ASMEND
-; GFX8-SDAG-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX8-GISEL-LABEL: undef_hi_v2f16:
-; GFX8-GISEL:       ; %bb.0:
-; GFX8-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX8-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
-; GFX8-GISEL-NEXT:    ;;#ASMSTART
-; GFX8-GISEL-NEXT:    ; use v0
-; GFX8-GISEL-NEXT:    ;;#ASMEND
-; GFX8-GISEL-NEXT:    s_setpc_b64 s[30:31]
+; GFX8-LABEL: undef_hi_v2f16:
+; GFX8:       ; %bb.0:
+; GFX8-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX8-NEXT:    ;;#ASMSTART
+; GFX8-NEXT:    ; use v0
+; GFX8-NEXT:    ;;#ASMEND
+; GFX8-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX9-SDAG-LABEL: undef_hi_v2f16:
 ; GFX9-SDAG:       ; %bb.0:
@@ -898,7 +880,6 @@ define void @undef_hi3_v4i16(i16 %arg0) {
 ; GFX8-GISEL-LABEL: undef_hi3_v4i16:
 ; GFX8-GISEL:       ; %bb.0:
 ; GFX8-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX8-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX8-GISEL-NEXT:    v_mov_b32_e32 v1, 0
 ; GFX8-GISEL-NEXT:    ;;#ASMSTART
 ; GFX8-GISEL-NEXT:    ; use v[0:1]
@@ -966,7 +947,6 @@ define void @undef_hi3_v4f16(half %arg0) {
 ; GFX8-GISEL-LABEL: undef_hi3_v4f16:
 ; GFX8-GISEL:       ; %bb.0:
 ; GFX8-GISEL-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX8-GISEL-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX8-GISEL-NEXT:    v_mov_b32_e32 v1, 0
 ; GFX8-GISEL-NEXT:    ;;#ASMSTART
 ; GFX8-GISEL-NEXT:    ; use v[0:1]

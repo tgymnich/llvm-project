@@ -559,17 +559,14 @@ body:             |
     ; CHECK-I-NEXT: %xhi:_(s64) = COPY $x11
     ; CHECK-I-NEXT: %ylo:_(s64) = COPY $x12
     ; CHECK-I-NEXT: %yhi:_(s64) = COPY $x13
-    ; CHECK-I-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 -1
-    ; CHECK-I-NEXT: [[C1:%[0-9]+]]:_(s64) = G_CONSTANT i64 255
-    ; CHECK-I-NEXT: [[AND:%[0-9]+]]:_(s64) = G_AND %xlo, [[C]]
-    ; CHECK-I-NEXT: [[AND1:%[0-9]+]]:_(s64) = G_AND %xhi, [[C1]]
-    ; CHECK-I-NEXT: [[AND2:%[0-9]+]]:_(s64) = G_AND %ylo, [[C]]
-    ; CHECK-I-NEXT: [[AND3:%[0-9]+]]:_(s64) = G_AND %yhi, [[C1]]
+    ; CHECK-I-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 255
+    ; CHECK-I-NEXT: [[AND:%[0-9]+]]:_(s64) = G_AND %xhi, [[C]]
+    ; CHECK-I-NEXT: [[AND1:%[0-9]+]]:_(s64) = G_AND %yhi, [[C]]
     ; CHECK-I-NEXT: ADJCALLSTACKDOWN 0, 0, implicit-def $x2, implicit $x2
-    ; CHECK-I-NEXT: $x10 = COPY [[AND]](s64)
-    ; CHECK-I-NEXT: $x11 = COPY [[AND1]](s64)
-    ; CHECK-I-NEXT: $x12 = COPY [[AND2]](s64)
-    ; CHECK-I-NEXT: $x13 = COPY [[AND3]](s64)
+    ; CHECK-I-NEXT: $x10 = COPY %xlo(s64)
+    ; CHECK-I-NEXT: $x11 = COPY [[AND]](s64)
+    ; CHECK-I-NEXT: $x12 = COPY %ylo(s64)
+    ; CHECK-I-NEXT: $x13 = COPY [[AND1]](s64)
     ; CHECK-I-NEXT: PseudoCALL target-flags(riscv-call) &__udivti3, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit $x11, implicit $x12, implicit $x13, implicit-def $x10, implicit-def $x11
     ; CHECK-I-NEXT: ADJCALLSTACKUP 0, 0, implicit-def $x2, implicit $x2
     ; CHECK-I-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $x10
@@ -585,17 +582,14 @@ body:             |
     ; CHECK-M-NEXT: %xhi:_(s64) = COPY $x11
     ; CHECK-M-NEXT: %ylo:_(s64) = COPY $x12
     ; CHECK-M-NEXT: %yhi:_(s64) = COPY $x13
-    ; CHECK-M-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 -1
-    ; CHECK-M-NEXT: [[C1:%[0-9]+]]:_(s64) = G_CONSTANT i64 255
-    ; CHECK-M-NEXT: [[AND:%[0-9]+]]:_(s64) = G_AND %xlo, [[C]]
-    ; CHECK-M-NEXT: [[AND1:%[0-9]+]]:_(s64) = G_AND %xhi, [[C1]]
-    ; CHECK-M-NEXT: [[AND2:%[0-9]+]]:_(s64) = G_AND %ylo, [[C]]
-    ; CHECK-M-NEXT: [[AND3:%[0-9]+]]:_(s64) = G_AND %yhi, [[C1]]
+    ; CHECK-M-NEXT: [[C:%[0-9]+]]:_(s64) = G_CONSTANT i64 255
+    ; CHECK-M-NEXT: [[AND:%[0-9]+]]:_(s64) = G_AND %xhi, [[C]]
+    ; CHECK-M-NEXT: [[AND1:%[0-9]+]]:_(s64) = G_AND %yhi, [[C]]
     ; CHECK-M-NEXT: ADJCALLSTACKDOWN 0, 0, implicit-def $x2, implicit $x2
-    ; CHECK-M-NEXT: $x10 = COPY [[AND]](s64)
-    ; CHECK-M-NEXT: $x11 = COPY [[AND1]](s64)
-    ; CHECK-M-NEXT: $x12 = COPY [[AND2]](s64)
-    ; CHECK-M-NEXT: $x13 = COPY [[AND3]](s64)
+    ; CHECK-M-NEXT: $x10 = COPY %xlo(s64)
+    ; CHECK-M-NEXT: $x11 = COPY [[AND]](s64)
+    ; CHECK-M-NEXT: $x12 = COPY %ylo(s64)
+    ; CHECK-M-NEXT: $x13 = COPY [[AND1]](s64)
     ; CHECK-M-NEXT: PseudoCALL target-flags(riscv-call) &__udivti3, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit $x11, implicit $x12, implicit $x13, implicit-def $x10, implicit-def $x11
     ; CHECK-M-NEXT: ADJCALLSTACKUP 0, 0, implicit-def $x2, implicit $x2
     ; CHECK-M-NEXT: [[COPY:%[0-9]+]]:_(i64) = COPY $x10

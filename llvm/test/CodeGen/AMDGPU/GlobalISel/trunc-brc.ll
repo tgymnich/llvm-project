@@ -195,14 +195,15 @@ define amdgpu_ps void @s_trunc_i192_to_i160(ptr addrspace(1) inreg %src, ptr add
   ; GFX-950-NEXT:   [[REG_SEQUENCE1:%[0-9]+]]:sreg_64_xexec_xnull = REG_SEQUENCE [[COPY2]], %subreg.sub0, [[COPY3]], %subreg.sub1
   ; GFX-950-NEXT:   early-clobber %18:sgpr_128 = S_LOAD_DWORDX4_IMM_ec [[REG_SEQUENCE]], 0, 0 :: ("amdgpu-noclobber" load (<4 x i32>) from %ir.src, align 8, addrspace 1)
   ; GFX-950-NEXT:   [[S_LOAD_DWORDX2_IMM:%[0-9]+]]:sreg_64_xexec = S_LOAD_DWORDX2_IMM [[REG_SEQUENCE]], 16, 0 :: ("amdgpu-noclobber" load (<2 x i32>) from %ir.src + 16, addrspace 1)
-  ; GFX-950-NEXT:   [[COPY4:%[0-9]+]]:sreg_32 = COPY %18.sub0
-  ; GFX-950-NEXT:   [[COPY5:%[0-9]+]]:sreg_32 = COPY %18.sub1
-  ; GFX-950-NEXT:   [[COPY6:%[0-9]+]]:sreg_32 = COPY %18.sub2
-  ; GFX-950-NEXT:   [[COPY7:%[0-9]+]]:sreg_32 = COPY %18.sub3
-  ; GFX-950-NEXT:   [[COPY8:%[0-9]+]]:sreg_32 = COPY [[S_LOAD_DWORDX2_IMM]].sub0
-  ; GFX-950-NEXT:   [[COPY9:%[0-9]+]]:sreg_32 = COPY [[S_LOAD_DWORDX2_IMM]].sub1
-  ; GFX-950-NEXT:   [[REG_SEQUENCE2:%[0-9]+]]:sgpr_192 = REG_SEQUENCE [[COPY4]], %subreg.sub0, [[COPY5]], %subreg.sub1, [[COPY6]], %subreg.sub2, [[COPY7]], %subreg.sub3, [[COPY8]], %subreg.sub4, [[COPY9]], %subreg.sub5
-  ; GFX-950-NEXT:   [[COPY10:%[0-9]+]]:sgpr_160 = COPY [[REG_SEQUENCE2]].sub0_sub1_sub2_sub3_sub4, debug-location !4
+  ; GFX-950-NEXT:   [[COPY4:%[0-9]+]]:sreg_32 = COPY [[S_LOAD_DWORDX2_IMM]].sub0
+  ; GFX-950-NEXT:   [[COPY5:%[0-9]+]]:sreg_32 = COPY [[S_LOAD_DWORDX2_IMM]].sub1
+  ; GFX-950-NEXT:   [[COPY6:%[0-9]+]]:vreg_128_align2 = COPY %18
+  ; GFX-950-NEXT:   [[V_MOV_B32_e32_:%[0-9]+]]:vgpr_32 = V_MOV_B32_e32 0, implicit $exec
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORDX4_SADDR [[V_MOV_B32_e32_]], [[COPY6]], [[REG_SEQUENCE1]], 0, 0, implicit $exec :: (store (<4 x i32>) into %ir.dst, align 8, addrspace 1)
+  ; GFX-950-NEXT:   [[COPY7:%[0-9]+]]:vgpr_32 = COPY [[COPY4]]
+  ; GFX-950-NEXT:   [[V_MOV_B32_e32_1:%[0-9]+]]:vgpr_32 = V_MOV_B32_e32 0, implicit $exec
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORD_SADDR [[V_MOV_B32_e32_1]], [[COPY7]], [[REG_SEQUENCE1]], 16, 0, implicit $exec :: (store (i32) into %ir.dst + 16, align 8, addrspace 1)
+  ; GFX-950-NEXT:   S_ENDPGM 0
   %val = load i192, ptr addrspace(1) %src
   %trunc = trunc i192 %val to i160, !dbg !4
   store i160 %trunc, ptr addrspace(1) %dst
@@ -222,14 +223,11 @@ define void @v_trunc_i192_to_i160(ptr addrspace(1) %src, ptr addrspace(1) %dst) 
   ; GFX-950-NEXT:   [[REG_SEQUENCE1:%[0-9]+]]:vreg_64_align2 = REG_SEQUENCE [[COPY2]], %subreg.sub0, [[COPY3]], %subreg.sub1
   ; GFX-950-NEXT:   [[GLOBAL_LOAD_DWORDX4_:%[0-9]+]]:vreg_128_align2 = GLOBAL_LOAD_DWORDX4 [[REG_SEQUENCE]], 0, 0, implicit $exec :: (load (<4 x i32>) from %ir.src, align 8, addrspace 1)
   ; GFX-950-NEXT:   [[GLOBAL_LOAD_DWORDX2_:%[0-9]+]]:vreg_64_align2 = GLOBAL_LOAD_DWORDX2 [[REG_SEQUENCE]], 16, 0, implicit $exec :: (load (<2 x i32>) from %ir.src + 16, addrspace 1)
-  ; GFX-950-NEXT:   [[COPY4:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub0
-  ; GFX-950-NEXT:   [[COPY5:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub1
-  ; GFX-950-NEXT:   [[COPY6:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub2
-  ; GFX-950-NEXT:   [[COPY7:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub3
-  ; GFX-950-NEXT:   [[COPY8:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX2_]].sub0
-  ; GFX-950-NEXT:   [[COPY9:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX2_]].sub1
-  ; GFX-950-NEXT:   [[REG_SEQUENCE2:%[0-9]+]]:vreg_192_align2 = REG_SEQUENCE [[COPY4]], %subreg.sub0, [[COPY5]], %subreg.sub1, [[COPY6]], %subreg.sub2, [[COPY7]], %subreg.sub3, [[COPY8]], %subreg.sub4, [[COPY9]], %subreg.sub5
-  ; GFX-950-NEXT:   [[COPY10:%[0-9]+]]:vreg_160_align2 = COPY [[REG_SEQUENCE2]].sub0_sub1_sub2_sub3_sub4, debug-location !4
+  ; GFX-950-NEXT:   [[COPY4:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX2_]].sub0
+  ; GFX-950-NEXT:   [[COPY5:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX2_]].sub1
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORDX4 [[REG_SEQUENCE1]], [[GLOBAL_LOAD_DWORDX4_]], 0, 0, implicit $exec :: (store (<4 x i32>) into %ir.dst, align 8, addrspace 1)
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORD [[REG_SEQUENCE1]], [[COPY4]], 16, 0, implicit $exec :: (store (i32) into %ir.dst + 16, align 8, addrspace 1)
+  ; GFX-950-NEXT:   SI_RETURN
   %val = load i192, ptr addrspace(1) %src
   %trunc = trunc i192 %val to i160, !dbg !4
   store i160 %trunc, ptr addrspace(1) %dst
@@ -251,15 +249,16 @@ define amdgpu_ps void @s_trunc_i224_to_i192(ptr addrspace(1) inreg %src, ptr add
   ; GFX-950-NEXT:   [[REG_SEQUENCE1:%[0-9]+]]:sreg_64_xexec_xnull = REG_SEQUENCE [[COPY2]], %subreg.sub0, [[COPY3]], %subreg.sub1
   ; GFX-950-NEXT:   early-clobber %16:sgpr_128 = S_LOAD_DWORDX4_IMM_ec [[REG_SEQUENCE]], 0, 0 :: ("amdgpu-noclobber" load (<4 x i32>) from %ir.src, align 8, addrspace 1)
   ; GFX-950-NEXT:   [[S_LOAD_DWORDX2_IMM:%[0-9]+]]:sreg_64_xexec = S_LOAD_DWORDX2_IMM [[REG_SEQUENCE]], 16, 0 :: ("amdgpu-noclobber" load (<2 x s32>) from %ir.src + 16, addrspace 1)
-  ; GFX-950-NEXT:   [[S_LOAD_DWORD_IMM:%[0-9]+]]:sreg_32_xm0_xexec = S_LOAD_DWORD_IMM [[REG_SEQUENCE]], 24, 0 :: ("amdgpu-noclobber" load (s32) from %ir.src + 24, align 8, addrspace 1)
   ; GFX-950-NEXT:   [[COPY4:%[0-9]+]]:sreg_32 = COPY [[S_LOAD_DWORDX2_IMM]].sub0
   ; GFX-950-NEXT:   [[COPY5:%[0-9]+]]:sreg_32 = COPY [[S_LOAD_DWORDX2_IMM]].sub1
-  ; GFX-950-NEXT:   [[COPY6:%[0-9]+]]:sreg_32 = COPY %16.sub0
-  ; GFX-950-NEXT:   [[COPY7:%[0-9]+]]:sreg_32 = COPY %16.sub1
-  ; GFX-950-NEXT:   [[COPY8:%[0-9]+]]:sreg_32 = COPY %16.sub2
-  ; GFX-950-NEXT:   [[COPY9:%[0-9]+]]:sreg_32 = COPY %16.sub3
-  ; GFX-950-NEXT:   [[REG_SEQUENCE2:%[0-9]+]]:sgpr_224 = REG_SEQUENCE [[COPY6]], %subreg.sub0, [[COPY7]], %subreg.sub1, [[COPY8]], %subreg.sub2, [[COPY9]], %subreg.sub3, [[COPY4]], %subreg.sub4, [[COPY5]], %subreg.sub5, [[S_LOAD_DWORD_IMM]], %subreg.sub6
-  ; GFX-950-NEXT:   [[COPY10:%[0-9]+]]:sgpr_192 = COPY [[REG_SEQUENCE2]].sub0_sub1_sub2_sub3_sub4_sub5, debug-location !4
+  ; GFX-950-NEXT:   [[REG_SEQUENCE2:%[0-9]+]]:sreg_64 = REG_SEQUENCE [[COPY4]], %subreg.sub0, [[COPY5]], %subreg.sub1
+  ; GFX-950-NEXT:   [[COPY6:%[0-9]+]]:vreg_128_align2 = COPY %16
+  ; GFX-950-NEXT:   [[V_MOV_B32_e32_:%[0-9]+]]:vgpr_32 = V_MOV_B32_e32 0, implicit $exec
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORDX4_SADDR [[V_MOV_B32_e32_]], [[COPY6]], [[REG_SEQUENCE1]], 0, 0, implicit $exec :: (store (<4 x i32>) into %ir.dst, align 8, addrspace 1)
+  ; GFX-950-NEXT:   [[COPY7:%[0-9]+]]:vreg_64_align2 = COPY [[REG_SEQUENCE2]]
+  ; GFX-950-NEXT:   [[V_MOV_B32_e32_1:%[0-9]+]]:vgpr_32 = V_MOV_B32_e32 0, implicit $exec
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORDX2_SADDR [[V_MOV_B32_e32_1]], [[COPY7]], [[REG_SEQUENCE1]], 16, 0, implicit $exec :: (store (<2 x i32>) into %ir.dst + 16, addrspace 1)
+  ; GFX-950-NEXT:   S_ENDPGM 0
   %val = load i224, ptr addrspace(1) %src
   %trunc = trunc i224 %val to i192, !dbg !4
   store i192 %trunc, ptr addrspace(1) %dst
@@ -279,15 +278,13 @@ define void @v_trunc_i224_to_i192(ptr addrspace(1) %src, ptr addrspace(1) %dst) 
   ; GFX-950-NEXT:   [[REG_SEQUENCE1:%[0-9]+]]:vreg_64_align2 = REG_SEQUENCE [[COPY2]], %subreg.sub0, [[COPY3]], %subreg.sub1
   ; GFX-950-NEXT:   [[GLOBAL_LOAD_DWORDX4_:%[0-9]+]]:vreg_128_align2 = GLOBAL_LOAD_DWORDX4 [[REG_SEQUENCE]], 0, 0, implicit $exec :: (load (<4 x i32>) from %ir.src, align 8, addrspace 1)
   ; GFX-950-NEXT:   [[GLOBAL_LOAD_DWORDX3_:%[0-9]+]]:vreg_96_align2 = GLOBAL_LOAD_DWORDX3 [[REG_SEQUENCE]], 16, 0, implicit $exec :: (load (<3 x i32>) from %ir.src + 16, align 8, addrspace 1)
-  ; GFX-950-NEXT:   [[COPY4:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub0
-  ; GFX-950-NEXT:   [[COPY5:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub1
-  ; GFX-950-NEXT:   [[COPY6:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub2
-  ; GFX-950-NEXT:   [[COPY7:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX4_]].sub3
-  ; GFX-950-NEXT:   [[COPY8:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX3_]].sub0
-  ; GFX-950-NEXT:   [[COPY9:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX3_]].sub1
-  ; GFX-950-NEXT:   [[COPY10:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX3_]].sub2
-  ; GFX-950-NEXT:   [[REG_SEQUENCE2:%[0-9]+]]:vreg_224_align2 = REG_SEQUENCE [[COPY4]], %subreg.sub0, [[COPY5]], %subreg.sub1, [[COPY6]], %subreg.sub2, [[COPY7]], %subreg.sub3, [[COPY8]], %subreg.sub4, [[COPY9]], %subreg.sub5, [[COPY10]], %subreg.sub6
-  ; GFX-950-NEXT:   [[COPY11:%[0-9]+]]:vreg_192_align2 = COPY [[REG_SEQUENCE2]].sub0_sub1_sub2_sub3_sub4_sub5, debug-location !4
+  ; GFX-950-NEXT:   [[COPY4:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX3_]].sub0
+  ; GFX-950-NEXT:   [[COPY5:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX3_]].sub1
+  ; GFX-950-NEXT:   [[COPY6:%[0-9]+]]:vgpr_32 = COPY [[GLOBAL_LOAD_DWORDX3_]].sub2
+  ; GFX-950-NEXT:   [[REG_SEQUENCE2:%[0-9]+]]:vreg_64_align2 = REG_SEQUENCE [[COPY4]], %subreg.sub0, [[COPY5]], %subreg.sub1
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORDX4 [[REG_SEQUENCE1]], [[GLOBAL_LOAD_DWORDX4_]], 0, 0, implicit $exec :: (store (<4 x i32>) into %ir.dst, align 8, addrspace 1)
+  ; GFX-950-NEXT:   GLOBAL_STORE_DWORDX2 [[REG_SEQUENCE1]], [[REG_SEQUENCE2]], 16, 0, implicit $exec :: (store (<2 x i32>) into %ir.dst + 16, addrspace 1)
+  ; GFX-950-NEXT:   SI_RETURN
   %val = load i224, ptr addrspace(1) %src
   %trunc = trunc i224 %val to i192, !dbg !4
   store i192 %trunc, ptr addrspace(1) %dst

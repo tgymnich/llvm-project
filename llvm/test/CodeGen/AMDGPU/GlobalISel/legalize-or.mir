@@ -548,12 +548,10 @@ body: |
     ; CHECK-NEXT: [[SHL9:%[0-9]+]]:_(i32) = G_SHL [[AND2]], [[C1]](i32)
     ; CHECK-NEXT: [[OR11:%[0-9]+]]:_(i32) = G_OR [[AND1]], [[SHL9]]
     ; CHECK-NEXT: [[BITCAST12:%[0-9]+]]:_(<2 x s16>) = G_BITCAST [[OR11]](i32)
+    ; CHECK-NEXT: [[BITCAST13:%[0-9]+]]:_(<2 x s16>) = G_BITCAST [[LSHR1]](i32)
     ; CHECK-NEXT: [[SHL10:%[0-9]+]]:_(i32) = G_SHL [[C]], [[C1]](i32)
-    ; CHECK-NEXT: [[OR12:%[0-9]+]]:_(i32) = G_OR [[LSHR1]], [[SHL10]]
-    ; CHECK-NEXT: [[BITCAST13:%[0-9]+]]:_(<2 x s16>) = G_BITCAST [[OR12]](i32)
-    ; CHECK-NEXT: [[SHL11:%[0-9]+]]:_(i32) = G_SHL [[C]], [[C1]](i32)
-    ; CHECK-NEXT: [[OR13:%[0-9]+]]:_(i32) = G_OR [[C]], [[SHL11]]
-    ; CHECK-NEXT: [[BITCAST14:%[0-9]+]]:_(<2 x s16>) = G_BITCAST [[OR13]](i32)
+    ; CHECK-NEXT: [[OR12:%[0-9]+]]:_(i32) = G_OR [[C]], [[SHL10]]
+    ; CHECK-NEXT: [[BITCAST14:%[0-9]+]]:_(<2 x s16>) = G_BITCAST [[OR12]](i32)
     ; CHECK-NEXT: [[CONCAT_VECTORS4:%[0-9]+]]:_(<8 x s16>) = G_CONCAT_VECTORS [[BITCAST11]](<2 x s16>), [[BITCAST12]](<2 x s16>), [[BITCAST13]](<2 x s16>), [[BITCAST14]](<2 x s16>)
     ; CHECK-NEXT: $vgpr0_vgpr1_vgpr2_vgpr3 = COPY [[CONCAT_VECTORS4]](<8 x s16>)
     %0:_(<5 x s16>) = G_IMPLICIT_DEF

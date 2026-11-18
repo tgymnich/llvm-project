@@ -159,6 +159,7 @@ body:             |
     ; LIBCALL-NEXT: ADJCALLSTACKUP 0, 0, implicit-def $x2, implicit $x2
     ; LIBCALL-NEXT: [[COPY2:%[0-9]+]]:_(i32) = COPY $x10
     ; LIBCALL-NEXT: [[COPY3:%[0-9]+]]:_(i32) = COPY $x11
+    ; LIBCALL-NEXT: [[COPY4:%[0-9]+]]:_(s32) = COPY [[COPY2]](i32)
     ; LIBCALL-NEXT: [[C1:%[0-9]+]]:_(s32) = G_CONSTANT i32 31
     ; LIBCALL-NEXT: [[ASHR2:%[0-9]+]]:_(s32) = G_ASHR [[COPY2]], [[C1]](s32)
     ; LIBCALL-NEXT: [[C2:%[0-9]+]]:_(s32) = G_CONSTANT i32 0
@@ -166,7 +167,7 @@ body:             |
     ; LIBCALL-NEXT: [[XOR1:%[0-9]+]]:_(s32) = G_XOR [[COPY3]], [[ASHR2]]
     ; LIBCALL-NEXT: [[OR:%[0-9]+]]:_(s32) = G_OR [[XOR]], [[XOR1]]
     ; LIBCALL-NEXT: [[ICMP:%[0-9]+]]:_(s32) = G_ICMP intpred(ne), [[OR]](s32), [[C2]]
-    ; LIBCALL-NEXT: $x10 = COPY [[COPY2]](i32)
+    ; LIBCALL-NEXT: $x10 = COPY [[COPY4]](s32)
     ; LIBCALL-NEXT: $x11 = COPY [[ICMP]](s32)
     ; LIBCALL-NEXT: PseudoRET implicit $x10, implicit $x11
     %0:_(s32) = COPY $x10
@@ -316,6 +317,7 @@ body:             |
     ; LIBCALL-NEXT: ADJCALLSTACKUP 0, 0, implicit-def $x2, implicit $x2
     ; LIBCALL-NEXT: [[COPY2:%[0-9]+]]:_(i32) = COPY $x10
     ; LIBCALL-NEXT: [[COPY3:%[0-9]+]]:_(i32) = COPY $x11
+    ; LIBCALL-NEXT: [[COPY4:%[0-9]+]]:_(s32) = COPY [[COPY2]](i32)
     ; LIBCALL-NEXT: [[C1:%[0-9]+]]:_(s32) = G_CONSTANT i32 -1
     ; LIBCALL-NEXT: [[AND:%[0-9]+]]:_(s32) = G_AND [[COPY2]], [[C1]]
     ; LIBCALL-NEXT: [[AND1:%[0-9]+]]:_(s32) = G_AND [[COPY3]], [[C]]
@@ -323,7 +325,7 @@ body:             |
     ; LIBCALL-NEXT: [[XOR1:%[0-9]+]]:_(s32) = G_XOR [[COPY3]], [[AND1]]
     ; LIBCALL-NEXT: [[OR:%[0-9]+]]:_(s32) = G_OR [[XOR]], [[XOR1]]
     ; LIBCALL-NEXT: [[ICMP:%[0-9]+]]:_(s32) = G_ICMP intpred(ne), [[OR]](s32), [[C]]
-    ; LIBCALL-NEXT: $x10 = COPY [[COPY2]](i32)
+    ; LIBCALL-NEXT: $x10 = COPY [[COPY4]](s32)
     ; LIBCALL-NEXT: $x11 = COPY [[ICMP]](s32)
     ; LIBCALL-NEXT: PseudoRET implicit $x10, implicit $x11
     %0:_(s32) = COPY $x10

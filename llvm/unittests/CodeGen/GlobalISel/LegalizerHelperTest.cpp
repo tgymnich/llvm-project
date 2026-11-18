@@ -3743,6 +3743,168 @@ TEST_F(AArch64GISelMITest, WidenUnmerge) {
   EXPECT_TRUE(CheckMachineFunction(*MF, CheckStr)) << *MF;
 }
 
+TEST_F(AArch64GISelMITest, ExtendLowTypedUnmerge) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  DefineLegalizerInfo(
+      A, { getActionDefinitionsBuilder({G_AND, G_CONSTANT}).alwaysLegal(); });
+  AInfo Info(MF->getSubtarget());
+  const LLT I32 = LLT::integer(32);
+  const LLT Types[] = {LLT::integer(16), LLT::float16(), LLT::bfloat16()};
+  GISelObserverWrapper Observer;
+  LegalizationArtifactCombiner Combiner(B, *MRI, Info);
+  for (LLT Ty : Types) {
+    for (unsigned Opcode : {TargetOpcode::G_ANYEXT, TargetOpcode::G_ZEXT}) {
+      B.setInsertPt(*EntryMBB, EntryMBB->end());
+      auto Source = B.buildFreeze(I32, B.buildUndef(I32));
+      auto Unmerge = B.buildUnmerge(Ty, Source);
+      auto Ext = B.buildInstr(Opcode, {I32}, {Unmerge.getReg(0)});
+      auto Use = B.buildFreeze(I32, Ext);
+      SmallVector<MachineInstr *> Dead;
+      ASSERT_TRUE(Combiner.tryCombineInstruction(*Ext, Dead, Observer));
+      for (MachineInstr *MI : Dead)
+        MI->eraseFromParent();
+      Register Result = Use->getOperand(1).getReg();
+      if (Opcode == TargetOpcode::G_ANYEXT) {
+        EXPECT_EQ(Source.getReg(0), Result);
+      } else {
+        MachineInstr *And = MRI->getVRegDef(Result);
+        ASSERT_EQ(TargetOpcode::G_AND, And->getOpcode());
+        EXPECT_EQ(Source.getReg(0), And->getOperand(1).getReg());
+        EXPECT_EQ(65535u,
+                  getIConstantFromReg(And->getOperand(2).getReg(), *MRI));
+      }
+    }
+  }
+}
+
+TEST_F(AArch64GISelMITest, MergeThroughTypedPadding) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  DefineLegalizerInfo(A, {
+    getActionDefinitionsBuilder(G_BITCAST).legalIf([](const LegalityQuery &Q) {
+      return Q.Types[0].isVector() && Q.Types[1].isVector();
+    });
+  });
+  AInfo Info(MF->getSubtarget());
+  const LLT I16 = LLT::integer(16);
+  const LLT I32 = LLT::integer(32);
+  const LLT V4I16 = LLT::fixed_vector(4, I16);
+  const LLT Types[] = {LLT::float16(), LLT::bfloat16()};
+  GISelObserverWrapper Observer;
+
+  for (LLT Ty : Types) {
+    B.setInsertPt(*EntryMBB, EntryMBB->end());
+    auto Src = B.buildFreeze(V4I16, B.buildUndef(V4I16));
+    auto Parts = B.buildUnmerge(I16, Src);
+    SmallVector<Register> Elements;
+    for (unsigned I = 0; I != 4; ++I) {
+      auto Padding = B.buildUndef(I16);
+      auto Merge =
+          B.buildMergeValues(I32, {Parts.getReg(I), Padding.getReg(0)});
+      auto Unmerge = B.buildUnmerge(Ty, Merge);
+      Elements.push_back(Unmerge.getReg(0));
+    }
+    LLT VectorTy = LLT::fixed_vector(4, Ty);
+    auto Vector = B.buildBuildVector(VectorTy, Elements);
+    Register Dst = Vector.getReg(0);
+    LegalizationArtifactCombiner Combiner(B, *MRI, Info);
+    SmallVector<MachineInstr *> Dead;
+    ASSERT_TRUE(Combiner.tryCombineInstruction(*Vector, Dead, Observer));
+    for (MachineInstr *MI : Dead)
+      MI->eraseFromParent();
+    MachineInstr *Cast = MRI->getVRegDef(Dst);
+    ASSERT_EQ(TargetOpcode::G_BITCAST, Cast->getOpcode());
+    EXPECT_EQ(Src.getReg(0), Cast->getOperand(1).getReg());
+    EXPECT_EQ(VectorTy.getUniqueRAWLLTData(),
+              MRI->getType(Dst).getUniqueRAWLLTData());
+
+    B.setInsertPt(*EntryMBB, EntryMBB->end());
+    auto Wide = B.buildFreeze(I32, B.buildUndef(I32));
+    auto Low = B.buildTrunc(Ty, Wide);
+    auto Padding = B.buildUndef(Ty);
+    auto Merge = B.buildMergeValues(I32, {Low.getReg(0), Padding.getReg(0)});
+    auto Use = B.buildFreeze(I32, Merge);
+    Dead.clear();
+    ASSERT_TRUE(Combiner.tryCombineInstruction(*Merge, Dead, Observer));
+    for (MachineInstr *MI : Dead)
+      MI->eraseFromParent();
+    EXPECT_EQ(Wide.getReg(0), Use->getOperand(1).getReg());
+  }
+}
+
+TEST_F(AArch64GISelMITest, WidenBitcastPreservesTypes) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  DefineLegalizerInfo(ALegal, {
+    getActionDefinitionsBuilder({G_MERGE_VALUES, G_UNMERGE_VALUES})
+        .alwaysLegal();
+  });
+  DefineLegalizerInfo(ACustom, {
+    getActionDefinitionsBuilder({G_MERGE_VALUES, G_UNMERGE_VALUES}).custom();
+  });
+  DefineLegalizerInfo(ALower, {
+    getActionDefinitionsBuilder({G_MERGE_VALUES, G_UNMERGE_VALUES}).lower();
+  });
+  ALegalInfo LegalInfo(MF->getSubtarget());
+  ACustomInfo CustomInfo(MF->getSubtarget());
+  ALowerInfo LowerInfo(MF->getSubtarget());
+  const LegalizerInfo *Infos[] = {&LegalInfo, &CustomInfo, &LowerInfo};
+  const LLT I32 = LLT::integer(32);
+  const LLT Types[] = {LLT::integer(16), LLT::float16(), LLT::bfloat16()};
+  DummyGISelObserver Observer;
+
+  for (const LegalizerInfo *Info : Infos) {
+    LegalizerHelper Helper(*MF, *Info, Observer, B);
+    for (LLT SrcTy : Types) {
+      for (LLT DstTy : Types) {
+        if (SrcTy == DstTy)
+          continue;
+        B.setInsertPt(*EntryMBB, EntryMBB->end());
+        Register Src = B.buildUndef(SrcTy).getReg(0);
+        auto Cast = B.buildBitcast(DstTy, Src);
+        Register Dst = Cast.getReg(0);
+        B.setInstr(*Cast);
+        ASSERT_EQ(LegalizerHelper::Legalized,
+                  Helper.widenScalar(*Cast, 0, I32));
+        B.setInstr(*Cast);
+        ASSERT_EQ(LegalizerHelper::Legalized,
+                  Helper.widenScalar(*Cast, 1, I32));
+
+        MachineInstr *Narrow = MRI->getVRegDef(Dst);
+        if (Info == &LowerInfo) {
+          ASSERT_EQ(TargetOpcode::G_TRUNC, Narrow->getOpcode());
+          ASSERT_EQ(
+              TargetOpcode::G_ANYEXT,
+              MRI->getVRegDef(Narrow->getOperand(1).getReg())->getOpcode());
+          continue;
+        }
+        ASSERT_EQ(TargetOpcode::G_UNMERGE_VALUES, Narrow->getOpcode());
+        EXPECT_EQ(
+            DstTy.getUniqueRAWLLTData(),
+            MRI->getType(Narrow->getOperand(1).getReg()).getUniqueRAWLLTData());
+        Register Wide = Narrow->getOperand(2).getReg();
+        EXPECT_EQ(I32.getUniqueRAWLLTData(),
+                  MRI->getType(Wide).getUniqueRAWLLTData());
+        MachineInstr *Merge = MRI->getVRegDef(Wide);
+        ASSERT_EQ(TargetOpcode::G_MERGE_VALUES, Merge->getOpcode());
+        EXPECT_EQ(Src, Merge->getOperand(1).getReg());
+        Register Padding = Merge->getOperand(2).getReg();
+        EXPECT_EQ(SrcTy.getUniqueRAWLLTData(),
+                  MRI->getType(Padding).getUniqueRAWLLTData());
+        EXPECT_EQ(TargetOpcode::G_IMPLICIT_DEF,
+                  MRI->getVRegDef(Padding)->getOpcode());
+      }
+    }
+  }
+}
+
 TEST_F(AArch64GISelMITest, TruncMergePreservesTypes) {
   setUp();
   if (!TM)
