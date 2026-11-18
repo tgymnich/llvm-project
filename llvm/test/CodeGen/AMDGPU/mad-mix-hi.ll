@@ -255,7 +255,7 @@ define <2 x half> @v_mad_mixhi_f16_f16lo_f16lo_f16lo_reglo(half %src0, half %src
 ; GISEL-CI-NEXT:    v_cvt_f32_f16_e32 v2, v2
 ; GISEL-CI-NEXT:    v_mac_f32_e32 v2, v0, v1
 ; GISEL-CI-NEXT:    v_cvt_f16_f32_e32 v0, v2
-; GISEL-CI-NEXT:    v_and_b32_e32 v1, 0xffff, v3
+; GISEL-CI-NEXT:    v_bfe_u32 v1, v3, 0, 16
 ; GISEL-CI-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GISEL-CI-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GISEL-CI-NEXT:    v_or_b32_e32 v0, v1, v0
@@ -279,12 +279,12 @@ define i32 @v_mad_mixhi_f16_f16lo_f16lo_f16lo_intpack(half %src0, half %src1, ha
 ; SDAG-GFX11-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; SDAG-GFX11-NEXT:    s_setpc_b64 s[30:31]
 ;
-; GFX9-LABEL: v_mad_mixhi_f16_f16lo_f16lo_f16lo_intpack:
-; GFX9:       ; %bb.0:
-; GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX9-NEXT:    v_mad_mixlo_f16 v0, v0, v1, v2 op_sel_hi:[1,1,1]
-; GFX9-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
-; GFX9-NEXT:    s_setpc_b64 s[30:31]
+; SDAG-GFX9-LABEL: v_mad_mixhi_f16_f16lo_f16lo_f16lo_intpack:
+; SDAG-GFX9:       ; %bb.0:
+; SDAG-GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; SDAG-GFX9-NEXT:    v_mad_mixlo_f16 v0, v0, v1, v2 op_sel_hi:[1,1,1]
+; SDAG-GFX9-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
+; SDAG-GFX9-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; VI-LABEL: v_mad_mixhi_f16_f16lo_f16lo_f16lo_intpack:
 ; VI:       ; %bb.0:
@@ -320,9 +320,18 @@ define i32 @v_mad_mixhi_f16_f16lo_f16lo_f16lo_intpack(half %src0, half %src1, ha
 ; GISEL-GFX11-FAKE16:       ; %bb.0:
 ; GISEL-GFX11-FAKE16-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GISEL-GFX11-FAKE16-NEXT:    v_fma_mixlo_f16 v0, v0, v1, v2 op_sel_hi:[1,1,1]
-; GISEL-GFX11-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1)
+; GISEL-GFX11-FAKE16-NEXT:    s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
+; GISEL-GFX11-FAKE16-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GISEL-GFX11-FAKE16-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GISEL-GFX11-FAKE16-NEXT:    s_setpc_b64 s[30:31]
+;
+; GISEL-GFX9-LABEL: v_mad_mixhi_f16_f16lo_f16lo_f16lo_intpack:
+; GISEL-GFX9:       ; %bb.0:
+; GISEL-GFX9-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GISEL-GFX9-NEXT:    v_mad_mixlo_f16 v0, v0, v1, v2 op_sel_hi:[1,1,1]
+; GISEL-GFX9-NEXT:    v_and_b32_e32 v0, 0xffff, v0
+; GISEL-GFX9-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
+; GISEL-GFX9-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GISEL-CI-LABEL: v_mad_mixhi_f16_f16lo_f16lo_f16lo_intpack:
 ; GISEL-CI:       ; %bb.0:
@@ -816,7 +825,7 @@ define <2 x half> @mixhi_fptrunc_f16_denormals(float %a, float %b, half %lo) #2 
 ; GISEL-CI-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GISEL-CI-NEXT:    v_mul_f32_e32 v0, v0, v1
 ; GISEL-CI-NEXT:    v_cvt_f16_f32_e32 v0, v0
-; GISEL-CI-NEXT:    v_and_b32_e32 v1, 0xffff, v2
+; GISEL-CI-NEXT:    v_bfe_u32 v1, v2, 0, 16
 ; GISEL-CI-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GISEL-CI-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GISEL-CI-NEXT:    v_or_b32_e32 v0, v1, v0
@@ -893,7 +902,7 @@ define <2 x half> @mixhi_fptrunc_fadd(float %a, float %b, half %lo) #0 {
 ; GISEL-CI-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GISEL-CI-NEXT:    v_add_f32_e32 v0, v0, v1
 ; GISEL-CI-NEXT:    v_cvt_f16_f32_e32 v0, v0
-; GISEL-CI-NEXT:    v_and_b32_e32 v1, 0xffff, v2
+; GISEL-CI-NEXT:    v_bfe_u32 v1, v2, 0, 16
 ; GISEL-CI-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GISEL-CI-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GISEL-CI-NEXT:    v_or_b32_e32 v0, v1, v0
@@ -980,7 +989,7 @@ define <2 x half> @mixhi_fptrunc_fadd_f16_denormals(float %a, float %b, half %lo
 ; GISEL-CI-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GISEL-CI-NEXT:    v_add_f32_e32 v0, v0, v1
 ; GISEL-CI-NEXT:    v_cvt_f16_f32_e32 v0, v0
-; GISEL-CI-NEXT:    v_and_b32_e32 v1, 0xffff, v2
+; GISEL-CI-NEXT:    v_bfe_u32 v1, v2, 0, 16
 ; GISEL-CI-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GISEL-CI-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GISEL-CI-NEXT:    v_or_b32_e32 v0, v1, v0
@@ -1057,7 +1066,7 @@ define <2 x half> @mixhi_fptrunc_fsub(float %a, float %b, half %lo) #0 {
 ; GISEL-CI-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GISEL-CI-NEXT:    v_sub_f32_e32 v0, v0, v1
 ; GISEL-CI-NEXT:    v_cvt_f16_f32_e32 v0, v0
-; GISEL-CI-NEXT:    v_and_b32_e32 v1, 0xffff, v2
+; GISEL-CI-NEXT:    v_bfe_u32 v1, v2, 0, 16
 ; GISEL-CI-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GISEL-CI-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GISEL-CI-NEXT:    v_or_b32_e32 v0, v1, v0
@@ -1138,7 +1147,7 @@ define <2 x half> @mixhi_fptrunc_fadd_f16_src(half %a, float %b, half %lo) #0 {
 ; GISEL-CI-NEXT:    v_cvt_f32_f16_e32 v0, v0
 ; GISEL-CI-NEXT:    v_add_f32_e32 v0, v0, v1
 ; GISEL-CI-NEXT:    v_cvt_f16_f32_e32 v0, v0
-; GISEL-CI-NEXT:    v_and_b32_e32 v1, 0xffff, v2
+; GISEL-CI-NEXT:    v_bfe_u32 v1, v2, 0, 16
 ; GISEL-CI-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GISEL-CI-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GISEL-CI-NEXT:    v_or_b32_e32 v0, v1, v0

@@ -616,7 +616,6 @@ define <3 x i16> @v_bswap_v3i16(<3 x i16> %src) {
 ; GFX7-NEXT:    v_and_b32_e32 v2, 0xffff, v3
 ; GFX7-NEXT:    v_lshlrev_b32_e32 v0, 16, v0
 ; GFX7-NEXT:    v_or_b32_e32 v0, v2, v0
-; GFX7-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX7-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX8-LABEL: v_bswap_v3i16:

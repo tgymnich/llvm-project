@@ -2,7 +2,7 @@
 ; RUN: llc -global-isel -mtriple=amdgpu9.00-amd-amdhsa < %s | FileCheck -check-prefix=GFX9 %s
 ; RUN: llc -global-isel -mtriple=amdgpu8.03-amd-amdhsa < %s | FileCheck -check-prefix=GFX8 %s
 ; RUN: llc -global-isel -mtriple=amdgpu10.10-amd-amdhsa < %s | FileCheck -check-prefix=GFX10 %s
-; RUN: llc -global-isel -mtriple=amdgpu11.00-amd-amdhsa -amdgpu-enable-delay-alu=0 < %s | FileCheck -check-prefix=GFX10 %s
+; RUN: llc -global-isel -mtriple=amdgpu11.00-amd-amdhsa -amdgpu-enable-delay-alu=0 < %s | FileCheck -check-prefix=GFX11 %s
 
 define <2 x half> @v_fmul_v2f16(<2 x half> %a, <2 x half> %b) {
 ; GFX9-LABEL: v_fmul_v2f16:
@@ -26,6 +26,12 @@ define <2 x half> @v_fmul_v2f16(<2 x half> %a, <2 x half> %b) {
 ; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v1
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v2f16:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v1
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %mul = fmul <2 x half> %a, %b
   ret <2 x half> %mul
 }
@@ -53,6 +59,12 @@ define <2 x half> @v_fmul_v2f16_fneg_lhs(<2 x half> %a, <2 x half> %b) {
 ; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v1 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v2f16_fneg_lhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v1 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <2 x half> %a
   %mul = fmul <2 x half> %neg.a, %b
   ret <2 x half> %mul
@@ -81,6 +93,12 @@ define <2 x half> @v_fmul_v2f16_fneg_rhs(<2 x half> %a, <2 x half> %b) {
 ; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v1 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v2f16_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v1 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.b = fneg <2 x half> %b
   %mul = fmul <2 x half> %a, %neg.b
   ret <2 x half> %mul
@@ -108,6 +126,12 @@ define <2 x half> @v_fmul_v2f16_fneg_lhs_fneg_rhs(<2 x half> %a, <2 x half> %b) 
 ; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v1
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v2f16_fneg_lhs_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v1
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <2 x half> %a
   %neg.b = fneg <2 x half> %b
   %mul = fmul <2 x half> %neg.a, %neg.b
@@ -142,6 +166,13 @@ define <2 x half> @v_fmul_v2f16_partial_neg(<2 x half> %a, <2 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v1, v0 neg_hi:[1,0]
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v1, v0 neg_lo:[1,0]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v2f16_partial_neg:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v1, v0 neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v0, v1, v0 neg_lo:[1,0]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %b1 = bitcast <2 x half> %b to float
   %b2 = fneg float %b1
   %b3 = bitcast float %b2 to <2 x half>
@@ -171,6 +202,22 @@ define <2 x half> @fmul_v2_half_neg_hi(<2 x half> %a, <2 x half> %b) #0 {
 ; GFX8-NEXT:    v_lshlrev_b32_sdwa v0, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
 ; GFX8-NEXT:    v_or_b32_sdwa v0, v1, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
 ; GFX8-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX10-LABEL: fmul_v2_half_neg_hi:
+; GFX10:       ; %bb.0:
+; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX10-NEXT:    v_xor_b32_e32 v2, 0x80000000, v1
+; GFX10-NEXT:    v_bfi_b32 v1, 0xffff, v1, v2
+; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v1
+; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: fmul_v2_half_neg_hi:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_xor_b32_e32 v2, 0x80000000, v1
+; GFX11-NEXT:    v_mov_b16_e32 v1.h, v2.h
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v1
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %b1 = bitcast <2 x half> %b to float
   %b2 = fneg float %b1
   %b3 = bitcast float %b2 to <2 x half>
@@ -205,6 +252,12 @@ define <2 x half> @fmul_v2_half_neg_lo1(<2 x half> %a, <2 x half> %b) #0 {
 ; GFX10-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v1 op_sel_hi:[1,0]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: fmul_v2_half_neg_lo1:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v1 op_sel_hi:[1,0]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %b1 = bitcast <2 x half> %b to float
   %b2 = fneg float %b1
   %b3 = bitcast float %b2 to <2 x half>
@@ -229,10 +282,9 @@ define <3 x half> @v_fmul_v3f16(<3 x half> %a, <3 x half> %b) {
 ; GFX8-NEXT:    v_mul_f16_e32 v4, v0, v2
 ; GFX8-NEXT:    v_mul_f16_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; GFX8-NEXT:    v_mov_b32_e32 v2, 16
-; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
 ; GFX8-NEXT:    v_lshlrev_b32_sdwa v0, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
+; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
 ; GFX8-NEXT:    v_or_b32_sdwa v0, v4, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX8-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX8-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX10-LABEL: v_fmul_v3f16:
@@ -241,6 +293,13 @@ define <3 x half> @v_fmul_v3f16(<3 x half> %a, <3 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v3f16:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %mul = fmul <3 x half> %a, %b
   ret <3 x half> %mul
 }
@@ -257,14 +316,13 @@ define <3 x half> @v_fmul_v3f16_fneg_lhs(<3 x half> %a, <3 x half> %b) {
 ; GFX8:       ; %bb.0:
 ; GFX8-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX8-NEXT:    v_xor_b32_e32 v0, 0x80008000, v0
-; GFX8-NEXT:    v_xor_b32_e32 v1, 0x80008000, v1
 ; GFX8-NEXT:    v_mul_f16_e32 v4, v0, v2
 ; GFX8-NEXT:    v_mul_f16_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; GFX8-NEXT:    v_mov_b32_e32 v2, 16
-; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
+; GFX8-NEXT:    v_xor_b32_e32 v1, 0x80008000, v1
 ; GFX8-NEXT:    v_lshlrev_b32_sdwa v0, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
+; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
 ; GFX8-NEXT:    v_or_b32_sdwa v0, v4, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX8-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX8-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX10-LABEL: v_fmul_v3f16_fneg_lhs:
@@ -273,6 +331,13 @@ define <3 x half> @v_fmul_v3f16_fneg_lhs(<3 x half> %a, <3 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v3f16_fneg_lhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <3 x half> %a
   %mul = fmul <3 x half> %neg.a, %b
   ret <3 x half> %mul
@@ -290,14 +355,13 @@ define <3 x half> @v_fmul_v3f16_fneg_rhs(<3 x half> %a, <3 x half> %b) {
 ; GFX8:       ; %bb.0:
 ; GFX8-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GFX8-NEXT:    v_xor_b32_e32 v2, 0x80008000, v2
-; GFX8-NEXT:    v_xor_b32_e32 v3, 0x80008000, v3
 ; GFX8-NEXT:    v_mul_f16_e32 v4, v0, v2
 ; GFX8-NEXT:    v_mul_f16_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; GFX8-NEXT:    v_mov_b32_e32 v2, 16
-; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
+; GFX8-NEXT:    v_xor_b32_e32 v3, 0x80008000, v3
 ; GFX8-NEXT:    v_lshlrev_b32_sdwa v0, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
+; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
 ; GFX8-NEXT:    v_or_b32_sdwa v0, v4, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX8-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX8-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX10-LABEL: v_fmul_v3f16_fneg_rhs:
@@ -306,6 +370,13 @@ define <3 x half> @v_fmul_v3f16_fneg_rhs(<3 x half> %a, <3 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v3f16_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.b = fneg <3 x half> %b
   %mul = fmul <3 x half> %a, %neg.b
   ret <3 x half> %mul
@@ -325,10 +396,9 @@ define <3 x half> @v_fmul_v3f16_fneg_lhs_fneg_rhs(<3 x half> %a, <3 x half> %b) 
 ; GFX8-NEXT:    v_mul_f16_e32 v4, v0, v2
 ; GFX8-NEXT:    v_mul_f16_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; GFX8-NEXT:    v_mov_b32_e32 v2, 16
-; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
 ; GFX8-NEXT:    v_lshlrev_b32_sdwa v0, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
+; GFX8-NEXT:    v_mul_f16_e32 v1, v1, v3
 ; GFX8-NEXT:    v_or_b32_sdwa v0, v4, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX8-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX8-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX10-LABEL: v_fmul_v3f16_fneg_lhs_fneg_rhs:
@@ -337,6 +407,13 @@ define <3 x half> @v_fmul_v3f16_fneg_lhs_fneg_rhs(<3 x half> %a, <3 x half> %b) 
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v3f16_fneg_lhs_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <3 x half> %a
   %neg.b = fneg <3 x half> %b
   %mul = fmul <3 x half> %neg.a, %neg.b
@@ -371,6 +448,13 @@ define <4 x half> @v_fmul_v4f16(<4 x half> %a, <4 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v4f16:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %mul = fmul <4 x half> %a, %b
   ret <4 x half> %mul
 }
@@ -405,6 +489,13 @@ define <4 x half> @v_fmul_v4f16_fneg_lhs(<4 x half> %a, <4 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v4f16_fneg_lhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <4 x half> %a
   %mul = fmul <4 x half> %neg.a, %b
   ret <4 x half> %mul
@@ -440,6 +531,13 @@ define <4 x half> @v_fmul_v4f16_fneg_rhs(<4 x half> %a, <4 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v4f16_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.b = fneg <4 x half> %b
   %mul = fmul <4 x half> %a, %neg.b
   ret <4 x half> %mul
@@ -473,6 +571,13 @@ define <4 x half> @v_fmul_v4f16_fneg_lhs_fneg_rhs(<4 x half> %a, <4 x half> %b) 
 ; GFX10-NEXT:    v_pk_mul_f16 v0, v0, v2
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v3
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v4f16_fneg_lhs_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v2
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v3
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <4 x half> %a
   %neg.b = fneg <4 x half> %b
   %mul = fmul <4 x half> %neg.a, %neg.b
@@ -513,6 +618,14 @@ define <6 x half> @v_fmul_v6f16(<6 x half> %a, <6 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v4
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v5
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v6f16:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v3
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v4
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v5
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %mul = fmul <6 x half> %a, %b
   ret <6 x half> %mul
 }
@@ -554,6 +667,14 @@ define <6 x half> @v_fmul_v6f16_fneg_lhs(<6 x half> %a, <6 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v4 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v5 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v6f16_fneg_lhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v3 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v4 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v5 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <6 x half> %a
   %mul = fmul <6 x half> %neg.a, %b
   ret <6 x half> %mul
@@ -596,6 +717,14 @@ define <6 x half> @v_fmul_v6f16_fneg_rhs(<6 x half> %a, <6 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v4 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v5 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v6f16_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v3 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v4 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v5 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.b = fneg <6 x half> %b
   %mul = fmul <6 x half> %a, %neg.b
   ret <6 x half> %mul
@@ -635,6 +764,14 @@ define <6 x half> @v_fmul_v6f16_fneg_lhs_fneg_rhs(<6 x half> %a, <6 x half> %b) 
 ; GFX10-NEXT:    v_pk_mul_f16 v1, v1, v4
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v5
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v6f16_fneg_lhs_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v3
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v4
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v5
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <6 x half> %a
   %neg.b = fneg <6 x half> %b
   %mul = fmul <6 x half> %neg.a, %neg.b
@@ -681,6 +818,15 @@ define <8 x half> @v_fmul_v8f16(<8 x half> %a, <8 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v6
 ; GFX10-NEXT:    v_pk_mul_f16 v3, v3, v7
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v8f16:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v4
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v5
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v6
+; GFX11-NEXT:    v_pk_mul_f16 v3, v3, v7
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %mul = fmul <8 x half> %a, %b
   ret <8 x half> %mul
 }
@@ -729,6 +875,15 @@ define <8 x half> @v_fmul_v8f16_fneg_lhs(<8 x half> %a, <8 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v6 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    v_pk_mul_f16 v3, v3, v7 neg_lo:[1,0] neg_hi:[1,0]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v8f16_fneg_lhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v4 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v5 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v6 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    v_pk_mul_f16 v3, v3, v7 neg_lo:[1,0] neg_hi:[1,0]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <8 x half> %a
   %mul = fmul <8 x half> %neg.a, %b
   ret <8 x half> %mul
@@ -778,6 +933,15 @@ define <8 x half> @v_fmul_v8f16_fneg_rhs(<8 x half> %a, <8 x half> %b) {
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v6 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    v_pk_mul_f16 v3, v3, v7 neg_lo:[0,1] neg_hi:[0,1]
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v8f16_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v4 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v5 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v6 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    v_pk_mul_f16 v3, v3, v7 neg_lo:[0,1] neg_hi:[0,1]
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.b = fneg <8 x half> %b
   %mul = fmul <8 x half> %a, %neg.b
   ret <8 x half> %mul
@@ -823,6 +987,15 @@ define <8 x half> @v_fmul_v8f16_fneg_lhs_fneg_rhs(<8 x half> %a, <8 x half> %b) 
 ; GFX10-NEXT:    v_pk_mul_f16 v2, v2, v6
 ; GFX10-NEXT:    v_pk_mul_f16 v3, v3, v7
 ; GFX10-NEXT:    s_setpc_b64 s[30:31]
+;
+; GFX11-LABEL: v_fmul_v8f16_fneg_lhs_fneg_rhs:
+; GFX11:       ; %bb.0:
+; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GFX11-NEXT:    v_pk_mul_f16 v0, v0, v4
+; GFX11-NEXT:    v_pk_mul_f16 v1, v1, v5
+; GFX11-NEXT:    v_pk_mul_f16 v2, v2, v6
+; GFX11-NEXT:    v_pk_mul_f16 v3, v3, v7
+; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %neg.a = fneg <8 x half> %a
   %neg.b = fneg <8 x half> %b
   %mul = fmul <8 x half> %neg.a, %neg.b

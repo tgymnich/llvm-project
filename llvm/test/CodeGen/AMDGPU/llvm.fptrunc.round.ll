@@ -538,7 +538,7 @@ define amdgpu_gs i32 @s_fptrunc_round_f32_to_f16_upward(float inreg %a, ptr addr
 ; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 1), 1
 ; GISEL-NEXT:    v_cvt_f16_f32_e32 v0, v0
 ; GISEL-NEXT:    v_readfirstlane_b32 s0, v0
-; GISEL-NEXT:    s_and_b32 s0, s0, 0xffff
+; GISEL-NEXT:    s_and_b32 s0, 0xffff, s0
 ; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 2, 1), 0
 ; GISEL-NEXT:    ; return to shader part epilog
 ;
@@ -593,7 +593,7 @@ define amdgpu_gs i32 @s_fptrunc_round_f32_to_f16_downward(float inreg %a, ptr ad
 ; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 3, 1), 1
 ; GISEL-NEXT:    v_cvt_f16_f32_e32 v0, v0
 ; GISEL-NEXT:    v_readfirstlane_b32 s0, v0
-; GISEL-NEXT:    s_and_b32 s0, s0, 0xffff
+; GISEL-NEXT:    s_and_b32 s0, 0xffff, s0
 ; GISEL-NEXT:    s_setreg_imm32_b32 hwreg(HW_REG_MODE, 3, 1), 0
 ; GISEL-NEXT:    ; return to shader part epilog
 ;
@@ -639,7 +639,7 @@ define amdgpu_gs i32 @s_fptrunc_round_f32_to_f16_towardzero(float inreg %a, ptr 
 ; GISEL:       ; %bb.0:
 ; GISEL-NEXT:    v_cvt_pkrtz_f16_f32_e32 v0, s0, v0
 ; GISEL-NEXT:    v_readfirstlane_b32 s0, v0
-; GISEL-NEXT:    s_and_b32 s0, s0, 0xffff
+; GISEL-NEXT:    s_and_b32 s0, 0xffff, s0
 ; GISEL-NEXT:    ; return to shader part epilog
 ;
 ; GFX12-LABEL: s_fptrunc_round_f32_to_f16_towardzero:

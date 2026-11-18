@@ -16,40 +16,64 @@ body: |
     ; SI: liveins: $vgpr0
     ; SI-NEXT: {{  $}}
     ; SI-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; SI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; SI-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; SI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; SI-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; SI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; SI-NEXT: [[FCEIL:%[0-9]+]]:_(f32) = G_FCEIL [[FPEXT]]
     ; SI-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[FCEIL]](f32)
-    ; SI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
+    ; SI-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; SI-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; SI-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; SI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; SI-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     ;
     ; CI-LABEL: name: test_fceil_f16
     ; CI: liveins: $vgpr0
     ; CI-NEXT: {{  $}}
     ; CI-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; CI-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; CI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; CI-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CI-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; CI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; CI-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; CI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; CI-NEXT: [[FCEIL:%[0-9]+]]:_(f32) = G_FCEIL [[FPEXT]]
     ; CI-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[FCEIL]](f32)
-    ; CI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
+    ; CI-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; CI-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; CI-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; CI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; CI-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     ;
     ; VI-LABEL: name: test_fceil_f16
     ; VI: liveins: $vgpr0
     ; VI-NEXT: {{  $}}
     ; VI-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; VI-NEXT: [[FCEIL:%[0-9]+]]:_(f16) = G_FCEIL [[TRUNC]]
-    ; VI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FCEIL]](f16)
+    ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; VI-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; VI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; VI-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; VI-NEXT: [[FCEIL:%[0-9]+]]:_(f16) = G_FCEIL [[UV]]
+    ; VI-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; VI-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FCEIL]](f16), [[DEF1]](f16)
+    ; VI-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; VI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; VI-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     ;
     ; GFX9-LABEL: name: test_fceil_f16
     ; GFX9: liveins: $vgpr0
     ; GFX9-NEXT: {{  $}}
     ; GFX9-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; GFX9-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; GFX9-NEXT: [[FCEIL:%[0-9]+]]:_(f16) = G_FCEIL [[TRUNC]]
-    ; GFX9-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FCEIL]](f16)
+    ; GFX9-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; GFX9-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; GFX9-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; GFX9-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; GFX9-NEXT: [[FCEIL:%[0-9]+]]:_(f16) = G_FCEIL [[UV]]
+    ; GFX9-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX9-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FCEIL]](f16), [[DEF1]](f16)
+    ; GFX9-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; GFX9-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; GFX9-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     %0:_(i32) = COPY $vgpr0
     %1:_(i16) = G_TRUNC %0

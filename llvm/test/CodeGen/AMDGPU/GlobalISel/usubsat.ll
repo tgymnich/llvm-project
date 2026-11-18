@@ -2832,7 +2832,7 @@ define i48 @v_usubsat_i48(i48 %lhs, i48 %rhs) {
 ; GFX6-NEXT:    v_or_b32_e32 v0, v0, v3
 ; GFX6-NEXT:    v_cmp_ne_u32_e32 vcc, v1, v2
 ; GFX6-NEXT:    v_cndmask_b32_e64 v0, v0, 0, vcc
-; GFX6-NEXT:    v_cndmask_b32_e64 v1, v2, 0, vcc
+; GFX6-NEXT:    v_cndmask_b32_e64 v1, v1, 0, vcc
 ; GFX6-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX8-LABEL: v_usubsat_i48:
@@ -2882,9 +2882,9 @@ define amdgpu_ps i48 @s_usubsat_i48(i48 inreg %lhs, i48 inreg %rhs) {
 ; GFX6-NEXT:    s_and_b32 s1, s1, 0xffff
 ; GFX6-NEXT:    s_and_b32 s3, s3, 0xffff
 ; GFX6-NEXT:    s_cmp_lg_u32 s2, 0
-; GFX6-NEXT:    s_subb_u32 s2, s1, s3
-; GFX6-NEXT:    s_and_b32 s1, s2, 0xffff
-; GFX6-NEXT:    s_cmp_lg_u32 s2, s1
+; GFX6-NEXT:    s_subb_u32 s1, s1, s3
+; GFX6-NEXT:    s_and_b32 s2, s1, 0xffff
+; GFX6-NEXT:    s_cmp_lg_u32 s1, s2
 ; GFX6-NEXT:    s_cselect_b32 s2, 1, 0
 ; GFX6-NEXT:    s_lshr_b32 s3, s0, 16
 ; GFX6-NEXT:    s_and_b32 s0, s0, 0xffff
@@ -2935,14 +2935,15 @@ define amdgpu_ps <2 x float> @usubsat_i48_sv(i48 inreg %lhs, i48 %rhs) {
 ; GFX6-NEXT:    v_mov_b32_e32 v2, s1
 ; GFX6-NEXT:    v_sub_i32_e32 v0, vcc, s0, v0
 ; GFX6-NEXT:    v_subb_u32_e32 v1, vcc, v2, v1, vcc
-; GFX6-NEXT:    v_lshrrev_b32_e32 v3, 16, v0
 ; GFX6-NEXT:    v_and_b32_e32 v2, 0xffff, v1
+; GFX6-NEXT:    v_lshrrev_b32_e32 v3, 16, v0
 ; GFX6-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX6-NEXT:    v_lshlrev_b32_e32 v3, 16, v3
-; GFX6-NEXT:    v_or_b32_e32 v0, v0, v3
 ; GFX6-NEXT:    v_cmp_ne_u32_e32 vcc, v1, v2
+; GFX6-NEXT:    v_or_b32_e32 v0, v0, v3
+; GFX6-NEXT:    v_cndmask_b32_e64 v1, v1, 0, vcc
 ; GFX6-NEXT:    v_cndmask_b32_e64 v0, v0, 0, vcc
-; GFX6-NEXT:    v_cndmask_b32_e64 v1, v2, 0, vcc
+; GFX6-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX6-NEXT:    ; return to shader part epilog
 ;
 ; GFX8-LABEL: usubsat_i48_sv:
@@ -2993,14 +2994,15 @@ define amdgpu_ps <2 x float> @usubsat_i48_vs(i48 %lhs, i48 inreg %rhs) {
 ; GFX6-NEXT:    v_mov_b32_e32 v2, s1
 ; GFX6-NEXT:    v_subrev_i32_e32 v0, vcc, s0, v0
 ; GFX6-NEXT:    v_subb_u32_e32 v1, vcc, v1, v2, vcc
-; GFX6-NEXT:    v_lshrrev_b32_e32 v3, 16, v0
 ; GFX6-NEXT:    v_and_b32_e32 v2, 0xffff, v1
+; GFX6-NEXT:    v_lshrrev_b32_e32 v3, 16, v0
 ; GFX6-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GFX6-NEXT:    v_lshlrev_b32_e32 v3, 16, v3
-; GFX6-NEXT:    v_or_b32_e32 v0, v0, v3
 ; GFX6-NEXT:    v_cmp_ne_u32_e32 vcc, v1, v2
+; GFX6-NEXT:    v_or_b32_e32 v0, v0, v3
+; GFX6-NEXT:    v_cndmask_b32_e64 v1, v1, 0, vcc
 ; GFX6-NEXT:    v_cndmask_b32_e64 v0, v0, 0, vcc
-; GFX6-NEXT:    v_cndmask_b32_e64 v1, v2, 0, vcc
+; GFX6-NEXT:    v_and_b32_e32 v1, 0xffff, v1
 ; GFX6-NEXT:    ; return to shader part epilog
 ;
 ; GFX8-LABEL: usubsat_i48_vs:

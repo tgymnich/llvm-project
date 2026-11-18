@@ -209,13 +209,19 @@ body: |
     ; CHECK: liveins: $vgpr0
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; CHECK-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; CHECK-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.log), [[FPEXT]](f32)
     ; CHECK-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3F317218
     ; CHECK-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[INT]], [[C]]
     ; CHECK-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[FMUL]](f32)
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; CHECK-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; CHECK-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     %0:_(i32) = COPY $vgpr0
     %1:_(i16) = G_TRUNC %0
@@ -237,13 +243,19 @@ body: |
     ; CHECK: liveins: $vgpr0
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = contract G_FPEXT [[TRUNC]](f16)
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; CHECK-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = contract G_FPEXT [[UV]](f16)
     ; CHECK-NEXT: [[INT:%[0-9]+]]:_(f32) = contract G_INTRINSIC intrinsic(@llvm.amdgcn.log), [[FPEXT]](f32)
     ; CHECK-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3F317218
     ; CHECK-NEXT: [[FMUL:%[0-9]+]]:_(f32) = contract G_FMUL [[INT]], [[C]]
     ; CHECK-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = contract G_FPTRUNC [[FMUL]](f32)
-    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; CHECK-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; CHECK-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; CHECK-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     %0:_(i32) = COPY $vgpr0
     %1:_(i16) = G_TRUNC %0

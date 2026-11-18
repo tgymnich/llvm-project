@@ -11,8 +11,11 @@ body: |
     ; CHECK: liveins: $vgpr0
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; CHECK-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; CHECK-NEXT: $vgpr0 = COPY [[FPEXT]](f32)
     %0:_(i32) = COPY $vgpr0
     %1:_(i16) = G_TRUNC %0
@@ -209,8 +212,11 @@ body: |
     ; CHECK: liveins: $vgpr0
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; CHECK-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; CHECK-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; CHECK-NEXT: [[FPEXT1:%[0-9]+]]:_(f64) = G_FPEXT [[FPEXT]](f32)
     ; CHECK-NEXT: $vgpr0_vgpr1 = COPY [[FPEXT1]](f64)
     %0:_(i32) = COPY $vgpr0

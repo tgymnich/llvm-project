@@ -2,8 +2,8 @@
 # RUN: llc -mtriple=amdgpu6.00-mesa-mesa3d -run-pass=legalizer %s -o - | FileCheck -check-prefix=GFX6 %s
 # RUN: llc -mtriple=amdgpu8.03-mesa-mesa3d -run-pass=legalizer %s -o - | FileCheck -check-prefix=GFX8 %s
 # RUN: llc -mtriple=amdgpu9.00-mesa-mesa3d -run-pass=legalizer %s -o - | FileCheck  -check-prefix=GFX9 %s
-# RUN: llc -mtriple=amdgpu10.10-mesa-mesa3d -run-pass=legalizer %s -o - | FileCheck  -check-prefix=GFX9 %s
-# RUN: llc -mtriple=amdgpu11.00-mesa-mesa3d -run-pass=legalizer %s -o - | FileCheck  -check-prefix=GFX9 %s
+# RUN: llc -mtriple=amdgpu10.10-mesa-mesa3d -run-pass=legalizer %s -o - | FileCheck  -check-prefix=GFX10 %s
+# RUN: llc -mtriple=amdgpu11.00-mesa-mesa3d -run-pass=legalizer %s -o - | FileCheck  -check-prefix=GFX11 %s
 
 ---
 name: test_fexp_f32
@@ -98,6 +98,60 @@ body: |
     ; GFX9-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
     ; GFX9-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
     ; GFX9-NEXT: $vgpr0 = COPY [[COPY1]](f32)
+    ;
+    ; GFX10-LABEL: name: test_fexp_f32
+    ; GFX10: liveins: $vgpr0
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(f32) = COPY $vgpr0
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[COPY]], [[C]]
+    ; GFX10-NEXT: [[FNEG:%[0-9]+]]:_(f32) = G_FNEG [[FMUL]]
+    ; GFX10-NEXT: [[FMA:%[0-9]+]]:_(f32) = G_FMA [[COPY]], [[C]], [[FNEG]]
+    ; GFX10-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX10-NEXT: [[FMA1:%[0-9]+]]:_(f32) = G_FMA [[COPY]], [[C1]], [[FMA]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX10-NEXT: [[FSUB:%[0-9]+]]:_(f32) = G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX10-NEXT: [[FADD:%[0-9]+]]:_(f32) = G_FADD [[FSUB]], [[FMA1]]
+    ; GFX10-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX10-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX10-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX10-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX10-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX10-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[COPY]](f32), [[C2]]
+    ; GFX10-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX10-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX10-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[COPY]](f32), [[C4]]
+    ; GFX10-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX10-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX10-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX10-NEXT: $vgpr0 = COPY [[COPY1]](f32)
+    ;
+    ; GFX11-LABEL: name: test_fexp_f32
+    ; GFX11: liveins: $vgpr0
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(f32) = COPY $vgpr0
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[COPY]], [[C]]
+    ; GFX11-NEXT: [[FNEG:%[0-9]+]]:_(f32) = G_FNEG [[FMUL]]
+    ; GFX11-NEXT: [[FMA:%[0-9]+]]:_(f32) = G_FMA [[COPY]], [[C]], [[FNEG]]
+    ; GFX11-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX11-NEXT: [[FMA1:%[0-9]+]]:_(f32) = G_FMA [[COPY]], [[C1]], [[FMA]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX11-NEXT: [[FSUB:%[0-9]+]]:_(f32) = G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX11-NEXT: [[FADD:%[0-9]+]]:_(f32) = G_FADD [[FSUB]], [[FMA1]]
+    ; GFX11-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX11-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX11-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX11-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX11-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX11-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[COPY]](f32), [[C2]]
+    ; GFX11-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX11-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX11-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[COPY]](f32), [[C4]]
+    ; GFX11-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX11-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX11-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX11-NEXT: $vgpr0 = COPY [[COPY1]](f32)
     %0:_(f32) = COPY $vgpr0
     %1:_(f32) = G_FEXP %0
     $vgpr0 = COPY %1
@@ -196,6 +250,60 @@ body: |
     ; GFX9-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = nnan G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
     ; GFX9-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
     ; GFX9-NEXT: $vgpr0 = COPY [[COPY1]](f32)
+    ;
+    ; GFX10-LABEL: name: test_fexp_f32_nnan
+    ; GFX10: liveins: $vgpr0
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(f32) = COPY $vgpr0
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f32) = nnan G_FMUL [[COPY]], [[C]]
+    ; GFX10-NEXT: [[FNEG:%[0-9]+]]:_(f32) = nnan G_FNEG [[FMUL]]
+    ; GFX10-NEXT: [[FMA:%[0-9]+]]:_(f32) = nnan G_FMA [[COPY]], [[C]], [[FNEG]]
+    ; GFX10-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX10-NEXT: [[FMA1:%[0-9]+]]:_(f32) = nnan G_FMA [[COPY]], [[C1]], [[FMA]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = nnan G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX10-NEXT: [[FSUB:%[0-9]+]]:_(f32) = nnan G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX10-NEXT: [[FADD:%[0-9]+]]:_(f32) = nnan G_FADD [[FSUB]], [[FMA1]]
+    ; GFX10-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX10-NEXT: [[INT:%[0-9]+]]:_(f32) = nnan G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX10-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = nnan G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX10-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX10-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX10-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[COPY]](f32), [[C2]]
+    ; GFX10-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX10-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX10-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[COPY]](f32), [[C4]]
+    ; GFX10-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX10-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = nnan G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX10-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX10-NEXT: $vgpr0 = COPY [[COPY1]](f32)
+    ;
+    ; GFX11-LABEL: name: test_fexp_f32_nnan
+    ; GFX11: liveins: $vgpr0
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(f32) = COPY $vgpr0
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f32) = nnan G_FMUL [[COPY]], [[C]]
+    ; GFX11-NEXT: [[FNEG:%[0-9]+]]:_(f32) = nnan G_FNEG [[FMUL]]
+    ; GFX11-NEXT: [[FMA:%[0-9]+]]:_(f32) = nnan G_FMA [[COPY]], [[C]], [[FNEG]]
+    ; GFX11-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX11-NEXT: [[FMA1:%[0-9]+]]:_(f32) = nnan G_FMA [[COPY]], [[C1]], [[FMA]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = nnan G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX11-NEXT: [[FSUB:%[0-9]+]]:_(f32) = nnan G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX11-NEXT: [[FADD:%[0-9]+]]:_(f32) = nnan G_FADD [[FSUB]], [[FMA1]]
+    ; GFX11-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX11-NEXT: [[INT:%[0-9]+]]:_(f32) = nnan G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX11-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = nnan G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX11-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX11-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX11-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[COPY]](f32), [[C2]]
+    ; GFX11-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX11-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX11-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[COPY]](f32), [[C4]]
+    ; GFX11-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX11-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = nnan G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX11-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX11-NEXT: $vgpr0 = COPY [[COPY1]](f32)
     %0:_(f32) = COPY $vgpr0
     %1:_(f32) = nnan G_FEXP %0
     $vgpr0 = COPY %1
@@ -351,6 +459,94 @@ body: |
     ; GFX9-NEXT: [[COPY2:%[0-9]+]]:_(f32) = COPY [[SELECT3]](f32)
     ; GFX9-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x f32>) = G_BUILD_VECTOR [[COPY1]](f32), [[COPY2]](f32)
     ; GFX9-NEXT: $vgpr0_vgpr1 = COPY [[BUILD_VECTOR]](<2 x f32>)
+    ;
+    ; GFX10-LABEL: name: test_fexp_v2f32
+    ; GFX10: liveins: $vgpr0_vgpr1
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(<2 x f32>) = COPY $vgpr0_vgpr1
+    ; GFX10-NEXT: [[UV:%[0-9]+]]:_(f32), [[UV1:%[0-9]+]]:_(f32) = G_UNMERGE_VALUES [[COPY]](<2 x f32>)
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[UV]], [[C]]
+    ; GFX10-NEXT: [[FNEG:%[0-9]+]]:_(f32) = G_FNEG [[FMUL]]
+    ; GFX10-NEXT: [[FMA:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C]], [[FNEG]]
+    ; GFX10-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX10-NEXT: [[FMA1:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C1]], [[FMA]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX10-NEXT: [[FSUB:%[0-9]+]]:_(f32) = G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX10-NEXT: [[FADD:%[0-9]+]]:_(f32) = G_FADD [[FSUB]], [[FMA1]]
+    ; GFX10-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX10-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX10-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX10-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX10-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX10-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV]](f32), [[C2]]
+    ; GFX10-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX10-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX10-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV]](f32), [[C4]]
+    ; GFX10-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX10-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX10-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX10-NEXT: [[FMUL1:%[0-9]+]]:_(f32) = G_FMUL [[UV1]], [[C]]
+    ; GFX10-NEXT: [[FNEG1:%[0-9]+]]:_(f32) = G_FNEG [[FMUL1]]
+    ; GFX10-NEXT: [[FMA2:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C]], [[FNEG1]]
+    ; GFX10-NEXT: [[FMA3:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C1]], [[FMA2]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN1:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL1]]
+    ; GFX10-NEXT: [[FSUB1:%[0-9]+]]:_(f32) = G_FSUB [[FMUL1]], [[INTRINSIC_ROUNDEVEN1]]
+    ; GFX10-NEXT: [[FADD1:%[0-9]+]]:_(f32) = G_FADD [[FSUB1]], [[FMA3]]
+    ; GFX10-NEXT: [[FPTOSI1:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN1]](f32)
+    ; GFX10-NEXT: [[INT1:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD1]](f32)
+    ; GFX10-NEXT: [[FLDEXP1:%[0-9]+]]:_(f32) = G_FLDEXP [[INT1]], [[FPTOSI1]](i32)
+    ; GFX10-NEXT: [[FCMP2:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV1]](f32), [[C2]]
+    ; GFX10-NEXT: [[SELECT2:%[0-9]+]]:_(f32) = G_SELECT [[FCMP2]](s1), [[C3]], [[FLDEXP1]]
+    ; GFX10-NEXT: [[FCMP3:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV1]](f32), [[C4]]
+    ; GFX10-NEXT: [[SELECT3:%[0-9]+]]:_(f32) = G_SELECT [[FCMP3]](s1), [[C5]], [[SELECT2]]
+    ; GFX10-NEXT: [[COPY2:%[0-9]+]]:_(f32) = COPY [[SELECT3]](f32)
+    ; GFX10-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x f32>) = G_BUILD_VECTOR [[COPY1]](f32), [[COPY2]](f32)
+    ; GFX10-NEXT: $vgpr0_vgpr1 = COPY [[BUILD_VECTOR]](<2 x f32>)
+    ;
+    ; GFX11-LABEL: name: test_fexp_v2f32
+    ; GFX11: liveins: $vgpr0_vgpr1
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(<2 x f32>) = COPY $vgpr0_vgpr1
+    ; GFX11-NEXT: [[UV:%[0-9]+]]:_(f32), [[UV1:%[0-9]+]]:_(f32) = G_UNMERGE_VALUES [[COPY]](<2 x f32>)
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[UV]], [[C]]
+    ; GFX11-NEXT: [[FNEG:%[0-9]+]]:_(f32) = G_FNEG [[FMUL]]
+    ; GFX11-NEXT: [[FMA:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C]], [[FNEG]]
+    ; GFX11-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX11-NEXT: [[FMA1:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C1]], [[FMA]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX11-NEXT: [[FSUB:%[0-9]+]]:_(f32) = G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX11-NEXT: [[FADD:%[0-9]+]]:_(f32) = G_FADD [[FSUB]], [[FMA1]]
+    ; GFX11-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX11-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX11-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX11-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX11-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX11-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV]](f32), [[C2]]
+    ; GFX11-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX11-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX11-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV]](f32), [[C4]]
+    ; GFX11-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX11-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX11-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX11-NEXT: [[FMUL1:%[0-9]+]]:_(f32) = G_FMUL [[UV1]], [[C]]
+    ; GFX11-NEXT: [[FNEG1:%[0-9]+]]:_(f32) = G_FNEG [[FMUL1]]
+    ; GFX11-NEXT: [[FMA2:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C]], [[FNEG1]]
+    ; GFX11-NEXT: [[FMA3:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C1]], [[FMA2]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN1:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL1]]
+    ; GFX11-NEXT: [[FSUB1:%[0-9]+]]:_(f32) = G_FSUB [[FMUL1]], [[INTRINSIC_ROUNDEVEN1]]
+    ; GFX11-NEXT: [[FADD1:%[0-9]+]]:_(f32) = G_FADD [[FSUB1]], [[FMA3]]
+    ; GFX11-NEXT: [[FPTOSI1:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN1]](f32)
+    ; GFX11-NEXT: [[INT1:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD1]](f32)
+    ; GFX11-NEXT: [[FLDEXP1:%[0-9]+]]:_(f32) = G_FLDEXP [[INT1]], [[FPTOSI1]](i32)
+    ; GFX11-NEXT: [[FCMP2:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV1]](f32), [[C2]]
+    ; GFX11-NEXT: [[SELECT2:%[0-9]+]]:_(f32) = G_SELECT [[FCMP2]](s1), [[C3]], [[FLDEXP1]]
+    ; GFX11-NEXT: [[FCMP3:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV1]](f32), [[C4]]
+    ; GFX11-NEXT: [[SELECT3:%[0-9]+]]:_(f32) = G_SELECT [[FCMP3]](s1), [[C5]], [[SELECT2]]
+    ; GFX11-NEXT: [[COPY2:%[0-9]+]]:_(f32) = COPY [[SELECT3]](f32)
+    ; GFX11-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x f32>) = G_BUILD_VECTOR [[COPY1]](f32), [[COPY2]](f32)
+    ; GFX11-NEXT: $vgpr0_vgpr1 = COPY [[BUILD_VECTOR]](<2 x f32>)
     %0:_(<2 x f32>) = COPY $vgpr0_vgpr1
     %1:_(<2 x f32>) = G_FEXP %0
     $vgpr0_vgpr1 = COPY %1
@@ -557,6 +753,124 @@ body: |
     ; GFX9-NEXT: [[COPY3:%[0-9]+]]:_(f32) = COPY [[SELECT5]](f32)
     ; GFX9-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<3 x f32>) = G_BUILD_VECTOR [[COPY1]](f32), [[COPY2]](f32), [[COPY3]](f32)
     ; GFX9-NEXT: $vgpr0_vgpr1_vgpr2 = COPY [[BUILD_VECTOR]](<3 x f32>)
+    ;
+    ; GFX10-LABEL: name: test_fexp_v3f32
+    ; GFX10: liveins: $vgpr0_vgpr1_vgpr2
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(<3 x f32>) = COPY $vgpr0_vgpr1_vgpr2
+    ; GFX10-NEXT: [[UV:%[0-9]+]]:_(f32), [[UV1:%[0-9]+]]:_(f32), [[UV2:%[0-9]+]]:_(f32) = G_UNMERGE_VALUES [[COPY]](<3 x f32>)
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[UV]], [[C]]
+    ; GFX10-NEXT: [[FNEG:%[0-9]+]]:_(f32) = G_FNEG [[FMUL]]
+    ; GFX10-NEXT: [[FMA:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C]], [[FNEG]]
+    ; GFX10-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX10-NEXT: [[FMA1:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C1]], [[FMA]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX10-NEXT: [[FSUB:%[0-9]+]]:_(f32) = G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX10-NEXT: [[FADD:%[0-9]+]]:_(f32) = G_FADD [[FSUB]], [[FMA1]]
+    ; GFX10-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX10-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX10-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX10-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX10-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX10-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV]](f32), [[C2]]
+    ; GFX10-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX10-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX10-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV]](f32), [[C4]]
+    ; GFX10-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX10-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX10-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX10-NEXT: [[FMUL1:%[0-9]+]]:_(f32) = G_FMUL [[UV1]], [[C]]
+    ; GFX10-NEXT: [[FNEG1:%[0-9]+]]:_(f32) = G_FNEG [[FMUL1]]
+    ; GFX10-NEXT: [[FMA2:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C]], [[FNEG1]]
+    ; GFX10-NEXT: [[FMA3:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C1]], [[FMA2]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN1:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL1]]
+    ; GFX10-NEXT: [[FSUB1:%[0-9]+]]:_(f32) = G_FSUB [[FMUL1]], [[INTRINSIC_ROUNDEVEN1]]
+    ; GFX10-NEXT: [[FADD1:%[0-9]+]]:_(f32) = G_FADD [[FSUB1]], [[FMA3]]
+    ; GFX10-NEXT: [[FPTOSI1:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN1]](f32)
+    ; GFX10-NEXT: [[INT1:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD1]](f32)
+    ; GFX10-NEXT: [[FLDEXP1:%[0-9]+]]:_(f32) = G_FLDEXP [[INT1]], [[FPTOSI1]](i32)
+    ; GFX10-NEXT: [[FCMP2:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV1]](f32), [[C2]]
+    ; GFX10-NEXT: [[SELECT2:%[0-9]+]]:_(f32) = G_SELECT [[FCMP2]](s1), [[C3]], [[FLDEXP1]]
+    ; GFX10-NEXT: [[FCMP3:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV1]](f32), [[C4]]
+    ; GFX10-NEXT: [[SELECT3:%[0-9]+]]:_(f32) = G_SELECT [[FCMP3]](s1), [[C5]], [[SELECT2]]
+    ; GFX10-NEXT: [[COPY2:%[0-9]+]]:_(f32) = COPY [[SELECT3]](f32)
+    ; GFX10-NEXT: [[FMUL2:%[0-9]+]]:_(f32) = G_FMUL [[UV2]], [[C]]
+    ; GFX10-NEXT: [[FNEG2:%[0-9]+]]:_(f32) = G_FNEG [[FMUL2]]
+    ; GFX10-NEXT: [[FMA4:%[0-9]+]]:_(f32) = G_FMA [[UV2]], [[C]], [[FNEG2]]
+    ; GFX10-NEXT: [[FMA5:%[0-9]+]]:_(f32) = G_FMA [[UV2]], [[C1]], [[FMA4]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN2:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL2]]
+    ; GFX10-NEXT: [[FSUB2:%[0-9]+]]:_(f32) = G_FSUB [[FMUL2]], [[INTRINSIC_ROUNDEVEN2]]
+    ; GFX10-NEXT: [[FADD2:%[0-9]+]]:_(f32) = G_FADD [[FSUB2]], [[FMA5]]
+    ; GFX10-NEXT: [[FPTOSI2:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN2]](f32)
+    ; GFX10-NEXT: [[INT2:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD2]](f32)
+    ; GFX10-NEXT: [[FLDEXP2:%[0-9]+]]:_(f32) = G_FLDEXP [[INT2]], [[FPTOSI2]](i32)
+    ; GFX10-NEXT: [[FCMP4:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV2]](f32), [[C2]]
+    ; GFX10-NEXT: [[SELECT4:%[0-9]+]]:_(f32) = G_SELECT [[FCMP4]](s1), [[C3]], [[FLDEXP2]]
+    ; GFX10-NEXT: [[FCMP5:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV2]](f32), [[C4]]
+    ; GFX10-NEXT: [[SELECT5:%[0-9]+]]:_(f32) = G_SELECT [[FCMP5]](s1), [[C5]], [[SELECT4]]
+    ; GFX10-NEXT: [[COPY3:%[0-9]+]]:_(f32) = COPY [[SELECT5]](f32)
+    ; GFX10-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<3 x f32>) = G_BUILD_VECTOR [[COPY1]](f32), [[COPY2]](f32), [[COPY3]](f32)
+    ; GFX10-NEXT: $vgpr0_vgpr1_vgpr2 = COPY [[BUILD_VECTOR]](<3 x f32>)
+    ;
+    ; GFX11-LABEL: name: test_fexp_v3f32
+    ; GFX11: liveins: $vgpr0_vgpr1_vgpr2
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(<3 x f32>) = COPY $vgpr0_vgpr1_vgpr2
+    ; GFX11-NEXT: [[UV:%[0-9]+]]:_(f32), [[UV1:%[0-9]+]]:_(f32), [[UV2:%[0-9]+]]:_(f32) = G_UNMERGE_VALUES [[COPY]](<3 x f32>)
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[UV]], [[C]]
+    ; GFX11-NEXT: [[FNEG:%[0-9]+]]:_(f32) = G_FNEG [[FMUL]]
+    ; GFX11-NEXT: [[FMA:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C]], [[FNEG]]
+    ; GFX11-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x32A5705F
+    ; GFX11-NEXT: [[FMA1:%[0-9]+]]:_(f32) = G_FMA [[UV]], [[C1]], [[FMA]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX11-NEXT: [[FSUB:%[0-9]+]]:_(f32) = G_FSUB [[FMUL]], [[INTRINSIC_ROUNDEVEN]]
+    ; GFX11-NEXT: [[FADD:%[0-9]+]]:_(f32) = G_FADD [[FSUB]], [[FMA1]]
+    ; GFX11-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f32)
+    ; GFX11-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD]](f32)
+    ; GFX11-NEXT: [[FLDEXP:%[0-9]+]]:_(f32) = G_FLDEXP [[INT]], [[FPTOSI]](i32)
+    ; GFX11-NEXT: [[C2:%[0-9]+]]:_(f32) = G_FCONSTANT float f0xC2CE8ED0
+    ; GFX11-NEXT: [[C3:%[0-9]+]]:_(f32) = G_FCONSTANT float 0.000000e+00
+    ; GFX11-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV]](f32), [[C2]]
+    ; GFX11-NEXT: [[SELECT:%[0-9]+]]:_(f32) = G_SELECT [[FCMP]](s1), [[C3]], [[FLDEXP]]
+    ; GFX11-NEXT: [[C4:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x42B17218
+    ; GFX11-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV]](f32), [[C4]]
+    ; GFX11-NEXT: [[C5:%[0-9]+]]:_(f32) = G_FCONSTANT float +inf
+    ; GFX11-NEXT: [[SELECT1:%[0-9]+]]:_(f32) = G_SELECT [[FCMP1]](s1), [[C5]], [[SELECT]]
+    ; GFX11-NEXT: [[COPY1:%[0-9]+]]:_(f32) = COPY [[SELECT1]](f32)
+    ; GFX11-NEXT: [[FMUL1:%[0-9]+]]:_(f32) = G_FMUL [[UV1]], [[C]]
+    ; GFX11-NEXT: [[FNEG1:%[0-9]+]]:_(f32) = G_FNEG [[FMUL1]]
+    ; GFX11-NEXT: [[FMA2:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C]], [[FNEG1]]
+    ; GFX11-NEXT: [[FMA3:%[0-9]+]]:_(f32) = G_FMA [[UV1]], [[C1]], [[FMA2]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN1:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL1]]
+    ; GFX11-NEXT: [[FSUB1:%[0-9]+]]:_(f32) = G_FSUB [[FMUL1]], [[INTRINSIC_ROUNDEVEN1]]
+    ; GFX11-NEXT: [[FADD1:%[0-9]+]]:_(f32) = G_FADD [[FSUB1]], [[FMA3]]
+    ; GFX11-NEXT: [[FPTOSI1:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN1]](f32)
+    ; GFX11-NEXT: [[INT1:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD1]](f32)
+    ; GFX11-NEXT: [[FLDEXP1:%[0-9]+]]:_(f32) = G_FLDEXP [[INT1]], [[FPTOSI1]](i32)
+    ; GFX11-NEXT: [[FCMP2:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV1]](f32), [[C2]]
+    ; GFX11-NEXT: [[SELECT2:%[0-9]+]]:_(f32) = G_SELECT [[FCMP2]](s1), [[C3]], [[FLDEXP1]]
+    ; GFX11-NEXT: [[FCMP3:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV1]](f32), [[C4]]
+    ; GFX11-NEXT: [[SELECT3:%[0-9]+]]:_(f32) = G_SELECT [[FCMP3]](s1), [[C5]], [[SELECT2]]
+    ; GFX11-NEXT: [[COPY2:%[0-9]+]]:_(f32) = COPY [[SELECT3]](f32)
+    ; GFX11-NEXT: [[FMUL2:%[0-9]+]]:_(f32) = G_FMUL [[UV2]], [[C]]
+    ; GFX11-NEXT: [[FNEG2:%[0-9]+]]:_(f32) = G_FNEG [[FMUL2]]
+    ; GFX11-NEXT: [[FMA4:%[0-9]+]]:_(f32) = G_FMA [[UV2]], [[C]], [[FNEG2]]
+    ; GFX11-NEXT: [[FMA5:%[0-9]+]]:_(f32) = G_FMA [[UV2]], [[C1]], [[FMA4]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN2:%[0-9]+]]:_(f32) = G_INTRINSIC_ROUNDEVEN [[FMUL2]]
+    ; GFX11-NEXT: [[FSUB2:%[0-9]+]]:_(f32) = G_FSUB [[FMUL2]], [[INTRINSIC_ROUNDEVEN2]]
+    ; GFX11-NEXT: [[FADD2:%[0-9]+]]:_(f32) = G_FADD [[FSUB2]], [[FMA5]]
+    ; GFX11-NEXT: [[FPTOSI2:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN2]](f32)
+    ; GFX11-NEXT: [[INT2:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FADD2]](f32)
+    ; GFX11-NEXT: [[FLDEXP2:%[0-9]+]]:_(f32) = G_FLDEXP [[INT2]], [[FPTOSI2]](i32)
+    ; GFX11-NEXT: [[FCMP4:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[UV2]](f32), [[C2]]
+    ; GFX11-NEXT: [[SELECT4:%[0-9]+]]:_(f32) = G_SELECT [[FCMP4]](s1), [[C3]], [[FLDEXP2]]
+    ; GFX11-NEXT: [[FCMP5:%[0-9]+]]:_(s1) = G_FCMP floatpred(ogt), [[UV2]](f32), [[C4]]
+    ; GFX11-NEXT: [[SELECT5:%[0-9]+]]:_(f32) = G_SELECT [[FCMP5]](s1), [[C5]], [[SELECT4]]
+    ; GFX11-NEXT: [[COPY3:%[0-9]+]]:_(f32) = COPY [[SELECT5]](f32)
+    ; GFX11-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<3 x f32>) = G_BUILD_VECTOR [[COPY1]](f32), [[COPY2]](f32), [[COPY3]](f32)
+    ; GFX11-NEXT: $vgpr0_vgpr1_vgpr2 = COPY [[BUILD_VECTOR]](<3 x f32>)
     %0:_(<3 x f32>) = COPY $vgpr0_vgpr1_vgpr2
     %1:_(<3 x f32>) = G_FEXP %0
     $vgpr0_vgpr1_vgpr2 = COPY %1
@@ -572,27 +886,92 @@ body: |
     ; GFX6: liveins: $vgpr0
     ; GFX6-NEXT: {{  $}}
     ; GFX6-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; GFX6-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; GFX6-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; GFX6-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; GFX6-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; GFX6-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; GFX6-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; GFX6-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; GFX6-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
     ; GFX6-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C]]
     ; GFX6-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
     ; GFX6-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
-    ; GFX6-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
+    ; GFX6-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX6-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; GFX6-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; GFX6-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; GFX6-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     ;
     ; GFX8-LABEL: name: test_fexp_f16
     ; GFX8: liveins: $vgpr0
     ; GFX8-NEXT: {{  $}}
     ; GFX8-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; GFX8-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; GFX8-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; GFX8-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; GFX8-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; GFX8-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; GFX8-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; GFX8-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; GFX8-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
     ; GFX8-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C]]
     ; GFX8-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
     ; GFX8-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
-    ; GFX8-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
+    ; GFX8-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX8-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; GFX8-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; GFX8-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
     ; GFX8-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ;
+    ; GFX9-LABEL: name: test_fexp_f16
+    ; GFX9: liveins: $vgpr0
+    ; GFX9-NEXT: {{  $}}
+    ; GFX9-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
+    ; GFX9-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; GFX9-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; GFX9-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; GFX9-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; GFX9-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
+    ; GFX9-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX9-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C]]
+    ; GFX9-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
+    ; GFX9-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
+    ; GFX9-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX9-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; GFX9-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; GFX9-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
+    ; GFX9-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ;
+    ; GFX10-LABEL: name: test_fexp_f16
+    ; GFX10: liveins: $vgpr0
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
+    ; GFX10-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; GFX10-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+    ; GFX10-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](i16), [[DEF]](i16)
+    ; GFX10-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
+    ; GFX10-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C]]
+    ; GFX10-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
+    ; GFX10-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
+    ; GFX10-NEXT: [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX10-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF1]](f16)
+    ; GFX10-NEXT: [[UV2:%[0-9]+]]:_(i16), [[UV3:%[0-9]+]]:_(i16) = G_UNMERGE_VALUES [[MV1]](i32)
+    ; GFX10-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[UV2]](i16)
+    ; GFX10-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ;
+    ; GFX11-LABEL: name: test_fexp_f16
+    ; GFX11: liveins: $vgpr0
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
+    ; GFX11-NEXT: [[TRUNC:%[0-9]+]]:_(i16) = G_TRUNC [[COPY]](i32)
+    ; GFX11-NEXT: [[BITCAST:%[0-9]+]]:_(f16) = G_BITCAST [[TRUNC]](i16)
+    ; GFX11-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[BITCAST]](f16)
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C]]
+    ; GFX11-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
+    ; GFX11-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
+    ; GFX11-NEXT: [[BITCAST1:%[0-9]+]]:_(i16) = G_BITCAST [[FPTRUNC]](f16)
+    ; GFX11-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[BITCAST1]](i16)
+    ; GFX11-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
     %0:_(i32) = COPY $vgpr0
     %1:_(i16) = G_TRUNC %0
     %2:_(f16) = G_BITCAST %1
@@ -657,6 +1036,65 @@ body: |
     ; GFX8-NEXT: [[OR:%[0-9]+]]:_(i32) = G_OR [[ZEXT]], [[SHL]]
     ; GFX8-NEXT: [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
     ; GFX8-NEXT: $vgpr0 = COPY [[BITCAST1]](<2 x f16>)
+    ;
+    ; GFX9-LABEL: name: test_fexp_v2f16
+    ; GFX9: liveins: $vgpr0
+    ; GFX9-NEXT: {{  $}}
+    ; GFX9-NEXT: [[COPY:%[0-9]+]]:_(<2 x f16>) = COPY $vgpr0
+    ; GFX9-NEXT: [[BITCAST:%[0-9]+]]:_(i32) = G_BITCAST [[COPY]](<2 x f16>)
+    ; GFX9-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[BITCAST]](i32)
+    ; GFX9-NEXT: [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
+    ; GFX9-NEXT: [[LSHR:%[0-9]+]]:_(i32) = G_LSHR [[BITCAST]], [[C]](i32)
+    ; GFX9-NEXT: [[TRUNC1:%[0-9]+]]:_(f16) = G_TRUNC [[LSHR]](i32)
+    ; GFX9-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; GFX9-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX9-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C1]]
+    ; GFX9-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
+    ; GFX9-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
+    ; GFX9-NEXT: [[FPEXT1:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC1]](f16)
+    ; GFX9-NEXT: [[FMUL1:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT1]], [[C1]]
+    ; GFX9-NEXT: [[INT1:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL1]](f32)
+    ; GFX9-NEXT: [[FPTRUNC1:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT1]](f32)
+    ; GFX9-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x f16>) = G_BUILD_VECTOR [[FPTRUNC]](f16), [[FPTRUNC1]](f16)
+    ; GFX9-NEXT: $vgpr0 = COPY [[BUILD_VECTOR]](<2 x f16>)
+    ;
+    ; GFX10-LABEL: name: test_fexp_v2f16
+    ; GFX10: liveins: $vgpr0
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(<2 x f16>) = COPY $vgpr0
+    ; GFX10-NEXT: [[BITCAST:%[0-9]+]]:_(i32) = G_BITCAST [[COPY]](<2 x f16>)
+    ; GFX10-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[BITCAST]](i32)
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
+    ; GFX10-NEXT: [[LSHR:%[0-9]+]]:_(i32) = G_LSHR [[BITCAST]], [[C]](i32)
+    ; GFX10-NEXT: [[TRUNC1:%[0-9]+]]:_(f16) = G_TRUNC [[LSHR]](i32)
+    ; GFX10-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; GFX10-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C1]]
+    ; GFX10-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
+    ; GFX10-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
+    ; GFX10-NEXT: [[FPEXT1:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC1]](f16)
+    ; GFX10-NEXT: [[FMUL1:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT1]], [[C1]]
+    ; GFX10-NEXT: [[INT1:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL1]](f32)
+    ; GFX10-NEXT: [[FPTRUNC1:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT1]](f32)
+    ; GFX10-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x f16>) = G_BUILD_VECTOR [[FPTRUNC]](f16), [[FPTRUNC1]](f16)
+    ; GFX10-NEXT: $vgpr0 = COPY [[BUILD_VECTOR]](<2 x f16>)
+    ;
+    ; GFX11-LABEL: name: test_fexp_v2f16
+    ; GFX11: liveins: $vgpr0
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(<2 x f16>) = COPY $vgpr0
+    ; GFX11-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](<2 x f16>)
+    ; GFX11-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x3FB8AA3B
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT]], [[C]]
+    ; GFX11-NEXT: [[INT:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL]](f32)
+    ; GFX11-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT]](f32)
+    ; GFX11-NEXT: [[FPEXT1:%[0-9]+]]:_(f32) = G_FPEXT [[UV1]](f16)
+    ; GFX11-NEXT: [[FMUL1:%[0-9]+]]:_(f32) = G_FMUL [[FPEXT1]], [[C]]
+    ; GFX11-NEXT: [[INT1:%[0-9]+]]:_(f32) = G_INTRINSIC intrinsic(@llvm.amdgcn.exp2), [[FMUL1]](f32)
+    ; GFX11-NEXT: [[FPTRUNC1:%[0-9]+]]:_(f16) = G_FPTRUNC [[INT1]](f32)
+    ; GFX11-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x f16>) = G_BUILD_VECTOR [[FPTRUNC]](f16), [[FPTRUNC1]](f16)
+    ; GFX11-NEXT: $vgpr0 = COPY [[BUILD_VECTOR]](<2 x f16>)
     %0:_(<2 x f16>) = COPY $vgpr0
     %1:_(<2 x f16>) = G_FEXP %0
     $vgpr0 = COPY %1
@@ -817,6 +1255,98 @@ body: |
     ; GFX9-NEXT: [[C17:%[0-9]+]]:_(f64) = G_FCONSTANT double 0.000000e+00
     ; GFX9-NEXT: [[SELECT1:%[0-9]+]]:_(f64) = G_SELECT [[FCMP1]](s1), [[SELECT]], [[C17]]
     ; GFX9-NEXT: $vgpr0_vgpr1 = COPY [[SELECT1]](f64)
+    ;
+    ; GFX10-LABEL: name: test_fexp_f64
+    ; GFX10: liveins: $vgpr0_vgpr1
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(f64) = COPY $vgpr0_vgpr1
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FF71547652B82FE
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f64) = G_FMUL [[COPY]], [[C]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f64) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX10-NEXT: [[FNEG:%[0-9]+]]:_(f64) = G_FNEG [[INTRINSIC_ROUNDEVEN]]
+    ; GFX10-NEXT: [[C1:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3C7ABC9E3B39803F
+    ; GFX10-NEXT: [[C2:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FE62E42FEFA39EF
+    ; GFX10-NEXT: [[FMA:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C2]], [[COPY]]
+    ; GFX10-NEXT: [[FMA1:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C1]], [[FMA]]
+    ; GFX10-NEXT: [[C3:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E5ADE156A5DCB37
+    ; GFX10-NEXT: [[C4:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E928AF3FCA7AB0C
+    ; GFX10-NEXT: [[FMA2:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[C3]], [[C4]]
+    ; GFX10-NEXT: [[C5:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EC71DEE623FDE64
+    ; GFX10-NEXT: [[FMA3:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA2]], [[C5]]
+    ; GFX10-NEXT: [[C6:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EFA01997C89E6B0
+    ; GFX10-NEXT: [[FMA4:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA3]], [[C6]]
+    ; GFX10-NEXT: [[C7:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F2A01A014761F6E
+    ; GFX10-NEXT: [[FMA5:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA4]], [[C7]]
+    ; GFX10-NEXT: [[C8:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F56C16C1852B7B0
+    ; GFX10-NEXT: [[FMA6:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA5]], [[C8]]
+    ; GFX10-NEXT: [[C9:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F81111111122322
+    ; GFX10-NEXT: [[FMA7:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA6]], [[C9]]
+    ; GFX10-NEXT: [[C10:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FA55555555502A1
+    ; GFX10-NEXT: [[FMA8:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA7]], [[C10]]
+    ; GFX10-NEXT: [[C11:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FC5555555555511
+    ; GFX10-NEXT: [[FMA9:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA8]], [[C11]]
+    ; GFX10-NEXT: [[C12:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FE000000000000B
+    ; GFX10-NEXT: [[FMA10:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA9]], [[C12]]
+    ; GFX10-NEXT: [[C13:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.000000e+00
+    ; GFX10-NEXT: [[FMA11:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA10]], [[C13]]
+    ; GFX10-NEXT: [[FMA12:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA11]], [[C13]]
+    ; GFX10-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f64)
+    ; GFX10-NEXT: [[FLDEXP:%[0-9]+]]:_(f64) = G_FLDEXP [[FMA12]], [[FPTOSI]](i32)
+    ; GFX10-NEXT: [[C14:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.024000e+03
+    ; GFX10-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(ule), [[COPY]](f64), [[C14]]
+    ; GFX10-NEXT: [[C15:%[0-9]+]]:_(f64) = G_FCONSTANT double +inf
+    ; GFX10-NEXT: [[SELECT:%[0-9]+]]:_(f64) = G_SELECT [[FCMP]](s1), [[FLDEXP]], [[C15]]
+    ; GFX10-NEXT: [[C16:%[0-9]+]]:_(f64) = G_FCONSTANT double -1.075000e+03
+    ; GFX10-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(uge), [[COPY]](f64), [[C16]]
+    ; GFX10-NEXT: [[C17:%[0-9]+]]:_(f64) = G_FCONSTANT double 0.000000e+00
+    ; GFX10-NEXT: [[SELECT1:%[0-9]+]]:_(f64) = G_SELECT [[FCMP1]](s1), [[SELECT]], [[C17]]
+    ; GFX10-NEXT: $vgpr0_vgpr1 = COPY [[SELECT1]](f64)
+    ;
+    ; GFX11-LABEL: name: test_fexp_f64
+    ; GFX11: liveins: $vgpr0_vgpr1
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(f64) = COPY $vgpr0_vgpr1
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FF71547652B82FE
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f64) = G_FMUL [[COPY]], [[C]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f64) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX11-NEXT: [[FNEG:%[0-9]+]]:_(f64) = G_FNEG [[INTRINSIC_ROUNDEVEN]]
+    ; GFX11-NEXT: [[C1:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3C7ABC9E3B39803F
+    ; GFX11-NEXT: [[C2:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FE62E42FEFA39EF
+    ; GFX11-NEXT: [[FMA:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C2]], [[COPY]]
+    ; GFX11-NEXT: [[FMA1:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C1]], [[FMA]]
+    ; GFX11-NEXT: [[C3:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E5ADE156A5DCB37
+    ; GFX11-NEXT: [[C4:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E928AF3FCA7AB0C
+    ; GFX11-NEXT: [[FMA2:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[C3]], [[C4]]
+    ; GFX11-NEXT: [[C5:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EC71DEE623FDE64
+    ; GFX11-NEXT: [[FMA3:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA2]], [[C5]]
+    ; GFX11-NEXT: [[C6:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EFA01997C89E6B0
+    ; GFX11-NEXT: [[FMA4:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA3]], [[C6]]
+    ; GFX11-NEXT: [[C7:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F2A01A014761F6E
+    ; GFX11-NEXT: [[FMA5:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA4]], [[C7]]
+    ; GFX11-NEXT: [[C8:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F56C16C1852B7B0
+    ; GFX11-NEXT: [[FMA6:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA5]], [[C8]]
+    ; GFX11-NEXT: [[C9:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F81111111122322
+    ; GFX11-NEXT: [[FMA7:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA6]], [[C9]]
+    ; GFX11-NEXT: [[C10:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FA55555555502A1
+    ; GFX11-NEXT: [[FMA8:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA7]], [[C10]]
+    ; GFX11-NEXT: [[C11:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FC5555555555511
+    ; GFX11-NEXT: [[FMA9:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA8]], [[C11]]
+    ; GFX11-NEXT: [[C12:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FE000000000000B
+    ; GFX11-NEXT: [[FMA10:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA9]], [[C12]]
+    ; GFX11-NEXT: [[C13:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.000000e+00
+    ; GFX11-NEXT: [[FMA11:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA10]], [[C13]]
+    ; GFX11-NEXT: [[FMA12:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[FMA11]], [[C13]]
+    ; GFX11-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f64)
+    ; GFX11-NEXT: [[FLDEXP:%[0-9]+]]:_(f64) = G_FLDEXP [[FMA12]], [[FPTOSI]](i32)
+    ; GFX11-NEXT: [[C14:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.024000e+03
+    ; GFX11-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(ule), [[COPY]](f64), [[C14]]
+    ; GFX11-NEXT: [[C15:%[0-9]+]]:_(f64) = G_FCONSTANT double +inf
+    ; GFX11-NEXT: [[SELECT:%[0-9]+]]:_(f64) = G_SELECT [[FCMP]](s1), [[FLDEXP]], [[C15]]
+    ; GFX11-NEXT: [[C16:%[0-9]+]]:_(f64) = G_FCONSTANT double -1.075000e+03
+    ; GFX11-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(uge), [[COPY]](f64), [[C16]]
+    ; GFX11-NEXT: [[C17:%[0-9]+]]:_(f64) = G_FCONSTANT double 0.000000e+00
+    ; GFX11-NEXT: [[SELECT1:%[0-9]+]]:_(f64) = G_SELECT [[FCMP1]](s1), [[SELECT]], [[C17]]
+    ; GFX11-NEXT: $vgpr0_vgpr1 = COPY [[SELECT1]](f64)
     %0:_(f64) = COPY $vgpr0_vgpr1
     %1:_(f64) = G_FEXP %0
     $vgpr0_vgpr1 = COPY %1
@@ -989,6 +1519,106 @@ body: |
     ; GFX9-NEXT: [[C19:%[0-9]+]]:_(f64) = G_FCONSTANT double 0.000000e+00
     ; GFX9-NEXT: [[SELECT1:%[0-9]+]]:_(f64) = G_SELECT [[FCMP1]](s1), [[SELECT]], [[C19]]
     ; GFX9-NEXT: $vgpr0_vgpr1 = COPY [[SELECT1]](f64)
+    ;
+    ; GFX10-LABEL: name: test_fexp10_f64
+    ; GFX10: liveins: $vgpr0_vgpr1
+    ; GFX10-NEXT: {{  $}}
+    ; GFX10-NEXT: [[COPY:%[0-9]+]]:_(f64) = COPY $vgpr0_vgpr1
+    ; GFX10-NEXT: [[C:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x400A934F0979A371
+    ; GFX10-NEXT: [[FMUL:%[0-9]+]]:_(f64) = G_FMUL [[COPY]], [[C]]
+    ; GFX10-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f64) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX10-NEXT: [[FNEG:%[0-9]+]]:_(f64) = G_FNEG [[INTRINSIC_ROUNDEVEN]]
+    ; GFX10-NEXT: [[C1:%[0-9]+]]:_(f64) = G_FCONSTANT double f0xBC49DC1DA994FD21
+    ; GFX10-NEXT: [[C2:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FD34413509F79FF
+    ; GFX10-NEXT: [[FMA:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C2]], [[COPY]]
+    ; GFX10-NEXT: [[FMA1:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C1]], [[FMA]]
+    ; GFX10-NEXT: [[C3:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x40026BB1BBB55516
+    ; GFX10-NEXT: [[C4:%[0-9]+]]:_(f64) = G_FCONSTANT double f0xBCAF48AD494EA3E9
+    ; GFX10-NEXT: [[FMUL1:%[0-9]+]]:_(f64) = G_FMUL [[FMA1]], [[C4]]
+    ; GFX10-NEXT: [[FMA2:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[C3]], [[FMUL1]]
+    ; GFX10-NEXT: [[C5:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E5ADE156A5DCB37
+    ; GFX10-NEXT: [[C6:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E928AF3FCA7AB0C
+    ; GFX10-NEXT: [[FMA3:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[C5]], [[C6]]
+    ; GFX10-NEXT: [[C7:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EC71DEE623FDE64
+    ; GFX10-NEXT: [[FMA4:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA3]], [[C7]]
+    ; GFX10-NEXT: [[C8:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EFA01997C89E6B0
+    ; GFX10-NEXT: [[FMA5:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA4]], [[C8]]
+    ; GFX10-NEXT: [[C9:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F2A01A014761F6E
+    ; GFX10-NEXT: [[FMA6:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA5]], [[C9]]
+    ; GFX10-NEXT: [[C10:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F56C16C1852B7B0
+    ; GFX10-NEXT: [[FMA7:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA6]], [[C10]]
+    ; GFX10-NEXT: [[C11:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F81111111122322
+    ; GFX10-NEXT: [[FMA8:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA7]], [[C11]]
+    ; GFX10-NEXT: [[C12:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FA55555555502A1
+    ; GFX10-NEXT: [[FMA9:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA8]], [[C12]]
+    ; GFX10-NEXT: [[C13:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FC5555555555511
+    ; GFX10-NEXT: [[FMA10:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA9]], [[C13]]
+    ; GFX10-NEXT: [[C14:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FE000000000000B
+    ; GFX10-NEXT: [[FMA11:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA10]], [[C14]]
+    ; GFX10-NEXT: [[C15:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.000000e+00
+    ; GFX10-NEXT: [[FMA12:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA11]], [[C15]]
+    ; GFX10-NEXT: [[FMA13:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA12]], [[C15]]
+    ; GFX10-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f64)
+    ; GFX10-NEXT: [[FLDEXP:%[0-9]+]]:_(f64) = G_FLDEXP [[FMA13]], [[FPTOSI]](i32)
+    ; GFX10-NEXT: [[C16:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.024000e+03
+    ; GFX10-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(ule), [[COPY]](f64), [[C16]]
+    ; GFX10-NEXT: [[C17:%[0-9]+]]:_(f64) = G_FCONSTANT double +inf
+    ; GFX10-NEXT: [[SELECT:%[0-9]+]]:_(f64) = G_SELECT [[FCMP]](s1), [[FLDEXP]], [[C17]]
+    ; GFX10-NEXT: [[C18:%[0-9]+]]:_(f64) = G_FCONSTANT double -1.075000e+03
+    ; GFX10-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(uge), [[COPY]](f64), [[C18]]
+    ; GFX10-NEXT: [[C19:%[0-9]+]]:_(f64) = G_FCONSTANT double 0.000000e+00
+    ; GFX10-NEXT: [[SELECT1:%[0-9]+]]:_(f64) = G_SELECT [[FCMP1]](s1), [[SELECT]], [[C19]]
+    ; GFX10-NEXT: $vgpr0_vgpr1 = COPY [[SELECT1]](f64)
+    ;
+    ; GFX11-LABEL: name: test_fexp10_f64
+    ; GFX11: liveins: $vgpr0_vgpr1
+    ; GFX11-NEXT: {{  $}}
+    ; GFX11-NEXT: [[COPY:%[0-9]+]]:_(f64) = COPY $vgpr0_vgpr1
+    ; GFX11-NEXT: [[C:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x400A934F0979A371
+    ; GFX11-NEXT: [[FMUL:%[0-9]+]]:_(f64) = G_FMUL [[COPY]], [[C]]
+    ; GFX11-NEXT: [[INTRINSIC_ROUNDEVEN:%[0-9]+]]:_(f64) = G_INTRINSIC_ROUNDEVEN [[FMUL]]
+    ; GFX11-NEXT: [[FNEG:%[0-9]+]]:_(f64) = G_FNEG [[INTRINSIC_ROUNDEVEN]]
+    ; GFX11-NEXT: [[C1:%[0-9]+]]:_(f64) = G_FCONSTANT double f0xBC49DC1DA994FD21
+    ; GFX11-NEXT: [[C2:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FD34413509F79FF
+    ; GFX11-NEXT: [[FMA:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C2]], [[COPY]]
+    ; GFX11-NEXT: [[FMA1:%[0-9]+]]:_(f64) = G_FMA [[FNEG]], [[C1]], [[FMA]]
+    ; GFX11-NEXT: [[C3:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x40026BB1BBB55516
+    ; GFX11-NEXT: [[C4:%[0-9]+]]:_(f64) = G_FCONSTANT double f0xBCAF48AD494EA3E9
+    ; GFX11-NEXT: [[FMUL1:%[0-9]+]]:_(f64) = G_FMUL [[FMA1]], [[C4]]
+    ; GFX11-NEXT: [[FMA2:%[0-9]+]]:_(f64) = G_FMA [[FMA1]], [[C3]], [[FMUL1]]
+    ; GFX11-NEXT: [[C5:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E5ADE156A5DCB37
+    ; GFX11-NEXT: [[C6:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3E928AF3FCA7AB0C
+    ; GFX11-NEXT: [[FMA3:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[C5]], [[C6]]
+    ; GFX11-NEXT: [[C7:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EC71DEE623FDE64
+    ; GFX11-NEXT: [[FMA4:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA3]], [[C7]]
+    ; GFX11-NEXT: [[C8:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3EFA01997C89E6B0
+    ; GFX11-NEXT: [[FMA5:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA4]], [[C8]]
+    ; GFX11-NEXT: [[C9:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F2A01A014761F6E
+    ; GFX11-NEXT: [[FMA6:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA5]], [[C9]]
+    ; GFX11-NEXT: [[C10:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F56C16C1852B7B0
+    ; GFX11-NEXT: [[FMA7:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA6]], [[C10]]
+    ; GFX11-NEXT: [[C11:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3F81111111122322
+    ; GFX11-NEXT: [[FMA8:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA7]], [[C11]]
+    ; GFX11-NEXT: [[C12:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FA55555555502A1
+    ; GFX11-NEXT: [[FMA9:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA8]], [[C12]]
+    ; GFX11-NEXT: [[C13:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FC5555555555511
+    ; GFX11-NEXT: [[FMA10:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA9]], [[C13]]
+    ; GFX11-NEXT: [[C14:%[0-9]+]]:_(f64) = G_FCONSTANT double f0x3FE000000000000B
+    ; GFX11-NEXT: [[FMA11:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA10]], [[C14]]
+    ; GFX11-NEXT: [[C15:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.000000e+00
+    ; GFX11-NEXT: [[FMA12:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA11]], [[C15]]
+    ; GFX11-NEXT: [[FMA13:%[0-9]+]]:_(f64) = G_FMA [[FMA2]], [[FMA12]], [[C15]]
+    ; GFX11-NEXT: [[FPTOSI:%[0-9]+]]:_(i32) = G_FPTOSI [[INTRINSIC_ROUNDEVEN]](f64)
+    ; GFX11-NEXT: [[FLDEXP:%[0-9]+]]:_(f64) = G_FLDEXP [[FMA13]], [[FPTOSI]](i32)
+    ; GFX11-NEXT: [[C16:%[0-9]+]]:_(f64) = G_FCONSTANT double 1.024000e+03
+    ; GFX11-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(ule), [[COPY]](f64), [[C16]]
+    ; GFX11-NEXT: [[C17:%[0-9]+]]:_(f64) = G_FCONSTANT double +inf
+    ; GFX11-NEXT: [[SELECT:%[0-9]+]]:_(f64) = G_SELECT [[FCMP]](s1), [[FLDEXP]], [[C17]]
+    ; GFX11-NEXT: [[C18:%[0-9]+]]:_(f64) = G_FCONSTANT double -1.075000e+03
+    ; GFX11-NEXT: [[FCMP1:%[0-9]+]]:_(s1) = G_FCMP floatpred(uge), [[COPY]](f64), [[C18]]
+    ; GFX11-NEXT: [[C19:%[0-9]+]]:_(f64) = G_FCONSTANT double 0.000000e+00
+    ; GFX11-NEXT: [[SELECT1:%[0-9]+]]:_(f64) = G_SELECT [[FCMP1]](s1), [[SELECT]], [[C19]]
+    ; GFX11-NEXT: $vgpr0_vgpr1 = COPY [[SELECT1]](f64)
     %0:_(f64) = COPY $vgpr0_vgpr1
     %1:_(f64) = G_FEXP10 %0
     $vgpr0_vgpr1 = COPY %1

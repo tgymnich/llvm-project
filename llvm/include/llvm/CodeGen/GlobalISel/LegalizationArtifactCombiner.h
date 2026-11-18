@@ -298,6 +298,10 @@ public:
       // source operand.
       const LLT WorkTy =
           MergeSrcTy.isFloat() ? LLT::integer(MergeSrcSize) : MergeSrcTy;
+      if (MergeSrcTy != WorkTy &&
+          !isInstLegal({TargetOpcode::G_BITCAST, {WorkTy, MergeSrcTy}}))
+        return false;
+
       auto AsInt = [&](Register R) {
         if (MergeSrcTy != WorkTy)
           return Builder.buildBitcast(WorkTy, R).getReg(0);
@@ -316,6 +320,15 @@ public:
         Builder.buildTrunc(DstReg, AsInt(MergeSrcReg));
         UpdatedDefs.push_back(DstReg);
       } else if (DstSize == MergeSrcSize) {
+        if (DstTy != WorkTy) {
+          if (!isInstLegal({TargetOpcode::G_BITCAST, {DstTy, WorkTy}}))
+            return false;
+          Builder.buildBitcast(DstReg, AsInt(MergeSrcReg));
+          UpdatedDefs.push_back(DstReg);
+          markInstAndDefDead(MI, *SrcMerge, DeadInsts);
+          return true;
+        }
+
         // If the sizes match we can simply try to replace the register
         LLVM_DEBUG(
             dbgs() << "Replacing G_TRUNC(G_MERGE_VALUES) with merge input: "
@@ -1264,6 +1277,11 @@ public:
       }
 
       if (ConvertOp) {
+        if (ConvertOp == TargetOpcode::G_BITCAST &&
+            MergeI->getOpcode() == TargetOpcode::G_MERGE_VALUES &&
+            !isInstLegal({ConvertOp, {DestTy, MergeSrcTy}}))
+          return false;
+
         Builder.setInstrAndDebugLoc(MI);
 
         for (unsigned Idx = 0; Idx < NumDefs; ++Idx) {

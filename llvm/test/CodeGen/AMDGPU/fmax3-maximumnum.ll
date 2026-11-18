@@ -2566,7 +2566,6 @@ define <3 x half> @v_max3_v3f16_maximumnum_maximumnum__v_v_v_0(<3 x half> %a, <3
 ; GFX6-GISEL-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GFX6-GISEL-NEXT:    v_lshlrev_b32_e32 v2, 16, v2
 ; GFX6-GISEL-NEXT:    v_or_b32_e32 v0, v0, v2
-; GFX6-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX6-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX7-GISEL-LABEL: v_max3_v3f16_maximumnum_maximumnum__v_v_v_0:
@@ -2603,7 +2602,6 @@ define <3 x half> @v_max3_v3f16_maximumnum_maximumnum__v_v_v_0(<3 x half> %a, <3
 ; GFX7-GISEL-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; GFX7-GISEL-NEXT:    v_lshlrev_b32_e32 v2, 16, v2
 ; GFX7-GISEL-NEXT:    v_or_b32_e32 v0, v0, v2
-; GFX7-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX7-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX8-GISEL-LABEL: v_max3_v3f16_maximumnum_maximumnum__v_v_v_0:
@@ -2627,7 +2625,6 @@ define <3 x half> @v_max3_v3f16_maximumnum_maximumnum__v_v_v_0(<3 x half> %a, <3
 ; GFX8-GISEL-NEXT:    v_max_f16_e32 v2, v6, v2
 ; GFX8-GISEL-NEXT:    v_lshlrev_b32_sdwa v0, v3, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
 ; GFX8-GISEL-NEXT:    v_or_b32_sdwa v0, v2, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX8-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX8-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX9-GISEL-LABEL: v_max3_v3f16_maximumnum_maximumnum__v_v_v_0:

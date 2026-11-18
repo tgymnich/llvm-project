@@ -813,6 +813,11 @@ bool AMDGPUInstructionSelector::selectG_MERGE_VALUES(MachineInstr &MI) const {
     // Handle s32 <- G_MERGE_VALUES s16, s16
     if (SrcSize == 16 && DstTy.getSizeInBits() == 32 &&
         MI.getNumOperands() == 3) {
+      if (!Subtarget->useRealTrue16Insts() &&
+          mi_match(MI.getOperand(2).getReg(), *MRI, m_GImplicitDef())) {
+        MI.removeOperand(2);
+        return selectCOPY(MI);
+      }
       return selectS16MergeToS32(MI);
     }
     // With true16 a scalar s16 is a register type, so a scalar wider than 32
@@ -874,6 +879,13 @@ bool AMDGPUInstructionSelector::selectG_UNMERGE_VALUES(MachineInstr &MI) const {
 
   const uint64_t DstSize = DstTy.getSizeInBits();
   const uint64_t SrcSize = SrcTy.getSizeInBits();
+  if (DstSize == 16 && SrcSize == 32 && NumDst == 2 &&
+      !Subtarget->useRealTrue16Insts() &&
+      MRI->use_empty(MI.getOperand(1).getReg())) {
+    MI.removeOperand(1);
+    return selectCOPY(MI);
+  }
+
   const DebugLoc &DL = MI.getDebugLoc();
   const RegisterBank *SrcBank = RBI.getRegBank(SrcReg, *MRI, TRI);
 

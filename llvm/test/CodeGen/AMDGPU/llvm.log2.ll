@@ -4784,7 +4784,6 @@ define <3 x half> @v_log2_v3f16(<3 x half> %in) {
 ; SI-GISEL-NEXT:    v_bfe_u32 v2, v2, 0, 16
 ; SI-GISEL-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; SI-GISEL-NEXT:    v_lshlrev_b32_e32 v2, 16, v2
-; SI-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; SI-GISEL-NEXT:    v_or_b32_e32 v0, v0, v2
 ; SI-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -4806,7 +4805,6 @@ define <3 x half> @v_log2_v3f16(<3 x half> %in) {
 ; VI-GISEL-NEXT:    v_mov_b32_e32 v3, 16
 ; VI-GISEL-NEXT:    v_lshlrev_b32_sdwa v2, v3, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
 ; VI-GISEL-NEXT:    v_or_b32_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; VI-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; VI-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX900-SDAG-LABEL: v_log2_v3f16:
@@ -4917,7 +4915,6 @@ define <3 x half> @v_log2_v3f16_fast(<3 x half> %in) {
 ; SI-GISEL-NEXT:    v_bfe_u32 v2, v2, 0, 16
 ; SI-GISEL-NEXT:    v_bfe_u32 v0, v0, 0, 16
 ; SI-GISEL-NEXT:    v_lshlrev_b32_e32 v2, 16, v2
-; SI-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; SI-GISEL-NEXT:    v_or_b32_e32 v0, v0, v2
 ; SI-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
@@ -4939,7 +4936,6 @@ define <3 x half> @v_log2_v3f16_fast(<3 x half> %in) {
 ; VI-GISEL-NEXT:    v_mov_b32_e32 v3, 16
 ; VI-GISEL-NEXT:    v_lshlrev_b32_sdwa v2, v3, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
 ; VI-GISEL-NEXT:    v_or_b32_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; VI-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; VI-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX900-SDAG-LABEL: v_log2_v3f16_fast:

@@ -3701,14 +3701,32 @@ LegalizerHelper::widenScalar(MachineInstr &MI, unsigned TypeIdx, LLT WideTy) {
 
     return Legalized;
   }
-  case TargetOpcode::G_BITCAST:
+  case TargetOpcode::G_BITCAST: {
     if (WideTy.isVector())
       return UnableToLegalize;
+
+    Register Reg = MI.getOperand(TypeIdx).getReg();
+    LLT Ty = MRI.getType(Reg);
+    if (Ty.isVector() || WideTy.getSizeInBits() % Ty.getSizeInBits() != 0)
+      return UnableToLegalize;
+
+    unsigned NumParts = WideTy.getSizeInBits() / Ty.getSizeInBits();
     Observer.changingInstr(MI);
-    if (TypeIdx == 0)
-      widenScalarDst(MI, WideTy, 0, TargetOpcode::G_TRUNC);
-    else
-      widenScalarSrc(MI, WideTy, 1, TargetOpcode::G_ANYEXT);
+    if (TypeIdx == 0) {
+      Register WideReg = MRI.createGenericVirtualRegister(WideTy);
+      SmallVector<Register> Parts{Reg};
+      for (unsigned I = 1; I < NumParts; ++I)
+        Parts.push_back(MRI.createGenericVirtualRegister(Ty));
+      MIRBuilder.setInsertPt(MIRBuilder.getMBB(), ++MIRBuilder.getInsertPt());
+      MIRBuilder.buildUnmerge(Parts, WideReg);
+      MI.getOperand(0).setReg(WideReg);
+    } else {
+      Register Undef = MIRBuilder.buildUndef(Ty).getReg(0);
+      SmallVector<Register> Parts(NumParts, Undef);
+      Parts[0] = Reg;
+      auto Merge = MIRBuilder.buildMergeValues(WideTy, Parts);
+      MI.getOperand(1).setReg(Merge.getReg(0));
+    }
     Observer.changedInstr(MI);
 
     Register Dst = MI.getOperand(0).getReg();
@@ -3721,6 +3739,7 @@ LegalizerHelper::widenScalar(MachineInstr &MI, unsigned TypeIdx, LLT WideTy) {
     }
 
     return Legalized;
+  }
   }
 }
 

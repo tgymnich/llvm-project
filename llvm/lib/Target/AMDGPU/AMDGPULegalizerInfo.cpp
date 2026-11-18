@@ -2162,6 +2162,10 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST_,
     auto &Builder =
         getActionDefinitionsBuilder(Op)
             .legalIf(all(isRegisterType(ST, 0), isRegisterType(ST, 1)))
+            .customIf([=](const LegalityQuery &Query) {
+              return Query.Types[BigTyIdx] == S32 &&
+                     Query.Types[LitTyIdx] == S16;
+            })
             .lowerFor({{S16, V2S16}})
             .lowerIf([=](const LegalityQuery &Query) {
               const LLT BigTy = Query.Types[BigTyIdx];
@@ -2361,6 +2365,18 @@ bool AMDGPULegalizerInfo::legalizeCustom(
   MachineRegisterInfo &MRI = *B.getMRI();
 
   switch (MI.getOpcode()) {
+  case TargetOpcode::G_MERGE_VALUES:
+    if (mi_match(MI.getOperand(2).getReg(), MRI, m_GImplicitDef()))
+      return true;
+    return Helper.lower(MI, 0, LLT()) == LegalizerHelper::Legalized;
+  case TargetOpcode::G_UNMERGE_VALUES: {
+    auto *Merge = dyn_cast<GMerge>(MRI.getVRegDef(MI.getOperand(2).getReg()));
+    if (Merge && Merge->getNumSources() == 2 &&
+        MRI.use_empty(MI.getOperand(1).getReg()) &&
+        mi_match(Merge->getSourceReg(1), MRI, m_GImplicitDef()))
+      return true;
+    return Helper.lower(MI, 0, LLT()) == LegalizerHelper::Legalized;
+  }
   case TargetOpcode::G_ADDRSPACE_CAST:
     return legalizeAddrSpaceCast(MI, MRI, B);
   case TargetOpcode::G_INTRINSIC_ROUNDEVEN:

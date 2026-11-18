@@ -3742,6 +3742,52 @@ TEST_F(AArch64GISelMITest, WidenUnmerge) {
   EXPECT_TRUE(CheckMachineFunction(*MF, CheckStr)) << *MF;
 }
 
+TEST_F(AMDGPUGISelMITest, WidenBitcastPreservesTypes) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  DefineLegalizerInfo(A, {});
+  AInfo Info(MF->getSubtarget());
+  DummyGISelObserver Observer;
+  LegalizerHelper Helper(*MF, Info, Observer, B);
+  MachineRegisterInfo &MRI = MF->getRegInfo();
+  const LLT I32 = LLT::integer(32);
+  const LLT Types[] = {LLT::integer(16), LLT::float16(), LLT::bfloat16()};
+
+  for (LLT SrcTy : Types) {
+    for (LLT DstTy : Types) {
+      if (SrcTy == DstTy)
+        continue;
+
+      B.setInsertPt(*EntryMBB, EntryMBB->end());
+      Register Src = B.buildUndef(SrcTy).getReg(0);
+      auto Cast = B.buildBitcast(DstTy, Src);
+      Register Dst = Cast.getReg(0);
+
+      B.setInstr(*Cast);
+      ASSERT_EQ(LegalizerHelper::Legalized, Helper.widenScalar(*Cast, 0, I32));
+      B.setInstr(*Cast);
+      ASSERT_EQ(LegalizerHelper::Legalized, Helper.widenScalar(*Cast, 1, I32));
+
+      MachineInstr *Unmerge = MRI.getVRegDef(Dst);
+      ASSERT_EQ(TargetOpcode::G_UNMERGE_VALUES, Unmerge->getOpcode());
+      EXPECT_EQ(DstTy, MRI.getType(Unmerge->getOperand(1).getReg()));
+      Register WideDst = Unmerge->getOperand(2).getReg();
+      EXPECT_EQ(I32, MRI.getType(WideDst));
+
+      MachineInstr *Merge = MRI.getVRegDef(WideDst);
+      ASSERT_EQ(TargetOpcode::G_MERGE_VALUES, Merge->getOpcode());
+      EXPECT_EQ(I32, MRI.getType(Merge->getOperand(0).getReg()));
+      EXPECT_EQ(Src, Merge->getOperand(1).getReg());
+      Register Padding = Merge->getOperand(2).getReg();
+      EXPECT_EQ(SrcTy, MRI.getType(Padding));
+      EXPECT_EQ(TargetOpcode::G_IMPLICIT_DEF,
+                MRI.getVRegDef(Padding)->getOpcode());
+    }
+  }
+}
+
 TEST_F(AArch64GISelMITest, BitcastLoad) {
   setUp();
   if (!TM)

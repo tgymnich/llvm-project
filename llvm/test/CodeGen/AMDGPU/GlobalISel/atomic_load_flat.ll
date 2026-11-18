@@ -125,6 +125,7 @@ define i32 @atomic_load_flat_monotonic_f16_zext_to_i32(ptr %ptr) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    flat_load_ushort v0, v[0:1] glc
 ; GCN-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %load = load atomic half, ptr %ptr monotonic, align 2
   %cast = bitcast half %load to i16
@@ -138,6 +139,7 @@ define i32 @atomic_load_flat_monotonic_bf16_zext_to_i32(ptr %ptr) {
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    flat_load_ushort v0, v[0:1] glc
 ; GCN-NEXT:    s_waitcnt vmcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_and_b32_e32 v0, 0xffff, v0
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %load = load atomic bfloat, ptr %ptr monotonic, align 2
   %cast = bitcast bfloat %load to i16
