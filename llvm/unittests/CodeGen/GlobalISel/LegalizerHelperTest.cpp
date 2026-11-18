@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "GISelMITest.h"
+#include "llvm/CodeGen/GlobalISel/LegalizationArtifactCombiner.h"
 #include "llvm/CodeGen/GlobalISel/LostDebugLocObserver.h"
 
 using namespace LegalizeActions;
@@ -3740,6 +3741,56 @@ TEST_F(AArch64GISelMITest, WidenUnmerge) {
 
   // Check
   EXPECT_TRUE(CheckMachineFunction(*MF, CheckStr)) << *MF;
+}
+
+TEST_F(AArch64GISelMITest, TruncMergePreservesTypes) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  DefineLegalizerInfo(ALegal, {
+    getActionDefinitionsBuilder(G_BITCAST).legalForCartesianProduct({s16});
+  });
+  DefineLegalizerInfo(ACustom, {
+    getActionDefinitionsBuilder(G_BITCAST).customForCartesianProduct({s16});
+  });
+  ALegalInfo LegalInfo(MF->getSubtarget());
+  ACustomInfo CustomInfo(MF->getSubtarget());
+  const LegalizerInfo *Infos[] = {&LegalInfo, &CustomInfo};
+  const LLT Types[] = {LLT::integer(16), LLT::float16(), LLT::bfloat16(),
+                       LLT::scalar(16)};
+  GISelObserverWrapper Observer;
+
+  for (const LegalizerInfo *Info : Infos) {
+    for (LLT SrcTy : Types) {
+      for (LLT DstTy : Types) {
+        B.setInsertPt(*EntryMBB, EntryMBB->end());
+        auto Src = B.buildUndef(SrcTy);
+        auto Merge = B.buildMergeValues(LLT::integer(32),
+                                        {Src.getReg(0), Src.getReg(0)});
+        auto Trunc = B.buildTrunc(DstTy, Merge);
+        auto Use = B.buildFreeze(DstTy, Trunc);
+        LegalizationArtifactCombiner Combiner(B, *MRI, *Info);
+        SmallVector<MachineInstr *> Dead;
+        ASSERT_TRUE(Combiner.tryCombineInstruction(*Trunc, Dead, Observer));
+        for (MachineInstr *MI : Dead)
+          MI->eraseFromParent();
+
+        Register Result = Use->getOperand(1).getReg();
+        EXPECT_EQ(DstTy.getUniqueRAWLLTData(),
+                  MRI->getType(Result).getUniqueRAWLLTData());
+        if (SrcTy.getUniqueRAWLLTData() == DstTy.getUniqueRAWLLTData()) {
+          EXPECT_EQ(Src.getReg(0), Result);
+        } else {
+          MachineInstr *Cast = MRI->getVRegDef(Result);
+          ASSERT_EQ(SrcTy == DstTy ? TargetOpcode::COPY
+                                   : TargetOpcode::G_BITCAST,
+                    Cast->getOpcode());
+          EXPECT_EQ(Src.getReg(0), Cast->getOperand(1).getReg());
+        }
+      }
+    }
+  }
 }
 
 TEST_F(AArch64GISelMITest, BitcastLoad) {

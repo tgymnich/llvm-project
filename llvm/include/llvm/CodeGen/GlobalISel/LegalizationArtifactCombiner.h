@@ -292,12 +292,13 @@ public:
       if (!DstTy.isScalar() || !MergeSrcTy.isScalar())
         return false;
 
-      // G_TRUNC/G_MERGE_VALUES operate on the raw bit pattern - if the merge
-      // feeds us float sources, reinterpret them as integers of the same size
-      // so we never emit a G_TRUNC or G_MERGE_VALUES with a floating-point
-      // source operand.
+      // Integer truncation and merge folds require integer inputs.
       const LLT WorkTy =
           MergeSrcTy.isFloat() ? LLT::integer(MergeSrcSize) : MergeSrcTy;
+      if (DstSize != MergeSrcSize && MergeSrcTy != WorkTy &&
+          !LI.isLegalOrCustom({TargetOpcode::G_BITCAST, {WorkTy, MergeSrcTy}}))
+        return false;
+
       auto AsInt = [&](Register R) {
         if (MergeSrcTy != WorkTy)
           return Builder.buildBitcast(WorkTy, R).getReg(0);
@@ -320,8 +321,20 @@ public:
         LLVM_DEBUG(
             dbgs() << "Replacing G_TRUNC(G_MERGE_VALUES) with merge input: "
                    << MI);
-        replaceRegOrBuildCopy(DstReg, AsInt(MergeSrcReg), MRI, Builder,
-                              UpdatedDefs, Observer);
+        if (DstTy.getUniqueRAWLLTData() == MergeSrcTy.getUniqueRAWLLTData()) {
+          replaceRegOrBuildCopy(DstReg, MergeSrcReg, MRI, Builder, UpdatedDefs,
+                                Observer);
+        } else {
+          if (DstTy == MergeSrcTy) {
+            Builder.buildCopy(DstReg, MergeSrcReg);
+          } else {
+            if (!LI.isLegalOrCustom(
+                    {TargetOpcode::G_BITCAST, {DstTy, MergeSrcTy}}))
+              return false;
+            Builder.buildBitcast(DstReg, MergeSrcReg);
+          }
+          UpdatedDefs.push_back(DstReg);
+        }
       } else if (DstSize % MergeSrcSize == 0) {
         // If the trunc size is a multiple of the merge source size we can use
         // a smaller merge instead
