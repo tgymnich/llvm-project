@@ -9,9 +9,40 @@
 #include "GISelMITest.h"
 #include "llvm/CodeGen/GlobalISel/CSEInfo.h"
 #include "llvm/CodeGen/GlobalISel/CSEMIRBuilder.h"
+#include "llvm/CodeGen/GlobalISel/CombinerHelper.h"
 #include "gtest/gtest.h"
 
 namespace {
+
+TEST_F(AArch64GISelMITest, ReplaceRegUpdatesCSEForConstrainedType) {
+  setUp();
+  if (!TM)
+    GTEST_SKIP();
+
+  const LLT I32 = LLT::integer(32);
+  auto X = B.buildTrunc(I32, Copies[0]);
+  auto Y = B.buildTrunc(I32, Copies[1]);
+  auto Replacement = B.buildAdd(LLT::scalar(32), X, Y);
+  auto Original = B.buildAdd(I32, X, Y);
+  B.buildXor(LLT::scalar(32), Replacement, X);
+  B.buildXor(I32, Original, Y);
+
+  GISelCSEInfo CSEInfo;
+  CSEInfo.setCSEConfig(std::make_unique<CSEConfigFull>());
+  CSEInfo.analyze(*MF);
+  GISelObserverWrapper Observer;
+  Observer.addObserver(&CSEInfo);
+  RAIIDelegateInstaller Delegate(*MF, &Observer);
+  CombinerHelper Helper(Observer, B, /*IsPreLegalize=*/false);
+  Helper.replaceRegWith(*MRI, Original.getReg(0), Replacement.getReg(0));
+  Original->eraseFromParent();
+
+  EXPECT_EQ(I32.getUniqueRAWLLTData(),
+            MRI->getType(Replacement.getReg(0)).getUniqueRAWLLTData());
+  Error Err = CSEInfo.verify();
+  EXPECT_FALSE(static_cast<bool>(Err));
+  consumeError(std::move(Err));
+}
 
 TEST_F(AArch64GISelMITest, TestCSE) {
   setUp();

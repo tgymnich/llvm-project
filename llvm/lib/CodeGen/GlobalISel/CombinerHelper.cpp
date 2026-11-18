@@ -200,12 +200,24 @@ bool CombinerHelper::isFPConstantLegalOrBeforeLegalizer(const LLT Ty) const {
 void CombinerHelper::replaceRegWith(MachineRegisterInfo &MRI, Register FromReg,
                                     Register ToReg) const {
   Observer.changingAllUsesOfReg(MRI, FromReg);
+  SmallVector<MachineInstr *> ChangedDefs;
+  if (MRI.getType(FromReg).getUniqueRAWLLTData() !=
+          MRI.getType(ToReg).getUniqueRAWLLTData() ||
+      MRI.getRegClassOrRegBank(FromReg) != MRI.getRegClassOrRegBank(ToReg)) {
+    Observer.changingAllUsesOfReg(MRI, ToReg);
+    for (MachineInstr &Def : MRI.def_instructions(ToReg)) {
+      Observer.changingInstr(Def);
+      ChangedDefs.push_back(&Def);
+    }
+  }
 
   if (MRI.constrainRegAttrs(ToReg, FromReg))
     MRI.replaceRegWith(FromReg, ToReg);
   else
     Builder.buildCopy(FromReg, ToReg);
 
+  for (MachineInstr *Def : ChangedDefs)
+    Observer.changedInstr(*Def);
   Observer.finishedChangingAllUsesOfReg();
 }
 
