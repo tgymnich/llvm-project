@@ -683,18 +683,17 @@ body: |
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
     ; CHECK-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 16
     ; CHECK-NEXT: [[LSHR:%[0-9]+]]:_(s32) = G_LSHR [[COPY]], [[C]](s32)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
     ; CHECK-NEXT: [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
     ; CHECK-NEXT: [[AND:%[0-9]+]]:_(i32) = G_AND [[COPY]], [[C1]]
     ; CHECK-NEXT: [[C2:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
     ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[LSHR]], [[C2]](i32)
     ; CHECK-NEXT: [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
-    ; CHECK-NEXT: [[C3:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-    ; CHECK-NEXT: [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[C3]], [[C2]](i32)
-    ; CHECK-NEXT: [[OR1:%[0-9]+]]:_(i32) = G_OR [[C3]], [[SHL1]]
-    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(s64) = G_MERGE_VALUES [[OR]](i32), [[OR1]](i32)
-    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(s64) = G_IMPLICIT_DEF
-    ; CHECK-NEXT: [[MV1:%[0-9]+]]:_(s448) = G_MERGE_VALUES [[MV]](s64), [[DEF]](s64), [[DEF]](s64), [[DEF]](s64), [[DEF]](s64), [[DEF]](s64), [[DEF]](s64)
-    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s112) = G_TRUNC [[MV1]](s448)
+    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF]](i16), [[DEF]](i16)
+    ; CHECK-NEXT: [[MV1:%[0-9]+]]:_(s64) = G_MERGE_VALUES [[OR]](i32), [[MV]](i32)
+    ; CHECK-NEXT: [[DEF1:%[0-9]+]]:_(s64) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV2:%[0-9]+]]:_(s448) = G_MERGE_VALUES [[MV1]](s64), [[DEF1]](s64), [[DEF1]](s64), [[DEF1]](s64), [[DEF1]](s64), [[DEF1]](s64), [[DEF1]](s64)
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(s112) = G_TRUNC [[MV2]](s448)
     ; CHECK-NEXT: S_ENDPGM 0, implicit [[TRUNC]](s112)
     %0:_(s32) = COPY $vgpr0
     %1:_(s2) = G_TRUNC %0

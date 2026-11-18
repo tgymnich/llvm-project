@@ -933,7 +933,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST_,
       .legalIf(isRegisterClassType(ST, 0))
       // s1 and s16 are special cases because they have legal operations on
       // them, but don't really occupy registers in the normal way.
-      .legalFor({S1, S16})
+      .legalFor({S1, S16, F16, BF16})
       .clampNumElements(0, V16S32, V32S32)
       .moreElementsIf(isSmallOddVector(0), oneMoreElement(0))
       .clampScalarOrElt(0, S32, MaxScalar)
@@ -2162,6 +2162,11 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST_,
     auto &Builder =
         getActionDefinitionsBuilder(Op)
             .legalIf(all(isRegisterType(ST, 0), isRegisterType(ST, 1)))
+            .customIf([=](const LegalityQuery &Query) {
+              const LLT LittleTy = Query.Types[LitTyIdx];
+              return Query.Types[BigTyIdx].isInteger(32) &&
+                     LittleTy.isScalar() && LittleTy.getSizeInBits() == 16;
+            })
             .lowerFor({{S16, V2S16}})
             .lowerIf([=](const LegalityQuery &Query) {
               const LLT BigTy = Query.Types[BigTyIdx];
@@ -2361,6 +2366,14 @@ bool AMDGPULegalizerInfo::legalizeCustom(
   MachineRegisterInfo &MRI = *B.getMRI();
 
   switch (MI.getOpcode()) {
+  case TargetOpcode::G_MERGE_VALUES:
+    if (mi_match(MI.getOperand(2).getReg(), MRI, m_GImplicitDef()))
+      return true;
+    return Helper.lower(MI, 0, LLT()) == LegalizerHelper::Legalized;
+  case TargetOpcode::G_UNMERGE_VALUES:
+    if (MRI.use_nodbg_empty(MI.getOperand(1).getReg()))
+      return true;
+    return Helper.lower(MI, 0, LLT()) == LegalizerHelper::Legalized;
   case TargetOpcode::G_ADDRSPACE_CAST:
     return legalizeAddrSpaceCast(MI, MRI, B);
   case TargetOpcode::G_INTRINSIC_ROUNDEVEN:

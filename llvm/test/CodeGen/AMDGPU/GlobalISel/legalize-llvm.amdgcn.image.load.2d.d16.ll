@@ -146,6 +146,8 @@ define amdgpu_ps <3 x half> @image_load_v3f16(<8 x i32> inreg %rsrc, i32 %s, i32
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<3 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 7, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 0, 0, 0 :: (dereferenceable load (<3 x f16>), align 8, addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32), [[UV2:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<3 x i32>)
+  ; UNPACKED-NEXT:   [[UV3:%[0-9]+]]:_(f16), [[UV4:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[UV2]](i32)
+  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
   ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[UV1]], [[C]]
@@ -153,7 +155,8 @@ define amdgpu_ps <3 x half> @image_load_v3f16(<8 x i32> inreg %rsrc, i32 %s, i32
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[UV2]](i32)
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV3]](f16), [[DEF]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -380,6 +383,8 @@ define amdgpu_ps <3 x half> @image_load_tfe_v3f16(<8 x i32> inreg %rsrc, i32 %s,
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<4 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 7, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 1, 0, 0 :: (dereferenceable load (<3 x f16>), align 8, addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32), [[UV2:%[0-9]+]]:_(i32), [[UV3:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<4 x i32>)
   ; UNPACKED-NEXT:   G_STORE [[UV3]](i32), [[DEF]](p1) :: (store (i32) into `ptr addrspace(1) poison`, addrspace 1)
+  ; UNPACKED-NEXT:   [[UV4:%[0-9]+]]:_(f16), [[UV5:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[UV2]](i32)
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
   ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[UV1]], [[C]]
@@ -387,7 +392,8 @@ define amdgpu_ps <3 x half> @image_load_tfe_v3f16(<8 x i32> inreg %rsrc, i32 %s,
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[UV2]](i32)
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV4]](f16), [[DEF1]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -602,7 +608,10 @@ define amdgpu_ps <3 x half> @image_load_v3f16_dmask_1100(<8 x i32> inreg %rsrc, 
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<2 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 3, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 0, 0, 0 :: (dereferenceable load (<2 x f16>), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<2 x i32>)
-  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(i32) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF1]](i16), [[DEF1]](i16)
+  ; UNPACKED-NEXT:   [[UV2:%[0-9]+]]:_(f16), [[UV3:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
   ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[UV1]], [[C]]
@@ -610,7 +619,8 @@ define amdgpu_ps <3 x half> @image_load_v3f16_dmask_1100(<8 x i32> inreg %rsrc, 
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[DEF]](i32)
+  ; UNPACKED-NEXT:   [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV2]](f16), [[DEF]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV1]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -661,15 +671,20 @@ define amdgpu_ps <3 x half> @image_load_v3f16_dmask_1000(<8 x i32> inreg %rsrc, 
   ; UNPACKED-NEXT:   [[COPY9:%[0-9]+]]:_(i32) = COPY $vgpr1
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(i32) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 1, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 0, 0, 0 :: (dereferenceable load (f16), addrspace 8)
-  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(i32) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF1]](i16), [[DEF1]](i16)
+  ; UNPACKED-NEXT:   [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF1]](i16), [[DEF1]](i16)
+  ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV1]](i32)
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]], [[C]]
-  ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[DEF]], [[C]]
+  ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[MV]], [[C]]
   ; UNPACKED-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[DEF]](i32)
+  ; UNPACKED-NEXT:   [[MV2:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV]](f16), [[DEF]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV2]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -700,13 +715,11 @@ define amdgpu_ps <3 x half> @image_load_v3f16_dmask_0000(<8 x i32> inreg %rsrc, 
   ; UNPACKED-NEXT: {{  $}}
   ; UNPACKED-NEXT:   [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
   ; UNPACKED-NEXT:   [[COPY1:%[0-9]+]]:_(i32) = COPY $vgpr1
-  ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-  ; UNPACKED-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
-  ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[C]], [[C1]](i32)
-  ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[C]], [[SHL]]
-  ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[COPY2:%[0-9]+]]:_(i32) = COPY [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[COPY2]](i32)
+  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF]](f16), [[DEF]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
+  ; UNPACKED-NEXT:   [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF]](f16), [[DEF]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV1]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -809,6 +822,7 @@ define amdgpu_ps <4 x half> @image_load_v4f16_dmask_1100(<8 x i32> inreg %rsrc, 
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<2 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 3, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 0, 0, 0 :: (dereferenceable load (<2 x f16>), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<2 x i32>)
+  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
   ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[UV1]], [[C]]
@@ -816,10 +830,8 @@ define amdgpu_ps <4 x half> @image_load_v4f16_dmask_1100(<8 x i32> inreg %rsrc, 
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[C2:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-  ; UNPACKED-NEXT:   [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[C2]], [[C1]](i32)
-  ; UNPACKED-NEXT:   [[OR1:%[0-9]+]]:_(i32) = G_OR [[C2]], [[SHL1]]
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR1]](i32)
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF]](i16), [[DEF]](i16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -866,12 +878,10 @@ define amdgpu_ps <4 x half> @image_load_v4f16_dmask_1000(<8 x i32> inreg %rsrc, 
   ; UNPACKED-NEXT:   [[COPY9:%[0-9]+]]:_(i32) = COPY $vgpr1
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(i32) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 1, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 0, 0, 0 :: (dereferenceable load (f16), addrspace 8)
+  ; UNPACKED-NEXT:   [[DEF:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](i32)
-  ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-  ; UNPACKED-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
-  ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[C]], [[C1]](i32)
-  ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[C]], [[SHL]]
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF]](i16), [[DEF]](i16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -1117,8 +1127,11 @@ define amdgpu_ps <3 x half> @image_load_tfe_v3f16_dmask_1100(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<3 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 3, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 1, 0, 0 :: (dereferenceable load (<2 x f16>), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32), [[UV2:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<3 x i32>)
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[DEF2:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   G_STORE [[UV2]](i32), [[DEF]](p1) :: (store (i32) into `ptr addrspace(1) poison`, addrspace 1)
-  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i32) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF2]](i16), [[DEF2]](i16)
+  ; UNPACKED-NEXT:   [[UV3:%[0-9]+]]:_(f16), [[UV4:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV]](i32)
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
   ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[UV1]], [[C]]
@@ -1126,7 +1139,8 @@ define amdgpu_ps <3 x half> @image_load_tfe_v3f16_dmask_1100(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[DEF1]](i32)
+  ; UNPACKED-NEXT:   [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV3]](f16), [[DEF1]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV1]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -1190,16 +1204,21 @@ define amdgpu_ps <3 x half> @image_load_tfe_v3f16_dmask_1000(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<2 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 1, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 1, 0, 0 :: (dereferenceable load (f16), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<2 x i32>)
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[DEF2:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   G_STORE [[UV1]](i32), [[DEF]](p1) :: (store (i32) into `ptr addrspace(1) poison`, addrspace 1)
-  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i32) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF2]](i16), [[DEF2]](i16)
+  ; UNPACKED-NEXT:   [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF2]](i16), [[DEF2]](i16)
+  ; UNPACKED-NEXT:   [[UV2:%[0-9]+]]:_(f16), [[UV3:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV1]](i32)
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
-  ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[DEF1]], [[C]]
+  ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[MV]], [[C]]
   ; UNPACKED-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[DEF1]](i32)
+  ; UNPACKED-NEXT:   [[MV2:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV2]](f16), [[DEF1]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV2]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -1263,16 +1282,21 @@ define amdgpu_ps <3 x half> @image_load_tfe_v3f16_dmask_0000(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<2 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 1, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 1, 0, 0 :: (dereferenceable load (f16), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<2 x i32>)
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[DEF2:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   G_STORE [[UV1]](i32), [[DEF]](p1) :: (store (i32) into `ptr addrspace(1) poison`, addrspace 1)
-  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i32) = G_IMPLICIT_DEF
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF2]](i16), [[DEF2]](i16)
+  ; UNPACKED-NEXT:   [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF2]](i16), [[DEF2]](i16)
+  ; UNPACKED-NEXT:   [[UV2:%[0-9]+]]:_(f16), [[UV3:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[MV1]](i32)
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
-  ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[DEF1]], [[C]]
+  ; UNPACKED-NEXT:   [[AND1:%[0-9]+]]:_(i32) = G_AND [[MV]], [[C]]
   ; UNPACKED-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[DEF1]](i32)
+  ; UNPACKED-NEXT:   [[MV2:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV2]](f16), [[DEF1]](f16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV2]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -1396,6 +1420,7 @@ define amdgpu_ps <4 x half> @image_load_tfe_v4f16_dmask_1100(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<3 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 3, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 1, 0, 0 :: (dereferenceable load (<2 x f16>), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32), [[UV2:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<3 x i32>)
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   G_STORE [[UV2]](i32), [[DEF]](p1) :: (store (i32) into `ptr addrspace(1) poison`, addrspace 1)
   ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 65535
   ; UNPACKED-NEXT:   [[AND:%[0-9]+]]:_(i32) = G_AND [[UV]], [[C]]
@@ -1404,10 +1429,8 @@ define amdgpu_ps <4 x half> @image_load_tfe_v4f16_dmask_1100(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[AND1]], [[C1]](i32)
   ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[AND]], [[SHL]]
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-  ; UNPACKED-NEXT:   [[C2:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-  ; UNPACKED-NEXT:   [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[C2]], [[C1]](i32)
-  ; UNPACKED-NEXT:   [[OR1:%[0-9]+]]:_(i32) = G_OR [[C2]], [[SHL1]]
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR1]](i32)
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF1]](i16), [[DEF1]](i16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -1465,13 +1488,11 @@ define amdgpu_ps <4 x half> @image_load_tfe_v4f16_dmask_1000(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<2 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 1, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 1, 0, 0 :: (dereferenceable load (f16), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<2 x i32>)
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   G_STORE [[UV1]](i32), [[DEF]](p1) :: (store (i32) into `ptr addrspace(1) poison`, addrspace 1)
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[UV]](i32)
-  ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-  ; UNPACKED-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
-  ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[C]], [[C1]](i32)
-  ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[C]], [[SHL]]
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF1]](i16), [[DEF1]](i16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1
@@ -1529,13 +1550,11 @@ define amdgpu_ps <4 x half> @image_load_tfe_v4f16_dmask_0000(<8 x i32> inreg %rs
   ; UNPACKED-NEXT:   [[BUILD_VECTOR1:%[0-9]+]]:_(<2 x i32>) = G_BUILD_VECTOR [[COPY8]](i32), [[COPY9]](i32)
   ; UNPACKED-NEXT:   [[AMDGPU_INTRIN_IMAGE_LOAD_D16_:%[0-9]+]]:_(<2 x i32>) = G_AMDGPU_INTRIN_IMAGE_LOAD_D16 intrinsic(@llvm.amdgcn.image.load.2d), 1, [[BUILD_VECTOR1]](<2 x i32>), $noreg, [[BUILD_VECTOR]](<8 x i32>), 1, 0, 0 :: (dereferenceable load (f16), addrspace 8)
   ; UNPACKED-NEXT:   [[UV:%[0-9]+]]:_(i32), [[UV1:%[0-9]+]]:_(i32) = G_UNMERGE_VALUES [[AMDGPU_INTRIN_IMAGE_LOAD_D16_]](<2 x i32>)
+  ; UNPACKED-NEXT:   [[DEF1:%[0-9]+]]:_(i16) = G_IMPLICIT_DEF
   ; UNPACKED-NEXT:   G_STORE [[UV1]](i32), [[DEF]](p1) :: (store (i32) into `ptr addrspace(1) poison`, addrspace 1)
   ; UNPACKED-NEXT:   [[BITCAST:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[UV]](i32)
-  ; UNPACKED-NEXT:   [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-  ; UNPACKED-NEXT:   [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
-  ; UNPACKED-NEXT:   [[SHL:%[0-9]+]]:_(i32) = G_SHL [[C]], [[C1]](i32)
-  ; UNPACKED-NEXT:   [[OR:%[0-9]+]]:_(i32) = G_OR [[C]], [[SHL]]
-  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
+  ; UNPACKED-NEXT:   [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF1]](i16), [[DEF1]](i16)
+  ; UNPACKED-NEXT:   [[BITCAST1:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
   ; UNPACKED-NEXT:   $vgpr0 = COPY [[BITCAST]](<2 x f16>)
   ; UNPACKED-NEXT:   $vgpr1 = COPY [[BITCAST1]](<2 x f16>)
   ; UNPACKED-NEXT:   SI_RETURN_TO_EPILOG implicit $vgpr0, implicit $vgpr1

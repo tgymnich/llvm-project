@@ -282,7 +282,6 @@ define <3 x half> @test_ldexp_v3f16_v3i32(ptr addrspace(1) %out, <3 x half> %a, 
 ; GFX8-GISEL-NEXT:    v_mov_b32_e32 v0, 16
 ; GFX8-GISEL-NEXT:    v_lshlrev_b32_sdwa v0, v0, v2 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:DWORD src1_sel:WORD_0
 ; GFX8-GISEL-NEXT:    v_or_b32_sdwa v0, v4, v0 dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0 src1_sel:DWORD
-; GFX8-GISEL-NEXT:    v_bfe_u32 v1, v1, 0, 16
 ; GFX8-GISEL-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX9-GISEL-LABEL: test_ldexp_v3f16_v3i32:

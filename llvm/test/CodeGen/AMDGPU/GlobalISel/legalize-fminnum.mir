@@ -503,18 +503,16 @@ body: |
     ; SI-NEXT: [[FPEXT5:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC5]](f16)
     ; SI-NEXT: [[FMINNUM_IEEE2:%[0-9]+]]:_(f32) = G_FMINNUM_IEEE [[FPEXT4]], [[FPEXT5]]
     ; SI-NEXT: [[FPTRUNC2:%[0-9]+]]:_(f16) = G_FPTRUNC [[FMINNUM_IEEE2]](f32)
+    ; SI-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
     ; SI-NEXT: [[ZEXT:%[0-9]+]]:_(i32) = G_ZEXT [[FPTRUNC]](f16)
     ; SI-NEXT: [[ZEXT1:%[0-9]+]]:_(i32) = G_ZEXT [[FPTRUNC1]](f16)
     ; SI-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[ZEXT1]], [[C]](i32)
     ; SI-NEXT: [[OR:%[0-9]+]]:_(i32) = G_OR [[ZEXT]], [[SHL]]
     ; SI-NEXT: [[BITCAST4:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-    ; SI-NEXT: [[ZEXT2:%[0-9]+]]:_(i32) = G_ZEXT [[FPTRUNC2]](f16)
-    ; SI-NEXT: [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-    ; SI-NEXT: [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[C1]], [[C]](i32)
-    ; SI-NEXT: [[OR1:%[0-9]+]]:_(i32) = G_OR [[ZEXT2]], [[SHL1]]
-    ; SI-NEXT: [[BITCAST5:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR1]](i32)
-    ; SI-NEXT: [[OR2:%[0-9]+]]:_(i32) = G_OR [[C1]], [[SHL1]]
-    ; SI-NEXT: [[BITCAST6:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR2]](i32)
+    ; SI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC2]](f16), [[DEF]](f16)
+    ; SI-NEXT: [[BITCAST5:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
+    ; SI-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF]](f16), [[DEF]](f16)
+    ; SI-NEXT: [[BITCAST6:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV1]](i32)
     ; SI-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<6 x f16>) = G_CONCAT_VECTORS [[BITCAST4]](<2 x f16>), [[BITCAST5]](<2 x f16>), [[BITCAST6]](<2 x f16>)
     ; SI-NEXT: $vgpr0_vgpr1_vgpr2 = COPY [[CONCAT_VECTORS]](<6 x f16>)
     ;
@@ -547,18 +545,16 @@ body: |
     ; VI-NEXT: [[FCANONICALIZE4:%[0-9]+]]:_(f16) = G_FCANONICALIZE [[TRUNC2]]
     ; VI-NEXT: [[FCANONICALIZE5:%[0-9]+]]:_(f16) = G_FCANONICALIZE [[TRUNC5]]
     ; VI-NEXT: [[FMINNUM_IEEE2:%[0-9]+]]:_(f16) = G_FMINNUM_IEEE [[FCANONICALIZE4]], [[FCANONICALIZE5]]
+    ; VI-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
     ; VI-NEXT: [[ZEXT:%[0-9]+]]:_(i32) = G_ZEXT [[FMINNUM_IEEE]](f16)
     ; VI-NEXT: [[ZEXT1:%[0-9]+]]:_(i32) = G_ZEXT [[FMINNUM_IEEE1]](f16)
     ; VI-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[ZEXT1]], [[C]](i32)
     ; VI-NEXT: [[OR:%[0-9]+]]:_(i32) = G_OR [[ZEXT]], [[SHL]]
     ; VI-NEXT: [[BITCAST4:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR]](i32)
-    ; VI-NEXT: [[ZEXT2:%[0-9]+]]:_(i32) = G_ZEXT [[FMINNUM_IEEE2]](f16)
-    ; VI-NEXT: [[C1:%[0-9]+]]:_(i32) = G_CONSTANT i32 0
-    ; VI-NEXT: [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[C1]], [[C]](i32)
-    ; VI-NEXT: [[OR1:%[0-9]+]]:_(i32) = G_OR [[ZEXT2]], [[SHL1]]
-    ; VI-NEXT: [[BITCAST5:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR1]](i32)
-    ; VI-NEXT: [[OR2:%[0-9]+]]:_(i32) = G_OR [[C1]], [[SHL1]]
-    ; VI-NEXT: [[BITCAST6:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[OR2]](i32)
+    ; VI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FMINNUM_IEEE2]](f16), [[DEF]](f16)
+    ; VI-NEXT: [[BITCAST5:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV]](i32)
+    ; VI-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[DEF]](f16), [[DEF]](f16)
+    ; VI-NEXT: [[BITCAST6:%[0-9]+]]:_(<2 x f16>) = G_BITCAST [[MV1]](i32)
     ; VI-NEXT: [[CONCAT_VECTORS:%[0-9]+]]:_(<6 x f16>) = G_CONCAT_VECTORS [[BITCAST4]](<2 x f16>), [[BITCAST5]](<2 x f16>), [[BITCAST6]](<2 x f16>)
     ; VI-NEXT: $vgpr0_vgpr1_vgpr2 = COPY [[CONCAT_VECTORS]](<6 x f16>)
     ;

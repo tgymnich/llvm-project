@@ -92,35 +92,38 @@ body: |
     ; GFX7-NEXT: {{  $}}
     ; GFX7-NEXT: [[C:%[0-9]+]]:_(f16) = G_FCONSTANT half 0.000000e+00
     ; GFX7-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; GFX7-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
+    ; GFX7-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](i32)
     ; GFX7-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[C]](f16)
-    ; GFX7-NEXT: [[FPEXT1:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; GFX7-NEXT: [[FPEXT1:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; GFX7-NEXT: [[FCMP:%[0-9]+]]:_(i1) = G_FCMP floatpred(oeq), [[FPEXT]](f32), [[FPEXT1]]
-    ; GFX7-NEXT: [[SELECT:%[0-9]+]]:_(f16) = G_SELECT [[FCMP]](i1), [[C]], [[TRUNC]]
-    ; GFX7-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[SELECT]](f16)
-    ; GFX7-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ; GFX7-NEXT: [[SELECT:%[0-9]+]]:_(f16) = G_SELECT [[FCMP]](i1), [[C]], [[UV]]
+    ; GFX7-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX7-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[SELECT]](f16), [[DEF]](f16)
+    ; GFX7-NEXT: $vgpr0 = COPY [[MV]](i32)
     ;
     ; GFX8-LABEL: name: test_fcmp_f16
     ; GFX8: liveins: $vgpr0
     ; GFX8-NEXT: {{  $}}
     ; GFX8-NEXT: [[C:%[0-9]+]]:_(f16) = G_FCONSTANT half 0.000000e+00
     ; GFX8-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; GFX8-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; GFX8-NEXT: [[FCMP:%[0-9]+]]:_(i1) = G_FCMP floatpred(oeq), [[C]](f16), [[TRUNC]]
-    ; GFX8-NEXT: [[SELECT:%[0-9]+]]:_(f16) = G_SELECT [[FCMP]](i1), [[C]], [[TRUNC]]
-    ; GFX8-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[SELECT]](f16)
-    ; GFX8-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ; GFX8-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](i32)
+    ; GFX8-NEXT: [[FCMP:%[0-9]+]]:_(i1) = G_FCMP floatpred(oeq), [[C]](f16), [[UV]]
+    ; GFX8-NEXT: [[SELECT:%[0-9]+]]:_(f16) = G_SELECT [[FCMP]](i1), [[C]], [[UV]]
+    ; GFX8-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX8-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[SELECT]](f16), [[DEF]](f16)
+    ; GFX8-NEXT: $vgpr0 = COPY [[MV]](i32)
     ;
     ; GFX9-LABEL: name: test_fcmp_f16
     ; GFX9: liveins: $vgpr0
     ; GFX9-NEXT: {{  $}}
     ; GFX9-NEXT: [[C:%[0-9]+]]:_(f16) = G_FCONSTANT half 0.000000e+00
     ; GFX9-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; GFX9-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; GFX9-NEXT: [[FCMP:%[0-9]+]]:_(i1) = G_FCMP floatpred(oeq), [[C]](f16), [[TRUNC]]
-    ; GFX9-NEXT: [[SELECT:%[0-9]+]]:_(f16) = G_SELECT [[FCMP]](i1), [[C]], [[TRUNC]]
-    ; GFX9-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[SELECT]](f16)
-    ; GFX9-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ; GFX9-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](i32)
+    ; GFX9-NEXT: [[FCMP:%[0-9]+]]:_(i1) = G_FCMP floatpred(oeq), [[C]](f16), [[UV]]
+    ; GFX9-NEXT: [[SELECT:%[0-9]+]]:_(f16) = G_SELECT [[FCMP]](i1), [[C]], [[UV]]
+    ; GFX9-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX9-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[SELECT]](f16), [[DEF]](f16)
+    ; GFX9-NEXT: $vgpr0 = COPY [[MV]](i32)
     %0:_(f16) = G_FCONSTANT half 0.0
     %1:_(i32) = COPY $vgpr0
     %2:_(i16) = G_TRUNC %1

@@ -16,41 +16,45 @@ body: |
     ; SI: liveins: $vgpr0
     ; SI-NEXT: {{  $}}
     ; SI-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; SI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; SI-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](i32)
+    ; SI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; SI-NEXT: [[INTRINSIC_TRUNC:%[0-9]+]]:_(f32) = G_INTRINSIC_TRUNC [[FPEXT]]
     ; SI-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INTRINSIC_TRUNC]](f32)
-    ; SI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
-    ; SI-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ; SI-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; SI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF]](f16)
+    ; SI-NEXT: $vgpr0 = COPY [[MV]](i32)
     ;
     ; CI-LABEL: name: test_intrinsic_trunc_f16
     ; CI: liveins: $vgpr0
     ; CI-NEXT: {{  $}}
     ; CI-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; CI-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; CI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[TRUNC]](f16)
+    ; CI-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](i32)
+    ; CI-NEXT: [[FPEXT:%[0-9]+]]:_(f32) = G_FPEXT [[UV]](f16)
     ; CI-NEXT: [[INTRINSIC_TRUNC:%[0-9]+]]:_(f32) = G_INTRINSIC_TRUNC [[FPEXT]]
     ; CI-NEXT: [[FPTRUNC:%[0-9]+]]:_(f16) = G_FPTRUNC [[INTRINSIC_TRUNC]](f32)
-    ; CI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[FPTRUNC]](f16)
-    ; CI-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ; CI-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; CI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[FPTRUNC]](f16), [[DEF]](f16)
+    ; CI-NEXT: $vgpr0 = COPY [[MV]](i32)
     ;
     ; VI-LABEL: name: test_intrinsic_trunc_f16
     ; VI: liveins: $vgpr0
     ; VI-NEXT: {{  $}}
     ; VI-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; VI-NEXT: [[INTRINSIC_TRUNC:%[0-9]+]]:_(f16) = G_INTRINSIC_TRUNC [[TRUNC]]
-    ; VI-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[INTRINSIC_TRUNC]](f16)
-    ; VI-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ; VI-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](i32)
+    ; VI-NEXT: [[INTRINSIC_TRUNC:%[0-9]+]]:_(f16) = G_INTRINSIC_TRUNC [[UV]]
+    ; VI-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; VI-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[INTRINSIC_TRUNC]](f16), [[DEF]](f16)
+    ; VI-NEXT: $vgpr0 = COPY [[MV]](i32)
     ;
     ; GFX9-LABEL: name: test_intrinsic_trunc_f16
     ; GFX9: liveins: $vgpr0
     ; GFX9-NEXT: {{  $}}
     ; GFX9-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
-    ; GFX9-NEXT: [[TRUNC:%[0-9]+]]:_(f16) = G_TRUNC [[COPY]](i32)
-    ; GFX9-NEXT: [[INTRINSIC_TRUNC:%[0-9]+]]:_(f16) = G_INTRINSIC_TRUNC [[TRUNC]]
-    ; GFX9-NEXT: [[ANYEXT:%[0-9]+]]:_(i32) = G_ANYEXT [[INTRINSIC_TRUNC]](f16)
-    ; GFX9-NEXT: $vgpr0 = COPY [[ANYEXT]](i32)
+    ; GFX9-NEXT: [[UV:%[0-9]+]]:_(f16), [[UV1:%[0-9]+]]:_(f16) = G_UNMERGE_VALUES [[COPY]](i32)
+    ; GFX9-NEXT: [[INTRINSIC_TRUNC:%[0-9]+]]:_(f16) = G_INTRINSIC_TRUNC [[UV]]
+    ; GFX9-NEXT: [[DEF:%[0-9]+]]:_(f16) = G_IMPLICIT_DEF
+    ; GFX9-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[INTRINSIC_TRUNC]](f16), [[DEF]](f16)
+    ; GFX9-NEXT: $vgpr0 = COPY [[MV]](i32)
     %0:_(i32) = COPY $vgpr0
     %1:_(i16) = G_TRUNC %0
     %2:_(f16) = G_BITCAST %1

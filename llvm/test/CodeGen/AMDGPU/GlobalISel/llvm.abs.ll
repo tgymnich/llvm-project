@@ -655,8 +655,8 @@ define <3 x i16> @abs_vgpr_v3i16(<3 x i16> %arg) {
 ; GFX8-NEXT:    v_sub_u16_e32 v4, 0, v1
 ; GFX8-NEXT:    v_max_i16_e32 v2, v0, v2
 ; GFX8-NEXT:    v_max_i16_sdwa v0, v0, v3 dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
-; GFX8-NEXT:    v_or_b32_e32 v0, v2, v0
 ; GFX8-NEXT:    v_max_i16_e32 v1, v1, v4
+; GFX8-NEXT:    v_or_b32_e32 v0, v2, v0
 ; GFX8-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX10-LABEL: abs_vgpr_v3i16:

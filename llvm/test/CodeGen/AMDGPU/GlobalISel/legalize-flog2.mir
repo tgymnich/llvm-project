@@ -188,8 +188,11 @@ body: |
     ; CHECK: liveins: $vgpr0
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(i32) = COPY $vgpr0
+    ; CHECK-NEXT: [[UV:%[0-9]+]]:_(bf16), [[UV1:%[0-9]+]]:_(bf16) = G_UNMERGE_VALUES [[COPY]](i32)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(bf16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV]](bf16), [[DEF]](bf16)
     ; CHECK-NEXT: [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
-    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[COPY]], [[C]](i32)
+    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[MV]], [[C]](i32)
     ; CHECK-NEXT: [[BITCAST:%[0-9]+]]:_(f32) = G_BITCAST [[SHL]](i32)
     ; CHECK-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x00800000
     ; CHECK-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[BITCAST]](f32), [[C1]]
@@ -214,7 +217,9 @@ body: |
     ; CHECK-NEXT: [[FCMP1:%[0-9]+]]:_(i1) = G_FCMP floatpred(uno), [[FSUB]](f32), [[C5]]
     ; CHECK-NEXT: [[SELECT2:%[0-9]+]]:_(i32) = G_SELECT [[FCMP1]](i1), [[OR]], [[ADD1]]
     ; CHECK-NEXT: [[LSHR1:%[0-9]+]]:_(i32) = G_LSHR [[SELECT2]], [[C]](i32)
-    ; CHECK-NEXT: $vgpr0 = COPY [[LSHR1]](i32)
+    ; CHECK-NEXT: [[UV2:%[0-9]+]]:_(bf16), [[UV3:%[0-9]+]]:_(bf16) = G_UNMERGE_VALUES [[LSHR1]](i32)
+    ; CHECK-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[UV2]](bf16), [[DEF]](bf16)
+    ; CHECK-NEXT: $vgpr0 = COPY [[MV1]](i32)
     ;
     ; GFX1250-LABEL: name: test_flog2_bf16
     ; GFX1250: liveins: $vgpr0
@@ -246,9 +251,13 @@ body: |
     ; CHECK-NEXT: {{  $}}
     ; CHECK-NEXT: [[COPY:%[0-9]+]]:_(<2 x bf16>) = COPY $vgpr0
     ; CHECK-NEXT: [[BITCAST:%[0-9]+]]:_(i32) = G_BITCAST [[COPY]](<2 x bf16>)
+    ; CHECK-NEXT: [[TRUNC:%[0-9]+]]:_(bf16) = G_TRUNC [[BITCAST]](i32)
     ; CHECK-NEXT: [[C:%[0-9]+]]:_(i32) = G_CONSTANT i32 16
     ; CHECK-NEXT: [[LSHR:%[0-9]+]]:_(i32) = G_LSHR [[BITCAST]], [[C]](i32)
-    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[BITCAST]], [[C]](i32)
+    ; CHECK-NEXT: [[TRUNC1:%[0-9]+]]:_(bf16) = G_TRUNC [[LSHR]](i32)
+    ; CHECK-NEXT: [[DEF:%[0-9]+]]:_(bf16) = G_IMPLICIT_DEF
+    ; CHECK-NEXT: [[MV:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC]](bf16), [[DEF]](bf16)
+    ; CHECK-NEXT: [[SHL:%[0-9]+]]:_(i32) = G_SHL [[MV]], [[C]](i32)
     ; CHECK-NEXT: [[BITCAST1:%[0-9]+]]:_(f32) = G_BITCAST [[SHL]](i32)
     ; CHECK-NEXT: [[C1:%[0-9]+]]:_(f32) = G_FCONSTANT float f0x00800000
     ; CHECK-NEXT: [[FCMP:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[BITCAST1]](f32), [[C1]]
@@ -273,7 +282,8 @@ body: |
     ; CHECK-NEXT: [[FCMP1:%[0-9]+]]:_(i1) = G_FCMP floatpred(uno), [[FSUB]](f32), [[C5]]
     ; CHECK-NEXT: [[SELECT2:%[0-9]+]]:_(i32) = G_SELECT [[FCMP1]](i1), [[OR]], [[ADD1]]
     ; CHECK-NEXT: [[LSHR2:%[0-9]+]]:_(i32) = G_LSHR [[SELECT2]], [[C]](i32)
-    ; CHECK-NEXT: [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[LSHR]], [[C]](i32)
+    ; CHECK-NEXT: [[MV1:%[0-9]+]]:_(i32) = G_MERGE_VALUES [[TRUNC1]](bf16), [[DEF]](bf16)
+    ; CHECK-NEXT: [[SHL1:%[0-9]+]]:_(i32) = G_SHL [[MV1]], [[C]](i32)
     ; CHECK-NEXT: [[BITCAST3:%[0-9]+]]:_(f32) = G_BITCAST [[SHL1]](i32)
     ; CHECK-NEXT: [[FCMP2:%[0-9]+]]:_(s1) = G_FCMP floatpred(olt), [[BITCAST3]](f32), [[C1]]
     ; CHECK-NEXT: [[SELECT3:%[0-9]+]]:_(f32) = G_SELECT [[FCMP2]](s1), [[C2]], [[C3]]
