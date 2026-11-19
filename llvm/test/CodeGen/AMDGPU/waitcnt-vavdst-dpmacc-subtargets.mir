@@ -1,0 +1,158 @@
+# RUN: llc -mtriple=amdgpu12.00 -amdgpu-expert-scheduling-mode -run-pass=si-insert-waitcnts %s -o - | FileCheck %s --check-prefixes=CHECK,GFX1200-GFX1310
+# RUN: llc -mtriple=amdgpu13.10 -amdgpu-expert-scheduling-mode -run-pass=si-insert-waitcnts %s -o - | FileCheck %s --check-prefixes=CHECK,GFX1200-GFX1310
+# RUN: llc -mtriple=amdgpu12.50 -amdgpu-expert-scheduling-mode -run-pass=si-insert-waitcnts %s -o - | FileCheck %s --check-prefixes=CHECK,GFX1250
+# RUN: llc -mtriple=amdgpu12.50s -amdgpu-expert-scheduling-mode -run-pass=si-insert-waitcnts %s -o - | FileCheck %s --check-prefixes=CHECK,GFX1250
+# RUN: llc -mtriple=amdgpu12.51 -amdgpu-expert-scheduling-mode -run-pass=si-insert-waitcnts %s -o - | FileCheck %s --check-prefixes=CHECK,GFX1251
+# RUN: llc -mtriple=amdgcn-amd-amdhsa -mcpu=gfx12-5-generic -amdgpu-expert-scheduling-mode -run-pass=si-insert-waitcnts %s -o - | FileCheck %s --check-prefixes=CHECK,GENERIC
+
+---
+name: mul_lo_before_dp
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: mul_lo_before_dp
+    ; CHECK: $vgpr20 = V_MUL_LO_U32_e64 $vgpr80, $vgpr81, implicit $exec
+    ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr64, $vgpr20, 0, 0, implicit $exec
+    $vgpr20 = V_MUL_LO_U32_e64 $vgpr80, $vgpr81, implicit $exec
+    $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    DS_WRITE_B32_gfx9 $vgpr64, $vgpr20, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: cvt_f64_f32_before_dp
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: cvt_f64_f32_before_dp
+    ; CHECK: $vgpr20_vgpr21 = V_CVT_F64_F32_e32 $vgpr80, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr64, $vgpr20, 0, 0, implicit $exec
+    $vgpr20_vgpr21 = V_CVT_F64_F32_e32 $vgpr80, implicit $mode, implicit $exec
+    $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    DS_WRITE_B32_gfx9 $vgpr64, $vgpr20, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: cmp_f64_before_dp
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: cmp_f64_before_dp
+    ; CHECK: $sgpr0 = V_CMP_EQ_F64_e64 0, $vgpr20_vgpr21, 0, $vgpr22_vgpr23, 0, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr20 = DS_READ_B32_gfx9 $vgpr64, 0, 0, implicit $exec
+    $sgpr0 = V_CMP_EQ_F64_e64 0, $vgpr20_vgpr21, 0, $vgpr22_vgpr23, 0, implicit $mode, implicit $exec
+    $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
+    $vgpr20 = DS_READ_B32_gfx9 $vgpr64, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: cmp64_with_core
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: cmp64_with_core
+    ; CHECK: $sgpr0 = V_CMP_EQ_F64_e64 0, $vgpr0_vgpr1, 0, $vgpr2_vgpr3, 0, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $vgpr60 = V_MOV_B32_e32 $vgpr61, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    $sgpr0 = V_CMP_EQ_F64_e64 0, $vgpr0_vgpr1, 0, $vgpr2_vgpr3, 0, implicit $mode, implicit $exec
+    $vgpr60 = V_MOV_B32_e32 $vgpr61, implicit $exec
+    $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: cmp_u64_with_core
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: cmp_u64_with_core
+    ; CHECK: $sgpr0 = V_CMP_EQ_U64_e64 $vgpr0_vgpr1, $vgpr2_vgpr3, implicit $exec
+    ; CHECK-NEXT: $sgpr4 = V_CMP_EQ_U32_e64 $vgpr60, $vgpr61, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    $sgpr0 = V_CMP_EQ_U64_e64 $vgpr0_vgpr1, $vgpr2_vgpr3, implicit $exec
+    $sgpr4 = V_CMP_EQ_U32_e64 $vgpr60, $vgpr61, implicit $exec
+    $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: cmpx_u64_with_core
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: cmpx_u64_with_core
+    ; CHECK: V_CMPX_EQ_U64_nosdst_e64 $vgpr0_vgpr1, $vgpr2_vgpr3, implicit-def $exec, implicit $exec
+    ; CHECK-NEXT: $sgpr4 = V_CMP_EQ_U32_e64 $vgpr60, $vgpr61, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    V_CMPX_EQ_U64_nosdst_e64 $vgpr0_vgpr1, $vgpr2_vgpr3, implicit-def $exec, implicit $exec
+    $sgpr4 = V_CMP_EQ_U32_e64 $vgpr60, $vgpr61, implicit $exec
+    $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: cmpx_i64_with_fp64_compare
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: cmpx_i64_with_fp64_compare
+    ; CHECK: V_CMPX_EQ_I64_nosdst_e64 $vgpr0_vgpr1, $vgpr2_vgpr3, implicit-def $exec, implicit $exec
+    ; CHECK-NEXT: $sgpr4 = V_CMP_EQ_F64_e64 0, $vgpr60_vgpr61, 0, $vgpr62_vgpr63, 0, implicit $mode, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    V_CMPX_EQ_I64_nosdst_e64 $vgpr0_vgpr1, $vgpr2_vgpr3, implicit-def $exec, implicit $exec
+    $sgpr4 = V_CMP_EQ_F64_e64 0, $vgpr60_vgpr61, 0, $vgpr62_vgpr63, 0, implicit $mode, implicit $exec
+    $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    S_ENDPGM 0
+...
+
+---
+name: cmpx_f64_with_fp64_compare
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: name: cmpx_f64_with_fp64_compare
+    ; CHECK: V_CMPX_EQ_F64_nosdst_e64 0, $vgpr0_vgpr1, 0, $vgpr2_vgpr3, 0, implicit-def $exec, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $sgpr4 = V_CMP_EQ_F64_e64 0, $vgpr60_vgpr61, 0, $vgpr62_vgpr63, 0, implicit $mode, implicit $exec
+    ; GFX1200-GFX1310-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1250-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GFX1251-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; GENERIC-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    V_CMPX_EQ_F64_nosdst_e64 0, $vgpr0_vgpr1, 0, $vgpr2_vgpr3, 0, implicit-def $exec, implicit $mode, implicit $exec
+    $sgpr4 = V_CMP_EQ_F64_e64 0, $vgpr60_vgpr61, 0, $vgpr62_vgpr63, 0, implicit $mode, implicit $exec
+    $vgpr0_vgpr1 = DS_READ_B64_gfx9 $vgpr90, 0, 0, implicit $exec
+    S_ENDPGM 0
+...

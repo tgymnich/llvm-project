@@ -7,7 +7,7 @@ define amdgpu_kernel void @fp8_attention(ptr addrspace(3) %lds, ptr addrspace(1)
 ; CHECK:       v_wmma_scale_f32_16x16x128_f8f6f4 v{{\[}}[[#LO:]]:
 ; CHECK:       v_maximum_f32 v{{[0-9]+}}, v[[#LO]], v[[#LO+1]]
 ; CHECK-NOT:   s_wait_alu
-; CHECK:       s_wait_alu depctr_va_vdst(0)
+; CHECK:       s_wait_alu depctr_va_vdst(1)
 ; CHECK-NEXT:  ds_load_tr8_b64 v{{\[}}[[#LO]]:[[#LO+1]]],
 entry:
   %id = call i32 @llvm.amdgcn.workitem.id.x()

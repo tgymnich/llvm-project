@@ -27,13 +27,47 @@ static HWEvents getExpertSchedulingEventType(const MachineInstr &Inst,
     // out-of-order with respect to each other, so each of these classes
     // has its own event.
 
-    if (TII.isXDL(Inst))
+    const GCNSubtarget &ST = TII.getSubtarget();
+    const bool IsGFX125x = AMDGPU::isGFX1250(ST);
+    // DOT4 and DOT8 use side MACC on gfx125x.
+    if (TII.isXDL(Inst) && !(IsGFX125x && TII.isDOT(Inst)))
       return HWEvents::VGPR_XDL_READ | HWEvents::VGPR_XDL_WRITE;
+
+    const unsigned Opcode = Inst.getOpcode();
+    if (IsGFX125x) {
+      constexpr HWEvents Unordered =
+          HWEvents::VGPR_UNORDERED_READ | HWEvents::VGPR_UNORDERED_WRITE;
+      const bool IsMixedVOPD =
+          AMDGPU::isVOPD(Opcode) &&
+          AMDGPU::getDPMACCInstructionKind(
+              AMDGPU::getVOPDComponents(Opcode).first) != NoDPMACC;
+      if (TII.isWMMA(Inst) || IsMixedVOPD)
+        return Unordered;
+
+      switch (AMDGPU::getDPMACCInstructionKind(Opcode)) {
+      case NoDPMACC:
+        break;
+      case Int64CMPX:
+        if (ST.hasSideMACC64Ops())
+          break;
+        // The completion pipe of integer CMPX is ambiguous on gfx1251.
+        return Unordered;
+      case DPMACCWithFullRate64Ops:
+        if (ST.hasSideMACC64Ops())
+          break;
+        if (!ST.hasFullRate64Ops())
+          return Unordered;
+        [[fallthrough]];
+      case AlwaysDPMACC:
+        // FP64 transcendentals also complete with DP-MACC on gfx125x.
+        return HWEvents::VGPR_DPMACC_READ | HWEvents::VGPR_DPMACC_WRITE;
+      }
+    }
 
     if (TII.isTRANS(Inst))
       return HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_TRANS_WRITE;
 
-    if (AMDGPU::isDPMACCInstruction(Inst.getOpcode()))
+    if (!IsGFX125x && AMDGPU::isDPMACCInstruction(Opcode))
       return HWEvents::VGPR_DPMACC_READ | HWEvents::VGPR_DPMACC_WRITE;
 
     return HWEvents::VGPR_CSMACC_READ | HWEvents::VGPR_CSMACC_WRITE;

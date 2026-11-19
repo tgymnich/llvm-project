@@ -144,6 +144,7 @@ struct WMMAInstInfo {
   WMMAVariant CoExecVariant;
 };
 
+#define GET_DPMACCInstructionKind_DECL
 #define GET_MIMGBaseOpcode_DECL
 #define GET_MIMGDim_DECL
 #define GET_MIMGEncoding_DECL
@@ -991,6 +992,8 @@ bool isTrue16Inst(unsigned Opc);
 LLVM_READONLY
 FPType getFPDstSelType(unsigned Opc);
 
+/// Classifies DP-MACC completion for gfx125x.
+DPMACCInstructionKind getDPMACCInstructionKind(unsigned Opcode);
 bool isDPMACCInstruction(unsigned Opc);
 
 LLVM_READONLY

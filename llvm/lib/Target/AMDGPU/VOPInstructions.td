@@ -6,6 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+class DPMACCInstructionKind;
+def NoDPMACC : DPMACCInstructionKind;
+def AlwaysDPMACC : DPMACCInstructionKind;
+def DPMACCWithFullRate64Ops : DPMACCInstructionKind;
+def Int64CMPX : DPMACCInstructionKind;
+
+def DPMACCInstructionKind : GenericEnum {
+  let FilterClass = "DPMACCInstructionKind";
+  let UnderlyingType = "uint8_t";
+}
+
 // dummies for outer let
 class LetDummies {
   bit TRANS;
@@ -19,6 +30,7 @@ class LetDummies {
   bit isAsCheapAsAMove;
   bit FPDPRounding;
   bit IsDPMACCInstruction;
+  DPMACCInstructionKind GFX125xDPMACC;
   Predicate SubtargetPredicate;
   string Constraints;
   string DisableEncoding;
@@ -76,6 +88,10 @@ class VOP_Pseudo <string opName, string suffix, VOPProfile P, dag outs, dag ins,
   Instruction Opcode = !cast<Instruction>(NAME);
   bit IsTrue16 = P.IsTrue16;
   bit IsDPMACCInstruction = 0;
+  DPMACCInstructionKind GFX125xDPMACC =
+    !if(IsDPMACCInstruction, AlwaysDPMACC, NoDPMACC);
+  bit HasDPMACCClassification = !or(IsDPMACCInstruction,
+                                    !ne(GFX125xDPMACC, NoDPMACC));
   VOPProfile Pfl = P;
 
   string AsmOperands;
@@ -173,6 +189,7 @@ class VOP_Real<VOP_Pseudo ps> {
   Instruction Opcode = !cast<Instruction>(NAME);
   bit IsSingle = ps.Pfl.IsSingle;
   bit IsDPMACCInstruction = ps.IsDPMACCInstruction;
+  DPMACCInstructionKind GFX125xDPMACC = ps.GFX125xDPMACC;
 }
 
 class VOP3_Real <VOP_Pseudo ps, int EncodingFamily, string asm_name = ps.Mnemonic> :
@@ -2495,9 +2512,10 @@ def VOPTrue16Table : GenericTable {
 
 def DPMACCInstructionTable : GenericTable {
   let FilterClass = "VOP_Pseudo";
-  let FilterClassField = "IsDPMACCInstruction";
+  let FilterClassField = "HasDPMACCClassification";
   let CppTypeName = "DPMACCInstructionInfo";
-  let Fields = ["Opcode"];
+  let Fields = ["Opcode", "IsDPMACCInstruction", "GFX125xDPMACC"];
+  string TypeOf_GFX125xDPMACC = "DPMACCInstructionKind";
 
   let PrimaryKey = ["Opcode"];
   let PrimaryKeyName = "isDPMACCInstructionHelper";

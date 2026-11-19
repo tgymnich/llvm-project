@@ -431,6 +431,8 @@ struct VOPDXYInfo {
 
 struct DPMACCInstructionInfo {
   uint32_t Opcode;
+  bool IsDPMACC;
+  DPMACCInstructionKind GFX125xDPMACC;
 };
 
 struct FP4FP8DstByteSelInfo {
@@ -857,8 +859,14 @@ FPType getFPDstSelType(unsigned Opc) {
   return FPType::None;
 }
 
+DPMACCInstructionKind getDPMACCInstructionKind(unsigned Opcode) {
+  const auto *Info = isDPMACCInstructionHelper(Opcode);
+  return Info ? Info->GFX125xDPMACC : NoDPMACC;
+}
+
 bool isDPMACCInstruction(unsigned Opc) {
-  return isDPMACCInstructionHelper(Opc) != nullptr;
+  const auto *Info = isDPMACCInstructionHelper(Opc);
+  return Info && Info->IsDPMACC;
 }
 
 unsigned mapWMMA2AddrTo3AddrOpcode(unsigned Opc) {
