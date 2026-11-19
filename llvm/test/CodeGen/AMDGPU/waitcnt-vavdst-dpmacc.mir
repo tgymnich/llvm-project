@@ -247,11 +247,13 @@ body: |
     ; CHECK-NEXT: S_WAIT_LOADCNT_DSCNT .Loadcnt_0_Dscnt_0
     ; CHECK-NEXT: S_WAIT_KMCNT 0
     ; CHECK-NEXT: $vgpr50_vgpr51 = V_RCP_F64_e32 $vgpr80_vgpr81, implicit $mode, implicit $exec
+    ; CHECK-NEXT: $vgpr40 = V_EXP_F32_e32 $vgpr80, implicit $mode, implicit $exec
     ; CHECK-NEXT: $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
     ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr90, $vgpr50, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr50_vgpr51 = V_RCP_F64_e32 $vgpr80_vgpr81, implicit $mode, implicit $exec
+    $vgpr40 = V_EXP_F32_e32 $vgpr80, implicit $mode, implicit $exec
     $vgpr44_vgpr45 = V_ADD_F64_pseudo_e64 0, $vgpr80_vgpr81, 0, $vgpr82_vgpr83, 0, 0, implicit $mode, implicit $exec
     DS_WRITE_B32_gfx9 $vgpr90, $vgpr50, 0, 0, implicit $exec
     S_ENDPGM 0

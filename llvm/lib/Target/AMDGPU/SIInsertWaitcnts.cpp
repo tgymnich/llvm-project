@@ -450,7 +450,9 @@ public:
 // "s_waitcnt 0" before use.
 class WaitcntBrackets {
 public:
-  WaitcntBrackets(const SIInsertWaitcnts *Context) : Context(Context) {
+  WaitcntBrackets(const SIInsertWaitcnts *Context)
+      : Context(Context), TrackVAVDSTWrites(Context->IsExpertMode &&
+                                            AMDGPU::isGFX1250(Context->ST)) {
     assert(Context->TRI.getNumRegUnits() < REGUNITS_END);
   }
 
@@ -513,13 +515,6 @@ private:
   unsigned getVMemScore(VMEMID TID, AMDGPU::InstCounterType T) const {
     auto It = VMem.find(TID);
     return It != VMem.end() ? It->second.Scores[T] : 0;
-  }
-
-  // Number of ordered XDL writes issued after the VA_VDST write tracked for
-  // TID. Only meaningful while that write is pending.
-  unsigned getNumOrderedXDLsAfterWrite(VMEMID TID) const {
-    return std::min(OrderedXDLCount - VMem.at(TID).OrderedXDLCountAtWrite,
-                    getLimit(AMDGPU::VA_VDST_WR) - 1);
   }
 
 public:
@@ -689,6 +684,25 @@ private:
     unsigned OtherShift;
   };
 
+  enum class VAVDSTPipe : uint8_t { CSMACC, DPMACC, Trans, XDL, Unordered };
+
+  struct VAVDSTWrite {
+    // Subtracted from the current ordered issue count to get the wait bound.
+    unsigned Score = 0;
+    VAVDSTPipe Pipe = VAVDSTPipe::Unordered;
+    // Later XDL decrements follow this write.
+    bool OrderedWithXDL = false;
+  };
+
+  static VAVDSTPipe getVAVDSTPipe(HWEvents Event);
+  unsigned getVAVDSTWriteCount(const VAVDSTWrite &Write) const;
+  unsigned getVAVDSTWriteWait(const VAVDSTWrite &Write) const;
+  VAVDSTWrite recordVAVDSTWrite(VAVDSTPipe Pipe, bool IsOrderedXDL,
+                                unsigned Increment);
+  bool mergeVAVDSTWrite(VAVDSTWrite &Write, bool IsPending,
+                        const WaitcntBrackets &Other,
+                        const VAVDSTWrite &OtherWrite) const;
+
   using CounterValueArray = std::array<unsigned, AMDGPU::NUM_INST_CNTS>;
 
   unsigned getWaitForScore(AMDGPU::InstCounterType T, unsigned Score) const;
@@ -726,7 +740,8 @@ private:
           ScoreUBs[AMDGPU::EXP_CNT] - getLimit(AMDGPU::EXP_CNT);
   }
 
-  void setRegScore(MCRegister Reg, AMDGPU::InstCounterType T, unsigned Val) {
+  void setRegScore(MCRegister Reg, AMDGPU::InstCounterType T, unsigned Val,
+                   const VAVDSTWrite *Write = nullptr) {
     const SIRegisterInfo &TRI = Context->TRI;
     if (Reg == AMDGPU::SCC) {
       SCCScore = Val;
@@ -734,8 +749,8 @@ private:
       for (MCRegUnit RU : regunits(Reg)) {
         auto &Info = VMem[toVMEMID(RU)];
         Info.Scores[T] = Val;
-        if (T == AMDGPU::VA_VDST_WR)
-          Info.OrderedXDLCountAtWrite = OrderedXDLCount;
+        if (Write)
+          Info.Write = *Write;
       }
     } else if (TRI.isSGPRReg(Context->MRI, Reg)) {
       for (MCRegUnit RU : regunits(Reg))
@@ -753,6 +768,7 @@ private:
                          AMDGPU::InstCounterType CntTy, unsigned Val);
 
   const SIInsertWaitcnts *Context;
+  bool TrackVAVDSTWrites;
 
   unsigned ScoreLBs[AMDGPU::NUM_INST_CNTS] = {0};
   unsigned ScoreUBs[AMDGPU::NUM_INST_CNTS] = {0};
@@ -766,9 +782,11 @@ private:
   unsigned LastXcntOnlyVmem = 0;
   // Remember the last GDS operation.
   unsigned LastGDS = 0;
-  // Number of VA_VDST ordered XDL writes issued so far. Only differences
-  // between values are meaningful, so unsigned wraparound is harmless.
-  unsigned OrderedXDLCount = 0;
+  // VA_VDST increments by pipe. Unordered events contribute no credits.
+  unsigned VAVDSTPipeCounts[static_cast<unsigned>(VAVDSTPipe::Unordered) + 1] =
+      {};
+  // One credit per XDL instruction for writes from other pipes.
+  unsigned XDLCount = 0;
 
   // The score tracking logic is fragmented as follows:
   // - VMem: VGPR RegUnits and LDS DMA IDs, see the VMEMID encoding.
@@ -786,9 +804,7 @@ private:
   struct VMEMInfo {
     // Scores for all instruction counters. Zero-initialized.
     CounterValueArray Scores{};
-    // OrderedXDLCount when the VA_VDST_WR score was set. Every ordered XDL
-    // write issued since then remains outstanding while this write is pending.
-    unsigned OrderedXDLCountAtWrite = 0;
+    VAVDSTWrite Write;
     // For VGPRs, we need to track an additional fine-grained set of pending
     // events.
     HWEvents VGPRPendingEvents;
@@ -908,6 +924,58 @@ bool WaitcntBrackets::hasPointSamplePendingVmemTypes(const MachineInstr &MI,
   return hasDifferentVGPRPendingEvents(Reg, HWEvents::VMEM_READ_ACCESS);
 }
 
+WaitcntBrackets::VAVDSTPipe WaitcntBrackets::getVAVDSTPipe(HWEvents Event) {
+  switch (Event.value()) {
+  case HWEvents::VGPR_CSMACC_WRITE:
+    return VAVDSTPipe::CSMACC;
+  case HWEvents::VGPR_DPMACC_WRITE:
+    return VAVDSTPipe::DPMACC;
+  case HWEvents::VGPR_TRANS_WRITE:
+    return VAVDSTPipe::Trans;
+  case HWEvents::VGPR_XDL_WRITE:
+    return VAVDSTPipe::XDL;
+  case HWEvents::VGPR_UNORDERED_WRITE:
+    return VAVDSTPipe::Unordered;
+  default:
+    llvm_unreachable("expected a VA_VDST write event");
+  }
+}
+
+unsigned WaitcntBrackets::getVAVDSTWriteCount(const VAVDSTWrite &Write) const {
+  unsigned Count = VAVDSTPipeCounts[static_cast<unsigned>(Write.Pipe)];
+  if (Write.OrderedWithXDL && Write.Pipe != VAVDSTPipe::XDL)
+    Count += XDLCount;
+  return Count;
+}
+
+unsigned WaitcntBrackets::getVAVDSTWriteWait(const VAVDSTWrite &Write) const {
+  return std::min(getVAVDSTWriteCount(Write) - Write.Score,
+                  getLimit(AMDGPU::VA_VDST_WR) - 1);
+}
+
+WaitcntBrackets::VAVDSTWrite
+WaitcntBrackets::recordVAVDSTWrite(VAVDSTPipe Pipe, bool IsOrderedXDL,
+                                   unsigned Increment) {
+  if (IsOrderedXDL) {
+    // Count XDLs starting with this one, which follows every older VALU.
+    unsigned LowerBound = getScoreLB(AMDGPU::VA_VDST_WR);
+    for (auto &[RegID, Info] : VMem) {
+      if (Info.Scores[AMDGPU::VA_VDST_WR] > LowerBound &&
+          !Info.Write.OrderedWithXDL) {
+        Info.Write.Score += XDLCount;
+        Info.Write.OrderedWithXDL = true;
+      }
+    }
+  }
+
+  if (Pipe != VAVDSTPipe::Unordered)
+    VAVDSTPipeCounts[static_cast<unsigned>(Pipe)] += Increment;
+  if (Pipe == VAVDSTPipe::XDL)
+    ++XDLCount;
+  return {VAVDSTPipeCounts[static_cast<unsigned>(Pipe)], Pipe,
+          Pipe == VAVDSTPipe::XDL};
+}
+
 void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
   assert(E.size() == 1 && "Expected singular event!");
   AMDGPU::InstCounterType T = Context->getCounterFromEvent(E);
@@ -931,11 +999,13 @@ void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
   PendingEvents |= E;
   setScoreUB(T, CurrScore);
 
-  // Count this write before recording its own destination, so the
-  // destination does not count itself. A VOP3PX2 WMMA counts once even though
-  // it increments VA_VDST twice: only its WMMA half is an ordered XDL write.
-  if (E == HWEvents::VGPR_XDL_WRITE && Context->TII.isVAVDSTOrderedXDL(Inst))
-    ++OrderedXDLCount;
+  std::optional<VAVDSTWrite> Write;
+  if (TrackVAVDSTWrites && T == AMDGPU::VA_VDST_WR) {
+    VAVDSTPipe Pipe = getVAVDSTPipe(E);
+    bool IsOrderedXDL =
+        Pipe == VAVDSTPipe::XDL && Context->TII.isVAVDSTOrderedXDL(Inst);
+    Write = recordVAVDSTWrite(Pipe, IsOrderedXDL, Increment);
+  }
 
   const SIRegisterInfo &TRI = Context->TRI;
   const MachineRegisterInfo &MRI = Context->MRI;
@@ -1047,7 +1117,8 @@ void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
         continue;
 
       if (TRI.isVectorRegister(Context->MRI, Op.getReg()))
-        setScoreByOperand(Op, T, CurrScore);
+        setRegScore(Op.getReg().asMCReg(), T, CurrScore,
+                    Write ? &*Write : nullptr);
     }
   } else /* LGKM_CNT || EXP_CNT || VS_CNT || NUM_INST_CNTS */ {
     // Match the score to the destination registers.
@@ -1455,11 +1526,9 @@ void WaitcntBrackets::determineWaitForVAVDSTWrite(VMEMID ID,
   if (Count == ~0u)
     return;
 
-  // The ordered-XDL count is a wait bound independent of exact event-class
-  // ordering. Combine the bounds for this register unit before Wait.add()
-  // takes the minimum across all required register-unit dependencies.
-  Wait.add(AMDGPU::VA_VDST_WR,
-           std::max(Count, getNumOrderedXDLsAfterWrite(ID)));
+  if (TrackVAVDSTWrites)
+    Count = std::max(Count, getVAVDSTWriteWait(VMem.at(ID).Write));
+  Wait.add(AMDGPU::VA_VDST_WR, Count);
 }
 
 AMDGPU::Waitcnt
@@ -2887,6 +2956,29 @@ bool WaitcntBrackets::mergeScore(const MergeInfo &M, unsigned &Score,
   return OtherShifted > MyShifted;
 }
 
+bool WaitcntBrackets::mergeVAVDSTWrite(VAVDSTWrite &Write, bool IsPending,
+                                       const WaitcntBrackets &Other,
+                                       const VAVDSTWrite &OtherWrite) const {
+  unsigned OtherWait = Other.getVAVDSTWriteWait(OtherWrite);
+  if (!IsPending) {
+    Write = OtherWrite;
+    Write.Score = getVAVDSTWriteCount(Write) - OtherWait;
+    return true;
+  }
+
+  // Only credit future instructions if they follow the write on both paths.
+  VAVDSTWrite Merged = Write;
+  if (Write.Pipe != OtherWrite.Pipe)
+    Merged.Pipe = VAVDSTPipe::Unordered;
+  Merged.OrderedWithXDL &= OtherWrite.OrderedWithXDL;
+  unsigned Wait = getVAVDSTWriteWait(Write);
+  Merged.Score = getVAVDSTWriteCount(Merged) - std::min(Wait, OtherWait);
+  bool Changed = OtherWait < Wait || Merged.Pipe != Write.Pipe ||
+                 Merged.OrderedWithXDL != Write.OrderedWithXDL;
+  Write = Merged;
+  return Changed;
+}
+
 bool WaitcntBrackets::mergeAsyncMarks(AMDGPU::AsyncStages Stage,
                                       ArrayRef<MergeInfo> MergeInfos,
                                       ArrayRef<CounterValueArray> OtherMarks) {
@@ -3032,21 +3124,10 @@ bool WaitcntBrackets::merge(const WaitcntBrackets &Other) {
 
     for (auto &[RegID, Info] : VMem) {
       unsigned OtherScore = Other.getVMemScore(RegID, T);
-      if (T == AMDGPU::VA_VDST_WR) {
-        // A fence count is usable only when every path carrying the dependency
-        // has at least that many later ordered XDL writes. Keep this path's
-        // OrderedXDLCount and rebase each write onto it.
-        bool MyPending = Info.Scores[T] > M.OldLB;
-        bool OtherPending = OtherScore > M.OtherLB;
-        unsigned MyCount = MyPending ? getNumOrderedXDLsAfterWrite(RegID) : 0;
-        unsigned OtherCount =
-            OtherPending ? Other.getNumOrderedXDLsAfterWrite(RegID) : 0;
-        unsigned NewCount = MyPending && OtherPending
-                                ? std::min(MyCount, OtherCount)
-                                : (MyPending ? MyCount : OtherCount);
-        StrictDom |= MyPending && NewCount < MyCount;
-        Info.OrderedXDLCountAtWrite = OrderedXDLCount - NewCount;
-      }
+      if (TrackVAVDSTWrites && T == AMDGPU::VA_VDST_WR &&
+          OtherScore > M.OtherLB)
+        StrictDom |= mergeVAVDSTWrite(Info.Write, Info.Scores[T] > M.OldLB,
+                                      Other, Other.VMem.at(RegID).Write);
       StrictDom |= mergeScore(M, Info.Scores[T], OtherScore);
     }
 
