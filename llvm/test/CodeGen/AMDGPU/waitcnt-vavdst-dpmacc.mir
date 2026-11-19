@@ -344,7 +344,7 @@ body: |
     ; CHECK-LABEL: name: cmpx_int64_with_core
     ; CHECK: V_CMPX_EQ_U64_nosdst_e64
     ; CHECK-NEXT: $vgpr60 = V_MOV_B32_e32
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
     ; CHECK-NEXT: $vgpr0_vgpr1 = DS_READ_B64_gfx9
     V_CMPX_EQ_U64_nosdst_e64 $vgpr0_vgpr1, $vgpr2_vgpr3, implicit-def $exec, implicit $exec
     $vgpr60 = V_MOV_B32_e32 $vgpr61, implicit $exec
