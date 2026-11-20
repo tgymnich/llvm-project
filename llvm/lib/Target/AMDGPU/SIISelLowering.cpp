@@ -19355,6 +19355,24 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
     if (SDValue Res = promoteUniformUnaryOpToI32(SDValue(N, 0), DCI))
       return Res;
     break;
+  case ISD::BITCAST: {
+    SDValue Src = N->getOperand(0);
+    // Keep BF16 rounds together so they can select a packed conversion.
+    if (Subtarget->hasBF16ConversionInsts() &&
+        N->getValueType(0).isVectorOf(MVT::i16) &&
+        Src.getValueType().isVectorOf(MVT::bf16) &&
+        Src.getOpcode() == ISD::BUILD_VECTOR &&
+        llvm::all_of(Src->ops(), [](SDValue Elt) {
+          if (Elt.isUndef())
+            return true;
+          if (Elt.getOpcode() != ISD::FP_ROUND)
+            return false;
+          EVT SrcVT = Elt.getOperand(0).getValueType();
+          return SrcVT == MVT::f32 || SrcVT == MVT::f64;
+        }))
+      return SDValue();
+    break;
+  }
   case ISD::ADD:
   case ISD::SUB:
   case ISD::SHL:
