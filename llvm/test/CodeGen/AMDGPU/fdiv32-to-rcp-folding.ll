@@ -574,28 +574,16 @@ define amdgpu_kernel void @div_1_by_minus_x_fast(ptr addrspace(1) %arg) {
 }
 
 define amdgpu_kernel void @div_minus_1_by_minus_x_fast(ptr addrspace(1) %arg) {
-; GCN-DENORM-LABEL: div_minus_1_by_minus_x_fast:
-; GCN-DENORM:       ; %bb.0:
-; GCN-DENORM-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
-; GCN-DENORM-NEXT:    v_mov_b32_e32 v1, 0
-; GCN-DENORM-NEXT:    s_waitcnt lgkmcnt(0)
-; GCN-DENORM-NEXT:    s_load_dword s2, s[0:1], 0x0
-; GCN-DENORM-NEXT:    s_waitcnt lgkmcnt(0)
-; GCN-DENORM-NEXT:    v_rcp_f32_e32 v0, s2
-; GCN-DENORM-NEXT:    global_store_dword v1, v0, s[0:1]
-; GCN-DENORM-NEXT:    s_endpgm
-;
-; GCN-FLUSH-LABEL: div_minus_1_by_minus_x_fast:
-; GCN-FLUSH:       ; %bb.0:
-; GCN-FLUSH-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
-; GCN-FLUSH-NEXT:    v_mov_b32_e32 v1, 0
-; GCN-FLUSH-NEXT:    s_waitcnt lgkmcnt(0)
-; GCN-FLUSH-NEXT:    s_load_dword s2, s[0:1], 0x0
-; GCN-FLUSH-NEXT:    s_waitcnt lgkmcnt(0)
-; GCN-FLUSH-NEXT:    v_rcp_f32_e64 v0, -s2
-; GCN-FLUSH-NEXT:    v_sub_f32_e32 v0, 0x80000000, v0
-; GCN-FLUSH-NEXT:    global_store_dword v1, v0, s[0:1]
-; GCN-FLUSH-NEXT:    s_endpgm
+; GCN-LABEL: div_minus_1_by_minus_x_fast:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_load_dwordx2 s[0:1], s[4:5], 0x24
+; GCN-NEXT:    v_mov_b32_e32 v1, 0
+; GCN-NEXT:    s_waitcnt lgkmcnt(0)
+; GCN-NEXT:    s_load_dword s2, s[0:1], 0x0
+; GCN-NEXT:    s_waitcnt lgkmcnt(0)
+; GCN-NEXT:    v_rcp_f32_e32 v0, s2
+; GCN-NEXT:    global_store_dword v1, v0, s[0:1]
+; GCN-NEXT:    s_endpgm
   %load = load float, ptr addrspace(1) %arg, align 4
   %neg = fsub float -0.000000e+00, %load, !fpmath !0
   %div = fdiv fast float -1.000000e+00, %neg

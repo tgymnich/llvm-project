@@ -230,8 +230,8 @@ define float @negated_constant(float %x) {
 ; CHECK-NEXT:    fmadd s0, s0, s2, s1
 ; CHECK-NEXT:    ret
   %m = fmul float %x, 42.0
-  %fma = call nsz float @llvm.fma.f32(float %x, float -42.0, float %m)
-  %nfma = fneg float %fma
+  %fma = call float @llvm.fma.f32(float %x, float -42.0, float %m)
+  %nfma = fneg nsz float %fma
   ret float %nfma
 }
 

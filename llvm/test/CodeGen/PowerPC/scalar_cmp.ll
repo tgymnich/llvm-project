@@ -91,17 +91,17 @@ define float @select_fast_oeq_float(float %a, float %b, float %c, float %d) {
 ; P8-LABEL: select_fast_oeq_float:
 ; P8:       # %bb.0: # %entry
 ; P8-NEXT:    xssubsp f0, f1, f2
-; P8-NEXT:    xssubsp f1, f2, f1
-; P8-NEXT:    fsel f0, f0, f3, f4
-; P8-NEXT:    fsel f1, f1, f0, f4
+; P8-NEXT:    fsel f1, f0, f3, f4
+; P8-NEXT:    xsnegdp f0, f0
+; P8-NEXT:    fsel f1, f0, f1, f4
 ; P8-NEXT:    blr
 ;
 ; P9-LABEL: select_fast_oeq_float:
 ; P9:       # %bb.0: # %entry
 ; P9-NEXT:    xssubsp f0, f1, f2
-; P9-NEXT:    xssubsp f1, f2, f1
-; P9-NEXT:    fsel f0, f0, f3, f4
-; P9-NEXT:    fsel f1, f1, f0, f4
+; P9-NEXT:    fsel f1, f0, f3, f4
+; P9-NEXT:    xsnegdp f0, f0
+; P9-NEXT:    fsel f1, f0, f1, f4
 ; P9-NEXT:    blr
 entry:
   %cmp = fcmp nnan ninf nsz oeq float %a, %b
@@ -215,17 +215,17 @@ define float @select_fast_one_float(float %a, float %b, float %c, float %d) {
 ; P8-LABEL: select_fast_one_float:
 ; P8:       # %bb.0: # %entry
 ; P8-NEXT:    xssubsp f0, f1, f2
-; P8-NEXT:    xssubsp f1, f2, f1
-; P8-NEXT:    fsel f0, f0, f4, f3
-; P8-NEXT:    fsel f1, f1, f0, f3
+; P8-NEXT:    fsel f1, f0, f4, f3
+; P8-NEXT:    xsnegdp f0, f0
+; P8-NEXT:    fsel f1, f0, f1, f3
 ; P8-NEXT:    blr
 ;
 ; P9-LABEL: select_fast_one_float:
 ; P9:       # %bb.0: # %entry
 ; P9-NEXT:    xssubsp f0, f1, f2
-; P9-NEXT:    xssubsp f1, f2, f1
-; P9-NEXT:    fsel f0, f0, f4, f3
-; P9-NEXT:    fsel f1, f1, f0, f3
+; P9-NEXT:    fsel f1, f0, f4, f3
+; P9-NEXT:    xsnegdp f0, f0
+; P9-NEXT:    fsel f1, f0, f1, f3
 ; P9-NEXT:    blr
 entry:
   %cmp = fcmp nnan ninf nsz one float %a, %b
