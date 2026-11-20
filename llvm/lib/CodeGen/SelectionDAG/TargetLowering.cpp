@@ -8122,11 +8122,11 @@ SDValue TargetLowering::getNegatedExpression(SDValue Op, SelectionDAG &DAG,
     return DAG.getBuildVector(VT, DL, Ops);
   }
   case ISD::FADD: {
-    if (!Flags.hasNoSignedZeros())
-      break;
-
     // After operation legalization, it might not be legal to create new FSUBs.
     if (LegalOps && !isOperationLegalOrCustom(ISD::FSUB, VT))
+      break;
+
+    if (!DAG.canIgnoreSignBitOfZeroResult(Op))
       break;
     SDValue X = Op.getOperand(0), Y = Op.getOperand(1);
 
@@ -8166,17 +8166,23 @@ SDValue TargetLowering::getNegatedExpression(SDValue Op, SelectionDAG &DAG,
     break;
   }
   case ISD::FSUB: {
-    // We can't turn -(A-B) into B-A when we honor signed zeros.
-    if (!Flags.hasNoSignedZeros())
+    SDValue X = Op.getOperand(0), Y = Op.getOperand(1);
+    const ConstantFPSDNode *C = isConstOrConstSplatFP(X, /*AllowUndefs*/ true);
+    bool IsZeroMinusY = C && C->isZero();
+    // fold (fneg (fsub 0, Y)) -> Y
+    // With nsz, the zero input can be chosen as -0.0.
+    if (IsZeroMinusY && Flags.hasNoSignedZeros()) {
+      Cost = NegatibleCost::Cheaper;
+      return Y;
+    }
+
+    if (!DAG.canIgnoreSignBitOfZeroResult(Op))
       break;
 
-    SDValue X = Op.getOperand(0), Y = Op.getOperand(1);
-    // fold (fneg (fsub 0, Y)) -> Y
-    if (ConstantFPSDNode *C = isConstOrConstSplatFP(X, /*AllowUndefs*/ true))
-      if (C->isZero()) {
-        Cost = NegatibleCost::Cheaper;
-        return Y;
-      }
+    if (IsZeroMinusY && DAG.getDenormalMode(VT) == DenormalMode::getIEEE()) {
+      Cost = NegatibleCost::Cheaper;
+      return Y;
+    }
 
     // fold (fneg (fsub X, Y)) -> (fsub Y, X)
     Cost = NegatibleCost::Neutral;
@@ -8229,7 +8235,7 @@ SDValue TargetLowering::getNegatedExpression(SDValue Op, SelectionDAG &DAG,
   case ISD::FMA:
   case ISD::FMULADD:
   case ISD::FMAD: {
-    if (!Flags.hasNoSignedZeros())
+    if (!DAG.canIgnoreSignBitOfZeroResult(Op))
       break;
 
     SDValue X = Op.getOperand(0), Y = Op.getOperand(1), Z = Op.getOperand(2);

@@ -3321,7 +3321,7 @@ define <2 x half> @select_fneg_posk_src_add_v2f16_nsz(<2 x i32> %c, <2 x half> %
 ; GFX11-FAKE16-NEXT:    s_setpc_b64 s[30:31]
   %cmp = icmp eq <2 x i32> %c, zeroinitializer
   %add = fadd nsz <2 x half> %x, <half 4.0, half 4.0>
-  %fneg = fneg <2 x half> %add
+  %fneg = fneg nsz <2 x half> %add
   %select = select <2 x i1> %cmp, <2 x half> %fneg, <2 x half> <half 2.0, half 2.0>
   ret <2 x half> %select
 }
@@ -3932,7 +3932,7 @@ define <2 x half> @select_fneg_posk_src_fmad_v2f16_nsz(<2 x i32> %c, <2 x half> 
 ; GFX11-FAKE16-NEXT:    s_setpc_b64 s[30:31]
   %cmp = icmp eq <2 x i32> %c, zeroinitializer
   %fmad = call nsz <2 x half> @llvm.fmuladd.v2f16(<2 x half> %x, <2 x half> <half 4.0, half 4.0>, <2 x half> %z)
-  %fneg = fneg <2 x half> %fmad
+  %fneg = fneg nsz <2 x half> %fmad
   %select = select <2 x i1> %cmp, <2 x half> %fneg, <2 x half> <half 2.0, half 2.0>
   ret <2 x half> %select
 }

@@ -76,7 +76,7 @@ define float @fma_fneg_fsub(float %x, float %y0, float %y1, float %z) {
 ; BE32-NEXT:    blr
   %negx = fneg float %x
   %negy = fsub nsz float %y0, %y1
-  %r = call float @llvm.fmuladd.f32(float %negx, float %negy, float %z)
+  %r = call nsz float @llvm.fmuladd.f32(float %negx, float %negy, float %z)
   ret float %r
 }
 
@@ -227,4 +227,27 @@ entry:
   %masked = and i128 %v, 9223372036854775808 ; 1 << 63
   %cmp = icmp ne i128 %masked, 0
   ret i1 %cmp
+}
+
+define float @fneg_fsub_producer_nsz(float %a, float %b) {
+; LE-LABEL: fneg_fsub_producer_nsz:
+; LE:       # %bb.0:
+; LE-NEXT:    xssubsp 0, 1, 2
+; LE-NEXT:    xsnegdp 1, 0
+; LE-NEXT:    blr
+;
+; BE-LABEL: fneg_fsub_producer_nsz:
+; BE:       # %bb.0:
+; BE-NEXT:    fsubs 0, 1, 2
+; BE-NEXT:    fneg 1, 0
+; BE-NEXT:    blr
+;
+; BE32-LABEL: fneg_fsub_producer_nsz:
+; BE32:       # %bb.0:
+; BE32-NEXT:    fsubs f0, f1, f2
+; BE32-NEXT:    fneg f1, f0
+; BE32-NEXT:    blr
+  %difference = fsub nsz float %a, %b
+  %negated = fneg float %difference
+  ret float %negated
 }

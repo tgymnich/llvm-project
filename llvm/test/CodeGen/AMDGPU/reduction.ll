@@ -72,7 +72,7 @@ entry:
   %rdx.shuf1 = shufflevector <4 x half> %bin.rdx, <4 x half> poison, <4 x i32> <i32 1, i32 poison, i32 poison, i32 poison>
   %bin.rdx2 = fsub nsz <4 x half> %bin.rdx, %rdx.shuf1
   %res = extractelement <4 x half> %bin.rdx2, i32 0
-  %neg.res = fsub half -0.0, %res
+  %neg.res = fneg nsz half %res
   ret half %neg.res
 }
 

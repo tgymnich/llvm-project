@@ -400,7 +400,7 @@ define double @log2_approx(double %x) nounwind {
 ; -(X - Y) --> (Y - X)
 
 ; FMFDEBUG-LABEL: Optimized lowered selection DAG: %bb.0 'fneg_fsub_nozeros_1:'
-; FMFDEBUG:         fsub nsz {{t[0-9]+}}, {{t[0-9]+}}
+; FMFDEBUG:         fsub {{t[0-9]+}}, {{t[0-9]+}}
 ; FMFDEBUG:       Type-legalized selection DAG: %bb.0 'fneg_fsub_nozeros_1:'
 
 
