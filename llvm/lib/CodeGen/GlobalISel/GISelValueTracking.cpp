@@ -14,6 +14,7 @@
 #include "llvm/CodeGen/GlobalISel/GISelValueTracking.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/FloatingPointMode.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -2553,6 +2554,68 @@ bool GISelValueTracking::isKnownNeverLogicalZero(Register Val, unsigned Depth) {
   LLT Ty = MRI.getType(Val).getScalarType();
   return Known.isKnownNeverLogicalZero(
       MF.getDenormalMode(getFltSemanticForLLT(Ty)));
+}
+
+bool GISelValueTracking::canIgnoreSignBitOfZero(const MachineOperand &Use) {
+  const MachineInstr &User = *Use.getParent();
+  unsigned Opcode = User.getOpcode();
+  bool NoSignedZeros = User.getFlag(MachineInstr::FmNsz);
+  auto GetOtherOperand = [&] {
+    return User.getOperand(Use.getOperandNo() == 1 ? 2 : 1).getReg();
+  };
+
+  FPClassTest AlwaysBeatsZero;
+  switch (Opcode) {
+  case TargetOpcode::G_FABS:
+  case TargetOpcode::G_FCMP:
+  case TargetOpcode::G_FPTOSI:
+  case TargetOpcode::G_FPTOUI:
+    return true;
+  case TargetOpcode::G_FCOPYSIGN:
+    return NoSignedZeros || Use.getOperandNo() == 1;
+  case TargetOpcode::G_FADD:
+  case TargetOpcode::G_FSUB:
+    return NoSignedZeros || isKnownNeverLogicalZero(GetOtherOperand());
+  // Min/max can observe signed-zero ties even with nsz.
+  case TargetOpcode::G_FMINNUM:
+  case TargetOpcode::G_FMINNUM_IEEE:
+  case TargetOpcode::G_FMINIMUM:
+  case TargetOpcode::G_FMINIMUMNUM:
+    AlwaysBeatsZero = fcNegNormal | fcNegInf;
+    break;
+  case TargetOpcode::G_FMAXNUM:
+  case TargetOpcode::G_FMAXNUM_IEEE:
+  case TargetOpcode::G_FMAXIMUM:
+  case TargetOpcode::G_FMAXIMUMNUM:
+    AlwaysBeatsZero = fcPosNormal | fcPosInf;
+    break;
+  case TargetOpcode::G_VECREDUCE_FMIN:
+  case TargetOpcode::G_VECREDUCE_FMAX:
+  case TargetOpcode::G_VECREDUCE_FMINIMUM:
+  case TargetOpcode::G_VECREDUCE_FMAXIMUM:
+  case TargetOpcode::G_VECREDUCE_FMINIMUMNUM:
+  case TargetOpcode::G_VECREDUCE_FMAXIMUMNUM:
+  case TargetOpcode::G_ATOMICRMW_FMIN:
+  case TargetOpcode::G_ATOMICRMW_FMAX:
+  case TargetOpcode::G_ATOMICRMW_FMINIMUM:
+  case TargetOpcode::G_ATOMICRMW_FMAXIMUM:
+  case TargetOpcode::G_ATOMICRMW_FMINIMUMNUM:
+  case TargetOpcode::G_ATOMICRMW_FMAXIMUMNUM:
+    return false;
+  default:
+    return NoSignedZeros && isPreISelGenericOpcode(Opcode) &&
+           !isa<GIntrinsic>(User);
+  }
+
+  return computeKnownFPClass(GetOtherOperand(), ~AlwaysBeatsZero)
+      .isKnownNever(~AlwaysBeatsZero);
+}
+
+bool GISelValueTracking::canIgnoreSignBitOfZeroResult(Register Reg) {
+  assert(Reg.isVirtual() && "Expected a virtual register");
+  return llvm::all_of(
+      MRI.use_nodbg_operands(Reg),
+      [&](const MachineOperand &Use) { return canIgnoreSignBitOfZero(Use); });
 }
 
 /// Compute number of sign bits for the intersection of \p Src0 and \p Src1

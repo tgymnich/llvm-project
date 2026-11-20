@@ -143,10 +143,6 @@ static bool allUsesHaveSourceMods(MachineInstr &MI, MachineRegisterInfo &MRI,
   return true;
 }
 
-static bool mayIgnoreSignedZero(const MachineInstr &MI) {
-  return MI.getFlag(MachineInstr::MIFlag::FmNsz);
-}
-
 static bool isInv2Pi(const APFloat &APF) {
   static const APFloat KF16(APFloat::IEEEhalf(), APInt(16, 0x3118));
   static const APFloat KF32(APFloat::IEEEsingle(), APInt(32, 0x3e22f983));
@@ -176,10 +172,9 @@ static bool isConstantCostlierToNegate(MachineInstr &MI, Register Reg,
 bool AMDGPUCombinerHelper::canIgnoreLegacyMinMaxTies(const MachineInstr &MI,
                                                      Register LHS,
                                                      Register RHS) const {
-  if (mayIgnoreSignedZero(MI))
+  if (MI.getFlag(MachineInstr::MIFlag::FmNsz))
     return true;
-  return VT &&
-         (VT->isKnownNeverLogicalZero(LHS) || VT->isKnownNeverLogicalZero(RHS));
+  return VT->isKnownNeverLogicalZero(LHS) || VT->isKnownNeverLogicalZero(RHS);
 }
 
 static unsigned inverseMinMax(unsigned Opc) {
@@ -247,7 +242,7 @@ bool AMDGPUCombinerHelper::matchFoldableFneg(MachineInstr &MI,
   case AMDGPU::G_FSUB:
   case AMDGPU::G_FMA:
   case AMDGPU::G_FMAD:
-    return mayIgnoreSignedZero(*MatchInfo);
+    return VT->canIgnoreSignBitOfZeroResult(Src);
   case AMDGPU::G_FMUL:
   case AMDGPU::G_FPEXT:
   case AMDGPU::G_INTRINSIC_TRUNC:
@@ -271,7 +266,7 @@ bool AMDGPUCombinerHelper::matchFoldableFneg(MachineInstr &MI,
     case Intrinsic::amdgcn_fmed3:
       return true;
     case Intrinsic::amdgcn_fma_legacy:
-      return mayIgnoreSignedZero(*MatchInfo);
+      return VT->canIgnoreSignBitOfZeroResult(Src);
     default:
       return false;
     }

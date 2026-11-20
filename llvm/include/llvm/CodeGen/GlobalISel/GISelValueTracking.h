@@ -28,8 +28,9 @@
 
 namespace llvm {
 
-class TargetLowering;
 class DataLayout;
+class MachineOperand;
+class TargetLowering;
 
 class LLVM_ABI GISelValueTracking : public GISelChangeObserver {
   MachineFunction &MF;
@@ -65,6 +66,8 @@ class LLVM_ABI GISelValueTracking : public GISelChangeObserver {
 
   void computeKnownBits(Register R, KnownBits &Known, const APInt &DemandedElts,
                         unsigned Depth = 0);
+
+  bool canIgnoreSignBitOfZero(const MachineOperand &Use);
 
   bool getKnownBitsResult(Register Reg, const APInt &DemandedElts,
                           unsigned Depth, KnownBits &Known) {
@@ -180,6 +183,10 @@ public:
   /// Returns true if \p Val can be assumed to never be a zero, accounting for
   /// denormal flushing of the containing function.
   bool isKnownNeverLogicalZero(Register Val, unsigned Depth = 0);
+
+  /// Return true if every non-debug use of the floating-point register can
+  /// ignore the sign of zero.
+  bool canIgnoreSignBitOfZeroResult(Register Reg);
 
   // Observer API. No-op for non-caching implementation.
   void erasingInstr(MachineInstr &MI) override {}

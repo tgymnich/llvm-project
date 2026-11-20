@@ -5232,27 +5232,26 @@ SDValue AMDGPUTargetLowering::performFNegCombine(SDNode *N,
   if (!shouldFoldFNegIntoSrc(N, N0))
     return SDValue();
 
-  bool MayIgnoreSignedZeroForAllUses =
-      N0->getFlags().hasNoSignedZeros() ||
-      (N0.hasOneUse() && N->getFlags().hasNoSignedZeros());
-
   SDLoc SL(N);
   switch (Opc) {
   case ISD::FADD: {
-    if (!MayIgnoreSignedZeroForAllUses)
+    if (!DAG.canIgnoreSignBitOfZeroResult(N0))
       return SDValue();
 
     // (fneg (fadd x, y)) -> (fadd (fneg x), (fneg y))
     SDValue LHS = N0.getOperand(0);
     SDValue RHS = N0.getOperand(1);
+    // The add's nsz covers zeros supplied to either new negate.
+    SDNodeFlags NegateFlags;
+    NegateFlags.setNoSignedZeros(N0->getFlags().hasNoSignedZeros());
 
     if (LHS.getOpcode() != ISD::FNEG)
-      LHS = DAG.getNode(ISD::FNEG, SL, VT, LHS);
+      LHS = DAG.getNode(ISD::FNEG, SL, VT, LHS, NegateFlags);
     else
       LHS = LHS.getOperand(0);
 
     if (RHS.getOpcode() != ISD::FNEG)
-      RHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
+      RHS = DAG.getNode(ISD::FNEG, SL, VT, RHS, NegateFlags);
     else
       RHS = RHS.getOperand(0);
 
@@ -5287,7 +5286,7 @@ SDValue AMDGPUTargetLowering::performFNegCombine(SDNode *N,
   case ISD::FMA:
   case ISD::FMAD: {
     // TODO: handle llvm.amdgcn.fma.legacy
-    if (!MayIgnoreSignedZeroForAllUses)
+    if (!DAG.canIgnoreSignBitOfZeroResult(N0))
       return SDValue();
 
     // (fneg (fma x, y, z)) -> (fma x, (fneg y), (fneg z))
@@ -5307,7 +5306,7 @@ SDValue AMDGPUTargetLowering::performFNegCombine(SDNode *N,
     else
       RHS = RHS.getOperand(0);
 
-    SDValue Res = DAG.getNode(Opc, SL, VT, LHS, MHS, RHS);
+    SDValue Res = DAG.getNode(Opc, SL, VT, LHS, MHS, RHS, N0->getFlags());
     if (Res.getOpcode() != Opc)
       return SDValue(); // Op got folded away.
     if (!N0.hasOneUse())

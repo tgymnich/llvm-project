@@ -1470,17 +1470,17 @@ define double @fneg_f64_bitcast_build_vector_v2f32_foldable_sources_to_f64(float
 ; GCN-LABEL: fneg_f64_bitcast_build_vector_v2f32_foldable_sources_to_f64:
 ; GCN:       ; %bb.0:
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GCN-NEXT:    v_sub_f32_e32 v1, -2.0, v1
+; GCN-NEXT:    v_mul_f32_e32 v1, -4.0, v1
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
 ;
 ; GFX11-LABEL: fneg_f64_bitcast_build_vector_v2f32_foldable_sources_to_f64:
 ; GFX11:       ; %bb.0:
 ; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    v_sub_f32_e32 v1, -2.0, v1
+; GFX11-NEXT:    v_mul_f32_e32 v1, -4.0, v1
 ; GFX11-NEXT:    s_setpc_b64 s[30:31]
-  %fadd = fadd nsz nnan float %elt1, 2.0
+  %fmul = fmul nnan float %elt1, 4.0
   %insert.0 = insertelement <2 x float> poison, float %elt0, i32 0
-  %insert.1 = insertelement <2 x float> %insert.0, float %fadd, i32 1
+  %insert.1 = insertelement <2 x float> %insert.0, float %fmul, i32 1
   %bitcast = bitcast <2 x float> %insert.1 to double
   %fneg = fneg double %bitcast
   ret double %fneg
