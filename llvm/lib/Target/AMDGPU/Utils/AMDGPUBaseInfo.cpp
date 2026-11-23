@@ -433,6 +433,11 @@ struct DPMACCInstructionInfo {
   uint32_t Opcode;
 };
 
+struct GFX125xDPMACCInfo {
+  uint32_t Opcode;
+  DPMACCInstructionKind GFX125xDPMACC;
+};
+
 struct FP4FP8DstByteSelInfo {
   uint32_t Opcode;
   bool HasFP8DstByteSel;
@@ -445,6 +450,8 @@ struct VOP3PHasNoOpSelHiInfo {
 
 #define GET_DPMACCInstructionTable_DECL
 #define GET_DPMACCInstructionTable_IMPL
+#define GET_GFX125xDPMACCTable_DECL
+#define GET_GFX125xDPMACCTable_IMPL
 #define GET_MTBUFInfoTable_DECL
 #define GET_MTBUFInfoTable_IMPL
 #define GET_MUBUFInfoTable_DECL
@@ -601,6 +608,18 @@ bool getMAIIsGFX940XDL(unsigned Opc) {
 bool getWMMAIsXDL(unsigned Opc) {
   const WMMAInstInfo *Info = getWMMAInstInfoHelper(Opc);
   return Info ? Info->is_wmma_xdl : false;
+}
+
+bool isWMMALoadScale(unsigned Opc) {
+  switch (Opc) {
+  case AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32:
+  case AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32_gfx1250:
+  case AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64:
+  case AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64_gfx1250:
+    return true;
+  default:
+    return false;
+  }
 }
 
 bool getHasMatrixScale(unsigned Opc) {
@@ -857,8 +876,13 @@ FPType getFPDstSelType(unsigned Opc) {
   return FPType::None;
 }
 
+DPMACCInstructionKind getDPMACCInstructionKind(unsigned Opcode) {
+  const auto *Info = getGFX125xDPMACCInfo(Opcode);
+  return Info ? Info->GFX125xDPMACC : NoDPMACC;
+}
+
 bool isDPMACCInstruction(unsigned Opc) {
-  return isDPMACCInstructionHelper(Opc) != nullptr;
+  return isDPMACCInstructionHelper(Opc);
 }
 
 unsigned mapWMMA2AddrTo3AddrOpcode(unsigned Opc) {
@@ -3567,13 +3591,10 @@ getVGPRLoweringOperandTables(const MCInstrDesc &Desc) {
   if (SIInstrFlags::isVOP1(Desc) || SIInstrFlags::isVOP2(Desc) ||
       SIInstrFlags::isVOP3Like(Desc) || SIInstrFlags::isVOPC(Desc) ||
       SIInstrFlags::isDPP(Desc)) {
-    switch (Desc.getOpcode()) {
     // LD_SCALE operands ignore MSB.
-    case AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32:
-    case AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32_gfx1250:
-    case AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64:
-    case AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64_gfx1250:
+    if (isWMMALoadScale(Desc.getOpcode()))
       return {};
+    switch (Desc.getOpcode()) {
     case AMDGPU::V_FMAMK_F16:
     case AMDGPU::V_FMAMK_F16_t16:
     case AMDGPU::V_FMAMK_F16_t16_gfx12:

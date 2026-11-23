@@ -61,9 +61,8 @@ class VOP1_Pseudo <string opName, VOPProfile P, list<dag> pattern=[], bit VOP1On
 }
 
 class VOP1_Real <VOP1_Pseudo ps, int EncodingFamily, string real_name = ps.Mnemonic > :
-  VOP_Real <ps>,
   InstSI <ps.OutOperandList, ps.InOperandList, real_name # ps.AsmOperands, []>,
-  SIMCInstr <ps.PseudoInstr, EncodingFamily> {
+  VOP_Real<ps, EncodingFamily> {
 
   let VALU = 1;
   let VOP1 = 1;
@@ -239,7 +238,8 @@ let isReMaterializable = 1, isAsCheapAsAMove = 1 in {
 defm V_MOV_B32 : VOP1Inst <"v_mov_b32", VOPProfile_MOV, null_frag, 0x8>;
 
 let SubtargetPredicate = isGFX940orGFX1250, SchedRW = [Write64Bit],
-    GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true in
+    GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true,
+    GFX125xDPMACC = DPMACCWithFullRate64Ops in
 defm V_MOV_B64 : VOP1Inst <"v_mov_b64", VOP_I64_I64>;
 } // End isMoveImm = 1
 
@@ -269,7 +269,8 @@ let HasOMod = 0, HasClamp = 0 in {
 } // End HasOMod = 0, HasClamp = 0
 
 let isReMaterializable = 1 in {
-let SchedRW = [WriteDoubleCvt], GFX1250BlockingCycles = 32, HasGFX1250BlockingCycles = true in {
+let SchedRW = [WriteDoubleCvt], GFX1250BlockingCycles = 32, HasGFX1250BlockingCycles = true,
+    GFX125xDPMACC = AlwaysDPMACC in {
 // OMod clears exceptions when set in this instruction
 let IsDPMACCInstruction = 1 in
 defm V_CVT_I32_F64 : VOP1Inst <"v_cvt_i32_f64", VOP_I32_F64_SPECIAL_OMOD,  fp_to_sint>;
@@ -986,7 +987,7 @@ class VOP1_DPP<bits<8> op, VOP1_DPP_Pseudo ps, VOPProfile p = ps.Pfl, bit isDPP1
 
 class VOP1_DPP16<bits<8> op, VOP1_DPP_Pseudo ps, int subtarget, VOPProfile p = ps.Pfl> :
     VOP1_DPP<op, ps, p, 1>,
-    SIMCInstr <ps.PseudoInstr, subtarget> {
+    VOP_Real<ps, subtarget> {
   let AssemblerPredicate = HasDPP16;
 }
 
@@ -1000,11 +1001,12 @@ class VOP1_DPP16_Gen<bits<8> op, VOP1_DPP_Pseudo ps, GFXGen Gen, VOPProfile p = 
 }
 
 class VOP1_DPP8<bits<8> op, VOP1_DPP8_Pseudo ps, int subtarget, VOPProfile p = ps.Pfl> :
-    VOP_DPP8<ps.OpName, p>, SIMCInstr<ps.PseudoInstr, subtarget> {
+    VOP_DPP8<ps.OpName, p>, VOP_Real<ps, subtarget> {
   let hasSideEffects = ps.hasSideEffects;
   let Defs = ps.Defs;
   let SchedRW = ps.SchedRW;
   let Uses = ps.Uses;
+  let TRANS = ps.TRANS;
   let SubtargetPredicate = ps.SubtargetPredicate;
   let OtherPredicates = ps.OtherPredicates;
 

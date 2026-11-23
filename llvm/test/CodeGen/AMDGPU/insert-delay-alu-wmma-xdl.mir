@@ -135,3 +135,21 @@ body: |
     $vgpr24_vgpr25_vgpr26_vgpr27 = V_SWMMAC_F16_16X16X128_BF8_BF8_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15_vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, $vgpr24_vgpr25_vgpr26_vgpr27, $vgpr28_vgpr29, 0, 0, 0, implicit $exec
     $vgpr24_vgpr25_vgpr26_vgpr27 = V_SWMMAC_F16_16X16X128_BF8_BF8_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15_vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, $vgpr24_vgpr25_vgpr26_vgpr27, $vgpr30_vgpr31, 0, 0, 0, implicit $exec
 ...
+
+---
+name: split_scale_delay_skip
+tracksRegLiveness: false
+body: |
+  bb.0:
+    ; CHECK-LABEL: split_scale_delay_skip:
+    ; CHECK: s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_2)
+    ; CHECK-NEXT: v_wmma_ld_scale16_paired_b64
+    ; CHECK-NEXT: v_wmma_f32_32x16x128_f4
+    ; CHECK-NEXT: v_mov_b32_e32 v60, v70
+    $vgpr70 = V_MOV_B32_e32 $vgpr75, implicit $exec
+    $vgpr0 = V_MOV_B32_e32 $vgpr74, implicit $exec
+    V_WMMA_LD_SCALE16_PAIRED_B64_gfx1250 $vgpr56_vgpr57, $vgpr58_vgpr59, 0, 0, 0, 0, 0, 0, implicit $exec
+    $vgpr40_vgpr41_vgpr42_vgpr43_vgpr44_vgpr45_vgpr46_vgpr47_vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55 = V_WMMA_F32_32X16X128_F4_w32_twoaddr $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7_vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15, $vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, 8, $vgpr40_vgpr41_vgpr42_vgpr43_vgpr44_vgpr45_vgpr46_vgpr47_vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55, 0, 0, implicit $exec
+    $vgpr60 = V_MOV_B32_e32 $vgpr70, implicit $exec
+    S_ENDPGM 0
+...

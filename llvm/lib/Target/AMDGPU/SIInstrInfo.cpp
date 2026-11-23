@@ -12244,6 +12244,25 @@ bool SIInstrInfo::isGlobalMemoryObject(const MachineInstr *MI) const {
   return TargetInstrInfo::isGlobalMemoryObject(MI);
 }
 
+MachineInstr *SIInstrInfo::getWMMAAfterLoadScale(
+    MachineInstr &MI, function_ref<bool(const MachineInstr &)> Skip) {
+  if (!isVOP3P(MI) || !AMDGPU::isWMMALoadScale(MI.getOpcode()))
+    return nullptr;
+  MachineInstr *Next = MI.getNextNode();
+  while (Next && Skip(*Next))
+    Next = Next->getNextNode();
+  if (!Next || !isWMMA(*Next))
+    return nullptr;
+
+  const auto *Info = AMDGPU::getWMMAInstInfoHelper(Next->getOpcode());
+  using Variant = AMDGPU::WMMAVariant;
+  if (Info && !Info->HasMatrixScale &&
+      (Info->CoExecVariant == Variant::F8F6F4_16x16x128 ||
+       Info->CoExecVariant == Variant::F4_32x16x128))
+    return Next;
+  return nullptr;
+}
+
 bool SIInstrInfo::isXDLWMMA(const MachineInstr &MI) const {
   if (!isWMMA(MI) && !isSWMMAC(MI))
     return false;

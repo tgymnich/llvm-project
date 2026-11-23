@@ -188,12 +188,14 @@ defm V_PK_MIN_U16 : VOP3PInst<"v_pk_min_u16", VOP3P_Profile<VOP_V2I16_V2I16_V2I1
 defm V_PK_MAX_I16 : VOP3PInst<"v_pk_max_i16", VOP3P_Profile<VOP_V2I16_V2I16_V2I16>, smax>;
 defm V_PK_MAX_U16 : VOP3PInst<"v_pk_max_u16", VOP3P_Profile<VOP_V2I16_V2I16_V2I16>, umax>;
 
-let SubtargetPredicate = HasPackedFP64SingleSGPROps, SchedRW = [WriteDouble] in {
+let SubtargetPredicate = HasPackedFP64SingleSGPROps, SchedRW = [WriteDouble],
+    GFX125xDPMACC = AlwaysDPMACC in {
 defm V_PK_MAX_NUM_F64 : VOP3PInst<"v_pk_max_num_f64", V_PK_VOP2_F64_Profile, fmaxnum_like>;
 defm V_PK_MIN_NUM_F64 : VOP3PInst<"v_pk_min_num_f64", V_PK_VOP2_F64_Profile, fminnum_like>;
 }
 
-let SubtargetPredicate = HasPackedU64SingleSGPROps, SchedRW = [Write64Bit] in
+let SubtargetPredicate = HasPackedU64SingleSGPROps, SchedRW = [Write64Bit],
+    GFX125xDPMACC = AlwaysDPMACC in
 defm V_PK_ADD_NC_U64 : VOP3PInst<"v_pk_add_nc_u64", V_PK_VOP2_I64_Profile, add>;
 
 let SubtargetPredicate = HasIEEEMinimumMaximumInsts, ReadsModeReg = 0 in {
@@ -209,7 +211,8 @@ defm V_PK_LSHLREV_B16 : VOP3PInst<"v_pk_lshlrev_b16", VOP3P_Profile<VOP_V2I16_V2
 defm V_PK_ASHRREV_I16 : VOP3PInst<"v_pk_ashrrev_i16", VOP3P_Profile<VOP_V2I16_V2I16_V2I16>, cashr_rev_16>;
 defm V_PK_LSHRREV_B16 : VOP3PInst<"v_pk_lshrrev_b16", VOP3P_Profile<VOP_V2I16_V2I16_V2I16>, clshr_rev_16>;
 
-let SubtargetPredicate = HasPackedU64SingleSGPROps, SchedRW = [Write64Bit] in {
+let SubtargetPredicate = HasPackedU64SingleSGPROps, SchedRW = [Write64Bit],
+    GFX125xDPMACC = AlwaysDPMACC in {
 defm V_PK_SUB_NC_U64 : VOP3PInst<"v_pk_sub_nc_u64", V_PK_VOP2_I64_Profile, sub>;
 defm V_PK_LSHL_ADD_U64 : VOP3PInst<"v_pk_lshl_add_u64", V_PK_LSHL_ADD_U64_Profile>;
 } // End SubtargetPredicate = HasPackedU64SingleSGPROps, , SchedRW = [Write64Bit]
@@ -1579,7 +1582,8 @@ let isCommutable = 1, isReMaterializable = 1 in {
     defm V_MAX_BF16_PSEUDO : VOP3Inst <"v_max_bf16", VOP_BF16_BF16_BF16>;
   }
 
-  let SubtargetPredicate = HasPackedFP64SingleSGPROps, SchedRW = [WriteDouble] in {
+  let SubtargetPredicate = HasPackedFP64SingleSGPROps, SchedRW = [WriteDouble],
+      GFX125xDPMACC = AlwaysDPMACC in {
     defm V_PK_FMA_F64 : VOP3PInst<"v_pk_fma_f64", V_PK_VOP3_F64_Profile, any_fma>;
     defm V_PK_MUL_F64 : VOP3PInst<"v_pk_mul_f64", V_PK_VOP2_F64_Profile, any_fmul>;
     defm V_PK_ADD_F64 : VOP3PInst<"v_pk_add_f64", V_PK_VOP2_F64_Profile, any_fadd>;
@@ -2531,7 +2535,7 @@ let SubtargetPredicate = HasGFX1251GEMMInsts in {
 
 class VOP3P_DPP16<bits<8> op, VOP_DPP_Pseudo ps, int subtarget,
                   string opName = ps.OpName>
-    : VOP3P_DPP<op, opName, ps.Pfl, 1>, SIMCInstr<ps.PseudoInstr, subtarget> {
+    : VOP3P_DPP<op, opName, ps.Pfl, 1>, VOP_Real<ps, subtarget> {
   let hasSideEffects = ps.hasSideEffects;
   let Defs = ps.Defs;
   let SchedRW = ps.SchedRW;
@@ -2634,9 +2638,14 @@ multiclass VOP3P_Real_WMMA_gfx1170_gfx12w64 <bits<8> op, VOP3PWMMA_Profile WMMAP
   VOP3P_Real_WMMA_gfx1170w64<op, WMMAP>,
   VOP3P_Real_WMMA_gfx12w64<op, WMMAP>;
 
+class GFX1250WMMARealInfo<VOP3PWMMA_Profile P, string Pseudo> : WMMAInstInfo<P> {
+  let is_wmma_xdl = !cast<WMMAInstInfo>(Pseudo).is_wmma_xdl;
+}
+
 multiclass VOP3P_Real_WMMA_gfx1250 <bits<8> op, VOP3PWMMA_Profile WMMAP> {
   let WaveSizePredicate = isWave32, DecoderNamespace = "GFX12" in {
-    defm _twoaddr : VOP3P_WMMA_Real_Base <GFX1250Gen, op, WMMAP>;
+    defm _twoaddr : VOP3P_WMMA_Real_Base <GFX1250Gen, op, WMMAP>,
+                    GFX1250WMMARealInfo<WMMAP, NAME # "_twoaddr">;
   }
 }
 
@@ -2709,6 +2718,7 @@ multiclass VOP3PX2_Real_ScaledWMMA_F4<string Gen, bits<8> op, bits<8> LdScaleOp,
   defvar PS = !cast<VOP3P_Pseudo>(NAME # "_twoaddr");
   if !eq(Gen, "gfx1250") then {
     def _gfx1250 : VOP3P_Real_Gen<PS, GFX1250Gen, PS.Mnemonic>,
+                   GFX1250WMMARealInfo<WMMAP, NAME # "_twoaddr">,
                    VOP3PX2e <op, LdScaleOp, WMMAP> {
       let PostEncoderMethod = "postEncodeVOP3<true, true, false>";
     }
@@ -2721,6 +2731,7 @@ multiclass VOP3PX2_Real_ScaledWMMA<string Gen, bits<8> op, bits<8> LdScaleOp, VO
   defvar psName = !substr(NAME, 0, !sub(!size(PS.Mnemonic), !size("_f8_f8_w32")));
   if !eq(Gen, "gfx1250") then {
     def _gfx1250 : VOP3P_Real_Gen<PS, GFX1250Gen, asmName>,
+                   GFX1250WMMARealInfo<WMMAP, NAME # "_twoaddr">,
                    VOP3PX2e <op, LdScaleOp, WMMAP>,
                    MFMA_F8F6F4_WithSizeTable_Helper<PS, psName # "_f8_f8_w32_" # Gen> {
       let AsmString = asmName # PS.AsmOperands;

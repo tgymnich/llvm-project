@@ -109,6 +109,11 @@ defm FullRate64Ops : AMDGPUSubtargetFeature<"full-rate-64-ops",
   /*GenPredicate=*/0
 >;
 
+defm SideMACC64Ops : AMDGPUSubtargetFeature<"side-macc-64-ops",
+  "Use the side MACC for 64-bit compares, shifts and integer multiplies",
+  /*GenPredicate=*/0, /*GenAssemblerPredicate=*/0, [], InlineIgnore
+>;
+
 defm FlatAddressSpace : AMDGPUSubtargetFeature<"flat-address-space",
   "Support flat address space"
 >;
@@ -2611,7 +2616,8 @@ def FeatureISAVersion12_50_Common : FeatureSet<
 
 def FeatureISAVersion12_50_STRICT : FeatureSet<
   !listconcat(FeatureISAVersion12_50_Common.Features,
-  [FeatureVOPD3F64OPYSrcHazard,
+  [FeatureSideMACC64Ops,
+   FeatureVOPD3F64OPYSrcHazard,
    FeatureGFX1250_STRICT,
    FeatureAddressableLocalMemorySize327680,
    FeatureLDSAllocGranularity2048,
@@ -2649,7 +2655,8 @@ def FeatureISAVersion12_50_STRICT : FeatureSet<
 
 def FeatureISAVersion12_50 : FeatureSet<
   !listconcat(FeatureISAVersion12_50_Common.Features,
-  [FeatureVOPD3F64OPYSrcHazard,
+  [FeatureSideMACC64Ops,
+   FeatureVOPD3F64OPYSrcHazard,
    FeatureAddressableLocalMemorySize327680,
    FeatureLDSAllocGranularity2048,
    FeatureLDSEncodingGranularity2048,

@@ -6,6 +6,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+class DPMACCInstructionKind;
+def NoDPMACC : DPMACCInstructionKind;
+def AlwaysDPMACC : DPMACCInstructionKind;
+def DPMACCWithFullRate64Ops : DPMACCInstructionKind;
+
+def DPMACCInstructionKind : GenericEnum {
+  let FilterClass = "DPMACCInstructionKind";
+  let UnderlyingType = "uint8_t";
+}
+
 // dummies for outer let
 class LetDummies {
   bit TRANS;
@@ -19,6 +29,7 @@ class LetDummies {
   bit isAsCheapAsAMove;
   bit FPDPRounding;
   bit IsDPMACCInstruction;
+  DPMACCInstructionKind GFX125xDPMACC;
   Predicate SubtargetPredicate;
   string Constraints;
   string DisableEncoding;
@@ -63,19 +74,25 @@ class VOPAnyCommon <dag outs, dag ins, string asm, list<dag> pattern> :
   let Uses = !if(ReadsModeReg, [MODE, EXEC], [EXEC]);
 }
 
+class VOPDPMACC {
+  Instruction Opcode = !cast<Instruction>(NAME);
+  DPMACCInstructionKind GFX125xDPMACC = NoDPMACC;
+  bit HasGFX125xDPMACC = !ne(GFX125xDPMACC, NoDPMACC);
+}
+
 class VOP_Pseudo <string opName, string suffix, VOPProfile P, dag outs, dag ins,
                   string asm, list<dag> pattern> :
   InstSI <outs, ins, asm, pattern>,
-  VOP <opName>,
+  VOP <opName>, VOPDPMACC,
   SIMCInstr <opName#suffix, SIEncodingFamily.NONE> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
   let UseNamedOperandTable = 1;
 
   string Mnemonic = opName;
-  Instruction Opcode = !cast<Instruction>(NAME);
   bit IsTrue16 = P.IsTrue16;
   bit IsDPMACCInstruction = 0;
+  let GFX125xDPMACC = !if(IsDPMACCInstruction, AlwaysDPMACC, NoDPMACC);
   VOPProfile Pfl = P;
 
   string AsmOperands;
@@ -169,16 +186,18 @@ class VOP3P_Pseudo <string opName, VOPProfile P, list<dag> pattern = []> :
   let HasNoOpSelHi = P.HasNoOpSelHi;
 }
 
-class VOP_Real<VOP_Pseudo ps> {
-  Instruction Opcode = !cast<Instruction>(NAME);
+class VOP_Real<VOP_Pseudo ps, int EncodingFamily> :
+    SIMCInstr<ps.PseudoInstr, EncodingFamily>, VOPDPMACC {
   bit IsSingle = ps.Pfl.IsSingle;
-  bit IsDPMACCInstruction = ps.IsDPMACCInstruction;
+  // Wait insertion can see both pseudos and real gfx125x encodings.
+  let GFX125xDPMACC = !if(!or(!eq(EncodingFamily, SIEncodingFamily.GFX12),
+                              !eq(EncodingFamily, SIEncodingFamily.GFX1250)),
+                          ps.GFX125xDPMACC, NoDPMACC);
 }
 
 class VOP3_Real <VOP_Pseudo ps, int EncodingFamily, string asm_name = ps.Mnemonic> :
-  VOP_Real <ps>,
   InstSI <ps.OutOperandList, ps.InOperandList, asm_name # ps.AsmOperands, []>,
-  SIMCInstr <ps.PseudoInstr, EncodingFamily> {
+  VOP_Real<ps, EncodingFamily> {
 
   let VALU = 1;
   let VOP3 = 1;
@@ -1058,7 +1077,7 @@ class VOP3_DPP_Pseudo <string OpName, VOPProfile P> :
 
 class VOP_DPP_Real <VOP_DPP_Pseudo ps, int EncodingFamily> :
   InstSI <ps.OutOperandList, ps.InOperandList, ps.Mnemonic # ps.AsmOperands, []>,
-  SIMCInstr <ps.PseudoInstr, EncodingFamily> {
+  VOP_Real<ps, EncodingFamily> {
 
   let VALU = 1;
   let DPP = 1;
@@ -1724,6 +1743,7 @@ class VOP3_DPP16_Helper<bits<10> op, VOP_DPP_Pseudo ps, string opName = ps.OpNam
   let Defs = ps.Defs;
   let SchedRW = ps.SchedRW;
   let Uses = ps.Uses;
+  let TRANS = ps.TRANS;
   let AssemblerPredicate = HasDPP16;
   let SubtargetPredicate = ps.SubtargetPredicate;
   let OtherPredicates = ps.OtherPredicates;
@@ -1738,6 +1758,7 @@ class VOP3_DPP16_t16_Helper<bits<10> op, VOP_DPP_Pseudo ps,
   let Defs = ps.Defs;
   let SchedRW = ps.SchedRW;
   let Uses = ps.Uses;
+  let TRANS = ps.TRANS;
   let AssemblerPredicate = HasDPP16;
   let SubtargetPredicate = ps.SubtargetPredicate;
   let OtherPredicates = ps.OtherPredicates;
@@ -1745,11 +1766,11 @@ class VOP3_DPP16_t16_Helper<bits<10> op, VOP_DPP_Pseudo ps,
 
 class VOP3_DPP16<bits<10> op, VOP_DPP_Pseudo ps, int subtarget,
                  string opName = ps.OpName>
-    : VOP3_DPP16_Helper<op, ps, opName>, SIMCInstr<ps.PseudoInstr, subtarget>;
+    : VOP3_DPP16_Helper<op, ps, opName>, VOP_Real<ps, subtarget>;
 
 class VOP3_DPP16_t16<bits<10> op, VOP_DPP_Pseudo ps, int subtarget,
                      string opName = ps.OpName>
-    : VOP3_DPP16_t16_Helper<op, ps, opName>, SIMCInstr<ps.PseudoInstr, subtarget>;
+    : VOP3_DPP16_t16_Helper<op, ps, opName>, VOP_Real<ps, subtarget>;
 
 class VOP3_DPP16_Gen<bits<10> op, VOP_DPP_Pseudo ps, GFXGen Gen,
                      string opName = ps.OpName>
@@ -1776,6 +1797,7 @@ class Base_VOP3_DPP8<bits<10> op, VOP_Pseudo ps, string opName = ps.OpName>
   let Defs = ps.Defs;
   let SchedRW = ps.SchedRW;
   let Uses = ps.Uses;
+  let TRANS = ps.TRANS;
 
   let SubtargetPredicate = ps.SubtargetPredicate;
   let OtherPredicates = ps.OtherPredicates;
@@ -1790,6 +1812,7 @@ class Base_VOP3_DPP8_t16<bits<10> op, VOP_Pseudo ps, string opName = ps.OpName>
   let Defs = ps.Defs;
   let SchedRW = ps.SchedRW;
   let Uses = ps.Uses;
+  let TRANS = ps.TRANS;
 
   let SubtargetPredicate = ps.SubtargetPredicate;
   let OtherPredicates = ps.OtherPredicates;
@@ -2019,10 +2042,12 @@ multiclass VOP3be_Real<GFXGen Gen, bits<10> op, string opName, string asmName,
 
 multiclass VOP3be_Real_dpp<GFXGen Gen, bits<10> op, string opName,
                            string asmName> {
-  defvar ps = !cast<VOP3_Pseudo>(opName #"_e64");
   defvar dpp_ps = !cast<VOP_DPP_Pseudo>(opName #"_e64" #"_dpp");
   def _e64_dpp#Gen.Suffix : Base_VOP3b_DPP16<op, dpp_ps, asmName>,
-                            Select<Gen, dpp_ps.PseudoInstr>;
+                            VOP_Real<dpp_ps, Gen.Subtarget> {
+    let AssemblerPredicate = Gen.AssemblerPredicate;
+    let DecoderNamespace = Gen.DecoderNamespace;
+  }
 }
 
 multiclass VOP3be_Real_dpp8<GFXGen Gen, bits<10> op, string opName,
@@ -2498,9 +2523,18 @@ def DPMACCInstructionTable : GenericTable {
   let FilterClassField = "IsDPMACCInstruction";
   let CppTypeName = "DPMACCInstructionInfo";
   let Fields = ["Opcode"];
-
   let PrimaryKey = ["Opcode"];
   let PrimaryKeyName = "isDPMACCInstructionHelper";
+}
+
+def GFX125xDPMACCTable : GenericTable {
+  let FilterClass = "VOPDPMACC";
+  let FilterClassField = "HasGFX125xDPMACC";
+  let CppTypeName = "GFX125xDPMACCInfo";
+  let Fields = ["Opcode", "GFX125xDPMACC"];
+  string TypeOf_GFX125xDPMACC = "DPMACCInstructionKind";
+  let PrimaryKey = ["Opcode"];
+  let PrimaryKeyName = "getGFX125xDPMACCInfo";
 }
 
 def VOP3PHasNoOpSelHiTable : GenericTable {

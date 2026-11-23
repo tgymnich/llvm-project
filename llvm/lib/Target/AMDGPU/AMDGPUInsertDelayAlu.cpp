@@ -330,7 +330,8 @@ public:
           Skip = 6;
           break;
         }
-        if (!I->isBundle() && !I->isMetaInstruction())
+        if (!I->isBundle() && !I->isMetaInstruction() &&
+            !SIInstrInfo::getWMMAAfterLoadScale(*I))
           ++Skip;
       }
       if (Skip < 6) {
@@ -412,6 +413,53 @@ public:
     return false;
   }
 
+  DelayInfo takeOperandDelay(const MachineInstr &MI, DelayState &State,
+                             Register PrevWMMAVDst = Register()) {
+    DelayInfo Delay;
+    // C-reuse: back-to-back WMMAs into the same C register forward the
+    // accumulator in place, so the tied srcC read has no dependency. WMMA
+    // implies GFX11+, so no explicit subtarget check is needed.
+    bool IsWMMACReuse =
+        PrevWMMAVDst.isValid() && (SII->isWMMA(MI) || SII->isSWMMAC(MI));
+    // TODO: Scan implicit uses too?
+    for (const auto &Op : MI.explicit_uses()) {
+      if (Op.isReg()) {
+        // One of the operands of the writelane is also the output operand.
+        // This creates the insertion of redundant delays. Hence, we have to
+        // ignore this operand.
+        if (MI.getOpcode() == AMDGPU::V_WRITELANE_B32 && Op.isTied())
+          continue;
+        // Skip the tied srcC of a C-reuse edge.
+        if (IsWMMACReuse && Op.isTied() && Op.getReg() == PrevWMMAVDst)
+          continue;
+
+        Register Reg = Op.getReg();
+        unsigned OperandNo = MI.getOperandNo(&Op);
+
+        // Suppress the delay for SGPR operands when both producer and
+        // consumer are in the hardware valu data fast-forward set.
+        if (isFastForwardConsumer(MI, Op, OperandNo) &&
+            llvm::all_of(TRI->regunits(Reg), [&](MCRegUnit Unit) {
+              auto It = State.find(Unit);
+              if (It != State.end())
+                return It->second.IsFFProducer;
+              return true; // no wait for this regunit if it has no delay
+            })) {
+          continue;
+        }
+
+        for (MCRegUnit Unit : TRI->regunits(Op.getReg())) {
+          auto It = State.find(Unit);
+          if (It != State.end()) {
+            Delay.merge(It->second);
+            State.erase(Unit);
+          }
+        }
+      }
+    }
+    return Delay;
+  }
+
   bool runOnMachineBasicBlock(MachineBasicBlock &MBB, bool Emit) {
     DelayState State;
     for (auto *Pred : MBB.predecessors())
@@ -432,9 +480,16 @@ public:
 
     // Iterate over the contents of bundles, but don't emit any instructions
     // inside a bundle.
-    for (auto &MI : MBB.instrs()) {
-      if (MI.isBundle() || MI.isMetaInstruction())
+    for (auto I = MBB.instr_begin(), E = MBB.instr_end(); I != E; ++I) {
+      MachineInstr &First = *I;
+      if (First.isBundle() || First.isMetaInstruction())
         continue;
+
+      // LD_SCALE and its WMMA occupy one delay scoreboard entry.
+      MachineInstr *WMMA = SIInstrInfo::getWMMAAfterLoadScale(First);
+      if (WMMA)
+        I = WMMA->getIterator();
+      MachineInstr &MI = *I;
 
       // Ignore some more instructions that do not generate any code.
       switch (MI.getOpcode()) {
@@ -463,48 +518,9 @@ public:
         // TODO: This is overkill since it also forgets about SALU delays.
         State = DelayState();
       } else if (ConsumerType != OTHER) {
-        DelayInfo Delay;
-        // C-reuse: back-to-back WMMAs into the same C register forward the
-        // accumulator in place, so the tied srcC read has no dependency. WMMA
-        // implies GFX11+, so no explicit subtarget check is needed.
-        bool IsWMMACReuse =
-            PrevWMMAVDst.isValid() && (SII->isWMMA(MI) || SII->isSWMMAC(MI));
-        // TODO: Scan implicit uses too?
-        for (const auto &Op : MI.explicit_uses()) {
-          if (Op.isReg()) {
-            // One of the operands of the writelane is also the output operand.
-            // This creates the insertion of redundant delays. Hence, we have to
-            // ignore this operand.
-            if (MI.getOpcode() == AMDGPU::V_WRITELANE_B32 && Op.isTied())
-              continue;
-            // Skip the tied srcC of a C-reuse edge.
-            if (IsWMMACReuse && Op.isTied() && Op.getReg() == PrevWMMAVDst)
-              continue;
-
-            Register Reg = Op.getReg();
-            unsigned OperandNo = MI.getOperandNo(&Op);
-
-            // Suppress the delay for SGPR operands when both producer and
-            // consumer are in the hardware valu data fast-forward set.
-            if (isFastForwardConsumer(MI, Op, OperandNo) &&
-                llvm::all_of(TRI->regunits(Reg), [&](MCRegUnit Unit) {
-                  auto It = State.find(Unit);
-                  if (It != State.end())
-                    return It->second.IsFFProducer;
-                  return true; // no wait for this regunit if it has no delay
-                })) {
-              continue;
-            }
-
-            for (MCRegUnit Unit : TRI->regunits(Op.getReg())) {
-              auto It = State.find(Unit);
-              if (It != State.end()) {
-                Delay.merge(It->second);
-                State.erase(Unit);
-              }
-            }
-          }
-        }
+        DelayInfo Delay = takeOperandDelay(MI, State, PrevWMMAVDst);
+        if (WMMA)
+          Delay.merge(takeOperandDelay(First, State));
 
         if (ProducerType == VALU) {
           for (const auto &Op : MI.defs()) {
@@ -516,10 +532,10 @@ public:
           }
         }
 
-        if (Emit && !MI.isBundledWithPred()) {
+        if (Emit && !First.isBundledWithPred()) {
           // TODO: For VALU->SALU delays should we use s_delay_alu or s_nop or
           // just ignore them?
-          LastDelayAlu = emitDelayAlu(MI, Delay, LastDelayAlu);
+          LastDelayAlu = emitDelayAlu(First, Delay, LastDelayAlu);
         }
       }
 

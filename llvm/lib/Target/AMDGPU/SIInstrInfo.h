@@ -18,6 +18,7 @@
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "SIRegisterInfo.h"
 #include "Utils/AMDGPUBaseInfo.h"
+#include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -1090,6 +1091,12 @@ public:
   }
 
   bool isDOT(uint32_t Opcode) const { return SIInstrFlags::isDOT(get(Opcode)); }
+
+  /// Return the WMMA paired with an explicit LD_SCALE, if present.
+  static MachineInstr *getWMMAAfterLoadScale(
+      MachineInstr &MI,
+      function_ref<bool(const MachineInstr &)> Skip =
+          [](const MachineInstr &I) { return I.isMetaInstruction(); });
 
   bool isXDLWMMA(const MachineInstr &MI) const;
 

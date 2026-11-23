@@ -234,7 +234,7 @@ class VOPC_Pseudo <string opName, VOPC_Profile P, list<dag> pattern=[],
 
 class VOPC_Real <VOPC_Pseudo ps, int EncodingFamily, string asm_name = ps.PseudoInstr> :
   InstSI <ps.OutOperandList, ps.InOperandList, asm_name # " " # ps.AsmOperands, []>,
-  SIMCInstr <ps.PseudoInstr, EncodingFamily> {
+  VOP_Real<ps, EncodingFamily> {
 
   let VALU = 1;
   let VOPC = 1;
@@ -509,7 +509,7 @@ multiclass VOPC_F32 <string opName, SDPatternOperator cond = COND_NULL, string r
 // The let must be inside the body: a let around a multiclass does not reach
 // the records it inherits from another multiclass.
 multiclass VOPC_F64 <string opName, SDPatternOperator cond = COND_NULL, string revOp = opName> {
-  let IsDPMACCInstruction = 1 in
+  let IsDPMACCInstruction = 1, GFX125xDPMACC = DPMACCWithFullRate64Ops in
   defm NAME : VOPC_Pseudos <opName, VOPC_I1_F64_F64, cond, revOp, 0>;
 }
 
@@ -530,7 +530,7 @@ multiclass VOPC_I32 <string opName, SDPatternOperator cond = COND_NULL, string r
   VOPC_Pseudos <opName, VOPC_I1_I32_I32, cond, revOp, 0>;
 
 multiclass VOPC_I64 <string opName, SDPatternOperator cond = COND_NULL, string revOp = opName> {
-  let IsDPMACCInstruction = 1 in
+  let IsDPMACCInstruction = 1, GFX125xDPMACC = DPMACCWithFullRate64Ops in
   defm NAME : VOPC_Pseudos <opName, VOPC_I1_I64_I64, cond, revOp, 0>;
 }
 
@@ -550,7 +550,7 @@ multiclass VOPCX_F32 <string opName, string revOp = opName> :
   VOPCX_Pseudos <opName, VOPC_I1_F32_F32, VOPC_F32_F32, COND_NULL, revOp>;
 
 multiclass VOPCX_F64 <string opName, string revOp = opName> {
-  let IsDPMACCInstruction = 1 in
+  let IsDPMACCInstruction = 1, GFX125xDPMACC = DPMACCWithFullRate64Ops in
   defm NAME : VOPCX_Pseudos <opName, VOPC_I1_F64_F64, VOPC_F64_F64, COND_NULL, revOp>;
 }
 
@@ -570,7 +570,7 @@ multiclass VOPCX_I32 <string opName, string revOp = opName> :
   VOPCX_Pseudos <opName, VOPC_I1_I32_I32, VOPC_I32_I32, COND_NULL, revOp>;
 
 multiclass VOPCX_I64 <string opName, string revOp = opName> {
-  let IsDPMACCInstruction = 1 in
+  let IsDPMACCInstruction = 1, GFX125xDPMACC = NoDPMACC in
   defm NAME : VOPCX_Pseudos <opName, VOPC_I1_I64_I64, VOPC_I64_I64, COND_NULL, revOp>;
 }
 
@@ -1208,15 +1208,15 @@ multiclass VOPCX_CLASS_F32 <string opName> :
   VOPCX_Class_Pseudos <opName, VOPC_I1_F32_I32, VOPC_F32_I32>;
 
 multiclass VOPC_CLASS_F64 <string opName> {
-  let IsDPMACCInstruction = 1, GFX1250BlockingCycles = 32,
-      HasGFX1250BlockingCycles = true in
+  let IsDPMACCInstruction = 1, GFX125xDPMACC = DPMACCWithFullRate64Ops,
+      GFX1250BlockingCycles = 32, HasGFX1250BlockingCycles = true in
   defm NAME : VOPC_Class_Pseudos <opName, VOPC_I1_F64_I32, 0>;
   defm : VOPCClassPat64<NAME>;
 }
 
 multiclass VOPCX_CLASS_F64 <string opName> {
-  let IsDPMACCInstruction = 1, GFX1250BlockingCycles = 32,
-      HasGFX1250BlockingCycles = true in
+  let IsDPMACCInstruction = 1, GFX125xDPMACC = DPMACCWithFullRate64Ops,
+      GFX1250BlockingCycles = 32, HasGFX1250BlockingCycles = true in
   defm NAME : VOPCX_Class_Pseudos <opName, VOPC_I1_F64_I32, VOPC_F64_I32>;
 }
 
@@ -1503,7 +1503,7 @@ class VOPC_DPP16<bits<8> op, VOP_DPP_Pseudo ps, string opName = ps.OpName>
 
 class VOPC_DPP16_SIMC<bits<8> op, VOP_DPP_Pseudo ps, int subtarget,
                       string opName = ps.OpName>
-    : VOPC_DPP16<op, ps, opName>, SIMCInstr<ps.PseudoInstr, subtarget>;
+    : VOPC_DPP16<op, ps, opName>, VOP_Real<ps, subtarget>;
 
 class VOPC_DPP8<bits<8> op, VOPC_Pseudo ps, string opName = ps.OpName>
     : VOPC_DPP8_Base<op, opName, ps.Pfl> {
@@ -1659,7 +1659,7 @@ multiclass VOPC_Real_Base<GFXGen Gen, bits<9> op> {
     if ps64.Pfl.HasExtVOP3DPP then {
       defvar psDPP = !cast<VOP_DPP_Pseudo>(NAME #"_e64" #"_dpp");
       def _e64_dpp#Gen.Suffix : VOPC64_DPP16_Dst<{0, op}, psDPP>,
-                                SIMCInstr<psDPP.PseudoInstr, Gen.Subtarget>;
+                                VOP_Real<psDPP, Gen.Subtarget>;
       def _e64_dpp8#Gen.Suffix : VOPC64_DPP8_Dst<{0, op}, ps64>;
     }
   } // AssemblerPredicate = Gen.AssemblerPredicate, DecoderNamespace = Gen.DecoderNamespace
@@ -1745,11 +1745,11 @@ multiclass VOPC_Real_with_name<GFXGen Gen, bits<9> op, string OpName,
         defvar psDPP = !cast<VOP_DPP_Pseudo>(OpName #"_e64" #"_dpp");
         if ps64.Pfl.IsRealTrue16 then {
           def _e64_dpp#Gen.Suffix : VOPC64_DPP16_Dst_t16<{0, op}, psDPP, asm_name>,
-                                    SIMCInstr<psDPP.PseudoInstr, Gen.Subtarget>;
+                                    VOP_Real<psDPP, Gen.Subtarget>;
           def _e64_dpp8#Gen.Suffix : VOPC64_DPP8_Dst_t16<{0, op}, ps64, asm_name>;
         } else {
           def _e64_dpp#Gen.Suffix : VOPC64_DPP16_Dst<{0, op}, psDPP, asm_name>,
-                                    SIMCInstr<psDPP.PseudoInstr, Gen.Subtarget>;
+                                    VOP_Real<psDPP, Gen.Subtarget>;
           def _e64_dpp8#Gen.Suffix : VOPC64_DPP8_Dst<{0, op}, ps64, asm_name>;
         }
       } // end if ps64.Pfl.HasExtVOP3DPP
@@ -1800,7 +1800,7 @@ multiclass VOPCX_Real<GFXGen Gen, bits<9> op> {
       defvar AsmDPP = ps64.Pfl.AsmVOP3DPP16;
       def _e64_dpp#Gen.Suffix
           : VOPC64_DPP16_NoDst<{0, op}, psDPP>,
-            SIMCInstr<psDPP.PseudoInstr, Gen.Subtarget> {
+            VOP_Real<psDPP, Gen.Subtarget> {
         let AsmString = !subst("_nosdst", "", psDPP.OpName)
                         # "{_e64_dpp} " # AsmDPP;
       }
@@ -1866,7 +1866,7 @@ multiclass VOPCX_Real_with_name<GFXGen Gen, bits<9> op, string OpName,
         if ps64.Pfl.IsRealTrue16 then {
           def _e64_dpp#Gen.Suffix
               : VOPC64_DPP16_NoDst_t16<{0, op}, psDPP, asm_name>,
-                SIMCInstr<psDPP.PseudoInstr, Gen.Subtarget> {
+                VOP_Real<psDPP, Gen.Subtarget> {
             let AsmString = asm_name # "{_e64_dpp} " # AsmDPP;
           }
           def _e64_dpp8#Gen.Suffix : VOPC64_DPP8_NoDst_t16<{0, op}, ps64, asm_name> {
@@ -1875,7 +1875,7 @@ multiclass VOPCX_Real_with_name<GFXGen Gen, bits<9> op, string OpName,
         } else {
           def _e64_dpp#Gen.Suffix
               : VOPC64_DPP16_NoDst<{0, op}, psDPP, asm_name>,
-                SIMCInstr<psDPP.PseudoInstr, Gen.Subtarget> {
+                VOP_Real<psDPP, Gen.Subtarget> {
             let AsmString = asm_name # "{_e64_dpp} " # AsmDPP;
           }
           def _e64_dpp8#Gen.Suffix : VOPC64_DPP8_NoDst<{0, op}, ps64, asm_name> {

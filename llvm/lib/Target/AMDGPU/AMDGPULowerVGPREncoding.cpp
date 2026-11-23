@@ -249,7 +249,15 @@ bool AMDGPULowerVGPREncoding::setMode(ModeTy NewMode,
     return true;
   }
 
-  MachineBasicBlock::instr_iterator InsertPt = handleClause(I);
+  auto InsertPt = handleClause(I);
+  if (InsertPt != MBB->instr_end() && TII->isWMMA(*InsertPt)) {
+    MachineInstr *Prev = InsertPt->getPrevNode();
+    while (Prev && Prev->isMetaInstruction())
+      Prev = Prev->getPrevNode();
+    // An explicit LD_SCALE must be adjacent to its WMMA and ignores VGPR MSBs.
+    if (Prev && SIInstrInfo::getWMMAAfterLoadScale(*Prev) == &*InsertPt)
+      InsertPt = Prev->getIterator();
+  }
   InsertPt = handleCoissue(InsertPt);
   // Case 2 match in handleSetregMode: the setreg's imm[12:19] matched
   // current MSBs, but the next VALU needs different MSBs, so this
@@ -375,7 +383,8 @@ bool AMDGPULowerVGPREncoding::runOnMachineInstr(MachineInstr &MI) {
     }
     return setMode(NewMode, MI.getIterator());
   }
-  assert(!TII->hasVGPRUses(MI) || MI.isMetaInstruction() || MI.isPseudo());
+  assert(!TII->hasVGPRUses(MI) || MI.isMetaInstruction() || MI.isPseudo() ||
+         AMDGPU::isWMMALoadScale(MI.getOpcode()));
   return false;
 }
 

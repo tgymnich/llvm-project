@@ -95,9 +95,8 @@ class VOP2_Pseudo <string opName, VOPProfile P, list<dag> pattern=[], string suf
 }
 
 class VOP2_Real <VOP2_Pseudo ps, int EncodingFamily, string real_name = ps.Mnemonic> :
-  VOP_Real <ps>,
   InstSI <ps.OutOperandList, ps.InOperandList, real_name # ps.AsmOperands, []>,
-  SIMCInstr <ps.PseudoInstr, EncodingFamily> {
+  VOP_Real<ps, EncodingFamily> {
 
   let VALU = 1;
   let VOP2 = 1;
@@ -944,14 +943,16 @@ let isAdd = 1 in {
 
 let isReMaterializable = 1 in {
 let SubtargetPredicate = HasAddSubU64Insts, SchedRW = [Write64Bit],
-    GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true in {
+    GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true,
+    GFX125xDPMACC = DPMACCWithFullRate64Ops in {
 defm V_ADD_U64 : VOP2Inst <"v_add_nc_u64", VOP_I64_I64_I64_ARITH>;
 // We don't actually have something like V_SUBREV_U64 so V_SUB_U64 can't be treated as commutable.
 let isCommutable = 0 in
 defm V_SUB_U64 : VOP2Inst <"v_sub_nc_u64", VOP_I64_I64_I64_ARITH>;
 } // End SubtargetPredicate = HasAddSubU64Insts, SchedRW = [Write64Bit], GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true
 let SubtargetPredicate = HasVMulU64Inst, SchedRW = [WriteDouble],
-    GFX1250BlockingCycles = 32, HasGFX1250BlockingCycles = true in
+    GFX1250BlockingCycles = 32, HasGFX1250BlockingCycles = true,
+    GFX125xDPMACC = AlwaysDPMACC in
 defm V_MUL_U64 : VOP2Inst <"v_mul_u64", VOP_I64_I64_I64, DivergentBinFrag<mul>>;
 } // End isReMaterializable = 1
 
@@ -1289,7 +1290,8 @@ let SubtargetPredicate = HasFmacF64Inst,
     Constraints = "$vdst = $src2",
     isConvertibleToThreeAddress = 1,
     isCommutable = 1,
-    SchedRW = [WriteDoubleAdd] in
+    SchedRW = [WriteDoubleAdd],
+    GFX125xDPMACC = AlwaysDPMACC in
 defm V_FMAC_F64 : VOP2Inst <"v_fmac_f64", VOP_MAC_F64>;
 
 let Constraints = "$vdst = $src2",
@@ -1353,7 +1355,8 @@ def V_FMAAK_F32 : VOP2_Pseudo<"v_fmaak_f32", VOP_MADAK_F32, [], "">, VOPD_Compon
 } // End SubtargetPredicate = HasFmaakFmamkF32Insts, isReMaterializable = 1, CanBeVOPD3X = 0, FixedSize = 1
 
 let SubtargetPredicate = HasFmaakFmamkF64Insts, isReMaterializable = 1,
-    FixedSize = 1, Size = 12, SchedRW = [Write64Bit] in {
+    FixedSize = 1, Size = 12, SchedRW = [Write64Bit],
+    GFX125xDPMACC = AlwaysDPMACC in {
 def V_FMAMK_F64 : VOP2_Pseudo<"v_fmamk_f64", VOP_MADMK_F64, [], "">;
 
 let isCommutable = 1 in
@@ -1515,7 +1518,8 @@ let SubtargetPredicate = isGFX12Plus, isReMaterializable = 1 in {
     defm V_ADD_F64_pseudo : VOP2Inst_VOPD <"v_add_f64_pseudo", VOP_F64_F64_F64, 0x21, "v_add_f64", any_fadd>;
     defm V_MUL_F64_pseudo : VOP2Inst_VOPD <"v_mul_f64_pseudo", VOP_F64_F64_F64, 0x22, "v_mul_f64", any_fmul>;
   } // End SchedRW = [WriteDoubleAdd], isCommutable = 1, FPDPRounding = 1, IsDPMACCInstruction = 1, GFX1250BlockingCycles = 32, HasGFX1250BlockingCycles = true
-  let SchedRW = [Write64Bit], GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true in {
+  let SchedRW = [Write64Bit], GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true,
+      GFX125xDPMACC = DPMACCWithFullRate64Ops in {
     defm V_LSHLREV_B64_pseudo : VOP2Inst <"v_lshlrev_b64_pseudo", VOP_I64_I32_I64, clshl_rev_64>;
   } // End SchedRW = [Write64Bit], GFX1250BlockingCycles = 2, HasGFX1250BlockingCycles = true
 } // End SubtargetPredicate = isGFX12Plus, isReMaterializable = 1
@@ -1562,7 +1566,7 @@ class Base_VOP2_DPP16<bits<6> op, VOP2_DPP_Pseudo ps,
 class VOP2_DPP16<bits<6> op, VOP2_DPP_Pseudo ps, int subtarget,
                  string opName = ps.OpName, VOPProfile p = ps.Pfl> :
     Base_VOP2_DPP16<op, ps, opName, p>,
-    SIMCInstr <ps.PseudoInstr, subtarget>;
+    VOP_Real<ps, subtarget>;
 
 class VOP2_DPP16_Gen<bits<6> op, VOP2_DPP_Pseudo ps, GFXGen Gen,
                  string opName = ps.OpName, VOPProfile p = ps.Pfl> :

@@ -1955,6 +1955,8 @@ void GCNHazardRecognizer::fixHazards(MachineInstr *MI) {
   fixVALUTransCoexecutionHazards(MI);
   fixWMMAHazards(MI); // fall-through if co-execution is enabled.
   fixWMMACoexecutionHazards(MI);
+  if (MachineInstr *WMMA = SIInstrInfo::getWMMAAfterLoadScale(*MI))
+    fixWMMACoexecutionHazards(WMMA);
   fixShift64HighRegBug(MI);
   fixVALUMaskWriteHazard(MI);
   fixRequiredExportPriority(MI);
@@ -2951,7 +2953,9 @@ bool GCNHazardRecognizer::fixWMMACoexecutionHazards(MachineInstr *MI) {
       tryHoistWMMAVnopsFromLoop(MI, WaitStatesNeeded))
     return true;
 
-  emitVNops(*MI->getParent(), MI->getIterator(), WaitStatesNeeded);
+  // For a paired WMMA, the hazard window ends before the scale load.
+  emitVNops(*CurrCycleInstr->getParent(), CurrCycleInstr->getIterator(),
+            WaitStatesNeeded);
   return true;
 }
 
