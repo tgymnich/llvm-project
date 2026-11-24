@@ -6,6 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Pipe a VALU completes on with gfx125x. It orders the VA_VDST decrements.
+class GFX125xDPMACCKind;
+def DPMACCNever : GFX125xDPMACCKind;
+def DPMACCAlways : GFX125xDPMACCKind;
+// DP-MACC with full-rate 64-bit ops, side MACC otherwise.
+def DPMACCOrSideMACC : GFX125xDPMACCKind;
+
+def GFX125xDPMACCKind : GenericEnum {
+  let FilterClass = "GFX125xDPMACCKind";
+}
+
 // dummies for outer let
 class LetDummies {
   bit TRANS;
@@ -19,6 +30,7 @@ class LetDummies {
   bit isAsCheapAsAMove;
   bit FPDPRounding;
   bit IsDPMACCInstruction;
+  GFX125xDPMACCKind GFX125xDPMACC;
   Predicate SubtargetPredicate;
   string Constraints;
   string DisableEncoding;
@@ -76,6 +88,9 @@ class VOP_Pseudo <string opName, string suffix, VOPProfile P, dag outs, dag ins,
   Instruction Opcode = !cast<Instruction>(NAME);
   bit IsTrue16 = P.IsTrue16;
   bit IsDPMACCInstruction = 0;
+  GFX125xDPMACCKind GFX125xDPMACC =
+    !if(IsDPMACCInstruction, DPMACCAlways, DPMACCNever);
+  bit HasGFX125xDPMACC = !ne(GFX125xDPMACC, DPMACCNever);
   VOPProfile Pfl = P;
 
   string AsmOperands;
@@ -2501,6 +2516,17 @@ def DPMACCInstructionTable : GenericTable {
 
   let PrimaryKey = ["Opcode"];
   let PrimaryKeyName = "isDPMACCInstructionHelper";
+}
+
+def GFX125xDPMACCTable : GenericTable {
+  let FilterClass = "VOP_Pseudo";
+  let FilterClassField = "HasGFX125xDPMACC";
+  let CppTypeName = "GFX125xDPMACCInfo";
+  let Fields = ["Opcode", "GFX125xDPMACC"];
+  string TypeOf_GFX125xDPMACC = "GFX125xDPMACCKind";
+
+  let PrimaryKey = ["Opcode"];
+  let PrimaryKeyName = "getGFX125xDPMACCInfo";
 }
 
 def VOP3PHasNoOpSelHiTable : GenericTable {

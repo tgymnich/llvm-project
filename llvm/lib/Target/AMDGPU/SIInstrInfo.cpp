@@ -12274,7 +12274,11 @@ bool SIInstrInfo::isXDL(const MachineInstr &MI) const {
 
 bool SIInstrInfo::isVAVDSTOrderedXDL(const MachineInstr &MI) const {
   constexpr unsigned MinOrderedXDLVAVDSTVGPRs = 8;
-  if (!AMDGPU::isGFX1250(ST) || !isXDL(MI))
+  if (!AMDGPU::isGFX1250(ST) || !isXDLWMMA(MI))
+    return false;
+
+  // The BF16 result fills four of the eight VGPRs of the tied F32 accumulator.
+  if (MI.getOpcode() == AMDGPU::V_SWMMAC_BF16F32_16X16X64_BF16_w32_twoaddr)
     return false;
 
   const MachineOperand *Dst = getNamedOperand(MI, AMDGPU::OpName::vdst);

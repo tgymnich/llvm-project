@@ -313,9 +313,11 @@ protected:
           HWEvents::ASYNC_ACCESS,
           HWEvents::TENSOR_ACCESS,
           HWEvents::VGPR_CSMACC_READ | HWEvents::VGPR_DPMACC_READ |
-              HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_XDL_READ,
+              HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_XDL_READ |
+              HWEvents::VGPR_UNORDERED_READ,
           HWEvents::VGPR_CSMACC_WRITE | HWEvents::VGPR_DPMACC_WRITE |
-              HWEvents::VGPR_TRANS_WRITE | HWEvents::VGPR_XDL_WRITE,
+              HWEvents::VGPR_TRANS_WRITE | HWEvents::VGPR_XDL_WRITE |
+              HWEvents::VGPR_UNORDERED_WRITE,
           HWEvents::VGPR_LDS_READ | HWEvents::VGPR_FLAT_READ |
               HWEvents::VGPR_VMEM_READ};
 
@@ -1796,6 +1798,12 @@ bool WaitcntBrackets::counterOutOfOrder(AMDGPU::InstCounterType T) const {
 
     return Events.size() > 1;
   }
+
+  // Unordered VALU instructions are not ordered among themselves either.
+  constexpr HWEvents Unordered =
+      HWEvents::VGPR_UNORDERED_READ | HWEvents::VGPR_UNORDERED_WRITE;
+  if ((PendingEvents & Context->getWaitEvents(T) & Unordered).any())
+    return true;
 
   return hasMixedPendingEvents(T);
 }

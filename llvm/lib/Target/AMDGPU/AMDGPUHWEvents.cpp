@@ -20,9 +20,56 @@ namespace AMDGPU {
 LLVM_DUMP_METHOD void HWEvents::dump() const { dbgs() << *this << "\n"; }
 #endif
 
+// Classify a VALU by the pipe that reports its completion on gfx125x.
+// Instructions on the same pipe decrement VA_VDST in issue order.
+static HWEvents getGFX125xVALUEventType(const MachineInstr &Inst,
+                                        const SIInstrInfo &TII) {
+  constexpr HWEvents Unordered =
+      HWEvents::VGPR_UNORDERED_READ | HWEvents::VGPR_UNORDERED_WRITE;
+  constexpr HWEvents CSMACC =
+      HWEvents::VGPR_CSMACC_READ | HWEvents::VGPR_CSMACC_WRITE;
+  constexpr HWEvents DPMACC =
+      HWEvents::VGPR_DPMACC_READ | HWEvents::VGPR_DPMACC_WRITE;
+  constexpr HWEvents TRANS =
+      HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_TRANS_WRITE;
+  const GCNSubtarget &ST = TII.getSubtarget();
+  unsigned Opc = Inst.getOpcode();
+
+  if (TII.isXDLWMMA(Inst))
+    return HWEvents::VGPR_XDL_READ | HWEvents::VGPR_XDL_WRITE;
+
+  // LD_SCALE is listed on the XDL pipe, but it can decrement VA_VDST before
+  // older XDL instructions.
+  if (Opc == AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32 ||
+      Opc == AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64)
+    return Unordered;
+
+  if (Opc == AMDGPU::V_WMMA_F64_16X16X4_F64_w32_twoaddr ||
+      Opc == AMDGPU::V_WMMA_F64_16X16X4_F64_w32_threeaddr)
+    return DPMACC;
+
+  switch (AMDGPU::getGFX125xDPMACCKind(Opc)) {
+  case AMDGPU::DPMACCNever:
+    break;
+  case AMDGPU::DPMACCAlways:
+    return DPMACC;
+  case AMDGPU::DPMACCOrSideMACC:
+    if (ST.hasFullRate64Ops())
+      return DPMACC;
+    return ST.hasSideMACC64BitOps() ? CSMACC : Unordered;
+  }
+
+  if (TII.isTRANS(Inst))
+    return TRANS;
+  return CSMACC;
+}
+
 static HWEvents getExpertSchedulingEventType(const MachineInstr &Inst,
                                              const SIInstrInfo &TII) {
   if (TII.isVALU(Inst, /*AllowLDSDMA=*/false)) {
+    if (AMDGPU::isGFX1250(TII.getSubtarget()))
+      return getGFX125xVALUEventType(Inst, TII);
+
     // Core/Side-, DP-, XDL- and TRANS-MACC VALU instructions complete
     // out-of-order with respect to each other, so each of these classes
     // has its own event.

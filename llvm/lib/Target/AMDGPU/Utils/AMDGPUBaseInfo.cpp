@@ -433,6 +433,11 @@ struct DPMACCInstructionInfo {
   uint32_t Opcode;
 };
 
+struct GFX125xDPMACCInfo {
+  uint32_t Opcode;
+  GFX125xDPMACCKind GFX125xDPMACC;
+};
+
 struct FP4FP8DstByteSelInfo {
   uint32_t Opcode;
   bool HasFP8DstByteSel;
@@ -445,6 +450,8 @@ struct VOP3PHasNoOpSelHiInfo {
 
 #define GET_DPMACCInstructionTable_DECL
 #define GET_DPMACCInstructionTable_IMPL
+#define GET_GFX125xDPMACCTable_DECL
+#define GET_GFX125xDPMACCTable_IMPL
 #define GET_MTBUFInfoTable_DECL
 #define GET_MTBUFInfoTable_IMPL
 #define GET_MUBUFInfoTable_DECL
@@ -859,6 +866,11 @@ FPType getFPDstSelType(unsigned Opc) {
 
 bool isDPMACCInstruction(unsigned Opc) {
   return isDPMACCInstructionHelper(Opc) != nullptr;
+}
+
+GFX125xDPMACCKind getGFX125xDPMACCKind(unsigned Opc) {
+  const GFX125xDPMACCInfo *Info = getGFX125xDPMACCInfo(Opc);
+  return Info ? Info->GFX125xDPMACC : DPMACCNever;
 }
 
 unsigned mapWMMA2AddrTo3AddrOpcode(unsigned Opc) {

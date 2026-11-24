@@ -470,7 +470,7 @@ body: |
     ; CHECK-NEXT: S_WAIT_KMCNT 0
     ; CHECK-NEXT: $vgpr70 = V_EXP_F32_e32 $vgpr95, implicit $mode, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55 = V_SWMMAC_BF16F32_16X16X64_BF16_w32_twoaddr 8, $vgpr0_vgpr1_vgpr2_vgpr3_vgpr4_vgpr5_vgpr6_vgpr7, 8, $vgpr8_vgpr9_vgpr10_vgpr11_vgpr12_vgpr13_vgpr14_vgpr15_vgpr16_vgpr17_vgpr18_vgpr19_vgpr20_vgpr21_vgpr22_vgpr23, $vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55, $vgpr88, 0, 0, 0, 0, 0, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr96, $vgpr70, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr70 = V_EXP_F32_e32 $vgpr95, implicit $mode, implicit $exec

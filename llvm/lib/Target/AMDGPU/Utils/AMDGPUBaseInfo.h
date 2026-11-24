@@ -144,6 +144,7 @@ struct WMMAInstInfo {
   WMMAVariant CoExecVariant;
 };
 
+#define GET_GFX125xDPMACCKind_DECL
 #define GET_MIMGBaseOpcode_DECL
 #define GET_MIMGDim_DECL
 #define GET_MIMGEncoding_DECL
@@ -992,6 +993,10 @@ LLVM_READONLY
 FPType getFPDstSelType(unsigned Opc);
 
 bool isDPMACCInstruction(unsigned Opc);
+
+/// \returns whether \p Opc completes on the DP-MACC with gfx125x.
+LLVM_READONLY
+GFX125xDPMACCKind getGFX125xDPMACCKind(unsigned Opc);
 
 LLVM_READONLY
 unsigned mapWMMA2AddrTo3AddrOpcode(unsigned Opc);

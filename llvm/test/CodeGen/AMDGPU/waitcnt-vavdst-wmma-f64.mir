@@ -13,7 +13,7 @@ body: |
     ; CHECK-NEXT: S_WAIT_KMCNT 0
     ; CHECK-NEXT: $vgpr30_vgpr31 = V_ADD_F64_pseudo_e64 0, $vgpr90_vgpr91, 0, $vgpr92_vgpr93, 0, 0, implicit $mode, implicit $exec
     ; CHECK-NEXT: early-clobber $vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55_vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63 = V_WMMA_F64_16X16X4_F64_w32_twoaddr 8, $vgpr0_vgpr1_vgpr2_vgpr3, 8, $vgpr4_vgpr5_vgpr6_vgpr7, 8, $vgpr48_vgpr49_vgpr50_vgpr51_vgpr52_vgpr53_vgpr54_vgpr55_vgpr56_vgpr57_vgpr58_vgpr59_vgpr60_vgpr61_vgpr62_vgpr63, 0, 0, 0, 0, implicit $exec
-    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_0
+    ; CHECK-NEXT: S_WAITCNT_DEPCTR .VaVdst_1
     ; CHECK-NEXT: DS_WRITE_B32_gfx9 $vgpr96, $vgpr30, 0, 0, implicit $exec
     ; CHECK-NEXT: S_ENDPGM 0
     $vgpr30_vgpr31 = V_ADD_F64_pseudo_e64 0, $vgpr90_vgpr91, 0, $vgpr92_vgpr93, 0, 0, implicit $mode, implicit $exec
