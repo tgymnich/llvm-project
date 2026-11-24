@@ -2661,7 +2661,7 @@ static bool getConstIntOrUndef(Value *Op, const APInt *&C) {
 ///
 /// \param CI Constrained intrinsic call.
 /// \param St Exception flags raised during constant evaluation.
-static bool mayFoldConstrained(ConstrainedFPIntrinsic *CI,
+static bool mayFoldConstrained(const ConstrainedFPIntrinsic *CI,
                                APFloat::opStatus St) {
   std::optional<RoundingMode> ORM = CI->getRoundingMode();
   std::optional<fp::ExceptionBehavior> EB = CI->getExceptionBehavior();
@@ -3514,7 +3514,7 @@ static Constant *evaluateCompare(const APFloat &Op1, const APFloat &Op2,
       St = APFloat::opInvalidOp;
   }
   bool Result = FCmpInst::compare(Op1, Op2, Cond);
-  if (mayFoldConstrained(const_cast<ConstrainedFPCmpIntrinsic *>(FCmp), St))
+  if (mayFoldConstrained(FCmp, St))
     return ConstantInt::get(Call->getType()->getScalarType(), Result);
   return nullptr;
 }
@@ -3738,8 +3738,7 @@ static Constant *ConstantFoldIntrinsicCall2(Intrinsic::ID IntrinsicID, Type *Ty,
         case Intrinsic::experimental_constrained_fcmps:
           return evaluateCompare(Op1V, Op2V, ConstrIntr);
         }
-        if (mayFoldConstrained(const_cast<ConstrainedFPIntrinsic *>(ConstrIntr),
-                               St))
+        if (mayFoldConstrained(ConstrIntr, St))
           return ConstantFP::get(Ty, Res);
         return nullptr;
       }
@@ -4329,8 +4328,7 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
             St = Res.fusedMultiplyAdd(C2, C3, RM);
             break;
           }
-          if (mayFoldConstrained(
-                  const_cast<ConstrainedFPIntrinsic *>(ConstrIntr), St))
+          if (mayFoldConstrained(ConstrIntr, St))
             return ConstantFP::get(Ty, Res);
           return nullptr;
         }
