@@ -27,6 +27,16 @@ static HWEvents getExpertSchedulingEventType(const MachineInstr &Inst,
     // out-of-order with respect to each other, so each of these classes
     // has its own event.
 
+    // The scale completion has no usable ordering guarantee. A combined
+    // scaled WMMA also includes this event.
+    unsigned Opcode = Inst.getOpcode();
+    if (AMDGPU::getHasMatrixScale(Opcode) ||
+        Opcode == AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32 ||
+        Opcode == AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64 ||
+        Opcode == AMDGPU::V_WMMA_LD_SCALE_PAIRED_B32_gfx1250 ||
+        Opcode == AMDGPU::V_WMMA_LD_SCALE16_PAIRED_B64_gfx1250)
+      return HWEvents::VGPR_UNORDERED_READ | HWEvents::VGPR_UNORDERED_WRITE;
+
     if (TII.isXDL(Inst))
       return HWEvents::VGPR_XDL_READ | HWEvents::VGPR_XDL_WRITE;
 

@@ -308,9 +308,11 @@ protected:
           HWEvents::ASYNC_ACCESS,
           HWEvents::TENSOR_ACCESS,
           HWEvents::VGPR_CSMACC_READ | HWEvents::VGPR_DPMACC_READ |
-              HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_XDL_READ,
+              HWEvents::VGPR_TRANS_READ | HWEvents::VGPR_XDL_READ |
+              HWEvents::VGPR_UNORDERED_READ,
           HWEvents::VGPR_CSMACC_WRITE | HWEvents::VGPR_DPMACC_WRITE |
-              HWEvents::VGPR_TRANS_WRITE | HWEvents::VGPR_XDL_WRITE,
+              HWEvents::VGPR_TRANS_WRITE | HWEvents::VGPR_XDL_WRITE |
+              HWEvents::VGPR_UNORDERED_WRITE,
           HWEvents::VGPR_LDS_READ | HWEvents::VGPR_FLAT_READ |
               HWEvents::VGPR_VMEM_READ};
 
@@ -932,7 +934,7 @@ void WaitcntBrackets::updateByEvent(HWEvents E, MachineInstr &Inst) {
   // Count this write before recording its own destination, so the
   // destination does not count itself. A VOP3PX2 WMMA counts once even though
   // it increments VA_VDST twice: only its WMMA half is an ordered XDL write.
-  if (E == HWEvents::VGPR_XDL_WRITE && Context->TII.isVAVDSTOrderedXDL(Inst))
+  if (T == AMDGPU::VA_VDST_WR && Context->TII.isVAVDSTOrderedXDL(Inst))
     ++OrderedXDLCount;
 
   const SIRegisterInfo &TRI = Context->TRI;
@@ -1696,6 +1698,11 @@ bool WaitcntBrackets::counterOutOfOrder(AMDGPU::InstCounterType T) const {
 
     return Events.size() > 1;
   }
+
+  constexpr HWEvents Unordered =
+      HWEvents::VGPR_UNORDERED_READ | HWEvents::VGPR_UNORDERED_WRITE;
+  if ((PendingEvents & Context->getWaitEvents(T) & Unordered).any())
+    return true;
 
   return hasMixedPendingEvents(T);
 }
