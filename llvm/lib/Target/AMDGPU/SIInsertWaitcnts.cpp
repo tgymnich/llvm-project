@@ -151,6 +151,19 @@ protected:
   // truly redundant or if they're waiting on a loop-carried dependency.
   DenseSet<MachineInstr *> DeferredErasures;
 
+  // S_WAITCNT_DEPCTR operand updates, postponed for the same reason.
+  DenseMap<MachineInstr *, unsigned> DeferredDepctrEncs;
+
+  void deferDepctrUpdate(MachineInstr &MI, unsigned Enc) {
+    if (Enc == static_cast<unsigned>(AMDGPU::DepCtr::getDefaultDepCtrEncoding(ST))) {
+      DeferredDepctrEncs.erase(&MI);
+      DeferredErasures.insert(&MI);
+      return;
+    }
+    DeferredErasures.erase(&MI);
+    DeferredDepctrEncs[&MI] = Enc;
+  }
+
 public:
   WaitcntGenerator() = delete;
   WaitcntGenerator(const WaitcntGenerator &) = delete;
@@ -187,8 +200,16 @@ public:
                           MachineInstr &OldWaitcntInstr, AMDGPU::Waitcnt &Wait,
                           MachineBasicBlock::instr_iterator It) = 0;
 
-  bool eraseDeferredWaitcnts() {
+  bool applyDeferredWaitcnts() {
     bool Modified = false;
+    for (auto [MI, Enc] : DeferredDepctrEncs) {
+      MachineOperand *Op = TII.getNamedOperand(*MI, AMDGPU::OpName::simm16);
+      if (Op->getImm() != Enc) {
+        Op->setImm(Enc);
+        Modified = true;
+      }
+    }
+    DeferredDepctrEncs.clear();
     for (MachineInstr *MI : DeferredErasures) {
       MI->eraseFromParent();
       Modified = true;
@@ -2094,14 +2115,7 @@ bool WaitcntGeneratorGFX12Plus::applyPreexistingWaitcnt(
         unsigned VaVdst = std::min(Wait.get(AMDGPU::VA_VDST_RD),
                                    Wait.get(AMDGPU::VA_VDST_WR));
         Enc = AMDGPU::DepCtr::encodeFieldVaVdst(Enc, VaVdst);
-
-        if (Enc != (unsigned)AMDGPU::DepCtr::getDefaultDepCtrEncoding(ST)) {
-          Modified |= updateOperandIfDifferent(II, AMDGPU::OpName::simm16, Enc);
-          Modified |= promoteSoftWaitCnt(&II);
-        } else {
-          II.eraseFromParent();
-          Modified = true;
-        }
+        deferDepctrUpdate(II, Enc);
       }
     } else if (Opcode == AMDGPU::S_WAITCNT_lds_direct) {
       // Architectures higher than GFX10 do not have direct loads to
@@ -2277,22 +2291,11 @@ bool WaitcntGeneratorGFX12Plus::applyPreexistingWaitcnt(
     Wait.set(AMDGPU::VA_VDST_WR, ~0u);
     Wait.set(AMDGPU::VM_VSRC, ~0u);
 
-    // If that new encoded Depctr immediate would actually still wait
-    // for anything, update the instruction's operand. Otherwise it can
-    // just be deleted.
-    if (Enc != (unsigned)AMDGPU::DepCtr::getDefaultDepCtrEncoding(ST)) {
-      Modified |= updateOperandIfDifferent(*WaitcntDepctrInstr,
-                                           AMDGPU::OpName::simm16, Enc);
-      LLVM_DEBUG(It.isEnd() ? dbgs() << "applyPreexistingWaitcnt\n"
-                                     << "New Instr at block end: "
-                                     << *WaitcntDepctrInstr << '\n'
-                            : dbgs() << "applyPreexistingWaitcnt\n"
-                                     << "Old Instr: " << *It << "New Instr: "
-                                     << *WaitcntDepctrInstr << '\n');
-    } else {
-      WaitcntDepctrInstr->eraseFromParent();
-      Modified = true;
-    }
+    // Keep the original operand until the end of the pass: a later visit
+    // through a backedge may need the wait this visit found redundant.
+    deferDepctrUpdate(*WaitcntDepctrInstr, Enc);
+    LLVM_DEBUG(dbgs() << "applyPreexistingWaitcnt: deferred depctr encoding "
+                      << Enc << " for " << *WaitcntDepctrInstr);
   }
 
   return Modified;
@@ -3757,7 +3760,7 @@ bool SIInsertWaitcnts::run() {
     }
   } while (Repeat);
 
-  Modified |= WCG->eraseDeferredWaitcnts();
+  Modified |= WCG->applyDeferredWaitcnts();
 
   if (ST.hasScalarStores()) {
     SmallVector<MachineBasicBlock *, 4> EndPgmBlocks;
