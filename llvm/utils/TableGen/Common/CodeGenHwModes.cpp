@@ -10,10 +10,12 @@
 
 #include "CodeGenHwModes.h"
 #include "SubtargetFeatureInfo.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/TableGen/Error.h"
 #include "llvm/TableGen/Record.h"
+#include <optional>
 #include <set>
 
 using namespace llvm;
@@ -25,6 +27,7 @@ StringRef CodeGenHwModes::DefaultModeName = "DefaultMode";
 HwMode::HwMode(const Record *R) {
   Name = R->getName();
   Predicates = R->getValueAsListOfDefs("Predicates");
+  Independent = R->getValueAsBit("Independent");
 }
 
 LLVM_DUMP_METHOD
@@ -42,6 +45,32 @@ HwModeSelect::HwModeSelect(const Record *R, CodeGenHwModes &CGH) {
   for (auto [Mode, Object] : zip_equal(Modes, Objects)) {
     unsigned ModeId = CGH.getHwModeId(Mode);
     Items.emplace_back(ModeId, Object);
+  }
+
+  // A combined mode selects the object of whichever of its active modes is
+  // listed.
+  unsigned NumDefinedItems = Items.size();
+  for (unsigned M = CGH.getNumDefinedModes() + 1; M != CGH.getNumModeIds();
+       ++M) {
+    std::optional<PairType> Found;
+    for (const PairType &P : ArrayRef(Items).take_front(NumDefinedItems)) {
+      if (P.first == CodeGenHwModes::DefaultMode ||
+          !(CGH.getModeBits(M) & CGH.getModeBits(P.first)))
+        continue;
+      if (!Found) {
+        Found = P;
+      } else if (Found->second != P.second) {
+        PrintFatalError(R->getLoc(),
+                        "'" + R->getName() + "' is ambiguous in HwMode '" +
+                            CGH.getModeName(M) + "': '" +
+                            CGH.getModeName(Found->first) + "' selects '" +
+                            Found->second->getName() + "' but '" +
+                            CGH.getModeName(P.first) + "' selects '" +
+                            P.second->getName() + "'");
+      }
+    }
+    if (Found)
+      Items.emplace_back(M, Found->second);
   }
 }
 
@@ -70,7 +99,7 @@ HwModePredicates::HwModePredicates(ArrayRef<const Record *> Preds) {
 HwModePredicates
 HwModePredicates::createForDefaultMode(const CodeGenHwModes &CGH) {
   HwModePredicates SP;
-  for (unsigned M = 1; M < CGH.getNumModeIds(); ++M) {
+  for (unsigned M = 1; M <= CGH.getNumDefinedModes(); ++M) {
     const HwMode &Mode = CGH.getMode(M);
     HwModePredicates ModePreds(Mode.Predicates);
     if (ModePreds.HasNonAsmPredicates) {
@@ -192,12 +221,91 @@ CodeGenHwModes::CodeGenHwModes(const RecordKeeper &RK) : Records(RK) {
   }
 
   assert(Modes.size() <= 32 && "number of HwModes exceeds maximum of 32");
+  NumDefinedModes = Modes.size();
+  for (unsigned I = 0; I != NumDefinedModes; ++I)
+    ModeBits.push_back(1u << I);
+  addCombinedModes();
 
   for (const Record *R : Records.getAllDerivedDefinitions("HwModeSelect")) {
     auto P = ModeSelects.emplace(R, HwModeSelect(R, *this));
     assert(P.second);
     (void)P;
   }
+}
+
+// An independent mode may be active together with any other mode. Add a mode
+// for every combination of independent modes with at most one regular mode,
+// unless its predicates are contradictory.
+void CodeGenHwModes::addCombinedModes() {
+  SmallVector<unsigned> Bases = {DefaultMode};
+  SmallVector<unsigned> Independent;
+  for (unsigned M = 1; M <= NumDefinedModes; ++M)
+    (getMode(M).Independent ? Independent : Bases).push_back(M);
+  if (Independent.empty())
+    return;
+  HasIndependentModes = true;
+
+  for (unsigned Base : Bases) {
+    for (unsigned Subset = 1, E = 1u << Independent.size(); Subset != E;
+         ++Subset) {
+      if (Base == DefaultMode && has_single_bit(Subset))
+        continue;
+      SmallVector<unsigned> Members;
+      if (Base != DefaultMode)
+        Members.push_back(Base);
+      for (auto [I, M] : enumerate(Independent))
+        if (Subset & (1u << I))
+          Members.push_back(M);
+
+      std::string Name;
+      std::vector<const Record *> Preds;
+      unsigned Bits = 0;
+      for (unsigned M : Members) {
+        const HwMode &Mode = getMode(M);
+        if (!Name.empty())
+          Name += '_';
+        Name += Mode.Name;
+        llvm::append_range(Preds, Mode.Predicates);
+        Bits |= getModeBits(M);
+      }
+      if (HwModePredicates(Preds).isSelfContradictory())
+        continue;
+      Modes.emplace_back(std::move(Name), std::move(Preds));
+      ModeBits.push_back(Bits);
+    }
+  }
+}
+
+std::string CodeGenHwModes::getModeCheck(unsigned Id) const {
+  auto EmitCheck = [](raw_ostream &OS, const HwMode &Mode) {
+    std::string Check;
+    raw_string_ostream CS(Check);
+    SubtargetFeatureInfo::emitPredicateCheck(CS, Mode.Predicates);
+    OS << (Check.empty() ? "true" : Check);
+  };
+
+  std::string Check;
+  raw_string_ostream OS(Check);
+  if (!HasIndependentModes) {
+    SubtargetFeatureInfo::emitPredicateCheck(OS, getMode(Id).Predicates);
+    return Check;
+  }
+  EmitCheck(OS, getMode(Id));
+
+  // Exclude the modes that would make a different (combined) mode active.
+  unsigned Bits = getModeBits(Id);
+  bool HasRegularMode = false;
+  for (unsigned M = 1; M <= NumDefinedModes; ++M)
+    if ((Bits & getModeBits(M)) && !getMode(M).Independent)
+      HasRegularMode = true;
+  for (unsigned M = 1; M <= NumDefinedModes; ++M) {
+    if ((Bits & getModeBits(M)) || (HasRegularMode && !getMode(M).Independent))
+      continue;
+    OS << " && !(";
+    EmitCheck(OS, getMode(M));
+    OS << ')';
+  }
+  return Check;
 }
 
 const HwModePredicates &

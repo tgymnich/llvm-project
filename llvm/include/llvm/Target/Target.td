@@ -36,6 +36,12 @@ class HwModePredicateProlog<code c> {
 class HwMode<list<Predicate> Ps> {
   // A list of predicates that turn on this HW mode.
   list<Predicate> Predicates = Ps;
+
+  // An independent mode may be active together with any other mode. TableGen
+  // adds a combined mode for each such combination, in which a HwModeSelect
+  // picks the object of whichever active mode it lists. It is an error if it
+  // lists several active modes with different objects.
+  bit Independent = false;
 }
 
 // A special mode recognized by tablegen. This mode is considered active

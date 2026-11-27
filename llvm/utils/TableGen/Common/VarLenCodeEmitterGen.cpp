@@ -240,7 +240,7 @@ void VarLenCodeEmitterGen::run(raw_ostream &OS) {
       const CodeGenHwModes &HWM = Target.getHwModes();
       EncodingInfoByHwMode EBM(RV, HWM);
       for (const auto [Mode, EncodingDef] : EBM) {
-        Modes.try_emplace(Mode, "_" + HWM.getMode(Mode).Name.str());
+        Modes.try_emplace(Mode, "_" + HWM.getMode(Mode).Name);
         const RecordVal *RV = EncodingDef->getValue("Inst");
         const DagInit *DI = cast<DagInit>(RV->getValue());
         VarLenInsts[R].try_emplace(Mode, VarLenInst(DI, RV));

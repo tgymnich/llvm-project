@@ -18,6 +18,7 @@
 #include <cassert>
 #include <map>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -45,8 +46,11 @@ struct HwModePredicates {
 
 struct HwMode {
   HwMode(const Record *R);
-  StringRef Name;
+  HwMode(std::string Name, std::vector<const Record *> Predicates)
+      : Name(std::move(Name)), Predicates(std::move(Predicates)) {}
+  std::string Name;
   std::vector<const Record *> Predicates;
+  bool Independent = false;
   void dump() const;
 };
 
@@ -80,10 +84,25 @@ struct CodeGenHwModes {
     return ModeSelects;
   }
   unsigned getNumModeIds() const { return Modes.size() + 1; }
+  /// Number of modes defined in the .td files. Ids above this belong to
+  /// combinations of simultaneously active modes synthesized by TableGen.
+  unsigned getNumDefinedModes() const { return NumDefinedModes; }
+  /// Bit set of the defined modes (bit Id - 1) that are active in mode \p Id.
+  unsigned getModeBits(unsigned Id) const {
+    assert(Id != 0 && "Mode id of 0 is reserved for the default mode");
+    return ModeBits[Id - 1];
+  }
+  /// Return a C++ expression that is true iff \p Id is the active mode.
+  std::string getModeCheck(unsigned Id) const;
   void dump() const;
 
 private:
+  void addCombinedModes();
+
   const RecordKeeper &Records;
+  unsigned NumDefinedModes = 0;
+  bool HasIndependentModes = false;
+  std::vector<unsigned> ModeBits;
   DenseMap<const Record *, unsigned> ModeIds; // HwMode Record -> HwModeId
   std::vector<HwMode> Modes;
   std::map<const Record *, HwModeSelect> ModeSelects;

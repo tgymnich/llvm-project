@@ -2027,7 +2027,7 @@ void SubtargetEmitter::emitHwModeCheck(const std::string &ClassName,
   unsigned EncodingInfoModes = 0;
   for (const auto &MS : CGH.getHwModeSelects()) {
     for (const HwModeSelect::PairType &P : MS.second.Items) {
-      if (P.first == DefaultMode)
+      if (P.first == DefaultMode || P.first > CGH.getNumDefinedModes())
         continue;
       if (P.second->isSubClassOf("ValueType")) {
         ValueTypeModes |= (1 << (P.first - 1));
@@ -2060,7 +2060,8 @@ void SubtargetEmitter::emitHwModeCheck(const std::string &ClassName,
   }
   OS << "  // Collect HwModes and store them as a bit set.\n";
   OS << "  unsigned Modes = 0;\n";
-  for (unsigned M = 1, NumModes = CGH.getNumModeIds(); M != NumModes; ++M) {
+  for (unsigned M = 1, NumModes = CGH.getNumDefinedModes(); M <= NumModes;
+       ++M) {
     const HwMode &HM = CGH.getMode(M);
     OS << "  if (";
     if (IsMC)
@@ -2072,11 +2073,16 @@ void SubtargetEmitter::emitHwModeCheck(const std::string &ClassName,
   OS << "  return Modes;\n}\n";
   // End emitting for getHwModeSet().
 
+  bool HasCombinedModes = CGH.getNumModeIds() - 1 > CGH.getNumDefinedModes();
   auto HandlePerMode = [&](std::string ModeType, unsigned ModeInBitSet) {
     OS << "  case HwMode_" << ModeType << ":\n";
     if (ModeInBitSet == 0) {
       OS << "    // No HwMode for " << ModeType << ".\n"
          << "    return 0;\n";
+    } else if (HasCombinedModes) {
+      OS << "    Modes &= " << ModeInBitSet << ";\n"
+         << "    if (!Modes)\n      return Modes;\n"
+         << "    break;\n";
     } else {
       OS << "    Modes &= " << ModeInBitSet << ";\n"
          << "    if (!Modes)\n      return Modes;\n"
@@ -2093,13 +2099,29 @@ void SubtargetEmitter::emitHwModeCheck(const std::string &ClassName,
   OS << "  unsigned Modes = getHwModeSet();\n\n";
   OS << "  if (!Modes)\n    return Modes;\n\n";
   OS << "  switch (type) {\n";
-  OS << "  case HwMode_Default:\n    return llvm::countr_zero(Modes) + 1;\n";
+  if (HasCombinedModes)
+    OS << "  case HwMode_Default:\n    break;\n";
+  else
+    OS << "  case HwMode_Default:\n    return llvm::countr_zero(Modes) + 1;\n";
   HandlePerMode("ValueType", ValueTypeModes);
   HandlePerMode("RegInfo", RegInfoModes);
   HandlePerMode("EncodingInfo", EncodingInfoModes);
   OS << "  }\n";
-  OS << "  llvm_unreachable(\"unexpected HwModeType\");\n"
-     << "  return 0; // should not get here\n}\n";
+  if (HasCombinedModes) {
+    OS << "\n  switch (Modes) {\n";
+    for (unsigned M = CGH.getNumDefinedModes() + 1, E = CGH.getNumModeIds();
+         M != E; ++M)
+      OS << "  case " << CGH.getModeBits(M) << ": return " << M << "; // "
+         << CGH.getModeName(M) << '\n';
+    OS << "  }\n"
+       << "  if (type != HwMode_Default && "
+          "!llvm::has_single_bit<unsigned>(Modes))\n"
+       << "    llvm_unreachable(\"Two or more HwModes were found!\");\n"
+       << "  return llvm::countr_zero(Modes) + 1;\n}\n";
+  } else {
+    OS << "  llvm_unreachable(\"unexpected HwModeType\");\n"
+       << "  return 0; // should not get here\n}\n";
+  }
   // End emitting for getHwMode().
 }
 
@@ -2358,7 +2380,8 @@ void SubtargetEmitter::emitHeader(raw_ostream &OS) {
   const CodeGenHwModes &CGH = TGT.getHwModes();
   if (CGH.getNumModeIds() > 1) {
     OS << "  enum class " << Target << "HwModeBits : unsigned {\n";
-    for (unsigned M = 0, NumModes = CGH.getNumModeIds(); M != NumModes; ++M) {
+    for (unsigned M = 0, NumModes = CGH.getNumDefinedModes() + 1; M != NumModes;
+         ++M) {
       StringRef ModeName = CGH.getModeName(M, /*IncludeDefault=*/true);
       OS << "    " << ModeName << " = ";
       if (M == 0)

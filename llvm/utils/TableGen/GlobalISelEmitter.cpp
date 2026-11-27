@@ -2263,9 +2263,7 @@ static std::string getHwModeCheck(const PatternToMatch &P,
   for (unsigned M : Modes) {
     if (M == DefaultMode)
       continue;
-    std::string PredicateCheck;
-    raw_string_ostream PS(PredicateCheck);
-    SubtargetFeatureInfo::emitPredicateCheck(PS, CGH.getMode(M).Predicates);
+    std::string PredicateCheck = CGH.getModeCheck(M);
     if (!DefaultCheck.empty())
       DefaultCheck += " && ";
     DefaultCheck += "!(" + PredicateCheck + ")";
