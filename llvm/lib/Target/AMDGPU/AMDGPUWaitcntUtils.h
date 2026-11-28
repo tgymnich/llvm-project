@@ -38,9 +38,19 @@ enum InstCounterType {
   ASYNC_CNT,                         // gfx1250.
   TENSOR_CNT,                        // gfx1250.
   NUM_EXTENDED_INST_CNTS,
-  VA_VDST_RD = NUM_EXTENDED_INST_CNTS, // gfx12+ expert mode only.
-  VA_VDST_WR,                          // gfx12+ expert mode only.
-  VM_VSRC,                             // gfx12+ expert mode only.
+  // gfx12+ expert mode only. VA_VDST is one hardware counter. It is tracked
+  // as a read view and a write view per VALU completion class.
+  VA_VDST_CSMACC_RD = NUM_EXTENDED_INST_CNTS,
+  VA_VDST_DPMACC_RD,
+  VA_VDST_TRANS_RD,
+  VA_VDST_XDL_RD,
+  VA_VDST_UNORDERED_RD,
+  VA_VDST_CSMACC_WR,
+  VA_VDST_DPMACC_WR,
+  VA_VDST_TRANS_WR,
+  VA_VDST_XDL_WR,
+  VA_VDST_UNORDERED_WR,
+  VM_VSRC, // gfx12+ expert mode only.
   NUM_EXPERT_INST_CNTS,
   NUM_INST_CNTS = NUM_EXPERT_INST_CNTS
 };
@@ -52,6 +62,23 @@ StringLiteral getInstCounterName(InstCounterType T);
 // all counters).
 iota_range<InstCounterType>
 inst_counter_types(InstCounterType MaxCounter = NUM_INST_CNTS);
+
+constexpr bool isVaVdstRead(InstCounterType T) {
+  return T >= VA_VDST_CSMACC_RD && T <= VA_VDST_UNORDERED_RD;
+}
+
+constexpr bool isVaVdstWrite(InstCounterType T) {
+  return T >= VA_VDST_CSMACC_WR && T <= VA_VDST_UNORDERED_WR;
+}
+
+constexpr bool isVaVdst(InstCounterType T) {
+  return isVaVdstRead(T) || isVaVdstWrite(T);
+}
+
+iota_range<InstCounterType> va_vdst_read_types();
+iota_range<InstCounterType> va_vdst_write_types();
+/// Iterates over all views of VA_VDST.
+iota_range<InstCounterType> va_vdst_types();
 
 /// Represents the hardware counter limits for different wait count types.
 struct HardwareLimits {
@@ -107,8 +134,8 @@ public:
   // gfx12+ constructor.
   Waitcnt(unsigned LoadCnt, unsigned ExpCnt, unsigned DsCnt, unsigned StoreCnt,
           unsigned SampleCnt, unsigned BvhCnt, unsigned KmCnt, unsigned XCnt,
-          unsigned AsyncCnt, unsigned TensorCnt, unsigned VaVdstRd,
-          unsigned VaVdstWr, unsigned VmVsrc)
+          unsigned AsyncCnt, unsigned TensorCnt, unsigned VaVdst,
+          unsigned VmVsrc)
       : Waitcnt() {
     Cnt[LOAD_CNT] = LoadCnt;
     Cnt[DS_CNT] = DsCnt;
@@ -120,9 +147,21 @@ public:
     Cnt[X_CNT] = XCnt;
     Cnt[ASYNC_CNT] = AsyncCnt;
     Cnt[TENSOR_CNT] = TensorCnt;
-    Cnt[VA_VDST_RD] = VaVdstRd;
-    Cnt[VA_VDST_WR] = VaVdstWr;
+    setVaVdst(VaVdst);
     Cnt[VM_VSRC] = VmVsrc;
+  }
+
+  /// \returns the value to wait for in the VA_VDST hardware counter.
+  unsigned getVaVdst() const {
+    unsigned Val = ~0u;
+    for (InstCounterType T : va_vdst_types())
+      Val = std::min(Val, Cnt[T]);
+    return Val;
+  }
+
+  void setVaVdst(unsigned Val) {
+    for (InstCounterType T : va_vdst_types())
+      Cnt[T] = Val;
   }
 
   bool hasWait() const {
@@ -148,8 +187,7 @@ public:
   bool hasWaitStoreCnt() const { return Cnt[STORE_CNT] != ~0u; }
 
   bool hasWaitDepctr() const {
-    return Cnt[VA_VDST_RD] != ~0u || Cnt[VA_VDST_WR] != ~0u ||
-           Cnt[VM_VSRC] != ~0u;
+    return getVaVdst() != ~0u || Cnt[VM_VSRC] != ~0u;
   }
 
   Waitcnt combined(const Waitcnt &Other) const {

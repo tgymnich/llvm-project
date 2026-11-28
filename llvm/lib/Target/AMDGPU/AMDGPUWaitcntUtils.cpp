@@ -25,6 +25,18 @@ iota_range<InstCounterType> inst_counter_types(InstCounterType MaxCounter) {
   return enum_seq(LOAD_CNT, MaxCounter);
 }
 
+iota_range<InstCounterType> va_vdst_read_types() {
+  return enum_seq_inclusive(VA_VDST_CSMACC_RD, VA_VDST_UNORDERED_RD);
+}
+
+iota_range<InstCounterType> va_vdst_write_types() {
+  return enum_seq_inclusive(VA_VDST_CSMACC_WR, VA_VDST_UNORDERED_WR);
+}
+
+iota_range<InstCounterType> va_vdst_types() {
+  return enum_seq_inclusive(VA_VDST_CSMACC_RD, VA_VDST_UNORDERED_WR);
+}
+
 StringLiteral getInstCounterName(InstCounterType T) {
   switch (T) {
   case LOAD_CNT:
@@ -47,10 +59,26 @@ StringLiteral getInstCounterName(InstCounterType T) {
     return "ASYNC_CNT";
   case TENSOR_CNT:
     return "TENSOR_CNT";
-  case VA_VDST_RD:
-    return "VA_VDST_RD";
-  case VA_VDST_WR:
-    return "VA_VDST_WR";
+  case VA_VDST_CSMACC_RD:
+    return "VA_VDST_CSMACC_RD";
+  case VA_VDST_DPMACC_RD:
+    return "VA_VDST_DPMACC_RD";
+  case VA_VDST_TRANS_RD:
+    return "VA_VDST_TRANS_RD";
+  case VA_VDST_XDL_RD:
+    return "VA_VDST_XDL_RD";
+  case VA_VDST_UNORDERED_RD:
+    return "VA_VDST_UNORDERED_RD";
+  case VA_VDST_CSMACC_WR:
+    return "VA_VDST_CSMACC_WR";
+  case VA_VDST_DPMACC_WR:
+    return "VA_VDST_DPMACC_WR";
+  case VA_VDST_TRANS_WR:
+    return "VA_VDST_TRANS_WR";
+  case VA_VDST_XDL_WR:
+    return "VA_VDST_XDL_WR";
+  case VA_VDST_UNORDERED_WR:
+    return "VA_VDST_UNORDERED_WR";
   case VM_VSRC:
     return "VM_VSRC";
   case NUM_INST_CNTS:
@@ -80,6 +108,9 @@ HardwareLimits::HardwareLimits(const IsaVersion &IV) {
 }
 
 unsigned HardwareLimits::get(InstCounterType T) const {
+  if (isVaVdst(T))
+    return VaVdstMax;
+
   switch (T) {
   case AMDGPU::LOAD_CNT:
     return LoadcntMax;
@@ -97,9 +128,6 @@ unsigned HardwareLimits::get(InstCounterType T) const {
     return KmcntMax;
   case AMDGPU::X_CNT:
     return XcntMax;
-  case AMDGPU::VA_VDST_RD:
-  case AMDGPU::VA_VDST_WR:
-    return VaVdstMax;
   case AMDGPU::VM_VSRC:
     return VmVsrcMax;
   default:
